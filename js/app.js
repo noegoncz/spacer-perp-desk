@@ -1,7 +1,10 @@
 /** Orchestrace: propojuje modul Bybitu, UI a lifecycle service workeru. */
 
 import { BybitClient } from './bybit.js';
-import { createPriceChart, NASTROJE, INDIKATORY, nazevNastroje, nazevIndikatoru } from './chart.js';
+import {
+  createPriceChart, NASTROJE, INDIKATORY, nazevNastroje, nazevIndikatoru,
+  BARVY_KRESEB, TLOUSTKY, PRUHLEDNOSTI,
+} from './chart.js';
 import { t, setLanguage, applyStaticTexts, JAZYKY } from './i18n.js';
 import { priceDecimals } from './format.js';
 import * as store from './store.js';
@@ -293,7 +296,9 @@ async function openChart(position) {
       onDrawingsChanged: ulozKresby,
       onDrawEnd: () => vyberNastroj(''), // po dokreslení zpět na kurzor
       onIndicatorsChanged: ulozIndikatory,
+      onSelectionChanged: zobrazPaletu,
     });
+    postavPaletu();
     chart.setLoader(nactiSvice);
     chart.setMagnet(magnetZapnut);
     chart.restoreIndicators(store.loadIndicators(), maVlastniPanel);
@@ -316,6 +321,7 @@ async function openChart(position) {
 function closeChart() {
   // Nástroj se vrací na kurzor, ať graf příště nezačne v režimu kreslení.
   vyberNastroj('');
+  zobrazPaletu(null);
   chartPosition = null;
   chartOrders = [];
   clearInterval(ordersTimer);
@@ -427,6 +433,67 @@ function postavNabidky() {
   );
 
   oznacAktivniIndikatory();
+}
+
+/* ---------- paleta vzhledu kresby ---------- */
+
+function tlacitkoStylu(obsah, onClick) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'style-btn';
+  btn.append(obsah);
+  btn.addEventListener('click', onClick);
+  return btn;
+}
+
+function postavPaletu() {
+  el('styleColors').replaceChildren(
+    ...BARVY_KRESEB.map((barva) => {
+      const vzorek = document.createElement('span');
+      vzorek.className = 'style-swatch';
+      vzorek.style.background = barva;
+      const btn = tlacitkoStylu(vzorek, () => chart.setSelectedStyle({ color: barva }));
+      btn.dataset.color = barva;
+      return btn;
+    }),
+  );
+
+  el('styleWidths').replaceChildren(
+    ...TLOUSTKY.map((tloustka) => {
+      const cara = document.createElement('span');
+      cara.className = 'style-line';
+      cara.style.height = `${tloustka + 1}px`;
+      const btn = tlacitkoStylu(cara, () => chart.setSelectedStyle({ width: tloustka }));
+      btn.dataset.width = String(tloustka);
+      return btn;
+    }),
+  );
+
+  el('styleOpacity').replaceChildren(
+    ...PRUHLEDNOSTI.map((kryti) => {
+      const kolecko = document.createElement('span');
+      kolecko.className = 'style-opacity';
+      kolecko.style.opacity = String(kryti);
+      const btn = tlacitkoStylu(kolecko, () => chart.setSelectedStyle({ opacity: kryti }));
+      btn.dataset.opacity = String(kryti);
+      return btn;
+    }),
+  );
+}
+
+/** Paleta se ukazuje jen když je vybraná kresba; jinak by jen překážela. */
+function zobrazPaletu(styl) {
+  el('stylePanel').hidden = !styl;
+  if (!styl) return;
+
+  const oznac = (kontejner, atribut, hodnota) => {
+    el(kontejner).querySelectorAll('.style-btn').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset[atribut] === String(hodnota));
+    });
+  };
+  oznac('styleColors', 'color', styl.color);
+  oznac('styleWidths', 'width', styl.width);
+  oznac('styleOpacity', 'opacity', styl.opacity);
 }
 
 function otevriNabidku(id) {

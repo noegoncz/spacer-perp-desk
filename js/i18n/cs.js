@@ -63,6 +63,9 @@ export const cs = {
   'chart.cursor': 'Kurzor',
   'chart.magnet': 'Přichytávat ke svíčkám',
   'chart.eraseDrawings': 'Smazat kresby',
+  'style.color': 'Barva',
+  'style.width': 'Tloušťka',
+  'style.opacity': 'Průhlednost',
   'chart.confirmEraseAll': 'Smazat všechny kresby u tohoto páru?',
 
   'interval.1m': '1m',

@@ -474,6 +474,55 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
 }
 .draw-toolbar::-webkit-scrollbar { display: none; }
 
+/* ---------- paleta vzhledu vybrané kresby ---------- */
+
+.style-panel {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100% - 16px);
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(26, 35, 46, 0.96);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.style-panel::-webkit-scrollbar { display: none; }
+
+.style-group { display: flex; gap: 4px; }
+
+.style-sep {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border);
+  flex: none;
+}
+
+.style-btn {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1.5px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  flex: none;
+}
+.style-btn.active { border-color: var(--accent); background: rgba(76, 154, 255, 0.14); }
+
+.style-swatch { width: 18px; height: 18px; border-radius: 50%; }
+.style-line { width: 20px; background: var(--text); border-radius: 2px; }
+.style-opacity { width: 18px; height: 18px; border-radius: 50%; background: var(--text); }
+
 /* ---------- vrstva se zaměřovacím křížem ---------- */
 
 .draw-layer {
@@ -519,11 +568,51 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
   stroke-width: 2;
 }
 
-/* Velké duté kroužky na koncích vybrané kresby — dobře se trefují prstem. */
+/* Úchyty na koncích vybrané kresby. Musí být na první pohled jasné, že se
+   jich má uživatel dotknout — proto velké, s jádrem a pulzujícím kruhem. */
 .draw-handle {
-  fill: rgba(76, 154, 255, 0.18);
+  fill: rgba(76, 154, 255, 0.2);
   stroke: var(--accent);
   stroke-width: 2.5;
+}
+
+.draw-handle-core {
+  fill: #fff;
+  stroke: var(--accent);
+  stroke-width: 1;
+}
+
+.draw-handle-halo {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  opacity: 0.45;
+  animation: handlePulse 1.6s ease-in-out infinite;
+}
+
+@keyframes handlePulse {
+  0%, 100% { opacity: 0.15; r: 13; }
+  50%      { opacity: 0.5;  r: 18; }
+}
+
+/* Jednorázová vlnka po chycení bodu: „teď to táhni prstem kdekoli". */
+.draw-ripple {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  opacity: 0;
+  pointer-events: none;
+}
+.draw-ripple.play { animation: drawRipple 850ms ease-out 2; }
+
+@keyframes drawRipple {
+  0%   { r: 8;  opacity: 0.85; stroke-width: 3; }
+  100% { r: 42; opacity: 0;    stroke-width: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .draw-handle-halo, .draw-ripple.play { animation: none; }
+  .draw-handle-halo { opacity: 0.4; }
 }
 
 .draw-banner {

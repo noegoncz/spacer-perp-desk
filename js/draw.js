@@ -65,8 +65,10 @@ export function createTouchDrawing({
   // a musí být vidět, že se ho dotýká — velká tečka by to překryla.
   const tecka = svg('circle', { class: 'draw-dot', r: 3 });
   const prstenec = svg('circle', { class: 'draw-snap', r: 8 });
+  // Krátká vlnka po chycení bodu: ukáže, že teď se hýbe prstem kdekoli.
+  const vlnka = svg('circle', { class: 'draw-ripple', r: 6 });
   const uchyty = svg('g', {});
-  plocha.append(nahled, carySvisla, caraVodorovna, uchyty, prstenec, tecka);
+  plocha.append(nahled, carySvisla, caraVodorovna, uchyty, vlnka, prstenec, tecka);
 
   // Návod nahoře a cenovky na osách — bez nich uživatel kreslí naslepo.
   const pruh = document.createElement('div');
@@ -175,16 +177,31 @@ export function createTouchDrawing({
       nahled.style.display = 'none';
     }
 
-    // Úchyty hotové kresby, kterou uživatel vybral k úpravě.
+    // Úchyty hotové kresby, kterou uživatel vybral k úpravě. Jsou schválně
+    // velké a s pulzujícím kruhem kolem — musí být jasné, že se jich má
+    // uživatel dotknout, ne že jen označují konce.
     uchyty.replaceChildren();
     if ((rezim === 'handles' || rezim === 'move') && editace) {
       editace.body.forEach((bod, i) => {
         const p = toPixel(bod);
         if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return;
         if (rezim === 'move' && i === editace.index) return; // ten drží kříž
-        uchyty.append(svg('circle', { class: 'draw-handle', cx: p.x, cy: p.y, r: 8 }));
+        const g = svg('g', { class: 'draw-handle-g' });
+        g.append(svg('circle', { class: 'draw-handle-halo', cx: p.x, cy: p.y, r: 16 }));
+        g.append(svg('circle', { class: 'draw-handle', cx: p.x, cy: p.y, r: 10 }));
+        g.append(svg('circle', { class: 'draw-handle-core', cx: p.x, cy: p.y, r: 3.5 }));
+        uchyty.append(g);
       });
     }
+  }
+
+  /** Vlnka se přehraje jednou; restart vyžaduje sundat a vrátit třídu. */
+  function prehrajVlnku(x, y) {
+    vlnka.setAttribute('cx', x);
+    vlnka.setAttribute('cy', y);
+    vlnka.classList.remove('play');
+    void vlnka.getBoundingClientRect(); // vynutí reflow, jinak se animace nespustí znovu
+    vlnka.classList.add('play');
   }
 
   /** Při posunu grafu se úchyty musí hýbat s ním. */
@@ -277,7 +294,9 @@ export function createTouchDrawing({
         editace.index = index;
         const p = toPixel(editace.body[index]);
         kriz = { x: p.x, y: p.y };
+        prichyceno = false;
         nastavRezim('move');
+        prehrajVlnku(p.x, p.y);
       } else {
         konec();
       }

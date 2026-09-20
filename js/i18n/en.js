@@ -67,6 +67,9 @@ export const en = {
   'chart.cursor': 'Cursor',
   'chart.magnet': 'Snap to candles',
   'chart.eraseDrawings': 'Delete drawings',
+  'style.color': 'Colour',
+  'style.width': 'Thickness',
+  'style.opacity': 'Opacity',
   'chart.confirmEraseAll': 'Delete all drawings on this pair?',
 
   'interval.1m': '1m',

@@ -171,11 +171,31 @@ function styly() {
   };
 }
 
-const STYL_KRESBY = {
-  line: { color: BARVY.kresba, size: 1.5 },
-  text: { color: BARVY.kresba },
-  polygon: { color: 'rgba(76,154,255,0.12)' },
-};
+/* ---------- vzhled kreseb ---------- */
+
+/** Záměrně malá paleta. Velká se nepoužívá, jen se v ní člověk hrabe. */
+export const BARVY_KRESEB = ['#4c9aff', '#16c784', '#ea3943', '#f0b90b', '#a78bfa', '#e6edf5'];
+export const TLOUSTKY = [1, 2, 3];
+export const PRUHLEDNOSTI = [1, 0.6, 0.3];
+
+export const VYCHOZI_STYL = { color: BARVY_KRESEB[0], width: 2, opacity: 1 };
+
+function rgba(hex, alpha) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+}
+
+/** Styl kresby se drží v `extendData`, aby se dal uložit i načíst zpět. */
+function stylKresby(styl) {
+  const s = { ...VYCHOZI_STYL, ...(styl || {}) };
+  const barva = rgba(s.color, s.opacity);
+  return {
+    line: { color: barva, size: s.width },
+    text: { color: barva },
+    point: { color: barva, borderColor: rgba(s.color, s.opacity * 0.3) },
+    polygon: { color: rgba(s.color, s.opacity * 0.18) },
+  };
+}
 
 export function createPriceChart(container, layer, handlers = {}) {
   registrovatCaruPozice();
@@ -191,6 +211,11 @@ export function createPriceChart(container, layer, handlers = {}) {
   let magnet = false;
   let rozdelanyNastroj = null;
   let upravovanaKresba = null;
+  // Nová kresba převezme vzhled té naposledy nastavené — nikdo nechce
+  // přebarvovat každou čáru znovu.
+  let posledniStyl = { ...VYCHOZI_STYL };
+
+  const vybranyStyl = () => ({ ...VYCHOZI_STYL, ...(upravovanaKresba?.extendData || {}) });
 
   /**
    * Obnova kreseb nejdřív maže staré overlaye a každé smazání hlásí změnu.
@@ -284,7 +309,8 @@ export function createPriceChart(container, layer, handlers = {}) {
         points: body,
         lock: true, // posouvá se jen přes naše úchyty, ne prstem po čáře
         mode: magnet ? 'weak_magnet' : 'normal',
-        styles: STYL_KRESBY,
+        extendData: { ...posledniStyl },
+        styles: stylKresby(posledniStyl),
       });
       rozdelanyNastroj = null;
       ohlasZmenu();
@@ -309,6 +335,7 @@ export function createPriceChart(container, layer, handlers = {}) {
     onCancel: () => {
       rozdelanyNastroj = null;
       upravovanaKresba = null;
+      handlers.onSelectionChanged?.(null);
       handlers.onDrawEnd?.();
     },
   });
@@ -345,6 +372,7 @@ export function createPriceChart(container, layer, handlers = {}) {
       if (index >= 0) {
         upravovanaKresba = kresby[index];
         kresleni.beginEdit(upravovanaKresba.points);
+        handlers.onSelectionChanged?.(vybranyStyl());
       }
     },
     { passive: true },
@@ -441,7 +469,7 @@ export function createPriceChart(container, layer, handlers = {}) {
     getDrawings() {
       return chart
         .getOverlays({ groupId: SKUPINA_KRESBY })
-        .map((o) => ({ name: o.name, points: o.points }));
+        .map((o) => ({ name: o.name, points: o.points, style: o.extendData }));
     },
 
     restoreDrawings(kresby) {
@@ -454,7 +482,8 @@ export function createPriceChart(container, layer, handlers = {}) {
             groupId: SKUPINA_KRESBY,
             points: k.points,
             lock: true,
-            styles: STYL_KRESBY,
+            extendData: { ...VYCHOZI_STYL, ...(k.style || {}) },
+            styles: stylKresby(k.style),
           });
         });
       } finally {
@@ -468,6 +497,7 @@ export function createPriceChart(container, layer, handlers = {}) {
     clearDrawings() {
       chart.removeOverlay({ groupId: SKUPINA_KRESBY });
       upravovanaKresba = null;
+      handlers.onSelectionChanged?.(null);
       // Tady je prázdný seznam správný výsledek, uživatel si o to řekl.
       handlers.onDrawingsChanged?.();
     },
@@ -477,6 +507,7 @@ export function createPriceChart(container, layer, handlers = {}) {
       if (!upravovanaKresba) return false;
       chart.removeOverlay({ id: upravovanaKresba.id });
       upravovanaKresba = null;
+      handlers.onSelectionChanged?.(null);
       kresleni.cancel();
       handlers.onDrawingsChanged?.();
       return true;
@@ -484,6 +515,26 @@ export function createPriceChart(container, layer, handlers = {}) {
 
     hasSelection() {
       return Boolean(upravovanaKresba);
+    },
+
+    selectedStyle: vybranyStyl,
+
+    /** Přepíše vzhled vybrané kresby a zapamatuje si ho pro další. */
+    setSelectedStyle(zmena) {
+      if (!upravovanaKresba) return;
+      const novy = { ...vybranyStyl(), ...zmena };
+      posledniStyl = { ...novy };
+      chart.overrideOverlay({
+        id: upravovanaKresba.id,
+        extendData: novy,
+        styles: stylKresby(novy),
+      });
+      upravovanaKresba = chart.getOverlays({ id: upravovanaKresba.id })[0] ?? {
+        ...upravovanaKresba,
+        extendData: novy,
+      };
+      handlers.onDrawingsChanged?.();
+      handlers.onSelectionChanged?.(novy);
     },
 
     /* ---------- indikátory ---------- */
