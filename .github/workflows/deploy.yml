@@ -10,10 +10,12 @@ permissions:
   pages: write
   id-token: write
 
-# Běží vždy jen jeden deploy; rozdělaný se zruší ve prospěch novějšího.
+# Deploye běží po jednom a ve frontě. Rušit rozdělaný (cancel-in-progress: true)
+# se u nasazení nesmí — zrušený běh může nechat na Pages starší verzi než tu
+# poslední a aplikace pak ohlásí „novou verzi", která je ve skutečnosti starší.
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
