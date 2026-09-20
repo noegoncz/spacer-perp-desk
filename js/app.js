@@ -94,7 +94,10 @@ function wireEvents() {
     store.saveHideAmounts(hideAmounts);
     el('hideBtn').classList.toggle('active', hideAmounts);
     ui.renderPositions(lastPositions, hideAmounts, openChart);
-    if (chartPosition) ui.renderChartHeader(chartPosition, hideAmounts);
+    if (chartPosition) {
+      ui.renderChartHeader(chartPosition, hideAmounts);
+      ui.renderChartInfo(chartPosition, hideAmounts);
+    }
   });
 
   // Zpět z grafu vede přes historii, ať funguje i hardwarové tlačítko zpět.
@@ -219,6 +222,7 @@ async function openChart(position) {
   chartLineKey = '';
 
   ui.renderChartHeader(position, hideAmounts);
+  ui.renderChartInfo(position, hideAmounts);
   ui.setActiveInterval(chartInterval);
   ui.showChartError('');
   ui.showChart(true);
@@ -284,6 +288,35 @@ async function refreshChartOrders() {
   }
 }
 
+/** Shoda cen s tolerancí — porovnávat čísla z různých endpointů na rovnost nelze. */
+function samePrice(a, b) {
+  if (!a || !b) return false;
+  return Math.abs(a - b) / Math.max(Math.abs(a), Math.abs(b)) < 1e-6;
+}
+
+/**
+ * Zařadí podmíněný příkaz na stranu zisku nebo ztráty.
+ *
+ * Primárně podle `stopOrderType` od Bybitu. Když ho nepošle (nebo pošle jen
+ * obecné `Stop`), rozhodne poloha vůči vstupu: u longu je cena nad vstupem
+ * výběr zisku, pod vstupem ochrana ztráty. U shortu obráceně.
+ */
+function orderSide(order, position) {
+  const type = order.stopType || '';
+  if (type.includes('TakeProfit')) return 'tp';
+  if (type.includes('StopLoss') || type === 'TrailingStop') return 'sl';
+
+  // Heuristika platí jen na příkazy, které pozici zavírají. Obyčejná limitka
+  // bez reduceOnly je vstup nebo přikupování — ta pod vstupem není stop-loss.
+  if (!type && !order.reduceOnly) return null;
+
+  const price = order.trigger ?? order.price;
+  if (!price || !position.entry) return null;
+  const long = position.side !== 'Sell';
+  const above = price > position.entry;
+  return above === long ? 'tp' : 'sl';
+}
+
 function buildChartLines(position, orders) {
   const LS = window.LightweightCharts.LineStyle;
   const lines = [];
@@ -305,23 +338,50 @@ function buildChartLines(position, orders) {
       style: LS.LargeDashed,
     });
   }
+  // Celkové úrovně pozice — plné čáry přes celou pozici.
   if (position.stopLoss) {
-    lines.push({ price: position.stopLoss, color: BARVA_CARY.sl, title: 'SL' });
+    lines.push({ price: position.stopLoss, color: BARVA_CARY.sl, title: 'SL celé pozice' });
   }
   if (position.takeProfit) {
-    lines.push({ price: position.takeProfit, color: BARVA_CARY.tp, title: 'TP' });
+    lines.push({ price: position.takeProfit, color: BARVA_CARY.tp, title: 'TP celé pozice' });
   }
 
   for (const order of orders) {
-    const price = order.price ?? order.trigger;
+    const price = order.trigger ?? order.price;
     if (!price) continue;
-    const smer = order.side === 'Buy' ? 'nákup' : 'prodej';
-    lines.push({
-      price,
-      color: BARVA_CARY.prikaz,
-      title: order.stopType ? `Podmíněný ${smer}` : `Limit ${smer}`,
-      style: LS.Dotted,
-    });
+
+    // Bybit vrací SL a TP pozice i jako podmíněné příkazy. Bez tohohle by se
+    // každá úroveň nakreslila dvakrát, jednou jako TP a jednou jako "podmíněný".
+    if (samePrice(price, position.stopLoss) || samePrice(price, position.takeProfit)) {
+      continue;
+    }
+
+    const strana = orderSide(order, position);
+    const castecny = position.size > 0 && order.qty > 0 && order.qty < position.size;
+    const podil = castecny ? ` ${Math.round((order.qty / position.size) * 100)} %` : '';
+
+    if (strana === 'tp') {
+      lines.push({
+        price,
+        color: BARVA_CARY.tp,
+        title: (castecny ? 'Částečný TP' : 'TP') + podil,
+        style: LS.Dotted,
+      });
+    } else if (strana === 'sl') {
+      lines.push({
+        price,
+        color: BARVA_CARY.sl,
+        title: (castecny ? 'Částečný SL' : 'SL') + podil,
+        style: LS.Dotted,
+      });
+    } else {
+      lines.push({
+        price,
+        color: BARVA_CARY.prikaz,
+        title: `Limit ${order.side === 'Buy' ? 'nákup' : 'prodej'}`,
+        style: LS.Dotted,
+      });
+    }
   }
   return lines;
 }
@@ -339,7 +399,6 @@ function applyChartLines(force = false) {
 
   chartLineKey = key;
   chart.setLines(lines);
-  ui.renderChartLegend(lines);
 }
 
 /** Pozice se mění za běhu — graf musí držet krok s PnL, SL/TP i likvidací. */
@@ -357,6 +416,8 @@ function syncOpenChart(list) {
 
   chartPosition = fresh;
   ui.renderChartHeader(fresh, hideAmounts);
+  // Panel se překresluje pokaždé — mark, PnL i ROE se mění s každým tickem.
+  ui.renderChartInfo(fresh, hideAmounts);
   applyChartLines();
 }
 

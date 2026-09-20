@@ -262,6 +262,9 @@ main {
 
 .value.liq { color: var(--warn); }
 .value.liq.near { color: var(--short); font-weight: 650; }
+.value.sl { color: var(--warn); }
+.value.tp { color: var(--long); }
+.value.dim { color: var(--text-dim); }
 
 /* ---------- prázdný stav ---------- */
 
@@ -428,25 +431,18 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
 /* min-height: 0 je nutné, jinak flexbox nedovolí plátnu zmenšit se pod obsah. */
 .chart-box { flex: 1; min-height: 0; }
 
-.chart-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 14px;
-  padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+/* Panel s údaji o pozici pod grafem. Nahradil legendu — ta jen opakovala
+   hodnoty, které graf sám píše na cenovou osu. */
+.chart-info {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px 10px;
+  padding: 9px 12px calc(9px + env(safe-area-inset-bottom));
   border-top: 1px solid var(--border);
-  font-size: 0.72rem;
-  color: var(--text-dim);
 }
 
-.legend-item { display: flex; align-items: center; gap: 5px; }
-
-.legend-swatch {
-  width: 14px;
-  height: 0;
-  border-top-width: 2px;
-  border-top-style: solid;
-  flex: none;
-}
+.chart-info .pos-cell { min-width: 0; }
+.chart-info .value { font-size: 0.85rem; }
 
 .chart-error {
   padding: 10px 12px calc(10px + env(safe-area-inset-bottom));

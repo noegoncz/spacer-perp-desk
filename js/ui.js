@@ -3,6 +3,7 @@
 import {
   formatPrice,
   formatSize,
+  formatUsd,
   formatSignedUsd,
   formatPercent,
   formatTime,
@@ -34,7 +35,7 @@ const dom = {
   chartSymbol: el('chartSymbol'),
   chartBadge: el('chartBadge'),
   chartPnl: el('chartPnl'),
-  chartLegend: el('chartLegend'),
+  chartInfo: el('chartInfo'),
   chartError: el('chartError'),
 };
 
@@ -221,24 +222,33 @@ export function renderChartHeader(position, hide) {
   dom.chartPnl.textContent = hide ? MASK : `${formatSignedUsd(position.pnl)} USDT`;
 }
 
-export function renderChartLegend(lines) {
-  dom.chartLegend.replaceChildren(
-    ...lines.map((l) => {
-      const item = document.createElement('span');
-      item.className = 'legend-item';
+/**
+ * Panel pod grafem. Nahradil legendu — ta jen opakovala hodnoty, které graf
+ * sám píše na cenovou osu.
+ */
+export function renderChartInfo(position, hide) {
+  const ret = returnPercent(position);
+  const distance = liquidationDistance(position);
+  const margin =
+    position.leverage && position.value ? position.value / position.leverage : null;
 
-      const swatch = document.createElement('span');
-      swatch.className = 'legend-swatch';
-      swatch.style.borderTopColor = l.color;
-      swatch.style.borderTopStyle = l.dashed === false ? 'solid' : 'dashed';
+  const liqText = position.liq
+    ? formatPrice(position.liq) + (distance !== null ? ` (${formatPercent(distance)})` : '')
+    : '—';
 
-      const label = document.createElement('span');
-      label.textContent = `${l.title} ${formatPrice(l.price)}`;
+  const cells = [
+    ['Velikost', hide ? MASK : formatSize(position.size), ''],
+    ['Hodnota', hide ? MASK : `${formatUsd(position.value)} USDT`, ''],
+    ['Margin', hide ? MASK : margin ? `${formatUsd(margin)} USDT` : '—', ''],
+    ['Vstup', formatPrice(position.entry), ''],
+    ['Mark', formatPrice(position.mark), ''],
+    [ret ? ret.label : 'Změna', ret ? formatPercent(ret.value) : '—', pnlClass(position.pnl)],
+    ['SL celé pozice', position.stopLoss ? formatPrice(position.stopLoss) : 'není', position.stopLoss ? 'sl' : 'dim'],
+    ['TP celé pozice', position.takeProfit ? formatPrice(position.takeProfit) : 'není', position.takeProfit ? 'tp' : 'dim'],
+    ['Likvidace', liqText, distance !== null && Math.abs(distance) < 10 ? 'liq near' : 'liq'],
+  ];
 
-      item.append(swatch, label);
-      return item;
-    }),
-  );
+  dom.chartInfo.replaceChildren(...cells.map(([label, value, cls]) => cell(label, value, cls)));
 }
 
 export function showChartError(message) {

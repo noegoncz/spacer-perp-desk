@@ -35,7 +35,7 @@ Statická PWA, **bez build kroku**. Žádné npm, žádný bundler. Soubory se s
 tak, jak leží v repu. ES moduly, vanilla JS.
 
 ```
-index.html              # jediná stránka, obě obrazovky (pozice / nastavení)
+index.html              # jediná stránka, všechny obrazovky (pozice / graf / nastavení)
 manifest.webmanifest
 sw.js                   # service worker, cache + detekce nové verze
 css/style.css
@@ -44,7 +44,9 @@ js/bybit.js             # ⚠ jediný modul, který mluví s Bybitem
 js/store.js             # localStorage: klíče + nastavení
 js/format.js            # formátování čísel, cen, časů
 js/ui.js                # vykreslování DOM
+js/chart.js             # obal nad knihovnou grafu, o Bybitu neví
 js/app.js               # orchestrace, lifecycle, update service workeru
+vendor/                 # lightweight-charts, stažená knihovna (ne CDN)
 .github/workflows/deploy.yml
 ```
 
@@ -52,7 +54,7 @@ js/app.js               # orchestrace, lifecycle, update service workeru
 
 Veškerá komunikace s burzou (REST i WebSocket) je **jen** v tomto modulu.
 Zbytek aplikace ho zná přes úzké API a nikdy nesahá na `fetch` ani `WebSocket`
-přímo. Důvod: v checkpointu 4 se aplikace balí do APK přes Capacitor a transport
+přímo. Důvod: v checkpointu 8 se aplikace balí do APK přes Capacitor a transport
 se bude muset vyměnit za nativní HTTP plugin (kvůli CORS/pozadí). Ta výměna se
 pak dělá na jednom místě.
 
@@ -131,7 +133,7 @@ produkčnímu API:
 Kontrola `retCode` sama o sobě nestačí.
 
 **Proxy tedy není potřeba.** Pokud by to Bybit někdy změnil, je to jediný důvod
-zrychlit checkpoint 4 (Capacitor nativní HTTP obchází CORS úplně).
+zrychlit checkpoint 8 (Capacitor nativní HTTP obchází CORS úplně).
 
 ### Podpis Bybit V5
 
@@ -163,7 +165,7 @@ směr, velikost, vstupní cenu, mark cenu, nerealizované PnL, likvidační cenu
 a REST poll jako záchranná síť. Verze v UI + hláška o nové verzi. Deploy na
 GitHub Pages přes Actions.
 
-### 2) Graf se svíčkami
+### ✅ 2) Graf se svíčkami
 
 Svíčkový graf vybraného páru s vodorovnými čarami: vstup, likvidace,
 stop-loss, take-profit a otevřené limitky. Data z `/v5/market/kline`,
@@ -177,15 +179,37 @@ offline režim by na cizím skriptu padal, v APK není při startu zaručená s�
 a cizí server nemá co dělat v kritické cestě aplikace na sledování peněz.
 Princip „bez build kroku" to neruší, je to jeden hotový soubor.
 
+⚠ **Bybit vrací SL a TP pozice dvakrát** — jednou jako vlastnost pozice
+(`stopLoss`, `takeProfit`) a podruhé jako podmíněné příkazy v
+`/v5/order/realtime`. Bez odfiltrování se každá úroveň nakreslí dvakrát.
+Příkazy se proto porovnávají s SL/TP pozice na shodu ceny (s tolerancí, ne na
+rovnost) a duplicity se zahodí.
+
+Zařazení příkazu na stranu zisku či ztráty jde primárně podle `stopOrderType`
+(`TakeProfit`, `StopLoss`, `PartialTakeProfit`, `PartialStopLoss`,
+`TrailingStop`, `Stop`). Když Bybit pošle jen obecné `Stop`, rozhodne poloha
+vůči vstupu — u longu je cena nad vstupem výběr zisku, pod vstupem ochrana
+ztráty, u shortu obráceně. Částečnost se pozná z `qty` menšího než velikost
+pozice a v popisku se ukáže jako procento.
+
+Pod grafem je panel s údaji o pozici (velikost, hodnota, margin, vstup, mark,
+ROE, SL, TP, likvidace). Nahradil legendu čar — ta jen opakovala hodnoty,
+které graf sám píše na cenovou osu.
+
 ### 3) Layout pro Fold
 
-- **Zavřený displej** (úzký, cover screen): jen seznam pozic.
-- **Rozevřený** (velký, skoro čtvercový): graf + seznam vedle sebe.
+- **Zavřený displej** (úzký, cover screen): seznam pozic.
+- **Rozevřený**: graf zůstává **přes celou obrazovku**, ne vedle seznamu.
 
-Přepínat podle `matchMedia` na šířku/poměr stran, ne podle detekce zařízení.
-Stav (vybraný pár, scroll, zoom grafu) musí přežít přeložení telefonu —
-Android při změně skládání stránku nereloaduje, ale layout se musí přepnout
-plynule.
+Rozhodnuto uživatelem po vyzkoušení checkpointu 2. Původní zadání znělo
+„rozevřený: graf + seznam vedle sebe", ale v praxi se osvědčil celoobrazovkový
+graf v obou polohách. Rozdělené zobrazení se zatím **nedělá**.
+
+Zbývá tedy: chování při přeložení telefonu. Stav (otevřený graf, vybraný pár,
+interval, zoom, scroll seznamu) musí přeložení přežít — Android při změně
+skládání stránku nereloaduje, ale rozměry se mění a layout se musí přepnout
+plynule. Přepínat podle `matchMedia` na šířku a poměr stran, ne podle detekce
+zařízení.
 
 ### 4) Rozšířená data
 
@@ -200,7 +224,31 @@ plynule.
 - Barevné varování na kartě při přiblížení k likvidaci, s volitelnou hranicí.
 - Vibrace nebo zvuk při zásahu SL/TP.
 
-### 6) Bezpečnost
+### 6) Kreslení do grafu
+
+Vlastní čáry a útvary v grafu (trendové čáry, úrovně, obdélníky), které si
+aplikace **pamatuje** — uložené lokálně podle páru, přežijí zavření aplikace
+i restart telefonu.
+
+⚠ **`lightweight-charts` kreslicí nástroje nemá.** Umí jen vodorovné cenové
+čáry, které používá checkpoint 2. Volné kreslení je v placené knihovně
+TradingView, ne v této. Existuje ale **primitives API** (`attachPrimitive`,
+`ISeriesPrimitive`), kterým jde do plátna kreslit vlastní grafiku napojenou
+na souřadnice grafu. Tudy to půjde, ale znamená to napsat si sám:
+
+- převod mezi cenou/časem a pixely (na to primitives API má rozhraní),
+- zachytávání dotyku, výběr a tažení útvarů prstem,
+- úchyty pro úpravu konců čáry,
+- mazání a ukládání.
+
+Je to **největší jednotlivý kus práce v celém plánu** a je dobré počítat
+s tím, že zabere víc než graf samotný. Proto je zařazený až sem — dřív mají
+přednost věci s každodenní hodnotou (data o pozici, varování před likvidací).
+
+Ukládání: `localStorage` pod klíčem podle páru. Až bude hotový checkpoint 8
+(APK), zvážit přesun do souboru, ať se dá zálohovat.
+
+### 7) Bezpečnost
 
 **Odemykání otiskem prstu je požadavek uživatele** (čtečka v bočním tlačítku
 Foldu), ne jen PIN. Technicky to není přímočaré:
@@ -214,7 +262,7 @@ Foldu), ne jen PIN. Technicky to není přímočaré:
 - **PIN není alternativa k otisku, ale povinná záloha pod ním.** Otisk selhává
   u mokrého prstu a po restartu telefonu. Bez záložní cesty se uživatel ke svým
   klíčům nedostane.
-- Nejsilnější varianta přijde až s APK (checkpoint 7): **Android Keystore**
+- Nejsilnější varianta přijde až s APK (checkpoint 8): **Android Keystore**
   s hardwarově chráněným klíčem. To PWA neumí. Zvážit, jestli v PWA fázi
   nestačí jednodušší řešení a to pořádné nenechat až na APK.
 
@@ -222,18 +270,18 @@ Dál: přepínač na **testnet** (`api-testnet.bybit.com`, `stream-testnet.bybit
 Ověřeno, že testnet odpovídá včetně CORS stejně jako produkce, takže jde jen
 o výměnu základní adresy v `js/bybit.js`.
 
-**Tenhle checkpoint musí být hotový dřív než checkpoint 8.** Dokud je klíč
+**Tenhle checkpoint musí být hotový dřív než checkpoint 9.** Dokud je klíč
 read-only, je čitelný secret v `localStorage` přijatelné riziko — nejhorší
 následek je, že někdo uvidí pozice. S právem obchodovat je nejhorší následek
 vybydlený účet a stejné úložiště přijatelné přestává být.
 
-### 7) APK přes Capacitor + notifikace
+### 8) APK přes Capacitor + notifikace
 
 Zabalit do APK, aby aplikace mohla běžet na pozadí a posílat notifikace
 (blížící se likvidace, zasažení SL/TP, výrazná změna PnL). Tady se vymění
 transport v `js/bybit.js` za nativní HTTP/WebSocket plugin.
 
-### 8) Zadávání příkazů (jen pokud se aplikace osvědčí)
+### 9) Zadávání příkazů (jen pokud se aplikace osvědčí)
 
 Zatím **se nedělá** a aplikace zůstává výhradně read-only. Poznámky, ať se na
 to při návrhu nezapomíná:
@@ -245,7 +293,7 @@ to při návrhu nezapomíná:
   Výměnu klíče aplikace zvládá.
 - **Pravidlo:** modul nabízí pouze čtení. Zápis přijde jako zřetelně oddělená
   část s potvrzovacím krokem, aby chyba v UI nemohla omylem odeslat příkaz.
-- Předpoklad: hotový checkpoint 6 (šifrované klíče).
+- Předpoklad: hotový checkpoint 7 (šifrované klíče).
 
 #### Postup testování zápisu — tři vrstvy, ne jedna
 
