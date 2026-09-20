@@ -179,29 +179,39 @@ function clearCredentials() {
 let registration = null;
 let updateRequested = false;
 
+/**
+ * Lišta se řídí stavem, ne událostí: ukazuje se, jen když opravdu čeká nový
+ * service worker. Dřív se zapínala na událost a už se nikdy nepřehodnotila,
+ * takže zůstala viset i po tom, co čekající worker převzal řízení.
+ */
+function refreshUpdateBar() {
+  const waiting = registration?.waiting;
+  const isUpdate = Boolean(waiting) && Boolean(navigator.serviceWorker.controller);
+  ui.showUpdateBar(isUpdate);
+  // Až čekající worker přejde do jiného stavu, přehodnoť to znovu.
+  waiting?.addEventListener('statechange', refreshUpdateBar);
+}
+
 async function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
 
   try {
-    registration = await navigator.serviceWorker.register('sw.js');
+    // updateViaCache: 'none' je tu zásadní. Výchozí 'imports' bere skripty
+    // z importScripts() z HTTP cache — a sw.js importuje js/version.js.
+    // Zastaralá kopie version.js pak dá jiný obsah workeru než ten aktivní,
+    // prohlížeč to vyhodnotí jako novou verzi a lišta se vrací donekonečna.
+    registration = await navigator.serviceWorker.register('sw.js', {
+      updateViaCache: 'none',
+    });
   } catch {
     return; // bez SW aplikace funguje dál, jen bez offline cache
   }
 
-  // Update čekající z minulé návštěvy.
-  if (registration.waiting && navigator.serviceWorker.controller) {
-    ui.showUpdateBar(true);
-  }
+  refreshUpdateBar();
 
   registration.addEventListener('updatefound', () => {
-    const incoming = registration.installing;
-    if (!incoming) return;
-    incoming.addEventListener('statechange', () => {
-      // Bez controlleru jde o první instalaci, ne o update — lištu neukazovat.
-      if (incoming.state === 'installed' && navigator.serviceWorker.controller) {
-        ui.showUpdateBar(true);
-      }
-    });
+    // Bez controlleru jde o první instalaci, ne o update — to řeší refreshUpdateBar.
+    registration.installing?.addEventListener('statechange', refreshUpdateBar);
   });
 
   navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -213,9 +223,16 @@ async function registerServiceWorker() {
   });
 
   el('updateBtn').addEventListener('click', () => {
-    updateRequested = true;
+    const waiting = registration.waiting;
     ui.showUpdateBar(false);
-    registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
+
+    if (!waiting) {
+      // Nemá co aktivovat — lišta byla zastaralá, stačí přenačíst.
+      location.reload();
+      return;
+    }
+    updateRequested = true;
+    waiting.postMessage({ type: 'SKIP_WAITING' });
   });
 }
 

@@ -75,6 +75,15 @@ Update flow: SW se nikdy neaktivuje sám (`skipWaiting` jen na vyžádání). Kd
 najde novou verzi, UI ukáže lištu **„Nová verze – načíst"**; teprve klik pošle
 `SKIP_WAITING` a stránku po `controllerchange` jednou reloadne.
 
+⚠ **Registrace musí mít `updateViaCache: 'none'`.** Výchozí hodnota `'imports'`
+sice stahuje `sw.js` mimo HTTP cache, ale skripty z `importScripts()` bere
+z cache — a `sw.js` importuje `js/version.js`. Zastaralá kopie `version.js`
+dá jiný obsah workeru než ten aktivní, prohlížeč to považuje za novou verzi
+a lišta „Nová verze – načíst" se vrací donekonečna (stalo se, verze 0.1.0).
+
+Lišta se navíc řídí stavem (`registration.waiting`), ne jednorázovou událostí,
+ať se schová i tehdy, když čekající worker mezitím převezme řízení.
+
 ### CORS — ověřeno
 
 Bybit V5 REST **povoluje volání přímo z prohlížeče**, ověřeno 2026-09-20 proti
