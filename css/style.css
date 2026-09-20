@@ -19,6 +19,13 @@
 
 * { box-sizing: border-box; }
 
+/* Atribut hidden schovává prvek přes display:none v prohlížečovém stylu,
+   jenže autorský styl prohlížečový vždycky přebije — bez ohledu na
+   specificitu. Každé pravidlo níž, které nastavuje display (.update-bar,
+   .summary), by tím pádem prvek nechalo viditelný i po nastavení hidden.
+   Tohle to srovná jednou provždy, i pro prvky přidané později. */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   padding: 0;
