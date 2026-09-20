@@ -42,6 +42,9 @@ export const NASTROJE = [
   { id: 'simpleAnnotation', nazev: 'Poznámka' },
 ];
 
+/** ID hlavního panelu se svíčkami — sem jdou indikátory bez vlastního panelu. */
+const HLAVNI_PANEL = 'candle_pane';
+
 /** Indikátory nabízené uživateli, z 27 vestavěných. */
 export const INDIKATORY = [
   { id: 'VOL', nazev: 'Objem', vlastniPanel: true },
@@ -145,9 +148,10 @@ export function createPriceChart(container, handlers = {}) {
   chart.setLocale('en-US'); // knihovna češtinu nemá; ovlivňuje jen popisky v tooltipu
 
   let idCarPozice = [];
-  let idIndikatoru = new Map(); // název -> id
+  const aktivniIndikatory = new Set();
   let zivyCallback = null;
   let aktualniLoader = null;
+  let magnet = false;
 
   /**
    * Obnova kreseb nejdřív maže staré overlaye a každé smazání hlásí změnu.
@@ -229,14 +233,22 @@ export function createPriceChart(container, handlers = {}) {
 
     /* ---------- kreslení ---------- */
 
-    /** Spustí kreslení: uživatel doklepe body přímo v grafu. */
+    /**
+     * Spustí kreslení. `continuous` znamená jedno tažení prstem místo
+     * klepání bod po bodu — výchozí `step` je na dotykovém displeji
+     * skoro nepoužitelný, protože klepnutí se často vyhodnotí jako posun
+     * grafu a bod se vůbec nezapíše.
+     */
     startDrawing(nastroj) {
       chart.createOverlay({
         name: nastroj,
         groupId: SKUPINA_KRESBY,
+        drawingMode: 'continuous',
+        mode: magnet ? 'weak_magnet' : 'normal',
         styles: { line: { color: '#4c9aff' }, text: { color: '#4c9aff' } },
         onDrawEnd: () => {
           ohlasZmenu();
+          handlers.onDrawEnd?.();
           return false;
         },
         onRemoved: () => {
@@ -244,6 +256,19 @@ export function createPriceChart(container, handlers = {}) {
           return false;
         },
       });
+    },
+
+    /** Zrušit rozdělané kreslení (uživatel přepnul nástroj nebo dal kurzor). */
+    cancelDrawing() {
+      chart
+        .getOverlays({ groupId: SKUPINA_KRESBY })
+        .filter((o) => o.currentStep !== -1)
+        .forEach((o) => chart.removeOverlay({ id: o.id }));
+    },
+
+    /** Přichytávání k cenám svíček — na dotyku hodně pomáhá přesnosti. */
+    setMagnet(zapnuto) {
+      magnet = zapnuto;
     },
 
     /** Kresby uživatele v podobě, která jde uložit do telefonu. */
@@ -257,10 +282,7 @@ export function createPriceChart(container, handlers = {}) {
     restoreDrawings(kresby) {
       tichaZmena = true;
       try {
-        chart
-          .getOverlays()
-          .filter((o) => o.groupId === SKUPINA_KRESBY)
-          .forEach((o) => chart.removeOverlay(o.id));
+        chart.removeOverlay({ groupId: SKUPINA_KRESBY });
 
         (kresby || []).forEach((k) => {
           chart.createOverlay({
@@ -287,29 +309,50 @@ export function createPriceChart(container, handlers = {}) {
     },
 
     clearDrawings() {
-      chart
-        .getOverlays()
-        .filter((o) => o.groupId === SKUPINA_KRESBY)
-        .forEach((o) => chart.removeOverlay(o.id));
+      chart.removeOverlay({ groupId: SKUPINA_KRESBY });
       // Tady je prázdný seznam správný výsledek, uživatel si o to řekl.
       handlers.onDrawingsChanged?.();
     },
 
     /* ---------- indikátory ---------- */
 
+    /**
+     * `createIndicator` má ve verzi 10 jen dva parametry a vrací **ID
+     * indikátoru**, ne ID panelu. Dřív se ukládalo jako paneId a mazání pak
+     * hledalo podle klíče, který nikdy neseděl — indikátory nešly vypnout.
+     * Filtr podle názvu je spolehlivý.
+     */
     toggleIndicator(nazev, vlastniPanel) {
-      if (idIndikatoru.has(nazev)) {
-        chart.removeIndicator({ paneId: idIndikatoru.get(nazev), name: nazev });
-        idIndikatoru.delete(nazev);
+      if (aktivniIndikatory.has(nazev)) {
+        chart.removeIndicator({ name: nazev });
+        aktivniIndikatory.delete(nazev);
+        handlers.onIndicatorsChanged?.();
         return false;
       }
-      const paneId = chart.createIndicator(nazev, true, vlastniPanel ? {} : { id: 'candle_pane' });
-      if (paneId) idIndikatoru.set(nazev, paneId);
+
+      const id = vlastniPanel
+        ? chart.createIndicator(nazev)
+        : chart.createIndicator({ name: nazev, paneId: HLAVNI_PANEL });
+
+      if (!id) return false;
+      aktivniIndikatory.add(nazev);
+      handlers.onIndicatorsChanged?.();
       return true;
     },
 
+    /** Obnova zapnutých indikátorů po startu aplikace. */
+    restoreIndicators(nazvy, jeVlastniPanel) {
+      (nazvy || []).forEach((nazev) => {
+        if (aktivniIndikatory.has(nazev)) return;
+        const id = jeVlastniPanel(nazev)
+          ? chart.createIndicator(nazev)
+          : chart.createIndicator({ name: nazev, paneId: HLAVNI_PANEL });
+        if (id) aktivniIndikatory.add(nazev);
+      });
+    },
+
     activeIndicators() {
-      return [...idIndikatoru.keys()];
+      return [...aktivniIndikatory];
     },
 
     destroy() {

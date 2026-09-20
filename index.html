@@ -79,11 +79,40 @@
         <button type="button" class="interval-btn" data-interval="240">4h</button>
         <button type="button" class="interval-btn" data-interval="D">1d</button>
       </div>
-      <button type="button" id="drawBtn" class="icon-btn" aria-label="Kreslení" title="Kreslení">✏</button>
       <button type="button" id="indicatorBtn" class="icon-btn" aria-label="Indikátory" title="Indikátory">📊</button>
     </div>
 
-    <div id="chartBox" class="chart-box"></div>
+    <div class="chart-area">
+      <div id="chartBox" class="chart-box"></div>
+
+      <!-- Ikony kreslení: klepnutí nástroj zapne a kreslí se rovnou v grafu. -->
+      <div class="draw-toolbar" id="drawToolbar" role="toolbar" aria-label="Kreslení">
+        <button type="button" class="tool-btn active" data-tool="" aria-label="Kurzor" title="Kurzor">
+          <svg viewBox="0 0 24 24"><path d="M5 3l14 8-6 1.5L10 19z"/></svg>
+        </button>
+        <button type="button" class="tool-btn" data-tool="segment" aria-label="Úsečka" title="Úsečka">
+          <svg viewBox="0 0 24 24"><path d="M6 18L18 6"/><circle cx="6" cy="18" r="2.2"/><circle cx="18" cy="6" r="2.2"/></svg>
+        </button>
+        <button type="button" class="tool-btn" data-tool="horizontalStraightLine" aria-label="Vodorovná úroveň" title="Vodorovná úroveň">
+          <svg viewBox="0 0 24 24"><path d="M3 12h18"/><circle cx="12" cy="12" r="2.2"/></svg>
+        </button>
+        <button type="button" class="tool-btn" data-tool="rayLine" aria-label="Polopřímka" title="Polopřímka">
+          <svg viewBox="0 0 24 24"><path d="M5 19L20 4"/><circle cx="5" cy="19" r="2.2"/></svg>
+        </button>
+        <button type="button" class="tool-btn" data-tool="fibonacciLine" aria-label="Fibonacci" title="Fibonacci">
+          <svg viewBox="0 0 24 24"><path d="M3 5h18M3 10h18M3 15h18M3 20h18"/></svg>
+        </button>
+        <button type="button" class="tool-btn" id="magnetBtn" aria-label="Přichytávat k cenám" title="Přichytávat k cenám">
+          <svg viewBox="0 0 24 24"><path d="M6 4v8a6 6 0 0012 0V4"/><path d="M6 9h5M13 9h5"/></svg>
+        </button>
+        <button type="button" class="tool-btn" id="moreToolsBtn" aria-label="Další nástroje" title="Další nástroje">
+          <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+        </button>
+        <button type="button" class="tool-btn" id="eraseBtn" aria-label="Smazat kresby" title="Smazat kresby">
+          <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
+        </button>
+      </div>
+    </div>
 
     <div id="chartInfo" class="chart-info"></div>
     <div id="chartError" class="chart-error" hidden></div>
@@ -91,11 +120,10 @@
     <!-- Vysouvací nabídky přes graf -->
     <div id="sheetDraw" class="sheet" hidden>
       <div class="sheet-head">
-        <span>Kreslení</span>
+        <span>Další nástroje</span>
         <button type="button" class="icon-btn" data-close="sheetDraw" aria-label="Zavřít">✕</button>
       </div>
       <div class="sheet-body" id="drawList"></div>
-      <button type="button" id="clearDrawBtn" class="danger-btn">Smazat všechny kresby</button>
     </div>
 
     <div id="sheetIndicators" class="sheet" hidden>

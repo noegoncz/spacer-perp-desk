@@ -27,6 +27,7 @@ let chartInterval = '15';
 let chartOrders = [];
 let chartLineKey = '';     // otisk čar, aby se nepřekreslovaly při každém ticku
 let ordersTimer = null;
+let magnetZapnut = store.loadMagnet();
 
 const client = new BybitClient({
   onPositions(list) {
@@ -56,6 +57,7 @@ const client = new BybitClient({
 function boot() {
   ui.renderVersion(self.APP_VERSION, self.APP_BUILD);
   el('hideBtn').classList.toggle('active', hideAmounts);
+  el('magnetBtn').classList.toggle('active', magnetZapnut);
   wireEvents();
   registerServiceWorker();
   connectIfPossible();
@@ -111,12 +113,24 @@ function wireEvents() {
     btn.addEventListener('click', () => zmenInterval(btn.dataset.interval));
   });
 
-  el('drawBtn').addEventListener('click', () => otevriNabidku('sheetDraw'));
   el('indicatorBtn').addEventListener('click', () => otevriNabidku('sheetIndicators'));
-  el('clearDrawBtn').addEventListener('click', () => {
+  el('moreToolsBtn').addEventListener('click', () => otevriNabidku('sheetDraw'));
+
+  document.querySelectorAll('.tool-btn[data-tool]').forEach((btn) => {
+    btn.addEventListener('click', () => vyberNastroj(btn.dataset.tool));
+  });
+
+  el('magnetBtn').addEventListener('click', () => {
+    magnetZapnut = !magnetZapnut;
+    store.saveMagnet(magnetZapnut);
+    el('magnetBtn').classList.toggle('active', magnetZapnut);
+    chart?.setMagnet(magnetZapnut);
+  });
+
+  el('eraseBtn').addEventListener('click', () => {
     if (!confirm('Smazat všechny kresby u tohoto páru?')) return;
     chart?.clearDrawings();
-    zavriNabidky();
+    vyberNastroj('');
   });
   document.querySelectorAll('[data-close]').forEach((btn) => {
     btn.addEventListener('click', zavriNabidky);
@@ -240,8 +254,15 @@ async function openChart(position) {
 
   // Plátno se musí vytvářet až po zobrazení, jinak má nulové rozměry.
   if (!chart) {
-    chart = createPriceChart(el('chartBox'), { onDrawingsChanged: ulozKresby });
+    chart = createPriceChart(el('chartBox'), {
+      onDrawingsChanged: ulozKresby,
+      onDrawEnd: () => vyberNastroj(''), // po dokreslení zpět na kurzor
+      onIndicatorsChanged: ulozIndikatory,
+    });
     chart.setLoader(nactiSvice);
+    chart.setMagnet(magnetZapnut);
+    chart.restoreIndicators(store.loadIndicators(), maVlastniPanel);
+    oznacAktivniIndikatory();
     postavNabidky();
   }
 
@@ -258,6 +279,8 @@ async function openChart(position) {
 }
 
 function closeChart() {
+  // Nástroj se vrací na kurzor, ať graf příště nezačne v režimu kreslení.
+  vyberNastroj('');
   chartPosition = null;
   chartOrders = [];
   clearInterval(ordersTimer);
@@ -309,6 +332,38 @@ function ulozKresby() {
   store.saveDrawings(chartPosition.symbol, chart.getDrawings());
 }
 
+function ulozIndikatory() {
+  if (!chart) return;
+  store.saveIndicators(chart.activeIndicators());
+  oznacAktivniIndikatory();
+}
+
+const maVlastniPanel = (nazev) =>
+  INDIKATORY.find((i) => i.id === nazev)?.vlastniPanel ?? true;
+
+function oznacAktivniIndikatory() {
+  if (!chart) return;
+  const aktivni = new Set(chart.activeIndicators());
+  document.querySelectorAll('#indicatorList .sheet-item').forEach((btn) => {
+    btn.classList.toggle('active', aktivni.has(btn.dataset.indicator));
+  });
+}
+
+/**
+ * Vybere kreslicí nástroj. Prázdný řetězec znamená kurzor, tedy jen posun
+ * a zoom. Rozdělané kreslení se přepnutím zruší, ať nezůstane viset.
+ */
+function vyberNastroj(nastroj) {
+  if (!chart) return;
+  chart.cancelDrawing();
+
+  document.querySelectorAll('.tool-btn[data-tool]').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.tool === nastroj);
+  });
+
+  if (nastroj) chart.startDrawing(nastroj);
+}
+
 function postavNabidky() {
   el('drawList').replaceChildren(
     ...NASTROJE.map((n) => {
@@ -317,8 +372,8 @@ function postavNabidky() {
       btn.className = 'sheet-item';
       btn.textContent = n.nazev;
       btn.addEventListener('click', () => {
-        chart.startDrawing(n.id);
         zavriNabidky();
+        vyberNastroj(n.id);
       });
       return btn;
     }),
@@ -329,13 +384,14 @@ function postavNabidky() {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'sheet-item';
+      btn.dataset.indicator = i.id;
       btn.textContent = i.nazev;
-      btn.addEventListener('click', () => {
-        btn.classList.toggle('active', chart.toggleIndicator(i.id, i.vlastniPanel));
-      });
+      btn.addEventListener('click', () => chart.toggleIndicator(i.id, i.vlastniPanel));
       return btn;
     }),
   );
+
+  oznacAktivniIndikatory();
 }
 
 function otevriNabidku(id) {

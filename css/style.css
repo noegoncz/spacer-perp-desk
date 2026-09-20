@@ -438,7 +438,61 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
 }
 
 /* min-height: 0 je nutné, jinak flexbox nedovolí plátnu zmenšit se pod obsah. */
-.chart-box { flex: 1; min-height: 0; }
+.chart-area {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.chart-box { position: absolute; inset: 0; }
+
+/* ---------- ikony kreslení ---------- */
+
+.draw-toolbar {
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(19, 26, 35, 0.92);
+  backdrop-filter: blur(4px);
+}
+
+.tool-btn {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 0;
+}
+.tool-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* Kurzor je plná šipka, ne obrys. */
+.tool-btn[data-tool=""] svg path { fill: currentColor; stroke-width: 1; }
+
+.tool-btn:active { background: var(--surface-2); }
+.tool-btn.active {
+  background: var(--accent);
+  color: #06121f;
+}
 
 /* Panel s údaji o pozici pod grafem. Nahradil legendu — ta jen opakovala
    hodnoty, které graf sám píše na cenovou osu. */

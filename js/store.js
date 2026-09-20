@@ -62,6 +62,30 @@ export function saveDrawings(symbol, drawings) {
   write(`perpdesk.drawings.${symbol}`, JSON.stringify(drawings || []));
 }
 
+/**
+ * Zapnuté indikátory. Schválně společné pro všechny páry — kdo chce RSI,
+ * chce ho všude, ne si ho zapínat u každého páru znovu.
+ */
+export function loadIndicators() {
+  try {
+    return JSON.parse(read('perpdesk.indicators') || '[]');
+  } catch {
+    return [];
+  }
+}
+
+export function saveIndicators(nazvy) {
+  write('perpdesk.indicators', JSON.stringify(nazvy || []));
+}
+
+export function loadMagnet() {
+  return read('perpdesk.magnet') === '1';
+}
+
+export function saveMagnet(value) {
+  write('perpdesk.magnet', value ? '1' : '0');
+}
+
 /** Skrytí částek — ať se dá koukat do telefonu na veřejnosti. */
 export function loadHideAmounts() {
   return read(KEY_HIDE) === '1';
