@@ -176,9 +176,25 @@ plynule.
 
 ### 6) Bezpečnost
 
-- Secret zašifrovaný (WebCrypto, klíč odvozený PBKDF2 z PINu), odemykání
-  PINem nebo otiskem prstu přes WebAuthn.
-- Přepínač na testnet, ať se dá zkoušet bez rizika.
+**Odemykání otiskem prstu je požadavek uživatele** (čtečka v bočním tlačítku
+Foldu), ne jen PIN. Technicky to není přímočaré:
+
+- WebAuthn sám o sobě šifrovací klíč nedává, jen podpis. Aby otisk skutečně
+  odemykal zašifrovaný secret, je potřeba rozšíření **PRF**, které z passkey
+  odvodí stabilní klíč pro WebCrypto.
+- Chrome na Androidu PRF přes Google Password Manager podporuje, ale ne každý
+  poskytovatel passkeys ho umí. **Nutno ověřit přímo na cílovém Foldu 5,**
+  než se na tom postaví úložiště.
+- **PIN není alternativa k otisku, ale povinná záloha pod ním.** Otisk selhává
+  u mokrého prstu a po restartu telefonu. Bez záložní cesty se uživatel ke svým
+  klíčům nedostane.
+- Nejsilnější varianta přijde až s APK (checkpoint 7): **Android Keystore**
+  s hardwarově chráněným klíčem. To PWA neumí. Zvážit, jestli v PWA fázi
+  nestačí jednodušší řešení a to pořádné nenechat až na APK.
+
+Dál: přepínač na **testnet** (`api-testnet.bybit.com`, `stream-testnet.bybit.com`).
+Ověřeno, že testnet odpovídá včetně CORS stejně jako produkce, takže jde jen
+o výměnu základní adresy v `js/bybit.js`.
 
 **Tenhle checkpoint musí být hotový dřív než checkpoint 8.** Dokud je klíč
 read-only, je čitelný secret v `localStorage` přijatelné riziko — nejhorší
@@ -204,6 +220,25 @@ to při návrhu nezapomíná:
 - **Pravidlo:** modul nabízí pouze čtení. Zápis přijde jako zřetelně oddělená
   část s potvrzovacím krokem, aby chyba v UI nemohla omylem odeslat příkaz.
 - Předpoklad: hotový checkpoint 6 (šifrované klíče).
+
+#### Postup testování zápisu — tři vrstvy, ne jedna
+
+Uživatel si výslovně nepřeje riskovat účet při vývoji zápisu. Pořadí je závazné:
+
+1. **Testnet.** Veškerý vývoj a ladění zápisu. Falešné peníze, nulové riziko.
+   Tohle je hlavní ochrana, ne doplněk.
+2. **Subúčet s malou částkou.** Ověření, že se to chová stejně i v ostrém
+   prostředí. Subúčet má vlastní API klíče, které se k penězům na hlavním účtu
+   nedostanou, takže maximální ztráta je to, co je na subúčtu. Konkrétní
+   chování subúčtů a rozsah jejich klíčů **ověřit v dokumentaci Bybitu**
+   ve chvíli, kdy se k tomu dojde — nespoléhat na paměť.
+3. **Hlavní účet** až nakonec, a i pak se stropem na velikost příkazu
+   a potvrzovacím krokem.
+
+**Oprávnění k výběru se nezapíná nikdy.** Je na Bybitu samostatné a navíc
+vyžaduje předem schválené adresy. Bez něj je nejhorší možný následek chyby
+špatný obchod, ne odtečení prostředků pryč z účtu. Tohle je ta vlastnost,
+která celý zápis dělá přijatelně bezpečným.
 
 ## Lokální vývoj
 
