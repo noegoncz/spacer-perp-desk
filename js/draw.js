@@ -48,6 +48,7 @@ export function createTouchDrawing({
   layer,
   toPixel,
   fromPixel,
+  snap,
   formatPrice,
   formatTime,
   onCreate,
@@ -58,9 +59,12 @@ export function createTouchDrawing({
   const carySvisla = svg('line', { class: 'draw-cross' });
   const caraVodorovna = svg('line', { class: 'draw-cross' });
   const nahled = svg('polyline', { class: 'draw-preview' });
-  const tecka = svg('circle', { class: 'draw-dot', r: 7 });
+  // Tečka je schválně malá. Bod se často klade přesně na konec knotu svíčky
+  // a musí být vidět, že se ho dotýká — velká tečka by to překryla.
+  const tecka = svg('circle', { class: 'draw-dot', r: 3 });
+  const prstenec = svg('circle', { class: 'draw-snap', r: 8 });
   const uchyty = svg('g', {});
-  plocha.append(nahled, carySvisla, caraVodorovna, uchyty, tecka);
+  plocha.append(nahled, carySvisla, caraVodorovna, uchyty, prstenec, tecka);
 
   // Návod nahoře a cenovky na osách — bez nich uživatel kreslí naslepo.
   const pruh = document.createElement('div');
@@ -91,8 +95,16 @@ export function createTouchDrawing({
   let celkem = 0;
   let hotoveBody = []; // už potvrzené body nové kresby (v pixelech)
   let kriz = { x: 0, y: 0 };
+  let prichyceno = false; // kříž sedí na ceně svíčky
   let editace = null; // { body, index }
   let smycka = null;
+
+  /** Magnet: u svíčky se kříž sám nalepí na otevření, high, low nebo close. */
+  function sMagnetem(x, y) {
+    const cil = snap?.(x, y);
+    prichyceno = Boolean(cil);
+    return cil || { x, y };
+  }
 
   function navod() {
     if (rezim === 'create') {
@@ -130,6 +142,13 @@ export function createTouchDrawing({
       cenovka.style.top = `${kriz.y}px`;
       casovka.textContent = formatTime?.(bod.timestamp) ?? '';
       casovka.style.left = `${kriz.x}px`;
+    }
+
+    // Prstenec ukáže, že magnet chytil cenu svíčky.
+    prstenec.style.display = krizVidet && prichyceno ? '' : 'none';
+    if (krizVidet && prichyceno) {
+      prstenec.setAttribute('cx', kriz.x);
+      prstenec.setAttribute('cy', kriz.y);
     }
 
     if (krizVidet) {
@@ -207,13 +226,24 @@ export function createTouchDrawing({
 
     if (rezim === 'create' || rezim === 'move') {
       // Relativní posun: prst může být kdekoli, kříž se hýbe o stejný kus.
-      kriz = {
-        x: Math.max(0, Math.min(layer.clientWidth, start.kriz.x + dx)),
-        y: Math.max(0, Math.min(layer.clientHeight, start.kriz.y + dy)),
-      };
+      // Magnet se počítá až z výsledku, ale zpátky do základu se nepropisuje,
+      // jinak by kříž po každém přichycení odskakoval.
+      kriz = sMagnetem(
+        Math.max(0, Math.min(layer.clientWidth, start.kriz.x + dx)),
+        Math.max(0, Math.min(layer.clientHeight, start.kriz.y + dy)),
+      );
       prekresli();
+      // Při úpravě se kresba hýbe rovnou, ať je vidět, jak vypadá celá.
+      if (rezim === 'move') zivaUprava(false);
     }
   });
+
+  function zivaUprava(hotovo) {
+    if (!editace || editace.index < 0) return;
+    const bod = fromPixel(kriz.x, kriz.y);
+    editace.body[editace.index] = bod;
+    onEdit?.(editace.index, bod, hotovo);
+  }
 
   layer.addEventListener('pointerup', (e) => {
     if (!start) return;
@@ -228,10 +258,7 @@ export function createTouchDrawing({
       return;
     }
     if (rezim === 'move') {
-      const p = fromPixel(kriz.x, kriz.y);
-      const index = editace.index;
-      editace.body[index] = p;
-      onEdit?.(index, p);
+      zivaUprava(true); // tentokrát i ulož
       nastavRezim('handles');
       return;
     }
@@ -282,6 +309,7 @@ export function createTouchDrawing({
       potreba = pocetBodu;
       celkem = pocetBodu;
       editace = null;
+      prichyceno = false;
       kriz = { x: layer.clientWidth / 2, y: layer.clientHeight / 2 };
       nastavRezim('create');
     },

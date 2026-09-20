@@ -493,10 +493,18 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
   stroke-width: 1.5;
 }
 
+/* Malá a přesná — bod se klade na konec knotu a musí být vidět, že se ho dotkl. */
 .draw-dot {
   fill: var(--accent);
-  stroke: #fff;
-  stroke-width: 1.5;
+  stroke: rgba(11, 15, 20, 0.9);
+  stroke-width: 1;
+}
+
+/* Prstenec hlásí, že magnet chytil cenu svíčky. */
+.draw-snap {
+  fill: none;
+  stroke: var(--long);
+  stroke-width: 2;
 }
 
 /* Velké duté kroužky na koncích vybrané kresby — dobře se trefují prstem. */

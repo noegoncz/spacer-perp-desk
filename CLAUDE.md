@@ -6,7 +6,9 @@ Mobilní PWA pro monitoring otevřených perpetual pozic na Bybitu. Náhrada za 
 
 - **Jediné cílové zařízení:** Samsung Galaxy Z Fold 5 (Android, Chrome).
   Neřešíme desktop ani iOS, neřešíme starší prohlížeče.
-- **Jazyk:** veškeré UI, texty, chybové hlášky i komunikace s uživatelem **česky**.
+- **Jazyk:** komunikace s uživatelem **česky**. UI aplikace se překlápí na
+  **angličtinu jako výchozí** (checkpoint 4), čeština zůstane jako volitelná
+  mutace. Kód a komentáře **zůstávají česky**.
 - **Popisek ikony na ploše:** `Perp Desk` (pole `short_name` v manifestu).
 - **Režim:** read-only monitoring. Aplikace nikdy neodesílá obchodní příkazy.
   API klíč se používá výhradně read-only.
@@ -45,6 +47,7 @@ js/store.js             # localStorage: klíče + nastavení
 js/format.js            # formátování čísel, cen, časů
 js/ui.js                # vykreslování DOM
 js/chart.js             # obal nad knihovnou grafu (KLineChart), o Bybitu neví
+js/draw.js              # dotykové kreslení se zaměřovacím křížem
 js/app.js               # orchestrace, lifecycle, update service workeru
 vendor/                 # KLineChart + licence, stažené v repu (ne CDN)
 .github/workflows/deploy.yml
@@ -54,7 +57,7 @@ vendor/                 # KLineChart + licence, stažené v repu (ne CDN)
 
 Veškerá komunikace s burzou (REST i WebSocket) je **jen** v tomto modulu.
 Zbytek aplikace ho zná přes úzké API a nikdy nesahá na `fetch` ani `WebSocket`
-přímo. Důvod: v checkpointu 8 se aplikace balí do APK přes Capacitor a transport
+přímo. Důvod: v checkpointu 9 se aplikace balí do APK přes Capacitor a transport
 se bude muset vyměnit za nativní HTTP plugin (kvůli CORS/pozadí). Ta výměna se
 pak dělá na jednom místě.
 
@@ -133,7 +136,7 @@ produkčnímu API:
 Kontrola `retCode` sama o sobě nestačí.
 
 **Proxy tedy není potřeba.** Pokud by to Bybit někdy změnil, je to jediný důvod
-zrychlit checkpoint 8 (Capacitor nativní HTTP obchází CORS úplně).
+zrychlit checkpoint 9 (Capacitor nativní HTTP obchází CORS úplně).
 
 ### Podpis Bybit V5
 
@@ -273,6 +276,15 @@ overlaye a každé smazání hlásí změnu. Bez umlčení se při otevření gr
 prázdný seznam přes uložené kresby dřív, než se stihnou obnovit — tedy tiché
 smazání práce uživatele. Řeší to příznak `tichaZmena`.
 
+#### Co ke kreslení ještě chybí
+
+- **Nastavení vzhledu kresby**: barva, tloušťka, průhlednost, plná/čárkovaná.
+  Ne velká paleta — pár rozumných barev, které si někdo opravdu vybere.
+  Vyvolat klepnutím na vybranou kresbu (vedle úchytů).
+- **Alarm při protnutí kresby cenou.** V aplikaci jde hned (máme živou cenu
+  i hodnotu čáry v čase), ale upozornění při zavřené aplikaci potřebuje APK
+  z checkpointu 9.
+
 #### Volume profile
 
 V 27 vestavěných indikátorech **není** (`AVP` je průměrná cena, ne profil
@@ -285,7 +297,21 @@ endpoint nemá, takže ze svíček (OHLCV) půjde jen **odhad** — objem každ�
 rozprostřený mezi její minimum a maximum. Dělá to tak většina retailových
 nástrojů, ale přesné to není a uživatel o tom ví.
 
-### 4) Layout pro Fold
+### 4) Angličtina jako základ, texty stranou
+
+Aplikace vznikla česky, ale **výchozím jazykem má být angličtina** — kdyby se
+někdy prodávala, čeština by byla ta okrajová mutace, ne naopak.
+
+- Všechny texty viditelné uživateli vytáhnout do **jednoho slovníku**
+  (`js/i18n/en.js`, `js/i18n/cs.js`), aby šlo další jazyk přidat překladem
+  jednoho souboru, ne hledáním řetězců po kódu.
+- Týká se i textů v `index.html` (přes `data-i18n`), chybových hlášek
+  Bybitu v `bybit.js`, návodů při kreslení a názvů nástrojů a indikátorů.
+- Výchozí angličtina, čeština volitelně; jazyk podle nastavení, ne podle
+  prohlížeče, ať se dá přepnout.
+- **Kód a komentáře zůstávají česky** — píše se pro uživatele, ne pro překlad.
+
+### 5) Layout pro Fold
 
 - **Zavřený displej** (úzký, cover screen): seznam pozic.
 - **Rozevřený**: graf zůstává **přes celou obrazovku**, ne vedle seznamu.
@@ -300,21 +326,22 @@ skládání stránku nereloaduje, ale rozměry se mění a layout se musí přep
 plynule. Přepínat podle `matchMedia` na šířku a poměr stran, ne podle detekce
 zařízení.
 
-### 5) Rozšířená data
+### 6) Rozšířená data
 
 - Přehled účtu: equity, volný margin, využití marginu (`/v5/account/wallet-balance`).
 - Funding: příští sazba a čas do stržení, náklad na pozici za den.
 - Otevřené příkazy jako samostatný seznam, nejen čáry v grafu.
 - Realizované PnL a historie uzavřených obchodů (`/v5/position/closed-pnl`).
 
-### 6) Pohodlí
+### 7) Pohodlí
 
 - Řazení a filtrování pozic (PnL, velikost, blízkost likvidace).
 - Barevné varování na kartě při přiblížení k likvidaci, s volitelnou hranicí.
 - Vibrace nebo zvuk při zásahu SL/TP.
 - Volume profile jako vlastní indikátor (viz checkpoint 3).
+- Alarm při protnutí nakreslené čáry cenou.
 
-### 7) Bezpečnost
+### 8) Bezpečnost
 
 **Odemykání otiskem prstu je požadavek uživatele** (čtečka v bočním tlačítku
 Foldu), ne jen PIN. Technicky to není přímočaré:
@@ -328,7 +355,7 @@ Foldu), ne jen PIN. Technicky to není přímočaré:
 - **PIN není alternativa k otisku, ale povinná záloha pod ním.** Otisk selhává
   u mokrého prstu a po restartu telefonu. Bez záložní cesty se uživatel ke svým
   klíčům nedostane.
-- Nejsilnější varianta přijde až s APK (checkpoint 8): **Android Keystore**
+- Nejsilnější varianta přijde až s APK (checkpoint 9): **Android Keystore**
   s hardwarově chráněným klíčem. To PWA neumí. Zvážit, jestli v PWA fázi
   nestačí jednodušší řešení a to pořádné nenechat až na APK.
 
@@ -336,18 +363,18 @@ Dál: přepínač na **testnet** (`api-testnet.bybit.com`, `stream-testnet.bybit
 Ověřeno, že testnet odpovídá včetně CORS stejně jako produkce, takže jde jen
 o výměnu základní adresy v `js/bybit.js`.
 
-**Tenhle checkpoint musí být hotový dřív než checkpoint 9.** Dokud je klíč
+**Tenhle checkpoint musí být hotový dřív než checkpoint 10.** Dokud je klíč
 read-only, je čitelný secret v `localStorage` přijatelné riziko — nejhorší
 následek je, že někdo uvidí pozice. S právem obchodovat je nejhorší následek
 vybydlený účet a stejné úložiště přijatelné přestává být.
 
-### 8) APK přes Capacitor + notifikace
+### 9) APK přes Capacitor + notifikace
 
 Zabalit do APK, aby aplikace mohla běžet na pozadí a posílat notifikace
 (blížící se likvidace, zasažení SL/TP, výrazná změna PnL). Tady se vymění
 transport v `js/bybit.js` za nativní HTTP/WebSocket plugin.
 
-### 9) Zadávání příkazů (jen pokud se aplikace osvědčí)
+### 10) Zadávání příkazů (jen pokud se aplikace osvědčí)
 
 Zatím **se nedělá** a aplikace zůstává výhradně read-only. Poznámky, ať se na
 to při návrhu nezapomíná:

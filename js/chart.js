@@ -229,10 +229,46 @@ export function createPriceChart(container, layer, handlers = {}) {
 
   /* ---------- kreslení prstem ---------- */
 
+  /** Jak blízko musí kříž být, aby ho magnet chytil na cenu svíčky. */
+  const DOSAH_MAGNETU = 16;
+
+  /**
+   * Magnet knihovny (`mode: 'weak_magnet'`) se uplatní jen u jejího vlastního
+   * kreslení. My body počítáme sami, takže si přichytávání musíme udělat taky
+   * sami — jinak by magnet nedělal vůbec nic.
+   *
+   * Chytá na otevření, maximum, minimum i uzavření nejbližší svíčky, tedy na
+   * konce knotů i těl, což je přesně to, čeho se trendová čára dotýká.
+   */
+  function snapNaSvicku(x, y) {
+    if (!magnet) return null;
+
+    const p = chart.convertFromPixel([{ x, y }], { paneId: HLAVNI_PANEL });
+    const bod = Array.isArray(p) ? p[0] : p;
+    const svicka = chart.getDataList()[bod?.dataIndex];
+    if (!svicka) return null;
+
+    let nej = null;
+    for (const hodnota of [svicka.open, svicka.high, svicka.low, svicka.close]) {
+      const c = chart.convertToPixel(
+        { timestamp: svicka.timestamp, value: hodnota },
+        { paneId: HLAVNI_PANEL },
+      );
+      const v = Array.isArray(c) ? c[0] : c;
+      if (!Number.isFinite(v?.y)) continue;
+      const vzdalenost = Math.abs(v.y - y);
+      if (vzdalenost < DOSAH_MAGNETU && (!nej || vzdalenost < nej.vzdalenost)) {
+        nej = { x: v.x, y: v.y, vzdalenost };
+      }
+    }
+    return nej ? { x: nej.x, y: nej.y } : null;
+  }
+
   const kresleni = createTouchDrawing({
     layer,
     toPixel,
     fromPixel,
+    snap: snapNaSvicku,
     formatPrice,
     formatTime: formatCas,
     onCreate: (body) => {
@@ -248,13 +284,21 @@ export function createPriceChart(container, layer, handlers = {}) {
       ohlasZmenu();
       handlers.onDrawEnd?.();
     },
-    onEdit: (index, bod) => {
+    /**
+     * Volá se při každém posunu, ne až na konci — uživatel musí vidět, jak
+     * se celá čára hýbe, aby podle toho mohl mířit. Do telefonu se ukládá
+     * až potvrzený stav, ne každý mezikrok.
+     */
+    onEdit: (index, bod, hotovo) => {
       if (!upravovanaKresba) return;
       const body = [...upravovanaKresba.points];
       body[index] = bod;
       chart.overrideOverlay({ id: upravovanaKresba.id, points: body });
-      upravovanaKresba = chart.getOverlays({ id: upravovanaKresba.id })[0] ?? upravovanaKresba;
-      ohlasZmenu();
+      upravovanaKresba = chart.getOverlays({ id: upravovanaKresba.id })[0] ?? {
+        ...upravovanaKresba,
+        points: body,
+      };
+      if (hotovo) ohlasZmenu();
     },
     onCancel: () => {
       rozdelanyNastroj = null;
