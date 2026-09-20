@@ -41,8 +41,12 @@ jobs:
           echo "Build ID: ${BUILD_ID}"
           grep -n "${BUILD_ID}" _site/js/version.js _site/sw.js
 
+      # enablement zapne Pages samo; kdyby to organizace nedovolila,
+      # stačí v Settings → Pages přepnout Source na "GitHub Actions".
       - name: Nastavit Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - name: Nahrát artefakt
         uses: actions/upload-pages-artifact@v3

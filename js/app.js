@@ -12,11 +12,13 @@ let lastPositions = [];
 const client = new BybitClient({
   onPositions(list) {
     lastPositions = list;
-    ui.clearError();
     ui.renderPositions(list, hideAmounts);
   },
   onStatus(status) {
     ui.renderStatus(status);
+    // Chybu maže až úspěšné REST načtení. Kdyby se mazala při každé nové
+    // pozici, schoval by ji i pouhý tick ceny, zatímco načítání dál padá.
+    if (status.rest === 'ok') ui.clearError();
   },
   onError(message) {
     ui.showError(message);
