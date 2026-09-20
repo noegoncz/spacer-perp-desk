@@ -44,9 +44,9 @@ js/bybit.js             # ⚠ jediný modul, který mluví s Bybitem
 js/store.js             # localStorage: klíče + nastavení
 js/format.js            # formátování čísel, cen, časů
 js/ui.js                # vykreslování DOM
-js/chart.js             # obal nad knihovnou grafu, o Bybitu neví
+js/chart.js             # obal nad knihovnou grafu (KLineChart), o Bybitu neví
 js/app.js               # orchestrace, lifecycle, update service workeru
-vendor/                 # lightweight-charts, stažená knihovna (ne CDN)
+vendor/                 # KLineChart + licence, stažené v repu (ne CDN)
 .github/workflows/deploy.yml
 ```
 
@@ -167,17 +167,11 @@ GitHub Pages přes Actions.
 
 ### ✅ 2) Graf se svíčkami
 
-Svíčkový graf vybraného páru s vodorovnými čarami: vstup, likvidace,
-stop-loss, take-profit a otevřené limitky. Data z `/v5/market/kline`,
-`/v5/order/realtime` (otevřené příkazy) a SL/TP z pozice. Živá poslední
-svíčka přes veřejný WS. Přepínač intervalu, posun a zoom prstem.
-
-Graf kreslí **`lightweight-charts`** (Apache-2.0). Má vestavěné cenové čáry
-(`createPriceLine`), což je přesně to, co checkpoint potřebuje, a zvládá
-dotykové ovládání. Knihovna je **stažená v repozitáři ve `vendor/`, ne z CDN**:
-offline režim by na cizím skriptu padal, v APK není při startu zaručená síť
-a cizí server nemá co dělat v kritické cestě aplikace na sledování peněz.
-Princip „bez build kroku" to neruší, je to jeden hotový soubor.
+Svíčkový graf vybraného páru přes celou obrazovku, s vodorovnými čarami:
+vstup, likvidace, SL, TP a otevřené příkazy. Data z `/v5/market/kline`,
+`/v5/order/realtime` a SL/TP z pozice. Živá poslední svíčka přes veřejný WS.
+Přepínač intervalu, posun a zoom prstem. Návrat přes `history.pushState`, aby
+graf zavíralo i hardwarové tlačítko zpět.
 
 ⚠ **Bybit vrací SL a TP pozice dvakrát** — jednou jako vlastnost pozice
 (`stopLoss`, `takeProfit`) a podruhé jako podmíněné příkazy v
@@ -189,14 +183,74 @@ Zařazení příkazu na stranu zisku či ztráty jde primárně podle `stopOrder
 (`TakeProfit`, `StopLoss`, `PartialTakeProfit`, `PartialStopLoss`,
 `TrailingStop`, `Stop`). Když Bybit pošle jen obecné `Stop`, rozhodne poloha
 vůči vstupu — u longu je cena nad vstupem výběr zisku, pod vstupem ochrana
-ztráty, u shortu obráceně. Částečnost se pozná z `qty` menšího než velikost
-pozice a v popisku se ukáže jako procento.
+ztráty, u shortu obráceně. **Heuristika platí jen na příkazy, které pozici
+zavírají** (`reduceOnly` nebo s `stopOrderType`); obyčejná limitka pod vstupem
+je přikupování, ne stop-loss.
+
+Popisky jsou schválně krátké, ať neujídají plochu grafu: `Vstup`, `SL`, `TP`
+pro celou pozici a `TP1 (29 %)`, `SL1 (16 %)` pro částečné. Číslují se podle
+toho, v jakém pořadí je cena zasáhne — nejblíž vstupu je první.
 
 Pod grafem je panel s údaji o pozici (velikost, hodnota, margin, vstup, mark,
 ROE, SL, TP, likvidace). Nahradil legendu čar — ta jen opakovala hodnoty,
 které graf sám píše na cenovou osu.
 
-### 3) Layout pro Fold
+### ✅ 3) Kreslení a indikátory
+
+Předsunuto před ostatní na přání uživatele: bez kreslení a indikátorů pro něj
+aplikace nedává smysl.
+
+Kreslicí nástroje (úsečka, polopřímka, přímka, vodorovná úroveň, svislá čára,
+cenová čára, cenový kanál, rovnoběžky, Fibonacci, poznámka) a indikátory
+(objem, RSI, MACD, KDJ, klouzavý průměr, EMA, Bollinger, SAR). Kresby se
+ukládají do `localStorage` **podle páru**, takže přežijí zavření aplikace
+i restart telefonu.
+
+#### Výměna knihovny grafu
+
+Graf kreslí **KLineChart** (`vendor/klinecharts.js`, Apache-2.0, 27 indikátorů
+a 16 kreslicích nástrojů z krabice). Nahradil `lightweight-charts`, který
+**kreslicí nástroje ani indikátory nemá** — umí jen vodorovné cenové čáry.
+
+Proč ne TradingView Advanced Charts, kterou používají velké burzovní aplikace:
+je zdarma, ale **jen pro firmy a veřejné projekty**, ne pro osobní použití,
+a zakazuje mít jakoukoli svou část ve veřejném repozitáři. Pro tenhle projekt
+je tedy nepoužitelná licenčně, ne technicky. Ověřeno 2026-09-20.
+
+Výměna stála **jen `js/chart.js`** a tvar čar v `app.js`. Právě proto se
+grafová vrstva drží v odděleném modulu, který o Bybitu nic neví.
+
+#### Co je u KLineChartu jinak
+
+- Data se nepředávají, **chart si je vyžádá sám** přes `setDataLoader`.
+  `setSymbol` a `setPeriod` spustí `getBars`, živá svíčka jde přes callback
+  z `subscribeBar`. Časy jsou v **milisekundách**.
+- Časové pásmo umí nativně (`setTimezone('Europe/Prague')`), není potřeba
+  přeformátovávat osu ručně.
+- Vestavěný `priceLine` neumí popisek, takže čáry pozice kreslí **vlastní
+  overlay `positionLine`** (čára + text) registrovaný přes `registerOverlay`.
+  Má `lock: true`, aby s ním uživatel nemohl hýbat.
+- Overlaye se dělí `groupId` na `pozice` a `kresby`. Bez toho by se čáry
+  pozice ukládaly mezi kresby uživatele.
+
+⚠ **`restoreDrawings` musí umlčet hlášení změn.** Obnova nejdřív maže staré
+overlaye a každé smazání hlásí změnu. Bez umlčení se při otevření grafu uloží
+prázdný seznam přes uložené kresby dřív, než se stihnou obnovit — tedy tiché
+smazání práce uživatele. Řeší to příznak `tichaZmena`.
+
+#### Volume profile
+
+V 27 vestavěných indikátorech **není** (`AVP` je průměrná cena, ne profil
+objemu). Doplnit ho jde přes `registerIndicator`, kde vlastní indikátor dostane
+plátno (`ctx`) i obě osy pro převod ceny na pixely — přesně co profil objemu
+potřebuje.
+
+Poctivý volume profile ale potřebuje data o jednotlivých obchodech. Bybit na to
+endpoint nemá, takže ze svíček (OHLCV) půjde jen **odhad** — objem každé svíčky
+rozprostřený mezi její minimum a maximum. Dělá to tak většina retailových
+nástrojů, ale přesné to není a uživatel o tom ví.
+
+### 4) Layout pro Fold
 
 - **Zavřený displej** (úzký, cover screen): seznam pozic.
 - **Rozevřený**: graf zůstává **přes celou obrazovku**, ne vedle seznamu.
@@ -211,42 +265,19 @@ skládání stránku nereloaduje, ale rozměry se mění a layout se musí přep
 plynule. Přepínat podle `matchMedia` na šířku a poměr stran, ne podle detekce
 zařízení.
 
-### 4) Rozšířená data
+### 5) Rozšířená data
 
 - Přehled účtu: equity, volný margin, využití marginu (`/v5/account/wallet-balance`).
 - Funding: příští sazba a čas do stržení, náklad na pozici za den.
 - Otevřené příkazy jako samostatný seznam, nejen čáry v grafu.
 - Realizované PnL a historie uzavřených obchodů (`/v5/position/closed-pnl`).
 
-### 5) Pohodlí
+### 6) Pohodlí
 
 - Řazení a filtrování pozic (PnL, velikost, blízkost likvidace).
 - Barevné varování na kartě při přiblížení k likvidaci, s volitelnou hranicí.
 - Vibrace nebo zvuk při zásahu SL/TP.
-
-### 6) Kreslení do grafu
-
-Vlastní čáry a útvary v grafu (trendové čáry, úrovně, obdélníky), které si
-aplikace **pamatuje** — uložené lokálně podle páru, přežijí zavření aplikace
-i restart telefonu.
-
-⚠ **`lightweight-charts` kreslicí nástroje nemá.** Umí jen vodorovné cenové
-čáry, které používá checkpoint 2. Volné kreslení je v placené knihovně
-TradingView, ne v této. Existuje ale **primitives API** (`attachPrimitive`,
-`ISeriesPrimitive`), kterým jde do plátna kreslit vlastní grafiku napojenou
-na souřadnice grafu. Tudy to půjde, ale znamená to napsat si sám:
-
-- převod mezi cenou/časem a pixely (na to primitives API má rozhraní),
-- zachytávání dotyku, výběr a tažení útvarů prstem,
-- úchyty pro úpravu konců čáry,
-- mazání a ukládání.
-
-Je to **největší jednotlivý kus práce v celém plánu** a je dobré počítat
-s tím, že zabere víc než graf samotný. Proto je zařazený až sem — dřív mají
-přednost věci s každodenní hodnotou (data o pozici, varování před likvidací).
-
-Ukládání: `localStorage` pod klíčem podle páru. Až bude hotový checkpoint 8
-(APK), zvážit přesun do souboru, ať se dá zálohovat.
+- Volume profile jako vlastní indikátor (viz checkpoint 3).
 
 ### 7) Bezpečnost
 

@@ -299,13 +299,16 @@ export class BybitClient {
       interval,
       limit: String(limit),
     });
+    // Čas zůstává v milisekundách, jak ho Bybit posílá. Objem je potřeba
+    // pro indikátor objemu v grafu.
     return (result?.list ?? [])
       .map((row) => ({
-        time: Math.floor(Number(row[0]) / 1000),
+        time: Number(row[0]),
         open: num(row[1]),
         high: num(row[2]),
         low: num(row[3]),
         close: num(row[4]),
+        volume: num(row[5]),
       }))
       .reverse();
   }
@@ -638,11 +641,12 @@ export class BybitClient {
   applyKline(rows) {
     for (const row of rows) {
       this.handlers.onKline?.({
-        time: Math.floor(Number(row.start) / 1000),
+        time: Number(row.start),
         open: num(row.open),
         high: num(row.high),
         low: num(row.low),
         close: num(row.close),
+        volume: num(row.volume),
         closed: Boolean(row.confirm),
       });
     }

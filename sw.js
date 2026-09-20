@@ -27,7 +27,7 @@ const SHELL = [
   './js/format.js',
   './js/ui.js',
   './js/chart.js',
-  './vendor/lightweight-charts.js',
+  './vendor/klinecharts.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
 ];

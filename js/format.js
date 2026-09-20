@@ -4,7 +4,7 @@
  * Krypto ceny mají rozsah od 100 000 (BTC) po 0,000001 (memecoiny), takže
  * pevný počet desetinných míst nedává smysl — volí se podle řádu.
  */
-function priceDecimals(value) {
+export function priceDecimals(value) {
   const abs = Math.abs(value);
   if (abs === 0) return 2;
   if (abs >= 1000) return 2;

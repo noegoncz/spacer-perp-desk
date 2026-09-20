@@ -1,7 +1,8 @@
 /** Orchestrace: propojuje modul Bybitu, UI a lifecycle service workeru. */
 
 import { BybitClient } from './bybit.js';
-import { createPriceChart } from './chart.js';
+import { createPriceChart, NASTROJE, INDIKATORY } from './chart.js';
+import { priceDecimals } from './format.js';
 import * as store from './store.js';
 import * as ui from './ui.js';
 
@@ -107,11 +108,18 @@ function wireEvents() {
   });
 
   document.querySelectorAll('.interval-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      chartInterval = btn.dataset.interval;
-      ui.setActiveInterval(chartInterval);
-      loadChartData();
-    });
+    btn.addEventListener('click', () => zmenInterval(btn.dataset.interval));
+  });
+
+  el('drawBtn').addEventListener('click', () => otevriNabidku('sheetDraw'));
+  el('indicatorBtn').addEventListener('click', () => otevriNabidku('sheetIndicators'));
+  el('clearDrawBtn').addEventListener('click', () => {
+    if (!confirm('Smazat všechny kresby u tohoto páru?')) return;
+    chart?.clearDrawings();
+    zavriNabidky();
+  });
+  document.querySelectorAll('[data-close]').forEach((btn) => {
+    btn.addEventListener('click', zavriNabidky);
   });
 
   el('revealBtn').addEventListener('click', () => {
@@ -231,10 +239,18 @@ async function openChart(position) {
   history.pushState({ chart: true }, '');
 
   // Plátno se musí vytvářet až po zobrazení, jinak má nulové rozměry.
-  if (!chart) chart = createPriceChart(el('chartBox'));
-  chart.setPrecision(position.entry);
+  if (!chart) {
+    chart = createPriceChart(el('chartBox'), { onDrawingsChanged: ulozKresby });
+    chart.setLoader(nactiSvice);
+    postavNabidky();
+  }
 
-  await loadChartData();
+  chart.setSymbol(position.symbol, priceDecimals(position.entry));
+  chart.setInterval(chartInterval); // knihovna si data vyžádá sama
+  client.setKlineSubscription(position.symbol, chartInterval);
+  chart.restoreDrawings(store.loadDrawings(position.symbol));
+
+  await refreshChartOrders();
 
   clearInterval(ordersTimer);
   // Příkazy nechodí po WebSocketu, takže se dotahují opakovaně.
@@ -246,33 +262,30 @@ function closeChart() {
   chartOrders = [];
   clearInterval(ordersTimer);
   client.setKlineSubscription(null, null);
+  zavriNabidky();
   ui.showChart(false);
 }
 
-async function loadChartData() {
-  const position = chartPosition;
-  if (!position || !chart) return;
-  const { symbol } = position;
-  const interval = chartInterval;
+/** Loader knihovny — ta si data vyžádá sama, jakmile dostane symbol a období. */
+async function nactiSvice() {
+  if (!chartPosition) return [];
+  const bars = await client.getKlines(chartPosition.symbol, chartInterval);
+  return bars.map((b) => ({
+    timestamp: b.time,
+    open: b.open,
+    high: b.high,
+    low: b.low,
+    close: b.close,
+    volume: b.volume,
+  }));
+}
 
-  try {
-    const [bars, orders] = await Promise.all([
-      client.getKlines(symbol, interval),
-      // Příkazy jsou jen doplněk, jejich chyba nesmí shodit celý graf.
-      client.getOpenOrders(symbol).catch(() => []),
-    ]);
-
-    // Uživatel mohl mezitím přepnout pár nebo interval.
-    if (chartPosition?.symbol !== symbol || chartInterval !== interval) return;
-
-    chartOrders = orders;
-    chart.setCandles(bars);
-    applyChartLines(true);
-    client.setKlineSubscription(symbol, interval);
-    ui.showChartError('');
-  } catch (err) {
-    ui.showChartError(err.message || String(err));
-  }
+function zmenInterval(interval) {
+  chartInterval = interval;
+  ui.setActiveInterval(interval);
+  if (!chartPosition || !chart) return;
+  chart.setInterval(interval);
+  client.setKlineSubscription(chartPosition.symbol, interval);
 }
 
 async function refreshChartOrders() {
@@ -282,11 +295,60 @@ async function refreshChartOrders() {
     const orders = await client.getOpenOrders(position.symbol);
     if (chartPosition?.symbol !== position.symbol) return;
     chartOrders = orders;
-    applyChartLines();
-  } catch {
-    // Tiše — čáry zůstanou z minula, graf běží dál.
+    applyChartLines(true);
+    ui.showChartError('');
+  } catch (err) {
+    ui.showChartError(err.message || String(err));
   }
 }
+
+/* ---------- kresby a indikátory ---------- */
+
+function ulozKresby() {
+  if (!chart || !chartPosition) return;
+  store.saveDrawings(chartPosition.symbol, chart.getDrawings());
+}
+
+function postavNabidky() {
+  el('drawList').replaceChildren(
+    ...NASTROJE.map((n) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'sheet-item';
+      btn.textContent = n.nazev;
+      btn.addEventListener('click', () => {
+        chart.startDrawing(n.id);
+        zavriNabidky();
+      });
+      return btn;
+    }),
+  );
+
+  el('indicatorList').replaceChildren(
+    ...INDIKATORY.map((i) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'sheet-item';
+      btn.textContent = i.nazev;
+      btn.addEventListener('click', () => {
+        btn.classList.toggle('active', chart.toggleIndicator(i.id, i.vlastniPanel));
+      });
+      return btn;
+    }),
+  );
+}
+
+function otevriNabidku(id) {
+  zavriNabidky();
+  el(id).hidden = false;
+}
+
+function zavriNabidky() {
+  el('sheetDraw').hidden = true;
+  el('sheetIndicators').hidden = true;
+}
+
+/* ---------- čáry pozice ---------- */
 
 /** Shoda cen s tolerancí — porovnávat čísla z různých endpointů na rovnost nelze. */
 function samePrice(a, b) {
@@ -318,25 +380,18 @@ function orderSide(order, position) {
 }
 
 function buildChartLines(position, orders) {
-  const LS = window.LightweightCharts.LineStyle;
   const lines = [];
 
   lines.push({
     price: position.entry,
     color: BARVA_CARY.vstup,
     title: 'Vstup',
-    style: LS.Solid,
+    solid: true,
     width: 2,
-    dashed: false,
   });
 
   if (position.liq) {
-    lines.push({
-      price: position.liq,
-      color: BARVA_CARY.likvidace,
-      title: 'Likvidace',
-      style: LS.LargeDashed,
-    });
+    lines.push({ price: position.liq, color: BARVA_CARY.likvidace, title: 'Likvidace' });
   }
   // Úrovně platné pro celou pozici mají holý popisek, bez čísla.
   if (position.stopLoss) {
@@ -379,7 +434,7 @@ function buildChartLines(position, orders) {
       price: o.price,
       color: BARVA_CARY.tp,
       title: `TP${i + 1}${podil(o)}`,
-      style: LS.Dotted,
+      dotted: true,
     });
   });
 
@@ -388,17 +443,12 @@ function buildChartLines(position, orders) {
       price: o.price,
       color: BARVA_CARY.sl,
       title: `SL${i + 1}${podil(o)}`,
-      style: LS.Dotted,
+      dotted: true,
     });
   });
 
   limitky.forEach((o) => {
-    lines.push({
-      price: o.price,
-      color: BARVA_CARY.prikaz,
-      title: 'Limit',
-      style: LS.Dotted,
-    });
+    lines.push({ price: o.price, color: BARVA_CARY.prikaz, title: 'Limit', dotted: true });
   });
 
   return lines;
@@ -416,7 +466,7 @@ function applyChartLines(force = false) {
   if (!force && key === chartLineKey) return;
 
   chartLineKey = key;
-  chart.setLines(lines);
+  chart.setPositionLines(lines);
 }
 
 /** Pozice se mění za běhu — graf musí držet krok s PnL, SL/TP i likvidací. */

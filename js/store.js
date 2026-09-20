@@ -46,6 +46,22 @@ export function hasCredentials() {
   return Boolean(apiKey && apiSecret);
 }
 
+/**
+ * Kresby v grafu. Ukládají se podle páru, takže každý má vlastní a přežijí
+ * zavření aplikace i restart telefonu.
+ */
+export function loadDrawings(symbol) {
+  try {
+    return JSON.parse(read(`perpdesk.drawings.${symbol}`) || '[]');
+  } catch {
+    return [];
+  }
+}
+
+export function saveDrawings(symbol, drawings) {
+  write(`perpdesk.drawings.${symbol}`, JSON.stringify(drawings || []));
+}
+
 /** Skrytí částek — ať se dá koukat do telefonu na veřejnosti. */
 export function loadHideAmounts() {
   return read(KEY_HIDE) === '1';

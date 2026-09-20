@@ -401,10 +401,19 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
   white-space: nowrap;
 }
 
+.chart-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+}
+
+/* Intervaly se posouvají, tlačítka nástrojů zůstávají vždy vidět. */
 .intervals {
   display: flex;
+  flex: 1;
+  min-width: 0;
   gap: 6px;
-  padding: 8px 10px;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -450,6 +459,55 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
   color: #ffb3b8;
   font-size: 0.85rem;
   line-height: 1.4;
+}
+
+/* ---------- vysouvací nabídky nad grafem ---------- */
+
+.sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  max-height: 70%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px calc(14px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-radius: var(--radius) var(--radius) 0 0;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 650;
+}
+
+.sheet-body {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.sheet-item {
+  min-height: var(--tap);
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.88rem;
+  text-align: left;
+  cursor: pointer;
+}
+.sheet-item.active {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 /* Karta pozice je klikací — otevírá graf. */

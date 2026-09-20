@@ -1,14 +1,17 @@
 # Licence knihoven ve `vendor/`
 
-Obě knihovny jsou pod **Apache License 2.0**. Plné znění je v `Apache-2.0.txt`.
+Knihovna je pod **Apache License 2.0**. Plné znění je v `Apache-2.0.txt`.
 
 | Soubor | Knihovna | Verze | Autor |
 |---|---|---|---|
 | `../klinecharts.js` | KLineChart | 10.0.3 | lihu |
-| `../lightweight-charts.js` | TradingView Lightweight Charts | 5.2.1 | TradingView, Inc. |
 
-`NOTICE-klinecharts.txt` je soubor NOTICE dodávaný s KLineChartem. Uvádí i
-TradingView, protože KLineChart část kódu z Lightweight Charts přebírá.
+`NOTICE-klinecharts.txt` je soubor NOTICE dodávaný s KLineChartem. **Uvádí
+i TradingView**, protože KLineChart část kódu z jejich Lightweight Charts
+přebírá — proto musí být zpřístupněný i on, ne jen jméno autora KLineChartu.
+
+(Samotné Lightweight Charts tu bylo do verze 0.2.2 a pak ho nahradil
+KLineChart, který umí kreslení a indikátory.)
 
 ## Co to znamená pro placené vydání aplikace
 
