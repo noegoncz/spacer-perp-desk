@@ -278,14 +278,31 @@ overlaye a každé smazání hlásí změnu. Bez umlčení se při otevření gr
 prázdný seznam přes uložené kresby dřív, než se stihnou obnovit — tedy tiché
 smazání práce uživatele. Řeší to příznak `tichaZmena`.
 
-#### Co ke kreslení ještě chybí
+#### Vzhled kreseb a alarmy
 
-- **Nastavení vzhledu kresby**: barva, tloušťka, průhlednost, plná/čárkovaná.
-  Ne velká paleta — pár rozumných barev, které si někdo opravdu vybere.
-  Vyvolat klepnutím na vybranou kresbu (vedle úchytů).
-- **Alarm při protnutí kresby cenou.** V aplikaci jde hned (máme živou cenu
-  i hodnotu čáry v čase), ale upozornění při zavřené aplikaci potřebuje APK
-  z checkpointu 9.
+Po vybrání kresby se dole objeví paleta: šest barev, tři tloušťky, tři
+průhlednosti, zvonek (alarm) a koš. Styl se drží v `extendData` overlaye,
+takže se ukládá i načítá spolu s body. Nová kresba převezme naposledy
+nastavený vzhled.
+
+**Alarm při protnutí cenou** je v `app.js`. Hodnota kresby v čase se u
+vodorovné čáry bere přímo, u dvoubodových se dopočítá z přímky mezi body
+(a za koncem extrapoluje). Protnutí se pozná ze změny znaménka rozdílu
+oproti minulé ceně. Alarm je **jednorázový** — po zaznění se vypne, jinak
+by zvonil při každém ticku. Zvuková a vibrační odezva plus pruh v UI.
+
+⚠ Upozornění při **zavřené** aplikaci potřebuje APK z checkpointu 9;
+v prohlížeči to spolehlivě nejde.
+
+#### Svislý posun a celá obrazovka
+
+Vlevo v grafu je úzký pruh, který posouvá cenovou osu. Knihovna osu normálně
+dopočítává sama podle viditelných svíček; `overrideYAxis({ createRange })`
+ten výsledek jen posune a roztáhne, takže automatika zůstává zachovaná.
+Tlačítko dole vrátí pohled na 100 % (výchozí šířka svící + skok na konec dat).
+
+Tlačítko v hlavičce přepíná skutečnou celou obrazovku přes Fullscreen API;
+všechny nástroje zůstávají.
 
 #### Volume profile
 

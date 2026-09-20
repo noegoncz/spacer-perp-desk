@@ -188,6 +188,14 @@ export function renderStatus(status) {
 }
 
 export function showError(message) {
+  dom.errorBar.className = 'error-bar';
+  dom.errorBar.textContent = message;
+  dom.errorBar.hidden = false;
+}
+
+/** Oznámení, ne chyba — používá stejný pruh, jen v jiném tónu. */
+export function showNotice(message) {
+  dom.errorBar.className = 'error-bar notice';
   dom.errorBar.textContent = message;
   dom.errorBar.hidden = false;
 }

@@ -202,6 +202,41 @@ export function createPriceChart(container, layer, handlers = {}) {
 
   const chart = K().init(container, { styles: styly() });
   chart.setTimezone('Europe/Prague');
+
+  /*
+   * Svislý posun a roztažení cenové osy. Knihovna osu normálně dopočítává
+   * sama podle viditelných svíček; `createRange` ten výsledek jen posune
+   * a roztáhne, takže automatika zůstává a jen se na ni dívá „jinudy".
+   */
+  let posunY = 0; // podíl rozsahu
+  let zoomY = 1;
+  const VYCHOZI_SIRKA_SVICE = 10;
+
+  chart.overrideYAxis({
+    createRange: ({ defaultRange }) => {
+      if (posunY === 0 && zoomY === 1) return defaultRange;
+      const { from, to } = defaultRange;
+      const stred = (from + to) / 2;
+      const puvodni = to - from;
+      const novy = puvodni * zoomY;
+      const offset = puvodni * posunY;
+      const f = stred - novy / 2 + offset;
+      const tt = stred + novy / 2 + offset;
+      return { ...defaultRange, from: f, to: tt, range: tt - f, realFrom: f, realTo: tt, realRange: tt - f };
+    },
+  });
+
+  // Překreslení se sdruží do jednoho snímku, ať tažení prstem neseká.
+  let cekaNaSnimek = false;
+  function prekresliOsu() {
+    if (cekaNaSnimek) return;
+    cekaNaSnimek = true;
+    requestAnimationFrame(() => {
+      cekaNaSnimek = false;
+      chart.resize();
+      kresleni.redraw();
+    });
+  }
   chart.setLocale('en-US'); // knihovna češtinu nemá; ovlivňuje popisky v tooltipu
 
   let idCarPozice = [];
@@ -214,6 +249,7 @@ export function createPriceChart(container, layer, handlers = {}) {
   // Nová kresba převezme vzhled té naposledy nastavené — nikdo nechce
   // přebarvovat každou čáru znovu.
   let posledniStyl = { ...VYCHOZI_STYL };
+  let dodatekKresby = null;
 
   const vybranyStyl = () => ({ ...VYCHOZI_STYL, ...(upravovanaKresba?.extendData || {}) });
 
@@ -309,10 +345,11 @@ export function createPriceChart(container, layer, handlers = {}) {
         points: body,
         lock: true, // posouvá se jen přes naše úchyty, ne prstem po čáře
         mode: magnet ? 'weak_magnet' : 'normal',
-        extendData: { ...posledniStyl },
+        extendData: { ...posledniStyl, ...(dodatekKresby || {}) },
         styles: stylKresby(posledniStyl),
       });
       rozdelanyNastroj = null;
+      dodatekKresby = null;
       ohlasZmenu();
       handlers.onDrawEnd?.();
     },
@@ -447,10 +484,12 @@ export function createPriceChart(container, layer, handlers = {}) {
 
     /* ---------- kreslení ---------- */
 
-    startDrawing(nastroj) {
+    /** `dodatek` doplní vlastnosti nové kresby, např. rovnou zapnutý alarm. */
+    startDrawing(nastroj, dodatek = null) {
       const definice = NASTROJE.find((n) => n.id === nastroj);
       if (!definice) return;
       rozdelanyNastroj = nastroj;
+      dodatekKresby = dodatek;
       upravovanaKresba = null;
       umistiVrstvu();
       kresleni.beginCreate(definice.body);
@@ -459,6 +498,7 @@ export function createPriceChart(container, layer, handlers = {}) {
     cancelDrawing() {
       if (kresleni.isActive()) kresleni.cancel();
       rozdelanyNastroj = null;
+      dodatekKresby = null;
       upravovanaKresba = null;
     },
 
@@ -466,10 +506,32 @@ export function createPriceChart(container, layer, handlers = {}) {
       magnet = zapnuto;
     },
 
+    /* ---------- svislý posun a reset pohledu ---------- */
+
+    /** `delta` je podíl výšky grafu; kladné posouvá pohled dolů. */
+    posunSvisle(delta) {
+      posunY = Math.max(-2, Math.min(2, posunY + delta));
+      prekresliOsu();
+      return posunY;
+    },
+
+    posunSvislyPodil() {
+      return posunY;
+    },
+
+    /** Zpět na 100 %: automatická osa, výchozí šířka svící, konec dat. */
+    resetPohledu() {
+      posunY = 0;
+      zoomY = 1;
+      chart.setBarSpace(VYCHOZI_SIRKA_SVICE);
+      chart.scrollToRealTime();
+      prekresliOsu();
+    },
+
     getDrawings() {
       return chart
         .getOverlays({ groupId: SKUPINA_KRESBY })
-        .map((o) => ({ name: o.name, points: o.points, style: o.extendData }));
+        .map((o) => ({ id: o.id, name: o.name, points: o.points, style: o.extendData }));
     },
 
     restoreDrawings(kresby) {
@@ -518,6 +580,23 @@ export function createPriceChart(container, layer, handlers = {}) {
     },
 
     selectedStyle: vybranyStyl,
+
+    /** Alarm se drží ve stejném objektu jako vzhled, ať se ukládá spolu s ním. */
+    setAlarm(id, zapnuto) {
+      const kresba = chart.getOverlays({ id })[0];
+      if (!kresba) return;
+      const data = { ...VYCHOZI_STYL, ...(kresba.extendData || {}), alarm: zapnuto };
+      chart.overrideOverlay({ id, extendData: data, styles: stylKresby(data) });
+      if (upravovanaKresba?.id === id) {
+        upravovanaKresba = chart.getOverlays({ id })[0] ?? upravovanaKresba;
+        handlers.onSelectionChanged?.(vybranyStyl());
+      }
+      handlers.onDrawingsChanged?.();
+    },
+
+    selectedId() {
+      return upravovanaKresba?.id ?? null;
+    },
 
     /** Přepíše vzhled vybrané kresby a zapamatuje si ho pro další. */
     setSelectedStyle(zmena) {

@@ -68,28 +68,25 @@
         <span id="chartBadge" class="badge"></span>
       </div>
       <div id="chartPnl" class="chart-pnl"></div>
-    </header>
-
-    <div class="chart-tools">
-      <div class="intervals" id="intervals" role="group" aria-label="Interval svíček">
-        <button type="button" class="interval-btn" data-interval="1" data-i18n="interval.1m">1m</button>
-        <button type="button" class="interval-btn" data-interval="5" data-i18n="interval.5m">5m</button>
-        <button type="button" class="interval-btn" data-interval="15" data-i18n="interval.15m">15m</button>
-        <button type="button" class="interval-btn" data-interval="60" data-i18n="interval.1h">1h</button>
-        <button type="button" class="interval-btn" data-interval="240" data-i18n="interval.4h">4h</button>
-        <button type="button" class="interval-btn" data-interval="D" data-i18n="interval.1d">1D</button>
-        <button type="button" class="interval-btn" data-interval="W" data-i18n="interval.1w">1W</button>
-        <button type="button" class="interval-btn" data-interval="M" data-i18n="interval.1M">1M</button>
-      </div>
-      <button type="button" id="indicatorBtn" class="icon-btn tool-icon" data-i18n-aria="chart.indicators" data-i18n-title="chart.indicators">
-        <svg viewBox="0 0 24 24"><path d="M3 16l4-6 3 3 4-7 3 5 4-4"/><path d="M3 20h18"/></svg>
+      <button type="button" id="fullscreenBtn" class="icon-btn tool-icon"
+              data-i18n-aria="chart.fullscreen" data-i18n-title="chart.fullscreen">
+        <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
       </button>
-    </div>
+    </header>
 
     <div class="chart-area">
       <div id="chartBox" class="chart-box"></div>
       <!-- Vrstva pro zaměřovací kříž; sedne přesně na plochu se svíčkami. -->
       <div id="drawLayer" class="draw-layer"></div>
+
+      <!-- Svislý posuvník: při velkém přiblížení je jinak těžké s grafem hnout. -->
+      <div id="vscroll" class="vscroll" data-i18n-aria="chart.verticalPan" role="slider" aria-valuenow="0">
+        <div class="vscroll-track"><div class="vscroll-thumb" id="vscrollThumb"></div></div>
+        <button type="button" id="resetViewBtn" class="vscroll-reset"
+                data-i18n-aria="chart.resetZoom" data-i18n-title="chart.resetZoom">
+          <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 15v5h-5"/><path d="M4 4l6 6M20 20l-6-6"/></svg>
+        </button>
+      </div>
 
       <!-- Vzhled vybrané kresby. Dole, aby nepřekrýval cenové dění nahoře. -->
       <div id="stylePanel" class="style-panel" hidden>
@@ -98,6 +95,17 @@
         <div class="style-group" id="styleWidths" role="group" data-i18n-aria="style.width"></div>
         <div class="style-sep"></div>
         <div class="style-group" id="styleOpacity" role="group" data-i18n-aria="style.opacity"></div>
+        <div class="style-sep"></div>
+        <div class="style-group">
+          <button type="button" class="style-btn" id="styleAlarmBtn"
+                  data-i18n-aria="style.alarm" data-i18n-title="style.alarm">
+            <svg viewBox="0 0 24 24" class="style-icon"><path d="M18 15V10a6 6 0 10-12 0v5l-2 3h16z"/><path d="M10 21h4"/></svg>
+          </button>
+          <button type="button" class="style-btn" id="styleDeleteBtn"
+                  data-i18n-aria="style.delete" data-i18n-title="style.delete">
+            <svg viewBox="0 0 24 24" class="style-icon danger"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -121,11 +129,31 @@
       <button type="button" class="tool-btn" id="magnetBtn" data-i18n-aria="chart.magnet" data-i18n-title="chart.magnet">
         <svg viewBox="0 0 24 24"><path d="M6 4v8a6 6 0 0012 0V4"/><path d="M6 9h5M13 9h5"/></svg>
       </button>
+      <button type="button" class="tool-btn" data-tool="alarmLine"
+              data-i18n-aria="tool.alarmLine" data-i18n-title="tool.alarmLine">
+        <svg viewBox="0 0 24 24"><path d="M18 15V10a6 6 0 10-12 0v5l-2 3h16z"/><path d="M10 21h4"/></svg>
+      </button>
       <button type="button" class="tool-btn" id="moreToolsBtn" data-i18n-aria="chart.moreTools" data-i18n-title="chart.moreTools">
         <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
       </button>
       <button type="button" class="tool-btn" id="eraseBtn" data-i18n-aria="chart.eraseDrawings" data-i18n-title="chart.eraseDrawings">
         <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
+      </button>
+    </div>
+
+    <div class="chart-tools">
+      <div class="intervals" id="intervals" role="group" aria-label="Interval svíček">
+        <button type="button" class="interval-btn" data-interval="1" data-i18n="interval.1m">1m</button>
+        <button type="button" class="interval-btn" data-interval="5" data-i18n="interval.5m">5m</button>
+        <button type="button" class="interval-btn" data-interval="15" data-i18n="interval.15m">15m</button>
+        <button type="button" class="interval-btn" data-interval="60" data-i18n="interval.1h">1h</button>
+        <button type="button" class="interval-btn" data-interval="240" data-i18n="interval.4h">4h</button>
+        <button type="button" class="interval-btn" data-interval="D" data-i18n="interval.1d">1D</button>
+        <button type="button" class="interval-btn" data-interval="W" data-i18n="interval.1w">1W</button>
+        <button type="button" class="interval-btn" data-interval="M" data-i18n="interval.1M">1M</button>
+      </div>
+      <button type="button" id="indicatorBtn" class="icon-btn tool-icon" data-i18n-aria="chart.indicators" data-i18n-title="chart.indicators">
+        <svg viewBox="0 0 24 24"><path d="M3 16l4-6 3 3 4-7 3 5 4-4"/><path d="M3 20h18"/></svg>
       </button>
     </div>
 

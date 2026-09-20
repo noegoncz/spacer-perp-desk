@@ -138,6 +138,12 @@ main {
   cursor: pointer;
 }
 
+.error-bar.notice {
+  background: rgba(240, 185, 11, 0.16);
+  border-bottom-color: rgba(240, 185, 11, 0.45);
+  color: #ffd66b;
+}
+
 .error-bar {
   margin: 0;
   padding: 10px 16px;
@@ -383,6 +389,7 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
 .chart-view {
   position: fixed;
   inset: 0;
+  height: 100dvh;
   z-index: 20;
   display: flex;
   flex-direction: column;
@@ -413,12 +420,19 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
   white-space: nowrap;
 }
 
-.chart-tools {
+/* Lišty kolem grafu drží stejné pozadí a dělí je jen tenká linka, ať to
+   působí jako jeden celek a ne jako tři nalepené pruhy. */
+.chart-tools,
+.draw-toolbar {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 6px 8px;
+  padding: 5px 8px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
 }
+
+.chart-tools { gap: 6px; }
 
 /* Intervaly se posouvají, tlačítka nástrojů zůstávají vždy vidět. */
 .intervals {
@@ -460,19 +474,70 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
 
 /* ---------- ikony kreslení ---------- */
 
-/* Vodorovná lišta pod grafem, jako v mobilním TradingView. */
 .draw-toolbar {
-  display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 2px;
-  padding: 4px 8px;
-  border-top: 1px solid var(--border);
-  background: var(--surface);
   overflow-x: auto;
   scrollbar-width: none;
 }
 .draw-toolbar::-webkit-scrollbar { display: none; }
+
+/* ---------- svislý posuvník vlevo ---------- */
+
+/* Při velkém přiblížení je jinak těžké s grafem hnout. Je tu vždy, aby
+   byla cesta zpět na 100 % dostupná v každé situaci. */
+.vscroll {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 5;
+  width: 26px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 0;
+  touch-action: none;
+  background: linear-gradient(to right, rgba(19, 26, 35, 0.75), rgba(19, 26, 35, 0));
+}
+
+.vscroll-track {
+  position: relative;
+  flex: 1;
+  width: 5px;
+  margin: 2px 0 6px;
+  border-radius: 3px;
+  background: var(--surface-2);
+}
+
+.vscroll-thumb {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 34%;
+  border-radius: 3px;
+  background: var(--text-dim);
+  opacity: 0.7;
+}
+.vscroll.active .vscroll-thumb { background: var(--accent); opacity: 1; }
+
+.vscroll-reset {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text-dim);
+  cursor: pointer;
+  flex: none;
+}
+.vscroll-reset svg {
+  width: 14px; height: 14px; fill: none; stroke: currentColor;
+  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+.vscroll-reset:active { color: var(--accent); border-color: var(--accent); }
 
 /* ---------- paleta vzhledu vybrané kresby ---------- */
 
@@ -522,6 +587,13 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
 .style-swatch { width: 18px; height: 18px; border-radius: 50%; }
 .style-line { width: 20px; background: var(--text); border-radius: 2px; }
 .style-opacity { width: 18px; height: 18px; border-radius: 50%; background: var(--text); }
+
+.style-icon {
+  width: 19px; height: 19px; fill: none; stroke: var(--text);
+  stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+}
+.style-icon.danger { stroke: var(--short); }
+.style-btn.on .style-icon { stroke: var(--warn); }
 
 /* ---------- vrstva se zaměřovacím křížem ---------- */
 

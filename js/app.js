@@ -6,7 +6,7 @@ import {
   BARVY_KRESEB, TLOUSTKY, PRUHLEDNOSTI,
 } from './chart.js';
 import { t, setLanguage, applyStaticTexts, JAZYKY } from './i18n.js';
-import { priceDecimals } from './format.js';
+import { priceDecimals, formatPrice } from './format.js';
 import * as store from './store.js';
 import * as ui from './ui.js';
 
@@ -32,6 +32,7 @@ let chartOrders = [];
 let chartLineKey = '';     // otisk čar, aby se nepřekreslovaly při každém ticku
 let ordersTimer = null;
 let magnetZapnut = store.loadMagnet();
+let poslednicCena = null;  // kvůli detekci protnutí kresby cenou
 
 const client = new BybitClient({
   onPositions(list) {
@@ -40,7 +41,9 @@ const client = new BybitClient({
     syncOpenChart(list);
   },
   onKline(bar) {
-    if (chart && chartPosition) chart.updateCandle(bar);
+    if (!chart || !chartPosition) return;
+    chart.updateCandle(bar);
+    zkontrolujAlarmy(bar.close, bar.time);
   },
   onStatus(status) {
     ui.renderStatus(status);
@@ -118,6 +121,13 @@ function wireEvents() {
   });
 
   el('indicatorBtn').addEventListener('click', () => otevriNabidku('sheetIndicators'));
+  el('fullscreenBtn').addEventListener('click', prepniCelouObrazovku);
+
+  el('styleDeleteBtn').addEventListener('click', () => chart?.deleteSelected());
+  el('styleAlarmBtn').addEventListener('click', () => {
+    const id = chart?.selectedId();
+    if (id) chart.setAlarm(id, !chart.selectedStyle().alarm);
+  });
   el('moreToolsBtn').addEventListener('click', () => otevriNabidku('sheetDraw'));
 
   document.querySelectorAll('.tool-btn[data-tool]').forEach((btn) => {
@@ -299,6 +309,7 @@ async function openChart(position) {
       onSelectionChanged: zobrazPaletu,
     });
     postavPaletu();
+    zapojPosuvnik();
     chart.setLoader(nactiSvice);
     chart.setMagnet(magnetZapnut);
     chart.restoreIndicators(store.loadIndicators(), maVlastniPanel);
@@ -394,6 +405,9 @@ function oznacAktivniIndikatory() {
  * Vybere kreslicí nástroj. Prázdný řetězec znamená kurzor, tedy jen posun
  * a zoom. Rozdělané kreslení se přepnutím zruší, ať nezůstane viset.
  */
+/** Nástroj „cenový alarm" je vodorovná čára, která se rovnou ohlídá. */
+const NASTROJ_ALARMU = 'alarmLine';
+
 function vyberNastroj(nastroj) {
   if (!chart) return;
   chart.cancelDrawing();
@@ -402,7 +416,11 @@ function vyberNastroj(nastroj) {
     btn.classList.toggle('active', btn.dataset.tool === nastroj);
   });
 
-  if (nastroj) chart.startDrawing(nastroj);
+  if (nastroj === NASTROJ_ALARMU) {
+    chart.startDrawing('horizontalStraightLine', { alarm: true });
+  } else if (nastroj) {
+    chart.startDrawing(nastroj);
+  }
 }
 
 function postavNabidky() {
@@ -433,6 +451,94 @@ function postavNabidky() {
   );
 
   oznacAktivniIndikatory();
+}
+
+/* ---------- alarmy ---------- */
+
+/**
+ * Hodnota kresby v daném čase. Vodorovná čára má jednu úroveň, u dvoubodových
+ * se hodnota dopočítá (a za koncem extrapoluje) z přímky mezi body.
+ */
+function hodnotaKresbyVCase(kresba, cas) {
+  const body = kresba.points || [];
+  if (!body.length) return null;
+  if (body.length === 1 || !Number.isFinite(body[1]?.timestamp)) {
+    return Number.isFinite(body[0].value) ? body[0].value : null;
+  }
+  const [a, b] = body;
+  if (!Number.isFinite(a.timestamp) || a.timestamp === b.timestamp) return a.value;
+  const podil = (cas - a.timestamp) / (b.timestamp - a.timestamp);
+  return a.value + (b.value - a.value) * podil;
+}
+
+/** Alarm je jednorázový — po zaznění se vypne, ať nezvoní při každém ticku. */
+function zkontrolujAlarmy(cena, cas) {
+  if (!Number.isFinite(cena)) return;
+  const kresby = chart.getDrawings().filter((k) => k.style?.alarm);
+
+  for (const kresba of kresby) {
+    const uroven = hodnotaKresbyVCase(kresba, cas);
+    if (uroven === null || poslednicCena === null) continue;
+
+    const pred = poslednicCena - uroven;
+    const ted = cena - uroven;
+    if (pred !== 0 && (pred < 0) === (ted < 0)) continue; // neprotnuto
+
+    navigator.vibrate?.([120, 70, 120]);
+    ui.showNotice(t('alarm.triggered', { price: formatPrice(uroven) }));
+    chart.setAlarm(kresba.id, false);
+  }
+  poslednicCena = cena;
+}
+
+/* ---------- svislý posun a celá obrazovka ---------- */
+
+function zapojPosuvnik() {
+  const pruh = el('vscroll');
+  const bezec = el('vscrollThumb');
+  let drzeno = null;
+
+  const posadBezec = () => {
+    // Střed dráhy je nulový posun; kladný posun jede dolů.
+    const podil = Math.max(-1, Math.min(1, chart?.posunSvislyPodil() ?? 0));
+    bezec.style.top = `${(0.5 + podil / 2) * 66}%`;
+  };
+
+  pruh.addEventListener('pointerdown', (e) => {
+    if (!chart || e.target.closest('.vscroll-reset')) return;
+    pruh.setPointerCapture(e.pointerId);
+    drzeno = e.clientY;
+    pruh.classList.add('active');
+  });
+
+  pruh.addEventListener('pointermove', (e) => {
+    if (drzeno === null) return;
+    const delta = (e.clientY - drzeno) / Math.max(1, pruh.clientHeight);
+    drzeno = e.clientY;
+    chart.posunSvisle(delta * 1.5);
+    posadBezec();
+  });
+
+  const pust = () => {
+    drzeno = null;
+    pruh.classList.remove('active');
+  };
+  pruh.addEventListener('pointerup', pust);
+  pruh.addEventListener('pointercancel', pust);
+
+  el('resetViewBtn').addEventListener('click', () => {
+    chart?.resetPohledu();
+    posadBezec();
+  });
+}
+
+async function prepniCelouObrazovku() {
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else await el('viewChart').requestFullscreen();
+  } catch {
+    // Některá zařízení celou obrazovku odmítnou; graf běží dál i bez ní.
+  }
 }
 
 /* ---------- paleta vzhledu kresby ---------- */
@@ -494,6 +600,7 @@ function zobrazPaletu(styl) {
   oznac('styleColors', 'color', styl.color);
   oznac('styleWidths', 'width', styl.width);
   oznac('styleOpacity', 'opacity', styl.opacity);
+  el('styleAlarmBtn').classList.toggle('on', Boolean(styl.alarm));
 }
 
 function otevriNabidku(id) {
