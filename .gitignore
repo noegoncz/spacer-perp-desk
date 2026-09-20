@@ -1,0 +1,15 @@
+# Do repozitáře nikdy nesmí API klíče ani secret.
+# Klíče žijí výhradně v localStorage telefonu — tady nemají co dělat.
+.env
+.env.*
+*.key
+*.secret
+secrets.json
+keys.json
+
+# Nástroje
+node_modules/
+_site/
+.DS_Store
+Thumbs.db
+*.log

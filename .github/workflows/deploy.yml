@@ -1,0 +1,54 @@
+name: Nasazení na GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Běží vždy jen jeden deploy; rozdělaný se zruší ve prospěch novějšího.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Stáhnout repozitář
+        uses: actions/checkout@v4
+
+      - name: Sestavit obsah webu
+        run: |
+          mkdir -p _site
+          cp index.html manifest.webmanifest sw.js _site/
+          cp -r css js icons _site/
+
+      # Krátké SHA commitu jde do version.js (zobrazí se v UI) i do sw.js.
+      # Bez změny bajtů sw.js by prohlížeč novou verzi nemusel spolehlivě poznat.
+      - name: Orazítkovat build ID
+        run: |
+          BUILD_ID="${GITHUB_SHA::7}"
+          sed -i "s/__BUILD_ID__/${BUILD_ID}/g" _site/js/version.js _site/sw.js
+          echo "Build ID: ${BUILD_ID}"
+          grep -n "${BUILD_ID}" _site/js/version.js _site/sw.js
+
+      - name: Nastavit Pages
+        uses: actions/configure-pages@v5
+
+      - name: Nahrát artefakt
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Nasadit
+        id: deployment
+        uses: actions/deploy-pages@v4
