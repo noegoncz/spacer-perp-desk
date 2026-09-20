@@ -84,6 +84,32 @@ a lišta „Nová verze – načíst" se vrací donekonečna (stalo se, verze 0.
 Lišta se navíc řídí stavem (`registration.waiting`), ne jednorázovou událostí,
 ať se schová i tehdy, když čekající worker mezitím převezme řízení.
 
+⚠ **Service worker musí stahovat s obejitím HTTP cache.** GitHub Pages servíruje
+všechno s `Cache-Control: max-age=600`. `cache.addAll(SHELL)` respektuje HTTP
+cache prohlížeče, takže si instalace nové verze uloží až deset minut starou
+kopii souboru — a protože každý soubor vyprší jindy, vznikne v cache míchanice
+nové a staré verze. Proto:
+
+- `install` precachuje přes `new Request(url, { cache: 'reload' })`,
+- `fetch` handler stahuje s `{ cache: 'no-cache' }` (podmíněný požadavek,
+  obvykle levné 304).
+
+Stalo se ve verzi 0.1.2: `version.js` se stáhl čerstvý a UI hlásilo novou
+verzi, ale `style.css` se vzal starý, takže oprava v CSS se do telefonu
+nedostala, přestože na serveru byla.
+
+## Pozor na `hidden` v CSS
+
+Atribut `hidden` schovává prvek přes `display: none` v **prohlížečovém** stylu,
+který **jakýkoli** autorský `display` přebije — bez ohledu na specificitu.
+Proto je na začátku `css/style.css` pravidlo `[hidden] { display: none !important }`.
+
+Bez něj zůstávaly viditelné prvky s vlastním `display` (`.update-bar`,
+`.summary`) i po nastavení `hidden`. Lišta „Nová verze" takhle visela od první
+instalace a tvářila se jako rozbitá detekce aktualizací, přestože ta fungovala.
+Při přidávání nového skrývatelného prvku na to nemyslet nemusíš, pravidlo to
+pokrývá — ale nepřepisuj ho.
+
 ### CORS — ověřeno
 
 Bybit V5 REST **povoluje volání přímo z prohlížeče**, ověřeno 2026-09-20 proti

@@ -32,7 +32,13 @@ const SHELL = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(SHELL)),
+    caches.open(CACHE).then((cache) =>
+      // cache: 'reload' obchází HTTP cache prohlížeče. GitHub Pages servíruje
+      // soubory s max-age=600, takže bez tohohle si instalace nové verze
+      // klidně uloží až deset minut starou kopii — a protože každý soubor
+      // vyprší jindy, vznikne míchanice nové a staré verze.
+      cache.addAll(SHELL.map((url) => new Request(url, { cache: 'reload' }))),
+    ),
   );
 });
 
@@ -66,7 +72,9 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       (async () => {
         try {
-          const fresh = await fetch(request);
+          // no-cache = vždy ověřit u serveru (podmíněný požadavek, obvykle 304),
+          // ať se kvůli max-age=600 nedrží stará index.html.
+          const fresh = await fetch(request, { cache: 'no-cache' });
           const cache = await caches.open(CACHE);
           cache.put('./index.html', fresh.clone());
           return fresh;
@@ -85,7 +93,7 @@ self.addEventListener('fetch', (event) => {
       const cache = await caches.open(CACHE);
       const cached = await cache.match(request);
 
-      const network = fetch(request)
+      const network = fetch(request, { cache: 'no-cache' })
         .then((response) => {
           if (response.ok) cache.put(request, response.clone());
           return response;
