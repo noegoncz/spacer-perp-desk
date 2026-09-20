@@ -108,6 +108,8 @@ function normalizePosition(raw) {
     liq: optionalNum(raw.liqPrice),
     leverage: raw.leverage ? num(raw.leverage) : null,
     value: num(raw.positionValue),
+    stopLoss: optionalNum(raw.stopLoss),
+    takeProfit: optionalNum(raw.takeProfit),
     positionIdx: raw.positionIdx ?? 0,
     updatedAt: Date.now(),
   };
@@ -178,6 +180,7 @@ export class BybitClient {
     this.watchdogTimer = null;
     this.pollTimer = null;
     this.subscribedSymbols = new Set();
+    this.klineTopic = null;
 
     this.status = { ws: 'idle', rest: 'idle', lastUpdate: null };
   }
@@ -270,6 +273,79 @@ export class BybitClient {
       this.setStatus({ rest: 'error' });
       this.emitError(err.message || String(err));
       return false;
+    }
+  }
+
+  /* ---------- svíčky a příkazy (checkpoint 2) ---------- */
+
+  /** Tržní data jsou veřejná, nepodepisují se. */
+  async publicGet(path, params) {
+    const query = new URLSearchParams(params).toString();
+    const json = await this.httpGet(`${REST_BASE}${path}?${query}`, {});
+    if (Number(json.retCode) !== 0) {
+      throw new Error(describeError(json.retCode, json.retMsg));
+    }
+    return json.result;
+  }
+
+  /**
+   * Svíčky vzestupně podle času. Bybit je vrací od nejnovější, graf je
+   * potřebuje obráceně.
+   */
+  async getKlines(symbol, interval, limit = 500) {
+    const result = await this.publicGet('/v5/market/kline', {
+      category: 'linear',
+      symbol,
+      interval,
+      limit: String(limit),
+    });
+    return (result?.list ?? [])
+      .map((row) => ({
+        time: Math.floor(Number(row[0]) / 1000),
+        open: num(row[1]),
+        high: num(row[2]),
+        low: num(row[3]),
+        close: num(row[4]),
+      }))
+      .reverse();
+  }
+
+  /** Otevřené příkazy k páru — limitky a podmíněné příkazy pro čáry v grafu. */
+  async getOpenOrders(symbol) {
+    const result = await this.signedGet('/v5/order/realtime', {
+      category: 'linear',
+      symbol,
+      limit: '50',
+    });
+    return (result?.list ?? []).map((o) => ({
+      id: o.orderId,
+      side: o.side,
+      type: o.orderType,
+      stopType: o.stopOrderType || '',
+      price: optionalNum(o.price),
+      trigger: optionalNum(o.triggerPrice),
+      qty: num(o.qty),
+      reduceOnly: Boolean(o.reduceOnly),
+    }));
+  }
+
+  /**
+   * Přepne odběr svíček na veřejném streamu. Drží se jen jeden — graf ukazuje
+   * vždy jeden pár a interval. `null` odběr zruší.
+   */
+  setKlineSubscription(symbol, interval) {
+    const topic = symbol && interval ? `kline.${interval}.${symbol}` : null;
+    if (topic === this.klineTopic) return;
+
+    const ws = this.publicWs;
+    const open = ws && ws.readyState === WebSocket.OPEN;
+
+    if (this.klineTopic && open) {
+      ws.send(JSON.stringify({ op: 'unsubscribe', args: [this.klineTopic] }));
+    }
+    this.klineTopic = topic;
+    if (topic && open) {
+      ws.send(JSON.stringify({ op: 'subscribe', args: [topic] }));
     }
   }
 
@@ -478,6 +554,10 @@ export class BybitClient {
       this.publicAttempt = 0;
       this.subscribedSymbols.clear();
       this.syncTickerSubscriptions();
+      // Po znovupřipojení obnovit i odběr svíček, jinak by otevřený graf zamrzl.
+      if (this.klineTopic) {
+        ws.send(JSON.stringify({ op: 'subscribe', args: [this.klineTopic] }));
+      }
     };
 
     ws.onmessage = (event) => {
@@ -487,8 +567,12 @@ export class BybitClient {
       } catch {
         return;
       }
-      if (typeof msg.topic === 'string' && msg.topic.startsWith('tickers.') && msg.data) {
+      if (typeof msg.topic !== 'string' || !msg.data) return;
+
+      if (msg.topic.startsWith('tickers.')) {
         this.applyTicker(msg.data);
+      } else if (msg.topic === this.klineTopic) {
+        this.applyKline(msg.data);
       }
     };
 
@@ -544,6 +628,23 @@ export class BybitClient {
     if (changed) {
       this.setStatus({ lastUpdate: Date.now() });
       this.emitPositions();
+    }
+  }
+
+  /**
+   * Živá svíčka. Bybit posílá i nepotvrzenou (`confirm: false`), tedy tu
+   * rozestavěnou — graf ji překresluje na místě, dokud se neuzavře.
+   */
+  applyKline(rows) {
+    for (const row of rows) {
+      this.handlers.onKline?.({
+        time: Math.floor(Number(row.start) / 1000),
+        open: num(row.open),
+        high: num(row.high),
+        low: num(row.low),
+        close: num(row.close),
+        closed: Boolean(row.confirm),
+      });
     }
   }
 

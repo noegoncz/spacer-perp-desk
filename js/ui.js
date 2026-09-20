@@ -28,8 +28,14 @@ const dom = {
   lastUpdate: el('lastUpdate'),
   viewPositions: el('viewPositions'),
   viewSettings: el('viewSettings'),
+  viewChart: el('viewChart'),
   settingsMsg: el('settingsMsg'),
   updateBar: el('updateBar'),
+  chartSymbol: el('chartSymbol'),
+  chartBadge: el('chartBadge'),
+  chartPnl: el('chartPnl'),
+  chartLegend: el('chartLegend'),
+  chartError: el('chartError'),
 };
 
 function pnlClass(value) {
@@ -70,11 +76,20 @@ function returnPercent(p) {
   return null;
 }
 
-function positionCard(p, hide) {
+function positionCard(p, hide, onSelect) {
   const isLong = p.side !== 'Sell';
 
   const card = document.createElement('article');
   card.className = `position ${isLong ? 'long' : 'short'}`;
+  card.setAttribute('role', 'button');
+  card.tabIndex = 0;
+  card.addEventListener('click', () => onSelect?.(p));
+  card.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onSelect?.(p);
+    }
+  });
 
   /* hlavička: pár + směr + PnL */
   const head = document.createElement('div');
@@ -127,8 +142,8 @@ function positionCard(p, hide) {
   return card;
 }
 
-export function renderPositions(list, hide) {
-  dom.list.replaceChildren(...list.map((p) => positionCard(p, hide)));
+export function renderPositions(list, hide, onSelect) {
+  dom.list.replaceChildren(...list.map((p) => positionCard(p, hide, onSelect)));
 
   const total = list.reduce((sum, p) => sum + p.pnl, 0);
   dom.totalPnl.textContent = hide ? MASK : `${formatSignedUsd(total)} USDT`;
@@ -184,6 +199,57 @@ export function showView(name) {
   dom.viewPositions.hidden = name !== 'positions';
   dom.viewSettings.hidden = name !== 'settings';
   window.scrollTo(0, 0);
+}
+
+/**
+ * Graf je překryv přes celou obrazovku. Seznam pod ním zůstává namontovaný,
+ * takže se po návratu zachová odscrollování.
+ */
+export function showChart(visible) {
+  dom.viewChart.hidden = !visible;
+}
+
+export function renderChartHeader(position, hide) {
+  const isLong = position.side !== 'Sell';
+  dom.chartSymbol.textContent = position.symbol;
+  dom.chartBadge.className = `badge ${isLong ? 'long' : 'short'}`;
+  dom.chartBadge.textContent = isLong ? 'LONG' : 'SHORT';
+  if (position.leverage) {
+    dom.chartBadge.textContent += ` ${formatSize(position.leverage)}×`;
+  }
+  dom.chartPnl.className = `chart-pnl ${pnlClass(position.pnl)}`;
+  dom.chartPnl.textContent = hide ? MASK : `${formatSignedUsd(position.pnl)} USDT`;
+}
+
+export function renderChartLegend(lines) {
+  dom.chartLegend.replaceChildren(
+    ...lines.map((l) => {
+      const item = document.createElement('span');
+      item.className = 'legend-item';
+
+      const swatch = document.createElement('span');
+      swatch.className = 'legend-swatch';
+      swatch.style.borderTopColor = l.color;
+      swatch.style.borderTopStyle = l.dashed === false ? 'solid' : 'dashed';
+
+      const label = document.createElement('span');
+      label.textContent = `${l.title} ${formatPrice(l.price)}`;
+
+      item.append(swatch, label);
+      return item;
+    }),
+  );
+}
+
+export function showChartError(message) {
+  dom.chartError.hidden = !message;
+  if (message) dom.chartError.textContent = message;
+}
+
+export function setActiveInterval(interval) {
+  document.querySelectorAll('.interval-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.interval === interval);
+  });
 }
 
 export function showSettingsMessage(message, ok) {

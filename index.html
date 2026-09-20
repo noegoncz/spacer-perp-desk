@@ -59,6 +59,32 @@
     </div>
   </section>
 
+  <!-- ===== Graf (přes celou obrazovku) ===== -->
+  <section id="viewChart" class="chart-view" hidden>
+    <header class="chart-head">
+      <button type="button" id="chartBackBtn" class="icon-btn" aria-label="Zpět na pozice">←</button>
+      <div class="chart-title">
+        <span id="chartSymbol">—</span>
+        <span id="chartBadge" class="badge"></span>
+      </div>
+      <div id="chartPnl" class="chart-pnl"></div>
+    </header>
+
+    <div class="intervals" id="intervals" role="group" aria-label="Interval svíček">
+      <button type="button" class="interval-btn" data-interval="1">1m</button>
+      <button type="button" class="interval-btn" data-interval="5">5m</button>
+      <button type="button" class="interval-btn" data-interval="15">15m</button>
+      <button type="button" class="interval-btn" data-interval="60">1h</button>
+      <button type="button" class="interval-btn" data-interval="240">4h</button>
+      <button type="button" class="interval-btn" data-interval="D">1d</button>
+    </div>
+
+    <div id="chartBox" class="chart-box"></div>
+
+    <div id="chartLegend" class="chart-legend"></div>
+    <div id="chartError" class="chart-error" hidden></div>
+  </section>
+
   <!-- ===== Nastavení ===== -->
   <section id="viewSettings" hidden>
     <div class="card">
@@ -115,6 +141,9 @@
   <span id="lastUpdate"></span>
 </footer>
 
+<!-- Knihovna grafu je v repozitáři, ne z CDN — viz CLAUDE.md. Načítá se předem,
+     aby se graf po klepnutí na pozici otevřel okamžitě. -->
+<script src="vendor/lightweight-charts.js"></script>
 <script type="module" src="js/app.js"></script>
 </body>
 </html>

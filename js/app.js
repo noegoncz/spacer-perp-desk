@@ -1,6 +1,7 @@
 /** Orchestrace: propojuje modul Bybitu, UI a lifecycle service workeru. */
 
 import { BybitClient } from './bybit.js';
+import { createPriceChart } from './chart.js';
 import * as store from './store.js';
 import * as ui from './ui.js';
 
@@ -9,10 +10,31 @@ const el = (id) => document.getElementById(id);
 let hideAmounts = store.loadHideAmounts();
 let lastPositions = [];
 
+/* ---------- stav grafu ---------- */
+
+const BARVA_CARY = {
+  vstup: '#4c9aff',
+  likvidace: '#ea3943',
+  sl: '#f0b90b',
+  tp: '#16c784',
+  prikaz: '#8b9bb0',
+};
+
+let chart = null;          // instance se drží i po zavření, ať se otevírá svižně
+let chartPosition = null;  // null = graf je zavřený
+let chartInterval = '15';
+let chartOrders = [];
+let chartLineKey = '';     // otisk čar, aby se nepřekreslovaly při každém ticku
+let ordersTimer = null;
+
 const client = new BybitClient({
   onPositions(list) {
     lastPositions = list;
-    ui.renderPositions(list, hideAmounts);
+    ui.renderPositions(list, hideAmounts, openChart);
+    syncOpenChart(list);
+  },
+  onKline(bar) {
+    if (chart && chartPosition) chart.updateCandle(bar);
   },
   onStatus(status) {
     ui.renderStatus(status);
@@ -71,7 +93,22 @@ function wireEvents() {
     hideAmounts = !hideAmounts;
     store.saveHideAmounts(hideAmounts);
     el('hideBtn').classList.toggle('active', hideAmounts);
-    ui.renderPositions(lastPositions, hideAmounts);
+    ui.renderPositions(lastPositions, hideAmounts, openChart);
+    if (chartPosition) ui.renderChartHeader(chartPosition, hideAmounts);
+  });
+
+  // Zpět z grafu vede přes historii, ať funguje i hardwarové tlačítko zpět.
+  el('chartBackBtn').addEventListener('click', () => history.back());
+  window.addEventListener('popstate', () => {
+    if (chartPosition) closeChart();
+  });
+
+  document.querySelectorAll('.interval-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      chartInterval = btn.dataset.interval;
+      ui.setActiveInterval(chartInterval);
+      loadChartData();
+    });
   });
 
   el('revealBtn').addEventListener('click', () => {
@@ -172,6 +209,155 @@ function clearCredentials() {
   el('apiSecret').value = '';
   ui.showSettingsMessage('Klíče smazány.', true);
   ui.showPlaceholder('Nejsou uložené žádné klíče.', 'Otevřít nastavení');
+}
+
+/* ---------- graf ---------- */
+
+async function openChart(position) {
+  chartPosition = position;
+  chartOrders = [];
+  chartLineKey = '';
+
+  ui.renderChartHeader(position, hideAmounts);
+  ui.setActiveInterval(chartInterval);
+  ui.showChartError('');
+  ui.showChart(true);
+
+  // Aby hardwarové tlačítko zpět zavřelo graf, a ne celou aplikaci.
+  history.pushState({ chart: true }, '');
+
+  // Plátno se musí vytvářet až po zobrazení, jinak má nulové rozměry.
+  if (!chart) chart = createPriceChart(el('chartBox'));
+  chart.setPrecision(position.entry);
+
+  await loadChartData();
+
+  clearInterval(ordersTimer);
+  // Příkazy nechodí po WebSocketu, takže se dotahují opakovaně.
+  ordersTimer = setInterval(refreshChartOrders, 20000);
+}
+
+function closeChart() {
+  chartPosition = null;
+  chartOrders = [];
+  clearInterval(ordersTimer);
+  client.setKlineSubscription(null, null);
+  ui.showChart(false);
+}
+
+async function loadChartData() {
+  const position = chartPosition;
+  if (!position || !chart) return;
+  const { symbol } = position;
+  const interval = chartInterval;
+
+  try {
+    const [bars, orders] = await Promise.all([
+      client.getKlines(symbol, interval),
+      // Příkazy jsou jen doplněk, jejich chyba nesmí shodit celý graf.
+      client.getOpenOrders(symbol).catch(() => []),
+    ]);
+
+    // Uživatel mohl mezitím přepnout pár nebo interval.
+    if (chartPosition?.symbol !== symbol || chartInterval !== interval) return;
+
+    chartOrders = orders;
+    chart.setCandles(bars);
+    applyChartLines(true);
+    client.setKlineSubscription(symbol, interval);
+    ui.showChartError('');
+  } catch (err) {
+    ui.showChartError(err.message || String(err));
+  }
+}
+
+async function refreshChartOrders() {
+  const position = chartPosition;
+  if (!position) return;
+  try {
+    const orders = await client.getOpenOrders(position.symbol);
+    if (chartPosition?.symbol !== position.symbol) return;
+    chartOrders = orders;
+    applyChartLines();
+  } catch {
+    // Tiše — čáry zůstanou z minula, graf běží dál.
+  }
+}
+
+function buildChartLines(position, orders) {
+  const LS = window.LightweightCharts.LineStyle;
+  const lines = [];
+
+  lines.push({
+    price: position.entry,
+    color: BARVA_CARY.vstup,
+    title: 'Vstup',
+    style: LS.Solid,
+    width: 2,
+    dashed: false,
+  });
+
+  if (position.liq) {
+    lines.push({
+      price: position.liq,
+      color: BARVA_CARY.likvidace,
+      title: 'Likvidace',
+      style: LS.LargeDashed,
+    });
+  }
+  if (position.stopLoss) {
+    lines.push({ price: position.stopLoss, color: BARVA_CARY.sl, title: 'SL' });
+  }
+  if (position.takeProfit) {
+    lines.push({ price: position.takeProfit, color: BARVA_CARY.tp, title: 'TP' });
+  }
+
+  for (const order of orders) {
+    const price = order.price ?? order.trigger;
+    if (!price) continue;
+    const smer = order.side === 'Buy' ? 'nákup' : 'prodej';
+    lines.push({
+      price,
+      color: BARVA_CARY.prikaz,
+      title: order.stopType ? `Podmíněný ${smer}` : `Limit ${smer}`,
+      style: LS.Dotted,
+    });
+  }
+  return lines;
+}
+
+/**
+ * Čáry se překreslují jen při skutečné změně. Bez toho by se rušily a znovu
+ * vytvářely při každém ticku ceny, protože pozice chodí i z ticker streamu.
+ */
+function applyChartLines(force = false) {
+  if (!chart || !chartPosition) return;
+
+  const lines = buildChartLines(chartPosition, chartOrders);
+  const key = lines.map((l) => `${l.title}@${l.price}`).join('|');
+  if (!force && key === chartLineKey) return;
+
+  chartLineKey = key;
+  chart.setLines(lines);
+  ui.renderChartLegend(lines);
+}
+
+/** Pozice se mění za běhu — graf musí držet krok s PnL, SL/TP i likvidací. */
+function syncOpenChart(list) {
+  if (!chartPosition) return;
+
+  const fresh = list.find(
+    (p) => p.symbol === chartPosition.symbol && p.positionIdx === chartPosition.positionIdx,
+  );
+  if (!fresh) {
+    // Pozice byla zavřená — graf nechat otevřený, jen bez čar pozice.
+    chartOrders = [];
+    return;
+  }
+
+  chartPosition = fresh;
+  ui.renderChartHeader(fresh, hideAmounts);
+  applyChartLines();
 }
 
 /* ---------- service worker a hláška o nové verzi ---------- */

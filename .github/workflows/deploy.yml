@@ -32,7 +32,7 @@ jobs:
         run: |
           mkdir -p _site
           cp index.html manifest.webmanifest sw.js _site/
-          cp -r css js icons _site/
+          cp -r css js icons vendor _site/
 
       # Krátké SHA commitu jde do version.js (zobrazí se v UI) i do sw.js.
       # Bez změny bajtů sw.js by prohlížeč novou verzi nemusel spolehlivě poznat.

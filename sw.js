@@ -26,6 +26,8 @@ const SHELL = [
   './js/store.js',
   './js/format.js',
   './js/ui.js',
+  './js/chart.js',
+  './vendor/lightweight-charts.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
 ];

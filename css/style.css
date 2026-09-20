@@ -362,6 +362,104 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
   font-variant-numeric: tabular-nums;
 }
 
+/* ---------- graf ---------- */
+
+/* Přes celou obrazovku, včetně horní lišty — na telefonu se každý pixel počítá. */
+.chart-view {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+           0 env(safe-area-inset-left);
+}
+
+.chart-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.chart-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 1.05rem;
+  font-weight: 650;
+}
+
+.chart-pnl {
+  font-size: 0.95rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.intervals {
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.intervals::-webkit-scrollbar { display: none; }
+
+.interval-btn {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.interval-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #06121f;
+}
+
+/* min-height: 0 je nutné, jinak flexbox nedovolí plátnu zmenšit se pod obsah. */
+.chart-box { flex: 1; min-height: 0; }
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.legend-item { display: flex; align-items: center; gap: 5px; }
+
+.legend-swatch {
+  width: 14px;
+  height: 0;
+  border-top-width: 2px;
+  border-top-style: solid;
+  flex: none;
+}
+
+.chart-error {
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+  background: rgba(234, 57, 67, 0.15);
+  color: #ffb3b8;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+/* Karta pozice je klikací — otevírá graf. */
+.position { cursor: pointer; }
+.position:active { background: var(--surface-2); }
+
 /* Úzký cover displej Foldu — ať se karta nerozsype. */
 @media (max-width: 380px) {
   .pos-grid { grid-template-columns: repeat(2, 1fr); }
