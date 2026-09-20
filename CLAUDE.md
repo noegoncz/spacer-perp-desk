@@ -139,25 +139,71 @@ GitHub Pages přes Actions.
 
 ### 2) Graf se svíčkami
 
-Svíčkový graf vybraného páru s vodorovnými čarami: vstup, otevřené limitky,
-stop-loss, take-profit. Data z `/v5/market/kline` + `/v5/order/realtime`
-(otevřené příkazy) a SL/TP z pozice. Bez těžké knihovny, pokud to půjde —
-canvas kreslený ručně, ať zůstane zachován princip „bez build kroku".
+Svíčkový graf vybraného páru s vodorovnými čarami: vstup, likvidace,
+stop-loss, take-profit a otevřené limitky. Data z `/v5/market/kline`,
+`/v5/order/realtime` (otevřené příkazy) a SL/TP z pozice. Živá poslední
+svíčka přes veřejný WS. Přepínač intervalu, posun a zoom prstem.
+
+Graf kreslí **`lightweight-charts`** (Apache-2.0). Má vestavěné cenové čáry
+(`createPriceLine`), což je přesně to, co checkpoint potřebuje, a zvládá
+dotykové ovládání. Knihovna je **stažená v repozitáři ve `vendor/`, ne z CDN**:
+offline režim by na cizím skriptu padal, v APK není při startu zaručená síť
+a cizí server nemá co dělat v kritické cestě aplikace na sledování peněz.
+Princip „bez build kroku" to neruší, je to jeden hotový soubor.
 
 ### 3) Layout pro Fold
 
-- **Zavřený displej** (úzký, ~904px na výšku, cover screen): jen seznam pozic.
+- **Zavřený displej** (úzký, cover screen): jen seznam pozic.
 - **Rozevřený** (velký, skoro čtvercový): graf + seznam vedle sebe.
 
 Přepínat podle `matchMedia` na šířku/poměr stran, ne podle detekce zařízení.
-Stav (vybraný pár, scroll) musí přežít přeložení telefonu — Android při změně
-skládání stránku nereloaduje, ale layout se musí přepnout plynule.
+Stav (vybraný pár, scroll, zoom grafu) musí přežít přeložení telefonu —
+Android při změně skládání stránku nereloaduje, ale layout se musí přepnout
+plynule.
 
-### 4) APK přes Capacitor + notifikace
+### 4) Rozšířená data
+
+- Přehled účtu: equity, volný margin, využití marginu (`/v5/account/wallet-balance`).
+- Funding: příští sazba a čas do stržení, náklad na pozici za den.
+- Otevřené příkazy jako samostatný seznam, nejen čáry v grafu.
+- Realizované PnL a historie uzavřených obchodů (`/v5/position/closed-pnl`).
+
+### 5) Pohodlí
+
+- Řazení a filtrování pozic (PnL, velikost, blízkost likvidace).
+- Barevné varování na kartě při přiblížení k likvidaci, s volitelnou hranicí.
+- Vibrace nebo zvuk při zásahu SL/TP.
+
+### 6) Bezpečnost
+
+- Secret zašifrovaný (WebCrypto, klíč odvozený PBKDF2 z PINu), odemykání
+  PINem nebo otiskem prstu přes WebAuthn.
+- Přepínač na testnet, ať se dá zkoušet bez rizika.
+
+**Tenhle checkpoint musí být hotový dřív než checkpoint 8.** Dokud je klíč
+read-only, je čitelný secret v `localStorage` přijatelné riziko — nejhorší
+následek je, že někdo uvidí pozice. S právem obchodovat je nejhorší následek
+vybydlený účet a stejné úložiště přijatelné přestává být.
+
+### 7) APK přes Capacitor + notifikace
 
 Zabalit do APK, aby aplikace mohla běžet na pozadí a posílat notifikace
-(např. blížící se likvidace, zasažení SL/TP, výrazná změna PnL). Tady se
-vymění transport v `js/bybit.js` za nativní HTTP/WebSocket plugin.
+(blížící se likvidace, zasažení SL/TP, výrazná změna PnL). Tady se vymění
+transport v `js/bybit.js` za nativní HTTP/WebSocket plugin.
+
+### 8) Zadávání příkazů (jen pokud se aplikace osvědčí)
+
+Zatím **se nedělá** a aplikace zůstává výhradně read-only. Poznámky, ať se na
+to při návrhu nezapomíná:
+
+- Přidání je levné, protože veškerá komunikace je v `js/bybit.js`. Bybit V5
+  podepisuje u POSTu místo query stringu **syrové tělo požadavku** — jinak
+  stejný postup.
+- Práva klíče na Bybitu nejdou dodatečně změnit, bude potřeba **nový klíč**.
+  Výměnu klíče aplikace zvládá.
+- **Pravidlo:** modul nabízí pouze čtení. Zápis přijde jako zřetelně oddělená
+  část s potvrzovacím krokem, aby chyba v UI nemohla omylem odeslat příkaz.
+- Předpoklad: hotový checkpoint 6 (šifrované klíče).
 
 ## Lokální vývoj
 
