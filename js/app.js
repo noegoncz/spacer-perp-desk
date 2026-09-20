@@ -338,51 +338,69 @@ function buildChartLines(position, orders) {
       style: LS.LargeDashed,
     });
   }
-  // Celkové úrovně pozice — plné čáry přes celou pozici.
+  // Úrovně platné pro celou pozici mají holý popisek, bez čísla.
   if (position.stopLoss) {
-    lines.push({ price: position.stopLoss, color: BARVA_CARY.sl, title: 'SL celé pozice' });
+    lines.push({ price: position.stopLoss, color: BARVA_CARY.sl, title: 'SL' });
   }
   if (position.takeProfit) {
-    lines.push({ price: position.takeProfit, color: BARVA_CARY.tp, title: 'TP celé pozice' });
+    lines.push({ price: position.takeProfit, color: BARVA_CARY.tp, title: 'TP' });
   }
+
+  const tp = [];
+  const sl = [];
+  const limitky = [];
 
   for (const order of orders) {
     const price = order.trigger ?? order.price;
     if (!price) continue;
 
     // Bybit vrací SL a TP pozice i jako podmíněné příkazy. Bez tohohle by se
-    // každá úroveň nakreslila dvakrát, jednou jako TP a jednou jako "podmíněný".
+    // každá úroveň nakreslila dvakrát, jednou jako TP a jednou jako podmíněná.
     if (samePrice(price, position.stopLoss) || samePrice(price, position.takeProfit)) {
       continue;
     }
 
     const strana = orderSide(order, position);
-    const castecny = position.size > 0 && order.qty > 0 && order.qty < position.size;
-    const podil = castecny ? ` ${Math.round((order.qty / position.size) * 100)} %` : '';
-
-    if (strana === 'tp') {
-      lines.push({
-        price,
-        color: BARVA_CARY.tp,
-        title: (castecny ? 'Částečný TP' : 'TP') + podil,
-        style: LS.Dotted,
-      });
-    } else if (strana === 'sl') {
-      lines.push({
-        price,
-        color: BARVA_CARY.sl,
-        title: (castecny ? 'Částečný SL' : 'SL') + podil,
-        style: LS.Dotted,
-      });
-    } else {
-      lines.push({
-        price,
-        color: BARVA_CARY.prikaz,
-        title: `Limit ${order.side === 'Buy' ? 'nákup' : 'prodej'}`,
-        style: LS.Dotted,
-      });
-    }
+    const cil = strana === 'tp' ? tp : strana === 'sl' ? sl : limitky;
+    cil.push({ price, qty: order.qty, side: order.side });
   }
+
+  // Číslují se v pořadí, v jakém je cena zasáhne — nejblíž vstupu je první.
+  const podleVzdalenosti = (a, b) =>
+    Math.abs(a.price - position.entry) - Math.abs(b.price - position.entry);
+
+  const podil = (o) =>
+    position.size > 0 && o.qty > 0 && o.qty < position.size
+      ? ` (${Math.round((o.qty / position.size) * 100)} %)`
+      : '';
+
+  tp.sort(podleVzdalenosti).forEach((o, i) => {
+    lines.push({
+      price: o.price,
+      color: BARVA_CARY.tp,
+      title: `TP${i + 1}${podil(o)}`,
+      style: LS.Dotted,
+    });
+  });
+
+  sl.sort(podleVzdalenosti).forEach((o, i) => {
+    lines.push({
+      price: o.price,
+      color: BARVA_CARY.sl,
+      title: `SL${i + 1}${podil(o)}`,
+      style: LS.Dotted,
+    });
+  });
+
+  limitky.forEach((o) => {
+    lines.push({
+      price: o.price,
+      color: BARVA_CARY.prikaz,
+      title: 'Limit',
+      style: LS.Dotted,
+    });
+  });
+
   return lines;
 }
 
