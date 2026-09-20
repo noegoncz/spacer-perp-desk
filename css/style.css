@@ -314,7 +314,19 @@ input[type="text"], input[type="password"] {
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 0.9rem;
 }
-input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+input:focus, .select-field:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+.select-field {
+  width: 100%;
+  min-height: var(--tap);
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 0.92rem;
+}
 
 .secret-row { display: flex; gap: 8px; align-items: flex-start; }
 .secret-row input { flex: 1; }

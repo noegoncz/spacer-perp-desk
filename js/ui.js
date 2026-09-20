@@ -1,5 +1,6 @@
 /** Vykreslování. Žádná logika kolem Bybitu, jen DOM. */
 
+import { t } from './i18n.js';
 import {
   formatPrice,
   formatSize,
@@ -68,11 +69,11 @@ function cell(label, value, extraClass = '') {
 function returnPercent(p) {
   if (p.leverage && p.value) {
     const margin = p.value / p.leverage;
-    if (margin > 0) return { value: (p.pnl / margin) * 100, label: 'ROE' };
+    if (margin > 0) return { value: (p.pnl / margin) * 100, label: t('position.roe') };
   }
   if (p.entry && p.mark) {
     const dir = p.side === 'Sell' ? -1 : 1;
-    return { value: ((p.mark - p.entry) / p.entry) * 100 * dir, label: 'cena' };
+    return { value: ((p.mark - p.entry) / p.entry) * 100 * dir, label: t('position.priceChange') };
   }
   return null;
 }
@@ -103,7 +104,7 @@ function positionCard(p, hide, onSelect) {
 
   const badge = document.createElement('span');
   badge.className = `badge ${isLong ? 'long' : 'short'}`;
-  badge.textContent = isLong ? 'LONG' : 'SHORT';
+  badge.textContent = t(isLong ? 'position.long' : 'position.short');
   if (p.leverage) badge.textContent += ` ${formatSize(p.leverage)}×`;
 
   left.append(symbol, badge);
@@ -125,18 +126,18 @@ function positionCard(p, hide, onSelect) {
   const grid = document.createElement('div');
   grid.className = 'pos-grid';
   grid.append(
-    cell('Velikost', hide ? MASK : formatSize(p.size)),
-    cell('Vstup', formatPrice(p.entry)),
-    cell('Mark', formatPrice(p.mark)),
+    cell(t('position.size'), hide ? MASK : formatSize(p.size)),
+    cell(t('position.entry'), formatPrice(p.entry)),
+    cell(t('position.mark'), formatPrice(p.mark)),
   );
 
   const distance = liquidationDistance(p);
-  const liqText = p.liq ? formatPrice(p.liq) : 'bez likvidace';
+  const liqText = p.liq ? formatPrice(p.liq) : t('position.notSet');
   const liqClass = distance !== null && Math.abs(distance) < 10 ? 'liq near' : 'liq';
-  grid.append(cell('Likvidace', liqText, p.liq ? liqClass : ''));
+  grid.append(cell(t('position.liquidation'), liqText, p.liq ? liqClass : ''));
 
   if (distance !== null) {
-    grid.append(cell('Do likvidace', formatPercent(distance), liqClass));
+    grid.append(cell(t('position.toLiquidation'), formatPercent(distance), liqClass));
   }
 
   card.append(head, grid);
@@ -155,7 +156,7 @@ export function renderPositions(list, hide, onSelect) {
   dom.summary.hidden = !hasPositions;
   dom.placeholder.hidden = hasPositions;
   if (!hasPositions) {
-    dom.placeholderText.textContent = 'Žádné otevřené pozice.';
+    dom.placeholderText.textContent = t('positions.none');
     dom.placeholderBtn.hidden = true;
   }
 }
@@ -169,20 +170,20 @@ export function showPlaceholder(text, buttonLabel = null) {
   if (buttonLabel) dom.placeholderBtn.textContent = buttonLabel;
 }
 
-const STATUS_TEXT = {
-  idle: ['', 'Nepřipojeno'],
-  connecting: ['connecting', 'Připojuji…'],
-  reconnecting: ['connecting', 'Obnovuji spojení…'],
-  live: ['live', 'Živě'],
-  error: ['error', 'Chyba spojení'],
+const STATUS_TRIDA = {
+  idle: '',
+  connecting: 'connecting',
+  reconnecting: 'connecting',
+  live: 'live',
+  error: 'error',
 };
 
 export function renderStatus(status) {
-  const [cls, text] = STATUS_TEXT[status.ws] || STATUS_TEXT.idle;
-  dom.statusDot.className = `dot ${cls}`;
-  dom.statusText.textContent = text;
+  const stav = STATUS_TRIDA[status.ws] === undefined ? 'idle' : status.ws;
+  dom.statusDot.className = `dot ${STATUS_TRIDA[stav]}`;
+  dom.statusText.textContent = t(`status.${stav}`);
   dom.lastUpdate.textContent = status.lastUpdate
-    ? `aktualizace ${formatTime(status.lastUpdate)}`
+    ? t('status.updated', { time: formatTime(status.lastUpdate) })
     : '';
 }
 
@@ -214,7 +215,7 @@ export function renderChartHeader(position, hide) {
   const isLong = position.side !== 'Sell';
   dom.chartSymbol.textContent = position.symbol;
   dom.chartBadge.className = `badge ${isLong ? 'long' : 'short'}`;
-  dom.chartBadge.textContent = isLong ? 'LONG' : 'SHORT';
+  dom.chartBadge.textContent = t(isLong ? 'position.long' : 'position.short');
   if (position.leverage) {
     dom.chartBadge.textContent += ` ${formatSize(position.leverage)}×`;
   }
@@ -237,15 +238,15 @@ export function renderChartInfo(position, hide) {
     : '—';
 
   const cells = [
-    ['Velikost', hide ? MASK : formatSize(position.size), ''],
-    ['Hodnota', hide ? MASK : `${formatUsd(position.value)} USDT`, ''],
-    ['Margin', hide ? MASK : margin ? `${formatUsd(margin)} USDT` : '—', ''],
-    ['Vstup', formatPrice(position.entry), ''],
-    ['Mark', formatPrice(position.mark), ''],
-    [ret ? ret.label : 'Změna', ret ? formatPercent(ret.value) : '—', pnlClass(position.pnl)],
-    ['SL celé pozice', position.stopLoss ? formatPrice(position.stopLoss) : 'není', position.stopLoss ? 'sl' : 'dim'],
-    ['TP celé pozice', position.takeProfit ? formatPrice(position.takeProfit) : 'není', position.takeProfit ? 'tp' : 'dim'],
-    ['Likvidace', liqText, distance !== null && Math.abs(distance) < 10 ? 'liq near' : 'liq'],
+    [t('position.size'), hide ? MASK : formatSize(position.size), ''],
+    [t('position.value'), hide ? MASK : `${formatUsd(position.value)} USDT`, ''],
+    [t('position.margin'), hide ? MASK : margin ? `${formatUsd(margin)} USDT` : '—', ''],
+    [t('position.entry'), formatPrice(position.entry), ''],
+    [t('position.mark'), formatPrice(position.mark), ''],
+    [ret ? ret.label : t('position.change'), ret ? formatPercent(ret.value) : '—', pnlClass(position.pnl)],
+    [t('position.stopLossFull'), position.stopLoss ? formatPrice(position.stopLoss) : t('position.notSet'), position.stopLoss ? 'sl' : 'dim'],
+    [t('position.takeProfitFull'), position.takeProfit ? formatPrice(position.takeProfit) : t('position.notSet'), position.takeProfit ? 'tp' : 'dim'],
+    [t('position.liquidation'), liqText, distance !== null && Math.abs(distance) < 10 ? 'liq near' : 'liq'],
   ];
 
   dom.chartInfo.replaceChildren(...cells.map(([label, value, cls]) => cell(label, value, cls)));

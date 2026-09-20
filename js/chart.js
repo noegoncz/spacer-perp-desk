@@ -13,11 +13,12 @@
 
 import { createTouchDrawing } from './draw.js';
 import { formatPrice } from './format.js';
+import { t, getLocale } from './i18n.js';
 
 /** Datum a čas pro cenovku u kříže — stejné pásmo jako osa grafu. */
 function formatCas(timestamp) {
   if (!timestamp) return '';
-  return new Date(timestamp).toLocaleString('cs-CZ', {
+  return new Date(timestamp).toLocaleString(getLocale(), {
     day: 'numeric',
     month: 'numeric',
     hour: '2-digit',
@@ -55,29 +56,34 @@ const OBDOBI = {
  * musí sedět s tím, co knihovna u daného tvaru očekává.
  */
 export const NASTROJE = [
-  { id: 'segment', nazev: 'Úsečka', body: 2 },
-  { id: 'rayLine', nazev: 'Polopřímka', body: 2 },
-  { id: 'straightLine', nazev: 'Přímka', body: 2 },
-  { id: 'horizontalStraightLine', nazev: 'Vodorovná úroveň', body: 1 },
-  { id: 'verticalStraightLine', nazev: 'Svislá čára', body: 1 },
-  { id: 'priceLine', nazev: 'Cenová čára', body: 1 },
-  { id: 'priceChannelLine', nazev: 'Cenový kanál', body: 3 },
-  { id: 'parallelStraightLine', nazev: 'Rovnoběžky', body: 3 },
-  { id: 'fibonacciLine', nazev: 'Fibonacci', body: 2 },
-  { id: 'simpleAnnotation', nazev: 'Poznámka', body: 1 },
+  { id: 'segment', body: 2 },
+  { id: 'rayLine', body: 2 },
+  { id: 'straightLine', body: 2 },
+  { id: 'horizontalStraightLine', body: 1 },
+  { id: 'verticalStraightLine', body: 1 },
+  { id: 'priceLine', body: 1 },
+  { id: 'priceChannelLine', body: 3 },
+  { id: 'parallelStraightLine', body: 3 },
+  { id: 'fibonacciLine', body: 2 },
+  { id: 'simpleAnnotation', body: 1 },
 ];
+
+/** Název nástroje v jazyce uživatele. */
+export const nazevNastroje = (id) => t(`tool.${id}`);
 
 /** Indikátory nabízené uživateli, z 27 vestavěných. */
 export const INDIKATORY = [
-  { id: 'VOL', nazev: 'Objem', vlastniPanel: true },
-  { id: 'RSI', nazev: 'RSI', vlastniPanel: true },
-  { id: 'MACD', nazev: 'MACD', vlastniPanel: true },
-  { id: 'KDJ', nazev: 'KDJ', vlastniPanel: true },
-  { id: 'MA', nazev: 'Klouzavý průměr', vlastniPanel: false },
-  { id: 'EMA', nazev: 'EMA', vlastniPanel: false },
-  { id: 'BOLL', nazev: 'Bollinger', vlastniPanel: false },
-  { id: 'SAR', nazev: 'Parabolic SAR', vlastniPanel: false },
+  { id: 'VOL', vlastniPanel: true },
+  { id: 'RSI', vlastniPanel: true },
+  { id: 'MACD', vlastniPanel: true },
+  { id: 'KDJ', vlastniPanel: true },
+  { id: 'MA', vlastniPanel: false },
+  { id: 'EMA', vlastniPanel: false },
+  { id: 'BOLL', vlastniPanel: false },
+  { id: 'SAR', vlastniPanel: false },
 ];
+
+export const nazevIndikatoru = (id) => t(`indicator.${id}`);
 
 const HLAVNI_PANEL = 'candle_pane';
 const SKUPINA_POZICE = 'pozice';

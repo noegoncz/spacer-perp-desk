@@ -10,6 +10,8 @@
  * O konkrétní knihovně grafu neví nic, převody souřadnic dostane zvenčí.
  */
 
+import { t } from './i18n.js';
+
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 /** Posun přes tolik pixelů už není klepnutí, ale tažení. */
@@ -73,7 +75,7 @@ export function createTouchDrawing({
   const pruhZrusit = document.createElement('button');
   pruhZrusit.type = 'button';
   pruhZrusit.className = 'draw-banner-cancel';
-  pruhZrusit.setAttribute('aria-label', 'Zrušit kreslení');
+  pruhZrusit.setAttribute('aria-label', t('draw.cancel'));
   pruhZrusit.textContent = '✕';
   pruh.append(pruhText, pruhZrusit);
 
@@ -110,11 +112,11 @@ export function createTouchDrawing({
     if (rezim === 'create') {
       const cislo = celkem - potreba + 1;
       return potreba === 1 && celkem > 1
-        ? `Klepnutím dokonči (${cislo}. z ${celkem})`
-        : `Klepnutím urči ${cislo}. bod z ${celkem}`;
+        ? t('draw.finish', { n: cislo, total: celkem })
+        : t('draw.setPoint', { n: cislo, total: celkem });
     }
-    if (rezim === 'move') return 'Posuň bod a klepnutím potvrď';
-    if (rezim === 'handles') return 'Klepni na konec čáry, nebo vedle pro konec úprav';
+    if (rezim === 'move') return t('draw.movePoint');
+    if (rezim === 'handles') return t('draw.editHint');
     return '';
   }
 

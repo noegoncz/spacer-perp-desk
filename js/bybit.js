@@ -7,6 +7,8 @@
  * výhradně callbacky.
  */
 
+import { t } from './i18n.js';
+
 const REST_BASE = 'https://api.bybit.com';
 const WS_PRIVATE = 'wss://stream.bybit.com/v5/private';
 const WS_PUBLIC_LINEAR = 'wss://stream.bybit.com/v5/linear';
@@ -24,13 +26,12 @@ function httpErrorMessage(status, statusText) {
   switch (status) {
     case 401:
     case 403:
-      return `Bybit odmítl klíč${detail}. Zkontroluj, že je klíč platný, aktivní, `
-           + 'má oprávnění číst pozice a nemá omezení na IP adresu.';
+      return t('error.rejected', { detail });
     case 429:
-      return 'Příliš mnoho požadavků na Bybit. Zkus to za chvíli.';
+      return t('error.rateLimit');
     default:
-      if (status >= 500) return `Bybit má výpadek (HTTP ${status}). Zkus to za chvíli.`;
-      return `Bybit vrátil neočekávanou odpověď (HTTP ${status})${detail}.`;
+      if (status >= 500) return t('error.outage', { status });
+      return t('error.unexpected', { status, detail });
   }
 }
 
@@ -40,7 +41,7 @@ async function defaultHttpGet(url, headers) {
   try {
     res = await fetch(url, { method: 'GET', headers, cache: 'no-store' });
   } catch {
-    throw new Error('Nepodařilo se spojit s Bybitem. Zkontroluj připojení k internetu.');
+    throw new Error(t('error.offline'));
   }
 
   const text = (await res.text()).trim();
@@ -131,17 +132,19 @@ export function describeError(retCode, retMsg) {
   switch (Number(retCode)) {
     case 10003:
     case 10004:
-      return 'Neplatný API klíč nebo podpis. Zkontroluj, že jsi zkopíroval klíč i secret celé a bez mezer.';
+      return t('error.badKey');
     case 10002:
-      return 'Nesedí čas. Zkontroluj v telefonu automatické nastavení data a času.';
+      return t('error.clock');
     case 10005:
-      return 'Klíč nemá oprávnění číst pozice. Vytvoř na Bybitu read-only klíč s právem na Pozice.';
+      return t('error.noPermission');
     case 10010:
-      return 'API klíč je omezený na jinou IP adresu. Zruš IP omezení, mobilní síť mění IP.';
+      return t('error.ipLocked');
     case 33004:
-      return 'API klíč vypršel. Vytvoř na Bybitu nový.';
+      return t('error.expired');
     default:
-      return retMsg ? `Bybit: ${retMsg} (kód ${retCode})` : `Bybit vrátil chybu ${retCode}.`;
+      return retMsg
+        ? t('error.bybit', { message: retMsg, code: retCode })
+        : t('error.bybitCode', { code: retCode });
   }
 }
 
@@ -225,7 +228,7 @@ export class BybitClient {
   }
 
   async signedGet(path, params) {
-    if (!this.hasCredentials()) throw new Error('Nejsou uložené API klíče.');
+    if (!this.hasCredentials()) throw new Error(t('error.noKeys'));
 
     // Podepisuje se přesně ten query string, který se odešle, ve stejném pořadí.
     const query = new URLSearchParams(params).toString();

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Perp Desk</title>
-<meta name="description" content="Monitoring otevřených pozic na Bybitu">
+<meta name="description" content="Monitor your open Bybit positions">
 <meta name="theme-color" content="#0b0f14">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
@@ -16,8 +16,8 @@
 
 <!-- Lišta o nové verzi; ukáže se, až service worker stáhne update -->
 <div id="updateBar" class="update-bar" hidden>
-  <span>Nová verze – načíst</span>
-  <button type="button" id="updateBtn" class="update-btn">Načíst</button>
+  <span data-i18n="update.available">New version available</span>
+  <button type="button" id="updateBtn" class="update-btn" data-i18n="update.reload">Reload</button>
 </div>
 
 <header class="topbar">
@@ -25,13 +25,13 @@
     <h1>Perp Desk</h1>
     <div class="status" id="status">
       <span class="dot" id="statusDot"></span>
-      <span id="statusText">Nepřipojeno</span>
+      <span id="statusText">Not connected</span>
     </div>
   </div>
   <div class="topbar-actions">
-    <button type="button" id="hideBtn" class="icon-btn" aria-label="Skrýt částky" title="Skrýt částky">👁</button>
-    <button type="button" id="refreshBtn" class="icon-btn" aria-label="Obnovit" title="Obnovit">⟳</button>
-    <button type="button" id="settingsBtn" class="icon-btn" aria-label="Nastavení" title="Nastavení">⚙</button>
+    <button type="button" id="hideBtn" class="icon-btn" data-i18n-aria="action.hideAmounts" data-i18n-title="action.hideAmounts">👁</button>
+    <button type="button" id="refreshBtn" class="icon-btn" data-i18n-aria="action.refresh" data-i18n-title="action.refresh">⟳</button>
+    <button type="button" id="settingsBtn" class="icon-btn" data-i18n-aria="action.settings" data-i18n-title="action.settings">⚙</button>
   </div>
 </header>
 
@@ -42,11 +42,11 @@
   <section id="viewPositions">
     <div class="summary" id="summary" hidden>
       <div class="summary-item">
-        <span class="summary-label">Nerealizované PnL</span>
+        <span class="summary-label" data-i18n="positions.unrealisedPnl">Unrealised PnL</span>
         <span class="summary-value" id="totalPnl">—</span>
       </div>
       <div class="summary-item">
-        <span class="summary-label">Pozic</span>
+        <span class="summary-label" data-i18n="positions.count">Positions</span>
         <span class="summary-value" id="totalCount">0</span>
       </div>
     </div>
@@ -54,15 +54,15 @@
     <div id="positionList" class="positions"></div>
 
     <div id="placeholder" class="placeholder">
-      <p id="placeholderText">Načítám…</p>
-      <button type="button" id="placeholderBtn" class="primary-btn" hidden>Otevřít nastavení</button>
+      <p id="placeholderText">Loading…</p>
+      <button type="button" id="placeholderBtn" class="primary-btn" hidden data-i18n="action.openSettings">Open settings</button>
     </div>
   </section>
 
   <!-- ===== Graf (přes celou obrazovku) ===== -->
   <section id="viewChart" class="chart-view" hidden>
     <header class="chart-head">
-      <button type="button" id="chartBackBtn" class="icon-btn" aria-label="Zpět na pozice">←</button>
+      <button type="button" id="chartBackBtn" class="icon-btn" data-i18n-aria="action.back">←</button>
       <div class="chart-title">
         <span id="chartSymbol">—</span>
         <span id="chartBadge" class="badge"></span>
@@ -72,16 +72,16 @@
 
     <div class="chart-tools">
       <div class="intervals" id="intervals" role="group" aria-label="Interval svíček">
-        <button type="button" class="interval-btn" data-interval="1">1m</button>
-        <button type="button" class="interval-btn" data-interval="5">5m</button>
-        <button type="button" class="interval-btn" data-interval="15">15m</button>
-        <button type="button" class="interval-btn" data-interval="60">1h</button>
-        <button type="button" class="interval-btn" data-interval="240">4h</button>
-        <button type="button" class="interval-btn" data-interval="D">1d</button>
-        <button type="button" class="interval-btn" data-interval="W">1t</button>
-        <button type="button" class="interval-btn" data-interval="M">1M</button>
+        <button type="button" class="interval-btn" data-interval="1" data-i18n="interval.1m">1m</button>
+        <button type="button" class="interval-btn" data-interval="5" data-i18n="interval.5m">5m</button>
+        <button type="button" class="interval-btn" data-interval="15" data-i18n="interval.15m">15m</button>
+        <button type="button" class="interval-btn" data-interval="60" data-i18n="interval.1h">1h</button>
+        <button type="button" class="interval-btn" data-interval="240" data-i18n="interval.4h">4h</button>
+        <button type="button" class="interval-btn" data-interval="D" data-i18n="interval.1d">1D</button>
+        <button type="button" class="interval-btn" data-interval="W" data-i18n="interval.1w">1W</button>
+        <button type="button" class="interval-btn" data-interval="M" data-i18n="interval.1M">1M</button>
       </div>
-      <button type="button" id="indicatorBtn" class="icon-btn tool-icon" aria-label="Indikátory" title="Indikátory">
+      <button type="button" id="indicatorBtn" class="icon-btn tool-icon" data-i18n-aria="chart.indicators" data-i18n-title="chart.indicators">
         <svg viewBox="0 0 24 24"><path d="M3 16l4-6 3 3 4-7 3 5 4-4"/><path d="M3 20h18"/></svg>
       </button>
     </div>
@@ -94,28 +94,28 @@
 
     <!-- Kreslení: klepnutí nástroj zapne, pak se prstem posouvá kříž. -->
     <div class="draw-toolbar" id="drawToolbar" role="toolbar" aria-label="Kreslení">
-      <button type="button" class="tool-btn active" data-tool="" aria-label="Kurzor" title="Kurzor">
+      <button type="button" class="tool-btn active" data-tool="" data-i18n-aria="chart.cursor" data-i18n-title="chart.cursor">
         <svg viewBox="0 0 24 24"><path d="M5 3l14 8-6 1.5L10 19z"/></svg>
       </button>
-      <button type="button" class="tool-btn" data-tool="segment" aria-label="Úsečka" title="Úsečka">
+      <button type="button" class="tool-btn" data-tool="segment" data-i18n-aria="tool.segment" data-i18n-title="tool.segment">
         <svg viewBox="0 0 24 24"><path d="M6 18L18 6"/><circle cx="6" cy="18" r="2.2"/><circle cx="18" cy="6" r="2.2"/></svg>
       </button>
-      <button type="button" class="tool-btn" data-tool="horizontalStraightLine" aria-label="Vodorovná úroveň" title="Vodorovná úroveň">
+      <button type="button" class="tool-btn" data-tool="horizontalStraightLine" data-i18n-aria="tool.horizontalStraightLine" data-i18n-title="tool.horizontalStraightLine">
         <svg viewBox="0 0 24 24"><path d="M3 12h18"/><circle cx="12" cy="12" r="2.2"/></svg>
       </button>
-      <button type="button" class="tool-btn" data-tool="rayLine" aria-label="Polopřímka" title="Polopřímka">
+      <button type="button" class="tool-btn" data-tool="rayLine" data-i18n-aria="tool.rayLine" data-i18n-title="tool.rayLine">
         <svg viewBox="0 0 24 24"><path d="M5 19L20 4"/><circle cx="5" cy="19" r="2.2"/></svg>
       </button>
-      <button type="button" class="tool-btn" data-tool="fibonacciLine" aria-label="Fibonacci" title="Fibonacci">
+      <button type="button" class="tool-btn" data-tool="fibonacciLine" data-i18n-aria="tool.fibonacciLine" data-i18n-title="tool.fibonacciLine">
         <svg viewBox="0 0 24 24"><path d="M3 5h18M3 10h18M3 15h18M3 20h18"/></svg>
       </button>
-      <button type="button" class="tool-btn" id="magnetBtn" aria-label="Přichytávat k cenám" title="Přichytávat k cenám">
+      <button type="button" class="tool-btn" id="magnetBtn" data-i18n-aria="chart.magnet" data-i18n-title="chart.magnet">
         <svg viewBox="0 0 24 24"><path d="M6 4v8a6 6 0 0012 0V4"/><path d="M6 9h5M13 9h5"/></svg>
       </button>
-      <button type="button" class="tool-btn" id="moreToolsBtn" aria-label="Další nástroje" title="Další nástroje">
+      <button type="button" class="tool-btn" id="moreToolsBtn" data-i18n-aria="chart.moreTools" data-i18n-title="chart.moreTools">
         <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
       </button>
-      <button type="button" class="tool-btn" id="eraseBtn" aria-label="Smazat kresby" title="Smazat kresby">
+      <button type="button" class="tool-btn" id="eraseBtn" data-i18n-aria="chart.eraseDrawings" data-i18n-title="chart.eraseDrawings">
         <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
       </button>
     </div>
@@ -126,16 +126,16 @@
     <!-- Vysouvací nabídky přes graf -->
     <div id="sheetDraw" class="sheet" hidden>
       <div class="sheet-head">
-        <span>Další nástroje</span>
-        <button type="button" class="icon-btn" data-close="sheetDraw" aria-label="Zavřít">✕</button>
+        <span data-i18n="chart.moreTools">More tools</span>
+        <button type="button" class="icon-btn" data-close="sheetDraw" data-i18n-aria="action.close">✕</button>
       </div>
       <div class="sheet-body" id="drawList"></div>
     </div>
 
     <div id="sheetIndicators" class="sheet" hidden>
       <div class="sheet-head">
-        <span>Indikátory</span>
-        <button type="button" class="icon-btn" data-close="sheetIndicators" aria-label="Zavřít">✕</button>
+        <span data-i18n="chart.indicators">Indicators</span>
+        <button type="button" class="icon-btn" data-close="sheetIndicators" data-i18n-aria="action.close">✕</button>
       </div>
       <div class="sheet-body" id="indicatorList"></div>
     </div>
@@ -144,50 +144,55 @@
   <!-- ===== Nastavení ===== -->
   <section id="viewSettings" hidden>
     <div class="card">
-      <h2>Připojení k Bybitu</h2>
-      <p class="hint">
-        Zadej <strong>read-only</strong> API klíč. Klíč i secret se ukládají
-        pouze do paměti tohoto telefonu, nikam se neodesílají a nejsou v repozitáři.
-        Podpis požadavků se počítá přímo v zařízení.
+      <h2 data-i18n="settings.title">Bybit connection</h2>
+      <p class="hint" data-i18n="settings.hint">
+        Enter a read-only API key. The key and secret are stored on this phone
+        only, are never sent anywhere else and are not in the repository.
+        Requests are signed on the device itself.
       </p>
 
-      <label for="apiKey">API key</label>
+      <label for="apiKey" data-i18n="settings.apiKey">API key</label>
       <input type="text" id="apiKey" autocomplete="off" autocapitalize="off"
              autocorrect="off" spellcheck="false" inputmode="text"
-             placeholder="např. AbCdEf123456">
+             data-i18n-ph="settings.apiKeyPlaceholder" placeholder="e.g. AbCdEf123456">
 
-      <label for="apiSecret">API secret</label>
+      <label for="apiSecret" data-i18n="settings.apiSecret">API secret</label>
       <div class="secret-row">
         <input type="password" id="apiSecret" autocomplete="off" autocapitalize="off"
                autocorrect="off" spellcheck="false">
-        <button type="button" id="revealBtn" class="icon-btn" aria-label="Zobrazit secret">👁</button>
+        <button type="button" id="revealBtn" class="icon-btn" data-i18n-aria="settings.revealSecret">👁</button>
       </div>
 
       <div class="button-row">
-        <button type="button" id="saveBtn" class="primary-btn">Uložit a připojit</button>
-        <button type="button" id="testBtn" class="secondary-btn">Vyzkoušet</button>
+        <button type="button" id="saveBtn" class="primary-btn" data-i18n="settings.save">Save and connect</button>
+        <button type="button" id="testBtn" class="secondary-btn" data-i18n="settings.test">Test</button>
       </div>
 
       <p id="settingsMsg" class="settings-msg" hidden></p>
 
       <hr>
 
-      <button type="button" id="clearBtn" class="danger-btn">Smazat klíče z telefonu</button>
+      <button type="button" id="clearBtn" class="danger-btn" data-i18n="settings.clear">Delete keys from this phone</button>
+
+      <hr>
+
+      <label for="language" data-i18n="settings.language">Language</label>
+      <select id="language" class="select-field"></select>
 
       <details class="help">
-        <summary>Jak vytvořit read-only klíč na Bybitu</summary>
+        <summary data-i18n="settings.helpTitle">How to create a read-only key on Bybit</summary>
         <ol>
-          <li>Bybit → profil → <em>API</em> → <em>Create New Key</em>.</li>
-          <li>Zvol <em>System-generated API Keys</em>.</li>
-          <li>Oprávnění: jen pro čtení, zaškrtni <em>Positions</em> (a <em>Orders</em> kvůli dalšímu checkpointu).</li>
-          <li>Obchodování a výběry nezaškrtávej.</li>
-          <li>IP omezení nech prázdné — mobilní síť mění IP adresu.</li>
+          <li data-i18n="settings.help1">Bybit → profile → API → Create New Key.</li>
+          <li data-i18n="settings.help2">Choose System-generated API Keys.</li>
+          <li data-i18n="settings.help3">Permissions: read-only, tick Positions (and Orders for the chart).</li>
+          <li data-i18n="settings.help4">Leave trading and withdrawals unticked.</li>
+          <li data-i18n="settings.help5">Leave the IP restriction empty — mobile networks change IP.</li>
         </ol>
       </details>
     </div>
 
     <div class="button-row">
-      <button type="button" id="backBtn" class="secondary-btn">Zpět na pozice</button>
+      <button type="button" id="backBtn" class="secondary-btn" data-i18n="action.back">Back to positions</button>
     </div>
   </section>
 </main>

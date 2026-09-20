@@ -1,8 +1,8 @@
 {
   "name": "Spacer Perp Desk",
   "short_name": "Perp Desk",
-  "description": "Monitoring otevřených perpetual pozic na Bybitu",
-  "lang": "cs",
+  "description": "Monitor your open Bybit perpetual positions",
+  "lang": "en",
   "dir": "ltr",
   "start_url": "./",
   "scope": "./",

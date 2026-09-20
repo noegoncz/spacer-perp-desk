@@ -1,4 +1,9 @@
-/** Formátování čísel pro české UI. */
+/**
+ * Formátování čísel. Řídí se zvoleným jazykem, ne nastavením telefonu —
+ * v anglické verzi má být 1,234.56, v české 1 234,56.
+ */
+
+import { getLocale } from './i18n.js';
 
 /**
  * Krypto ceny mají rozsah od 100 000 (BTC) po 0,000001 (memecoiny), takže
@@ -17,7 +22,7 @@ export function priceDecimals(value) {
 
 export function formatPrice(value) {
   if (value === null || value === undefined || !Number.isFinite(value)) return '—';
-  return value.toLocaleString('cs-CZ', {
+  return value.toLocaleString(getLocale(), {
     minimumFractionDigits: priceDecimals(value),
     maximumFractionDigits: priceDecimals(value),
   });
@@ -27,7 +32,7 @@ export function formatSize(value) {
   if (!Number.isFinite(value)) return '—';
   const abs = Math.abs(value);
   const decimals = abs >= 1000 ? 0 : abs >= 1 ? 3 : 6;
-  return value.toLocaleString('cs-CZ', {
+  return value.toLocaleString(getLocale(), {
     minimumFractionDigits: 0,
     maximumFractionDigits: decimals,
   });
@@ -35,7 +40,7 @@ export function formatSize(value) {
 
 export function formatUsd(value) {
   if (!Number.isFinite(value)) return '—';
-  return value.toLocaleString('cs-CZ', {
+  return value.toLocaleString(getLocale(), {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
@@ -51,7 +56,7 @@ export function formatSignedUsd(value) {
 export function formatPercent(value) {
   if (!Number.isFinite(value)) return '—';
   const sign = value > 0 ? '+' : value < 0 ? '−' : '';
-  return `${sign}${Math.abs(value).toLocaleString('cs-CZ', {
+  return `${sign}${Math.abs(value).toLocaleString(getLocale(), {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })} %`;
@@ -59,7 +64,7 @@ export function formatPercent(value) {
 
 export function formatTime(timestamp) {
   if (!timestamp) return '—';
-  return new Date(timestamp).toLocaleTimeString('cs-CZ', {
+  return new Date(timestamp).toLocaleTimeString(getLocale(), {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',

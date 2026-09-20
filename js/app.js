@@ -1,7 +1,8 @@
 /** Orchestrace: propojuje modul Bybitu, UI a lifecycle service workeru. */
 
 import { BybitClient } from './bybit.js';
-import { createPriceChart, NASTROJE, INDIKATORY } from './chart.js';
+import { createPriceChart, NASTROJE, INDIKATORY, nazevNastroje, nazevIndikatoru } from './chart.js';
+import { t, setLanguage, applyStaticTexts, JAZYKY } from './i18n.js';
 import { priceDecimals } from './format.js';
 import * as store from './store.js';
 import * as ui from './ui.js';
@@ -47,7 +48,7 @@ const client = new BybitClient({
   onError(message) {
     ui.showError(message);
     if (lastPositions.length === 0) {
-      ui.showPlaceholder('Pozice se nepodařilo načíst.', 'Otevřít nastavení');
+      ui.showPlaceholder(t('positions.failed'), t('action.openSettings'));
     }
   },
 });
@@ -55,6 +56,9 @@ const client = new BybitClient({
 /* ---------- start ---------- */
 
 function boot() {
+  setLanguage(store.loadLanguage());
+  applyStaticTexts();
+  postavVyberJazyka();
   ui.renderVersion(self.APP_VERSION, self.APP_BUILD);
   el('hideBtn').classList.toggle('active', hideAmounts);
   el('magnetBtn').classList.toggle('active', magnetZapnut);
@@ -67,16 +71,13 @@ async function connectIfPossible() {
   const { apiKey, apiSecret } = store.loadCredentials();
 
   if (!apiKey || !apiSecret) {
-    ui.showPlaceholder(
-      'Nejdřív zadej read-only API klíč z Bybitu. Uloží se jen do tohoto telefonu.',
-      'Otevřít nastavení',
-    );
+    ui.showPlaceholder(t('positions.noKeys'), t('action.openSettings'));
     ui.showView('positions');
     return;
   }
 
   client.setCredentials(apiKey, apiSecret);
-  ui.showPlaceholder('Načítám pozice…');
+  ui.showPlaceholder(t('positions.loading'));
   await client.start();
 }
 
@@ -133,7 +134,7 @@ function wireEvents() {
       chart.deleteSelected();
       return;
     }
-    if (!confirm('Smazat všechny kresby u tohoto páru?')) return;
+    if (!confirm(t('chart.confirmEraseAll'))) return;
     chart?.clearDrawings();
     vyberNastroj('');
   });
@@ -161,6 +162,35 @@ function wireEvents() {
   });
 }
 
+/** Přepnutí jazyka překreslí vše — texty jsou i v už vykreslených prvcích. */
+function postavVyberJazyka() {
+  const select = el('language');
+  select.replaceChildren(
+    ...JAZYKY.map((j) => {
+      const opt = document.createElement('option');
+      opt.value = j.id;
+      opt.textContent = j.nazev;
+      return opt;
+    }),
+  );
+  select.value = store.loadLanguage();
+  select.addEventListener('change', () => {
+    store.saveLanguage(select.value);
+    setLanguage(select.value);
+    applyStaticTexts();
+    ui.renderPositions(lastPositions, hideAmounts, openChart);
+    ui.renderStatus(client.status);
+    if (chart) {
+      postavNabidky();
+      if (chartPosition) {
+        ui.renderChartHeader(chartPosition, hideAmounts);
+        ui.renderChartInfo(chartPosition, hideAmounts);
+        applyChartLines(true);
+      }
+    }
+  });
+}
+
 function openSettings() {
   const { apiKey, apiSecret } = store.loadCredentials();
   el('apiKey').value = apiKey;
@@ -180,21 +210,21 @@ function readForm() {
 async function testCredentials() {
   const { apiKey, apiSecret } = readForm();
   if (!apiKey || !apiSecret) {
-    ui.showSettingsMessage('Vyplň API key i secret.', false);
+    ui.showSettingsMessage(t('settings.fillBoth'), false);
     return;
   }
 
   const btn = el('testBtn');
   btn.disabled = true;
-  btn.textContent = 'Zkouším…';
+  btn.textContent = t('settings.testing');
   ui.clearSettingsMessage();
 
   const result = await client.testCredentials(apiKey, apiSecret);
 
   btn.disabled = false;
-  btn.textContent = 'Vyzkoušet';
+  btn.textContent = t('settings.test');
   ui.showSettingsMessage(
-    result.ok ? 'Spojení funguje, klíč je platný.' : result.message,
+    result.ok ? t('settings.ok') : result.message,
     result.ok,
   );
 }
@@ -202,18 +232,18 @@ async function testCredentials() {
 async function saveAndConnect() {
   const { apiKey, apiSecret } = readForm();
   if (!apiKey || !apiSecret) {
-    ui.showSettingsMessage('Vyplň API key i secret.', false);
+    ui.showSettingsMessage(t('settings.fillBoth'), false);
     return;
   }
 
   const btn = el('saveBtn');
   btn.disabled = true;
-  btn.textContent = 'Připojuji…';
+  btn.textContent = t('settings.saving');
 
   const result = await client.testCredentials(apiKey, apiSecret);
 
   btn.disabled = false;
-  btn.textContent = 'Uložit a připojit';
+  btn.textContent = t('settings.save');
 
   if (!result.ok) {
     ui.showSettingsMessage(result.message, false);
@@ -225,20 +255,20 @@ async function saveAndConnect() {
   client.stop();
   client.setCredentials(apiKey, apiSecret);
   ui.clearError();
-  ui.showPlaceholder('Načítám pozice…');
+  ui.showPlaceholder(t('positions.loading'));
   ui.showView('positions');
   await client.start();
 }
 
 function clearCredentials() {
-  if (!confirm('Opravdu smazat API klíče z tohoto telefonu?')) return;
+  if (!confirm(t('settings.confirmClear'))) return;
   client.stop();
   store.clearCredentials();
   lastPositions = [];
   el('apiKey').value = '';
   el('apiSecret').value = '';
-  ui.showSettingsMessage('Klíče smazány.', true);
-  ui.showPlaceholder('Nejsou uložené žádné klíče.', 'Otevřít nastavení');
+  ui.showSettingsMessage(t('settings.cleared'), true);
+  ui.showPlaceholder(t('positions.keysCleared'), t('action.openSettings'));
 }
 
 /* ---------- graf ---------- */
@@ -375,7 +405,7 @@ function postavNabidky() {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'sheet-item';
-      btn.textContent = n.nazev;
+      btn.textContent = nazevNastroje(n.id);
       btn.addEventListener('click', () => {
         zavriNabidky();
         vyberNastroj(n.id);
@@ -390,7 +420,7 @@ function postavNabidky() {
       btn.type = 'button';
       btn.className = 'sheet-item';
       btn.dataset.indicator = i.id;
-      btn.textContent = i.nazev;
+      btn.textContent = nazevIndikatoru(i.id);
       btn.addEventListener('click', () => chart.toggleIndicator(i.id, i.vlastniPanel));
       return btn;
     }),
@@ -446,20 +476,20 @@ function buildChartLines(position, orders) {
   lines.push({
     price: position.entry,
     color: BARVA_CARY.vstup,
-    title: 'Vstup',
+    title: t('line.entry'),
     solid: true,
     width: 2,
   });
 
   if (position.liq) {
-    lines.push({ price: position.liq, color: BARVA_CARY.likvidace, title: 'Likvidace' });
+    lines.push({ price: position.liq, color: BARVA_CARY.likvidace, title: t('line.liquidation') });
   }
   // Úrovně platné pro celou pozici mají holý popisek, bez čísla.
   if (position.stopLoss) {
-    lines.push({ price: position.stopLoss, color: BARVA_CARY.sl, title: 'SL' });
+    lines.push({ price: position.stopLoss, color: BARVA_CARY.sl, title: t('line.stopLoss') });
   }
   if (position.takeProfit) {
-    lines.push({ price: position.takeProfit, color: BARVA_CARY.tp, title: 'TP' });
+    lines.push({ price: position.takeProfit, color: BARVA_CARY.tp, title: t('line.takeProfit') });
   }
 
   const tp = [];
@@ -485,16 +515,21 @@ function buildChartLines(position, orders) {
   const podleVzdalenosti = (a, b) =>
     Math.abs(a.price - position.entry) - Math.abs(b.price - position.entry);
 
-  const podil = (o) =>
-    position.size > 0 && o.qty > 0 && o.qty < position.size
-      ? ` (${Math.round((o.qty / position.size) * 100)} %)`
-      : '';
+  // Částečná úroveň nese v popisku podíl z pozice, celá jen holé TP/SL.
+  const popisek = (zaklad, o) => {
+    const castecny = position.size > 0 && o.qty > 0 && o.qty < position.size;
+    if (!castecny) return zaklad;
+    return t('line.withShare', {
+      label: zaklad,
+      percent: Math.round((o.qty / position.size) * 100),
+    });
+  };
 
   tp.sort(podleVzdalenosti).forEach((o, i) => {
     lines.push({
       price: o.price,
       color: BARVA_CARY.tp,
-      title: `TP${i + 1}${podil(o)}`,
+      title: popisek(t('line.takeProfitN', { n: i + 1 }), o),
       dotted: true,
     });
   });
@@ -503,13 +538,13 @@ function buildChartLines(position, orders) {
     lines.push({
       price: o.price,
       color: BARVA_CARY.sl,
-      title: `SL${i + 1}${podil(o)}`,
+      title: popisek(t('line.stopLossN', { n: i + 1 }), o),
       dotted: true,
     });
   });
 
   limitky.forEach((o) => {
-    lines.push({ price: o.price, color: BARVA_CARY.prikaz, title: 'Limit', dotted: true });
+    lines.push({ price: o.price, color: BARVA_CARY.prikaz, title: t('line.limit'), dotted: true });
   });
 
   return lines;

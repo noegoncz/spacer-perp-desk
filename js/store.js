@@ -86,6 +86,15 @@ export function saveMagnet(value) {
   write('perpdesk.magnet', value ? '1' : '0');
 }
 
+/** Jazyk aplikace. Výchozí je angličtina, ne nastavení prohlížeče. */
+export function loadLanguage() {
+  return read('perpdesk.language') || 'en';
+}
+
+export function saveLanguage(id) {
+  write('perpdesk.language', id);
+}
+
 /** Skrytí částek — ať se dá koukat do telefonu na veřejnosti. */
 export function loadHideAmounts() {
   return read(KEY_HIDE) === '1';

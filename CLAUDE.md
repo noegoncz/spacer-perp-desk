@@ -6,9 +6,8 @@ Mobilní PWA pro monitoring otevřených perpetual pozic na Bybitu. Náhrada za 
 
 - **Jediné cílové zařízení:** Samsung Galaxy Z Fold 5 (Android, Chrome).
   Neřešíme desktop ani iOS, neřešíme starší prohlížeče.
-- **Jazyk:** komunikace s uživatelem **česky**. UI aplikace se překlápí na
-  **angličtinu jako výchozí** (checkpoint 4), čeština zůstane jako volitelná
-  mutace. Kód a komentáře **zůstávají česky**.
+- **Jazyk:** komunikace s uživatelem **česky**. UI aplikace je **anglicky**
+  (výchozí), čeština je volitelná mutace. Kód a komentáře **zůstávají česky**.
 - **Popisek ikony na ploše:** `Perp Desk` (pole `short_name` v manifestu).
 - **Režim:** read-only monitoring. Aplikace nikdy neodesílá obchodní příkazy.
   API klíč se používá výhradně read-only.
@@ -44,7 +43,10 @@ css/style.css
 js/version.js           # classic script: self.APP_VERSION, self.APP_BUILD
 js/bybit.js             # ⚠ jediný modul, který mluví s Bybitem
 js/store.js             # localStorage: klíče + nastavení
-js/format.js            # formátování čísel, cen, časů
+js/format.js            # formátování čísel, cen, časů (podle jazyka)
+js/i18n.js              # ⚠ překlady; texty nikdy přímo v kódu ani v HTML
+js/i18n/en.js           # anglický slovník — základ
+js/i18n/cs.js           # český slovník
 js/ui.js                # vykreslování DOM
 js/chart.js             # obal nad knihovnou grafu (KLineChart), o Bybitu neví
 js/draw.js              # dotykové kreslení se zaměřovacím křížem
@@ -297,7 +299,7 @@ endpoint nemá, takže ze svíček (OHLCV) půjde jen **odhad** — objem každ�
 rozprostřený mezi její minimum a maximum. Dělá to tak většina retailových
 nástrojů, ale přesné to není a uživatel o tom ví.
 
-### 4) Angličtina jako základ, texty stranou
+### ✅ 4) Angličtina jako základ, texty stranou
 
 Aplikace vznikla česky, ale **výchozím jazykem má být angličtina** — kdyby se
 někdy prodávala, čeština by byla ta okrajová mutace, ne naopak.
@@ -310,6 +312,24 @@ někdy prodávala, čeština by byla ta okrajová mutace, ne naopak.
 - Výchozí angličtina, čeština volitelně; jazyk podle nastavení, ne podle
   prohlížeče, ať se dá přepnout.
 - **Kód a komentáře zůstávají česky** — píše se pro uživatele, ne pro překlad.
+
+#### Jak to funguje
+
+`t('klic')` vrátí text, `t('klic', { n: 1 })` dosadí `{n}` v šabloně.
+Statické texty v HTML nesou atributy `data-i18n`, `data-i18n-title`,
+`data-i18n-aria` a `data-i18n-ph`; `applyStaticTexts()` je při startu a po
+změně jazyka přepíše. Jako záložní obsah je v HTML rovnou **anglický text**,
+aby stránka dávala smysl i kdyby JavaScript selhal.
+
+Chybí-li klíč ve zvoleném jazyce, vezme se anglický; chybí-li i tam, vrátí se
+**samotný klíč**, takže je v UI hned vidět, co se zapomnělo doplnit.
+
+Formátování čísel a časů se řídí jazykem (`getLocale()`), ne nastavením
+telefonu — anglicky 1,234.56, česky 1 234,56.
+
+⚠ **Nový text nikdy nepiš přímo do kódu ani do HTML.** Přidej klíč do
+`en.js` i `cs.js`. Kontrola, že se na to nezapomnělo: hledání řetězců
+s diakritikou v `js/*.js` mimo komentáře musí vracet prázdno.
 
 ### 5) Layout pro Fold
 
