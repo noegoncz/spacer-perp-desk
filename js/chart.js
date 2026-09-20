@@ -5,7 +5,26 @@
  * Díky tomu jde knihovna vyměnit bez zásahu do zbytku aplikace. Tahle vrstva
  * se už jednou vyměňovala (dřív lightweight-charts) a stálo to jen tenhle
  * soubor, takže se to vyplácí držet.
+ *
+ * Kreslení **nepoužívá** vestavěné kreslení knihovny. To klade body přímo pod
+ * prst, což je na telefonu nepoužitelné. Místo toho je v js/draw.js vlastní
+ * ovládání se zaměřovacím křížem.
  */
+
+import { createTouchDrawing } from './draw.js';
+import { formatPrice } from './format.js';
+
+/** Datum a čas pro cenovku u kříže — stejné pásmo jako osa grafu. */
+function formatCas(timestamp) {
+  if (!timestamp) return '';
+  return new Date(timestamp).toLocaleString('cs-CZ', {
+    day: 'numeric',
+    month: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Europe/Prague',
+  });
+}
 
 const K = () => window.klinecharts;
 
@@ -16,6 +35,7 @@ const BARVY = {
   okraj: '#253141',
   rust: '#16c784',
   pokles: '#ea3943',
+  kresba: '#4c9aff',
 };
 
 /** Bybit používá vlastní kódy intervalů, knihovna potřebuje jiný tvar. */
@@ -26,24 +46,26 @@ const OBDOBI = {
   60: { type: 'hour', span: 1 },
   240: { type: 'hour', span: 4 },
   D: { type: 'day', span: 1 },
+  W: { type: 'week', span: 1 },
+  M: { type: 'month', span: 1 },
 };
 
-/** Kreslicí nástroje nabízené uživateli, z 16 vestavěných. */
+/**
+ * Kreslicí nástroje. `body` je počet bodů, které uživatel klade křížem —
+ * musí sedět s tím, co knihovna u daného tvaru očekává.
+ */
 export const NASTROJE = [
-  { id: 'segment', nazev: 'Úsečka' },
-  { id: 'rayLine', nazev: 'Polopřímka' },
-  { id: 'straightLine', nazev: 'Přímka' },
-  { id: 'horizontalStraightLine', nazev: 'Vodorovná úroveň' },
-  { id: 'verticalStraightLine', nazev: 'Svislá čára' },
-  { id: 'priceLine', nazev: 'Cenová čára' },
-  { id: 'priceChannelLine', nazev: 'Cenový kanál' },
-  { id: 'parallelStraightLine', nazev: 'Rovnoběžky' },
-  { id: 'fibonacciLine', nazev: 'Fibonacci' },
-  { id: 'simpleAnnotation', nazev: 'Poznámka' },
+  { id: 'segment', nazev: 'Úsečka', body: 2 },
+  { id: 'rayLine', nazev: 'Polopřímka', body: 2 },
+  { id: 'straightLine', nazev: 'Přímka', body: 2 },
+  { id: 'horizontalStraightLine', nazev: 'Vodorovná úroveň', body: 1 },
+  { id: 'verticalStraightLine', nazev: 'Svislá čára', body: 1 },
+  { id: 'priceLine', nazev: 'Cenová čára', body: 1 },
+  { id: 'priceChannelLine', nazev: 'Cenový kanál', body: 3 },
+  { id: 'parallelStraightLine', nazev: 'Rovnoběžky', body: 3 },
+  { id: 'fibonacciLine', nazev: 'Fibonacci', body: 2 },
+  { id: 'simpleAnnotation', nazev: 'Poznámka', body: 1 },
 ];
-
-/** ID hlavního panelu se svíčkami — sem jdou indikátory bez vlastního panelu. */
-const HLAVNI_PANEL = 'candle_pane';
 
 /** Indikátory nabízené uživateli, z 27 vestavěných. */
 export const INDIKATORY = [
@@ -57,7 +79,7 @@ export const INDIKATORY = [
   { id: 'SAR', nazev: 'Parabolic SAR', vlastniPanel: false },
 ];
 
-/** Skupiny overlayů: čáry pozice se nesmí míchat s kresbami uživatele. */
+const HLAVNI_PANEL = 'candle_pane';
 const SKUPINA_POZICE = 'pozice';
 const SKUPINA_KRESBY = 'kresby';
 
@@ -134,24 +156,35 @@ function styly() {
       horizontal: { line: { color: BARVY.text }, text: { backgroundColor: BARVY.okraj } },
       vertical: { line: { color: BARVY.text }, text: { backgroundColor: BARVY.okraj } },
     },
-    indicator: {
-      tooltip: { text: { color: BARVY.text, size: 11 } },
+    indicator: { tooltip: { text: { color: BARVY.text, size: 11 } } },
+    overlay: {
+      line: { color: BARVY.kresba },
+      point: { color: BARVY.kresba, borderColor: 'rgba(76,154,255,0.25)' },
+      text: { color: BARVY.kresba },
     },
   };
 }
 
-export function createPriceChart(container, handlers = {}) {
+const STYL_KRESBY = {
+  line: { color: BARVY.kresba, size: 1.5 },
+  text: { color: BARVY.kresba },
+  polygon: { color: 'rgba(76,154,255,0.12)' },
+};
+
+export function createPriceChart(container, layer, handlers = {}) {
   registrovatCaruPozice();
 
   const chart = K().init(container, { styles: styly() });
   chart.setTimezone('Europe/Prague');
-  chart.setLocale('en-US'); // knihovna češtinu nemá; ovlivňuje jen popisky v tooltipu
+  chart.setLocale('en-US'); // knihovna češtinu nemá; ovlivňuje popisky v tooltipu
 
   let idCarPozice = [];
   const aktivniIndikatory = new Set();
   let zivyCallback = null;
   let aktualniLoader = null;
   let magnet = false;
+  let rozdelanyNastroj = null;
+  let upravovanaKresba = null;
 
   /**
    * Obnova kreseb nejdřív maže staré overlaye a každé smazání hlásí změnu.
@@ -163,14 +196,118 @@ export function createPriceChart(container, handlers = {}) {
     if (!tichaZmena) handlers.onDrawingsChanged?.();
   };
 
-  const observer = new ResizeObserver(() => chart.resize());
+  /* ---------- převody souřadnic ---------- */
+
+  /**
+   * Kreslicí vrstva se posadí přesně na plochu se svíčkami (bez cenové osy
+   * a bez panelů indikátorů). Díky tomu jsou její pixely totožné s těmi,
+   * se kterými počítá knihovna, a netřeba nic přepočítávat.
+   */
+  function umistiVrstvu() {
+    const b = chart.getSize(HLAVNI_PANEL, 'main');
+    if (!b) return;
+    layer.style.left = `${b.left}px`;
+    layer.style.top = `${b.top}px`;
+    layer.style.width = `${b.width}px`;
+    layer.style.height = `${b.height}px`;
+  }
+
+  const toPixel = (bod) => {
+    const c = chart.convertToPixel(
+      { timestamp: bod.timestamp, value: bod.value },
+      { paneId: HLAVNI_PANEL },
+    );
+    const v = Array.isArray(c) ? c[0] : c;
+    return { x: v?.x ?? NaN, y: v?.y ?? NaN };
+  };
+
+  const fromPixel = (x, y) => {
+    const p = chart.convertFromPixel([{ x, y }], { paneId: HLAVNI_PANEL });
+    const bod = Array.isArray(p) ? p[0] : p;
+    return { timestamp: bod?.timestamp, value: bod?.value };
+  };
+
+  /* ---------- kreslení prstem ---------- */
+
+  const kresleni = createTouchDrawing({
+    layer,
+    toPixel,
+    fromPixel,
+    formatPrice,
+    formatTime: formatCas,
+    onCreate: (body) => {
+      chart.createOverlay({
+        name: rozdelanyNastroj,
+        groupId: SKUPINA_KRESBY,
+        points: body,
+        lock: true, // posouvá se jen přes naše úchyty, ne prstem po čáře
+        mode: magnet ? 'weak_magnet' : 'normal',
+        styles: STYL_KRESBY,
+      });
+      rozdelanyNastroj = null;
+      ohlasZmenu();
+      handlers.onDrawEnd?.();
+    },
+    onEdit: (index, bod) => {
+      if (!upravovanaKresba) return;
+      const body = [...upravovanaKresba.points];
+      body[index] = bod;
+      chart.overrideOverlay({ id: upravovanaKresba.id, points: body });
+      upravovanaKresba = chart.getOverlays({ id: upravovanaKresba.id })[0] ?? upravovanaKresba;
+      ohlasZmenu();
+    },
+    onCancel: () => {
+      rozdelanyNastroj = null;
+      upravovanaKresba = null;
+      handlers.onDrawEnd?.();
+    },
+  });
+
+  /**
+   * Klepnutí na hotovou kresbu ji vezme do úprav. Vrstva je v klidu průchozí,
+   * takže se posloucha přímo na grafu — a tažení se od klepnutí pozná podle
+   * toho, o kolik se prst posunul.
+   */
+  let dotyk = null;
+  container.addEventListener(
+    'pointerdown',
+    (e) => {
+      if (kresleni.isActive()) return;
+      dotyk = { x: e.clientX, y: e.clientY };
+    },
+    { passive: true },
+  );
+  container.addEventListener(
+    'pointerup',
+    (e) => {
+      if (!dotyk || kresleni.isActive()) return;
+      const posun = Math.hypot(e.clientX - dotyk.x, e.clientY - dotyk.y);
+      dotyk = null;
+      if (posun > 8) return; // uživatel posouval graf, ne vybíral kresbu
+
+      const r = layer.getBoundingClientRect();
+      const mx = e.clientX - r.left;
+      const my = e.clientY - r.top;
+      if (mx < 0 || my < 0 || mx > r.width || my > r.height) return;
+
+      const kresby = chart.getOverlays({ groupId: SKUPINA_KRESBY });
+      const index = kresleni.hitTest(mx, my, kresby);
+      if (index >= 0) {
+        upravovanaKresba = kresby[index];
+        kresleni.beginEdit(upravovanaKresba.points);
+      }
+    },
+    { passive: true },
+  );
+
+  const observer = new ResizeObserver(() => {
+    chart.resize();
+    umistiVrstvu();
+    kresleni.redraw();
+  });
   observer.observe(container);
 
   return {
-    /**
-     * Loader si data tahá sám, když chart dostane symbol a období.
-     * `nactiSvice(interval)` vrací pole svíček, o zbytek se stará knihovna.
-     */
     setLoader(nactiSvice) {
       aktualniLoader = nactiSvice;
       chart.setDataLoader({
@@ -185,14 +322,13 @@ export function createPriceChart(container, handlers = {}) {
           } catch {
             callback([], false);
           }
+          setTimeout(umistiVrstvu, 0);
         },
         subscribeBar: ({ callback }) => {
           zivyCallback = callback;
-          handlers.onSubscribe?.();
         },
         unsubscribeBar: () => {
           zivyCallback = null;
-          handlers.onUnsubscribe?.();
         },
       });
     },
@@ -205,7 +341,6 @@ export function createPriceChart(container, handlers = {}) {
       chart.setPeriod(OBDOBI[interval] || OBDOBI['15']);
     },
 
-    /** Živá svíčka z WebSocketu. */
     updateCandle(bar) {
       zivyCallback?.(bar);
     },
@@ -213,13 +348,13 @@ export function createPriceChart(container, handlers = {}) {
     /* ---------- čáry pozice ---------- */
 
     setPositionLines(lines) {
-      idCarPozice.forEach((id) => chart.removeOverlay(id));
+      idCarPozice.forEach((id) => chart.removeOverlay({ id }));
       idCarPozice = lines.map((l) =>
         chart.createOverlay({
           name: 'positionLine',
           groupId: SKUPINA_POZICE,
           points: [{ value: l.price }],
-          lock: true, // uživatel jimi nesmí hýbat, patří pozici
+          lock: true,
           extendData: {
             color: l.color,
             title: l.title,
@@ -229,53 +364,33 @@ export function createPriceChart(container, handlers = {}) {
           },
         }),
       );
+      umistiVrstvu();
     },
 
     /* ---------- kreslení ---------- */
 
-    /**
-     * Spustí kreslení. `continuous` znamená jedno tažení prstem místo
-     * klepání bod po bodu — výchozí `step` je na dotykovém displeji
-     * skoro nepoužitelný, protože klepnutí se často vyhodnotí jako posun
-     * grafu a bod se vůbec nezapíše.
-     */
     startDrawing(nastroj) {
-      chart.createOverlay({
-        name: nastroj,
-        groupId: SKUPINA_KRESBY,
-        drawingMode: 'continuous',
-        mode: magnet ? 'weak_magnet' : 'normal',
-        styles: { line: { color: '#4c9aff' }, text: { color: '#4c9aff' } },
-        onDrawEnd: () => {
-          ohlasZmenu();
-          handlers.onDrawEnd?.();
-          return false;
-        },
-        onRemoved: () => {
-          ohlasZmenu();
-          return false;
-        },
-      });
+      const definice = NASTROJE.find((n) => n.id === nastroj);
+      if (!definice) return;
+      rozdelanyNastroj = nastroj;
+      upravovanaKresba = null;
+      umistiVrstvu();
+      kresleni.beginCreate(definice.body);
     },
 
-    /** Zrušit rozdělané kreslení (uživatel přepnul nástroj nebo dal kurzor). */
     cancelDrawing() {
-      chart
-        .getOverlays({ groupId: SKUPINA_KRESBY })
-        .filter((o) => o.currentStep !== -1)
-        .forEach((o) => chart.removeOverlay({ id: o.id }));
+      if (kresleni.isActive()) kresleni.cancel();
+      rozdelanyNastroj = null;
+      upravovanaKresba = null;
     },
 
-    /** Přichytávání k cenám svíček — na dotyku hodně pomáhá přesnosti. */
     setMagnet(zapnuto) {
       magnet = zapnuto;
     },
 
-    /** Kresby uživatele v podobě, která jde uložit do telefonu. */
     getDrawings() {
       return chart
-        .getOverlays()
-        .filter((o) => o.groupId === SKUPINA_KRESBY)
+        .getOverlays({ groupId: SKUPINA_KRESBY })
         .map((o) => ({ name: o.name, points: o.points }));
     },
 
@@ -283,21 +398,13 @@ export function createPriceChart(container, handlers = {}) {
       tichaZmena = true;
       try {
         chart.removeOverlay({ groupId: SKUPINA_KRESBY });
-
         (kresby || []).forEach((k) => {
           chart.createOverlay({
             name: k.name,
             groupId: SKUPINA_KRESBY,
             points: k.points,
-            styles: { line: { color: '#4c9aff' }, text: { color: '#4c9aff' } },
-            onDrawEnd: () => {
-              ohlasZmenu();
-              return false;
-            },
-            onRemoved: () => {
-              ohlasZmenu();
-              return false;
-            },
+            lock: true,
+            styles: STYL_KRESBY,
           });
         });
       } finally {
@@ -310,8 +417,23 @@ export function createPriceChart(container, handlers = {}) {
 
     clearDrawings() {
       chart.removeOverlay({ groupId: SKUPINA_KRESBY });
+      upravovanaKresba = null;
       // Tady je prázdný seznam správný výsledek, uživatel si o to řekl.
       handlers.onDrawingsChanged?.();
+    },
+
+    /** Smaže jen kresbu, kterou má uživatel zrovna v úpravách. */
+    deleteSelected() {
+      if (!upravovanaKresba) return false;
+      chart.removeOverlay({ id: upravovanaKresba.id });
+      upravovanaKresba = null;
+      kresleni.cancel();
+      handlers.onDrawingsChanged?.();
+      return true;
+    },
+
+    hasSelection() {
+      return Boolean(upravovanaKresba);
     },
 
     /* ---------- indikátory ---------- */
@@ -327,6 +449,7 @@ export function createPriceChart(container, handlers = {}) {
         chart.removeIndicator({ name: nazev });
         aktivniIndikatory.delete(nazev);
         handlers.onIndicatorsChanged?.();
+        setTimeout(umistiVrstvu, 0);
         return false;
       }
 
@@ -337,10 +460,10 @@ export function createPriceChart(container, handlers = {}) {
       if (!id) return false;
       aktivniIndikatory.add(nazev);
       handlers.onIndicatorsChanged?.();
+      setTimeout(umistiVrstvu, 0);
       return true;
     },
 
-    /** Obnova zapnutých indikátorů po startu aplikace. */
     restoreIndicators(nazvy, jeVlastniPanel) {
       (nazvy || []).forEach((nazev) => {
         if (aktivniIndikatory.has(nazev)) return;
@@ -349,6 +472,7 @@ export function createPriceChart(container, handlers = {}) {
           : chart.createIndicator({ name: nazev, paneId: HLAVNI_PANEL });
         if (id) aktivniIndikatory.add(nazev);
       });
+      setTimeout(umistiVrstvu, 0);
     },
 
     activeIndicators() {

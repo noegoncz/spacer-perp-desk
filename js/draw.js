@@ -1,0 +1,321 @@
+/**
+ * Dotykové kreslení se zaměřovacím křížem.
+ *
+ * Vestavěné kreslení knihovny klade body přímo pod prst. Na telefonu to
+ * nefunguje: prst zakrývá místo, kam míříš, a klepnutí se často vyhodnotí
+ * jako posun grafu. Proto tenhle modul — prst kříž jen **posouvá** (relativně,
+ * kdekoli po displeji) a teprve klepnutí bod potvrdí. Stejně to má TabTrader
+ * i TradingView na mobilu.
+ *
+ * O konkrétní knihovně grafu neví nic, převody souřadnic dostane zvenčí.
+ */
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+/** Posun přes tolik pixelů už není klepnutí, ale tažení. */
+const PRAH_TAHU = 8;
+
+/** Jak blízko musí klepnutí být, aby se kresba považovala za trefenou. */
+const PRAH_ZASAHU = 22;
+
+function svg(tag, attrs) {
+  const el = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+
+/** Vzdálenost bodu od úsečky — pro trefování kreseb prstem. */
+function vzdalenostOdUsecky(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const delka2 = dx * dx + dy * dy;
+  if (delka2 === 0) return Math.hypot(px - x1, py - y1);
+  let t = ((px - x1) * dx + (py - y1) * dy) / delka2;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+}
+
+/**
+ * @param {object} cfg
+ * @param {HTMLElement} cfg.layer   prvek přesně přes plochu grafu
+ * @param {Function} cfg.toPixel    {timestamp,value} → {x,y}
+ * @param {Function} cfg.fromPixel  (x,y) → {timestamp,value}
+ * @param {Function} cfg.onCreate   (body) → hotová nová kresba
+ * @param {Function} cfg.onEdit     (index, bod) → posunutý bod hotové kresby
+ * @param {Function} cfg.onCancel   uživatel kreslení opustil
+ */
+export function createTouchDrawing({
+  layer,
+  toPixel,
+  fromPixel,
+  formatPrice,
+  formatTime,
+  onCreate,
+  onEdit,
+  onCancel,
+}) {
+  const plocha = svg('svg', { class: 'draw-svg' });
+  const carySvisla = svg('line', { class: 'draw-cross' });
+  const caraVodorovna = svg('line', { class: 'draw-cross' });
+  const nahled = svg('polyline', { class: 'draw-preview' });
+  const tecka = svg('circle', { class: 'draw-dot', r: 7 });
+  const uchyty = svg('g', {});
+  plocha.append(nahled, carySvisla, caraVodorovna, uchyty, tecka);
+
+  // Návod nahoře a cenovky na osách — bez nich uživatel kreslí naslepo.
+  const pruh = document.createElement('div');
+  pruh.className = 'draw-banner';
+  const pruhText = document.createElement('span');
+  const pruhZrusit = document.createElement('button');
+  pruhZrusit.type = 'button';
+  pruhZrusit.className = 'draw-banner-cancel';
+  pruhZrusit.setAttribute('aria-label', 'Zrušit kreslení');
+  pruhZrusit.textContent = '✕';
+  pruh.append(pruhText, pruhZrusit);
+
+  const cenovka = document.createElement('div');
+  cenovka.className = 'draw-badge draw-badge-price';
+  const casovka = document.createElement('div');
+  casovka.className = 'draw-badge draw-badge-time';
+
+  layer.append(plocha, pruh, cenovka, casovka);
+
+  pruhZrusit.addEventListener('pointerdown', (e) => e.stopPropagation());
+  pruhZrusit.addEventListener('pointerup', (e) => {
+    e.stopPropagation();
+    konec();
+  });
+
+  let rezim = 'idle'; // idle | create | move | handles
+  let potreba = 0; // kolik bodů ještě chybí
+  let celkem = 0;
+  let hotoveBody = []; // už potvrzené body nové kresby (v pixelech)
+  let kriz = { x: 0, y: 0 };
+  let editace = null; // { body, index }
+  let smycka = null;
+
+  function navod() {
+    if (rezim === 'create') {
+      const cislo = celkem - potreba + 1;
+      return potreba === 1 && celkem > 1
+        ? `Klepnutím dokonči (${cislo}. z ${celkem})`
+        : `Klepnutím urči ${cislo}. bod z ${celkem}`;
+    }
+    if (rezim === 'move') return 'Posuň bod a klepnutím potvrď';
+    if (rezim === 'handles') return 'Klepni na konec čáry, nebo vedle pro konec úprav';
+    return '';
+  }
+
+  /* ---------- vykreslování ---------- */
+
+  function prekresli() {
+    const w = layer.clientWidth;
+    const h = layer.clientHeight;
+    plocha.setAttribute('viewBox', `0 0 ${w} ${h}`);
+
+    const krizVidet = rezim === 'create' || rezim === 'move';
+    [carySvisla, caraVodorovna, tecka].forEach((e) => {
+      e.style.display = krizVidet ? '' : 'none';
+    });
+
+    pruh.style.display = rezim === 'idle' ? 'none' : '';
+    pruhText.textContent = navod();
+    cenovka.style.display = krizVidet ? '' : 'none';
+    casovka.style.display = krizVidet ? '' : 'none';
+
+    if (krizVidet) {
+      // Cenovka na pravém okraji, čas dole — jako na osách v TradingView.
+      const bod = fromPixel(kriz.x, kriz.y);
+      cenovka.textContent = formatPrice?.(bod.value) ?? '';
+      cenovka.style.top = `${kriz.y}px`;
+      casovka.textContent = formatTime?.(bod.timestamp) ?? '';
+      casovka.style.left = `${kriz.x}px`;
+    }
+
+    if (krizVidet) {
+      carySvisla.setAttribute('x1', kriz.x);
+      carySvisla.setAttribute('x2', kriz.x);
+      carySvisla.setAttribute('y1', 0);
+      carySvisla.setAttribute('y2', h);
+      caraVodorovna.setAttribute('x1', 0);
+      caraVodorovna.setAttribute('x2', w);
+      caraVodorovna.setAttribute('y1', kriz.y);
+      caraVodorovna.setAttribute('y2', kriz.y);
+      tecka.setAttribute('cx', kriz.x);
+      tecka.setAttribute('cy', kriz.y);
+    }
+
+    // Náhled čáry mezi už potvrzenými body a křížem.
+    if (rezim === 'create' && hotoveBody.length) {
+      const body = [...hotoveBody, kriz].map((b) => `${b.x},${b.y}`).join(' ');
+      nahled.setAttribute('points', body);
+      nahled.style.display = '';
+    } else {
+      nahled.style.display = 'none';
+    }
+
+    // Úchyty hotové kresby, kterou uživatel vybral k úpravě.
+    uchyty.replaceChildren();
+    if ((rezim === 'handles' || rezim === 'move') && editace) {
+      editace.body.forEach((bod, i) => {
+        const p = toPixel(bod);
+        if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return;
+        if (rezim === 'move' && i === editace.index) return; // ten drží kříž
+        uchyty.append(svg('circle', { class: 'draw-handle', cx: p.x, cy: p.y, r: 8 }));
+      });
+    }
+  }
+
+  /** Při posunu grafu se úchyty musí hýbat s ním. */
+  function spustSmycku() {
+    if (smycka) return;
+    const krok = () => {
+      if (rezim === 'handles' || rezim === 'move') {
+        prekresli();
+        smycka = requestAnimationFrame(krok);
+      } else {
+        smycka = null;
+      }
+    };
+    smycka = requestAnimationFrame(krok);
+  }
+
+  function nastavRezim(novy) {
+    rezim = novy;
+    // Když nekreslíme, vrstva nesmí brát dotyky — graf se musí dát posouvat.
+    layer.style.pointerEvents = novy === 'idle' ? 'none' : 'auto';
+    layer.classList.toggle('kresli', novy === 'create' || novy === 'move');
+    prekresli();
+    if (novy === 'handles' || novy === 'move') spustSmycku();
+  }
+
+  /* ---------- ovládání prstem ---------- */
+
+  let start = null;
+
+  layer.addEventListener('pointerdown', (e) => {
+    if (rezim === 'idle') return;
+    layer.setPointerCapture(e.pointerId);
+    start = { x: e.clientX, y: e.clientY, kriz: { ...kriz }, tazeno: false };
+  });
+
+  layer.addEventListener('pointermove', (e) => {
+    if (!start) return;
+    const dx = e.clientX - start.x;
+    const dy = e.clientY - start.y;
+    if (Math.hypot(dx, dy) > PRAH_TAHU) start.tazeno = true;
+
+    if (rezim === 'create' || rezim === 'move') {
+      // Relativní posun: prst může být kdekoli, kříž se hýbe o stejný kus.
+      kriz = {
+        x: Math.max(0, Math.min(layer.clientWidth, start.kriz.x + dx)),
+        y: Math.max(0, Math.min(layer.clientHeight, start.kriz.y + dy)),
+      };
+      prekresli();
+    }
+  });
+
+  layer.addEventListener('pointerup', (e) => {
+    if (!start) return;
+    const tazeno = start.tazeno;
+    const bod = { x: e.clientX, y: e.clientY };
+    start = null;
+
+    if (tazeno) return; // tažení jen posouvalo, nepotvrzuje
+
+    if (rezim === 'create') {
+      potvrdBod();
+      return;
+    }
+    if (rezim === 'move') {
+      const p = fromPixel(kriz.x, kriz.y);
+      const index = editace.index;
+      editace.body[index] = p;
+      onEdit?.(index, p);
+      nastavRezim('handles');
+      return;
+    }
+    if (rezim === 'handles') {
+      // Klepnutí na úchyt ho vezme do ruky, klepnutí jinam úpravu ukončí.
+      const r = layer.getBoundingClientRect();
+      const mx = bod.x - r.left;
+      const my = bod.y - r.top;
+      const index = editace.body.findIndex((b) => {
+        const p = toPixel(b);
+        return Math.hypot(p.x - mx, p.y - my) < PRAH_ZASAHU;
+      });
+      if (index >= 0) {
+        editace.index = index;
+        const p = toPixel(editace.body[index]);
+        kriz = { x: p.x, y: p.y };
+        nastavRezim('move');
+      } else {
+        konec();
+      }
+    }
+  });
+
+  function potvrdBod() {
+    hotoveBody.push({ ...kriz });
+    potreba -= 1;
+    if (potreba > 0) {
+      prekresli();
+      return;
+    }
+    const body = hotoveBody.map((b) => fromPixel(b.x, b.y));
+    hotoveBody = [];
+    nastavRezim('idle');
+    onCreate?.(body);
+  }
+
+  function konec() {
+    hotoveBody = [];
+    editace = null;
+    nastavRezim('idle');
+    onCancel?.();
+  }
+
+  return {
+    /** Spustí kreslení nové kresby o daném počtu bodů. */
+    beginCreate(pocetBodu) {
+      hotoveBody = [];
+      potreba = pocetBodu;
+      celkem = pocetBodu;
+      editace = null;
+      kriz = { x: layer.clientWidth / 2, y: layer.clientHeight / 2 };
+      nastavRezim('create');
+    },
+
+    /** Ukáže úchyty hotové kresby, aby šla upravit. */
+    beginEdit(body) {
+      editace = { body: [...body], index: -1 };
+      nastavRezim('handles');
+    },
+
+    cancel: konec,
+
+    isActive() {
+      return rezim !== 'idle';
+    },
+
+    /** Trefil uživatel prstem některou z kreseb? Vrací její index. */
+    hitTest(mx, my, kresby) {
+      for (let i = kresby.length - 1; i >= 0; i -= 1) {
+        const body = kresby[i].points.map(toPixel);
+        if (body.length === 1) {
+          // Vodorovné a cenové čáry jdou přes celou šířku.
+          if (Math.abs(body[0].y - my) < PRAH_ZASAHU) return i;
+          continue;
+        }
+        for (let j = 0; j < body.length - 1; j += 1) {
+          const a = body[j];
+          const b = body[j + 1];
+          if (vzdalenostOdUsecky(mx, my, a.x, a.y, b.x, b.y) < PRAH_ZASAHU) return i;
+        }
+      }
+      return -1;
+    },
+
+    redraw: prekresli,
+  };
+}

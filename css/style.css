@@ -448,27 +448,123 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
 
 /* ---------- ikony kreslení ---------- */
 
+/* Vodorovná lišta pod grafem, jako v mobilním TradingView. */
 .draw-toolbar {
-  position: absolute;
-  left: 6px;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 3;
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
   gap: 2px;
-  padding: 4px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: rgba(19, 26, 35, 0.92);
-  backdrop-filter: blur(4px);
+  padding: 4px 8px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.draw-toolbar::-webkit-scrollbar { display: none; }
+
+/* ---------- vrstva se zaměřovacím křížem ---------- */
+
+.draw-layer {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;   /* v klidu musí jít grafem posouvat */
+  touch-action: none;
+  overflow: visible;
+}
+.draw-layer.kresli { cursor: crosshair; }
+
+.draw-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
 }
 
-.tool-btn {
+.draw-cross {
+  stroke: var(--accent);
+  stroke-width: 1;
+  stroke-dasharray: 5 4;
+}
+
+.draw-preview {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+
+.draw-dot {
+  fill: var(--accent);
+  stroke: #fff;
+  stroke-width: 1.5;
+}
+
+/* Velké duté kroužky na koncích vybrané kresby — dobře se trefují prstem. */
+.draw-handle {
+  fill: rgba(76, 154, 255, 0.18);
+  stroke: var(--accent);
+  stroke-width: 2.5;
+}
+
+.draw-banner {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 94%;
+  padding: 7px 8px 7px 14px;
+  border-radius: 10px;
+  background: rgba(26, 35, 46, 0.95);
+  color: var(--text);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+}
+
+.draw-banner-cancel {
+  min-width: 30px;
+  min-height: 30px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+/* Cenovka a čas ukazují, kam kříž míří — bez nich se kreslí naslepo. */
+.draw-badge {
+  position: absolute;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--accent);
+  color: #06121f;
+  font-size: 0.7rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.draw-badge-price {
+  right: -4px;
+  transform: translate(100%, -50%);
+}
+
+.draw-badge-time {
+  bottom: -4px;
+  transform: translate(-50%, 100%);
+}
+
+.tool-btn, .tool-icon {
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
+  flex: none;
   border: none;
   border-radius: 9px;
   background: transparent;
@@ -476,7 +572,7 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
   cursor: pointer;
   padding: 0;
 }
-.tool-btn svg {
+.tool-btn svg, .tool-icon svg {
   width: 20px;
   height: 20px;
   fill: none;
@@ -485,6 +581,8 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+.tool-icon { color: var(--text-dim); }
+.tool-icon.active { color: var(--accent); }
 /* Kurzor je plná šipka, ne obrys. */
 .tool-btn[data-tool=""] svg path { fill: currentColor; stroke-width: 1; }
 

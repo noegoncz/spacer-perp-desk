@@ -233,6 +233,41 @@ grafová vrstva drží v odděleném modulu, který o Bybitu nic neví.
 - Overlaye se dělí `groupId` na `pozice` a `kresby`. Bez toho by se čáry
   pozice ukládaly mezi kresby uživatele.
 
+#### Kreslení jde mimo knihovnu — `js/draw.js`
+
+⚠ **Vestavěné kreslení knihovny se nepoužívá.** Klade body přímo pod prst, což
+je na telefonu nepoužitelné: prst zakrývá místo, kam míříš, a klepnutí se často
+vyhodnotí jako posun grafu, takže se bod vůbec nezapíše. Ani `drawingMode:
+'continuous'` (tažení místo klepání) uživateli nestačil.
+
+`js/draw.js` proto dělá vlastní ovládání podle vzoru TabTraderu a mobilního
+TradingView:
+
+1. Po zapnutí nástroje se přes graf položí **čárkovaný kříž s tečkou**.
+2. Prst kříž jen **posouvá relativně** — táhne se kdekoli po displeji, takže
+   prst necloní cíli.
+3. **Klepnutí** (tah kratší než 8 px) bod potvrdí.
+4. Od potvrzeného bodu se táhne náhled dalšího úseku.
+5. Po posledním bodu vznikne overlay v knihovně s hotovými body.
+
+Úpravy: klepnutí na hotovou kresbu ji vybere a ukáže **velké duté kroužky** na
+bodech. Klepnutí na kroužek ho vezme do kříže, posouvá se zase tažením kdekoli
+a klepnutí posun potvrdí (`overrideOverlay`).
+
+Doprovodné prvky, bez kterých se kreslí naslepo: **pruh s návodem** nahoře
+(„Klepnutím urči 1. bod z 2") s křížkem na zrušení, **cenovka na pravém okraji**
+a **čas dole**, obojí se mění s křížem.
+
+Souřadnice: `chart.convertToPixel` / `convertFromPixel` s `paneId: 'candle_pane'`.
+Kreslicí vrstva se proto musí položit **přesně na plochu se svíčkami** (bez
+cenové osy a panelů indikátorů) podle `chart.getSize('candle_pane', 'main')` —
+jinak by pixely nesouhlasily. Dělá to `umistiVrstvu()` po každé změně rozměrů,
+dat i indikátorů.
+
+Vrstva má v klidu `pointer-events: none`, aby šlo grafem normálně posouvat.
+Kresby se vytvářejí s `lock: true`, takže s nimi knihovna sama hýbat nedovolí
+— veškerý posun jde přes naše úchyty.
+
 ⚠ **`restoreDrawings` musí umlčet hlášení změn.** Obnova nejdřív maže staré
 overlaye a každé smazání hlásí změnu. Bez umlčení se při otevření grafu uloží
 prázdný seznam přes uložené kresby dřív, než se stihnou obnovit — tedy tiché

@@ -128,6 +128,11 @@ function wireEvents() {
   });
 
   el('eraseBtn').addEventListener('click', () => {
+    // Když má uživatel kresbu v úpravách, koš maže jen ji — jinak všechny.
+    if (chart?.hasSelection()) {
+      chart.deleteSelected();
+      return;
+    }
     if (!confirm('Smazat všechny kresby u tohoto páru?')) return;
     chart?.clearDrawings();
     vyberNastroj('');
@@ -254,7 +259,7 @@ async function openChart(position) {
 
   // Plátno se musí vytvářet až po zobrazení, jinak má nulové rozměry.
   if (!chart) {
-    chart = createPriceChart(el('chartBox'), {
+    chart = createPriceChart(el('chartBox'), el('drawLayer'), {
       onDrawingsChanged: ulozKresby,
       onDrawEnd: () => vyberNastroj(''), // po dokreslení zpět na kurzor
       onIndicatorsChanged: ulozIndikatory,
