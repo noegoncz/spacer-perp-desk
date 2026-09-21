@@ -398,7 +398,7 @@ tak, jak opravdu probíhal.
 - Volume profile jako vlastní indikátor (viz checkpoint 3).
 - Alarm při protnutí nakreslené čáry cenou.
 
-### 8) Bezpečnost
+### 9) Bezpečnost
 
 **Odemykání otiskem prstu je požadavek uživatele** (čtečka v bočním tlačítku
 Foldu), ne jen PIN. Technicky to není přímočaré:
@@ -425,13 +425,13 @@ read-only, je čitelný secret v `localStorage` přijatelné riziko — nejhorš
 následek je, že někdo uvidí pozice. S právem obchodovat je nejhorší následek
 vybydlený účet a stejné úložiště přijatelné přestává být.
 
-### 9) APK přes Capacitor + notifikace
+### 10) APK přes Capacitor + notifikace
 
 Zabalit do APK, aby aplikace mohla běžet na pozadí a posílat notifikace
 (blížící se likvidace, zasažení SL/TP, výrazná změna PnL). Tady se vymění
 transport v `js/bybit.js` za nativní HTTP/WebSocket plugin.
 
-### 10) Zadávání příkazů (jen pokud se aplikace osvědčí)
+### 11) Zadávání příkazů (jen pokud se aplikace osvědčí)
 
 Zatím **se nedělá** a aplikace zůstává výhradně read-only. Poznámky, ať se na
 to při návrhu nezapomíná:
@@ -443,7 +443,7 @@ to při návrhu nezapomíná:
   Výměnu klíče aplikace zvládá.
 - **Pravidlo:** modul nabízí pouze čtení. Zápis přijde jako zřetelně oddělená
   část s potvrzovacím krokem, aby chyba v UI nemohla omylem odeslat příkaz.
-- Předpoklad: hotový checkpoint 7 (šifrované klíče).
+- Předpoklad: hotový checkpoint 9 (šifrované klíče).
 
 #### Postup testování zápisu — tři vrstvy, ne jedna
 
