@@ -14,6 +14,13 @@ Mobilní PWA pro monitoring otevřených perpetual pozic na Bybitu. Náhrada za 
 
 ## Pravidlo pro práci na projektu
 
+> **Po úpravě souboru ověř, že se opravdu provedla.** Textová náhrada, která
+> nenajde kotvu, tiše neudělá nic. Stalo se to v tomhle projektu třikrát:
+> jednou prošel commit se slíbenými tenkými čarami, které v něm nebyly,
+> a jednou se přidalo volání funkce, jejíž definice se nevložila — aplikace
+> pak padala na `vykresliCary is not defined`.
+
+
 > **Po každém dokončeném checkpointu a i po každé větší změně udělej `git commit`
 > a `git push` na GitHub.** Rozpracovaná práce se nikdy nesmí ztratit.
 

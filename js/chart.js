@@ -319,6 +319,44 @@ export function createPriceChart(container, layer, handlers = {}) {
 
   const VYCHOZI_SIRKA_SVICE = 10;
 
+  /** Vykreslí čáry pozice. Volá se i po výměně dat při změně intervalu. */
+  function vykresliCary(lines) {
+    idCarPozice.forEach((id) => chart.removeOverlay({ id }));
+    idCarPozice = (lines || []).map((l) =>
+      chart.createOverlay({
+        name: 'positionLine',
+        groupId: SKUPINA_POZICE,
+        points: [{ value: l.price }],
+        lock: true,
+        extendData: { color: l.color, title: l.title, dash: l.dash },
+      }),
+    );
+    umistiVrstvu();
+  }
+
+  /** Vykreslí kresby uživatele bez hlášení změn — jde o obnovu, ne úpravu. */
+  function vykresliKresby(kresby) {
+    tichaZmena = true;
+    try {
+      chart.removeOverlay({ groupId: SKUPINA_KRESBY });
+      (kresby || []).forEach((k) => {
+        chart.createOverlay({
+          name: k.name,
+          groupId: SKUPINA_KRESBY,
+          points: k.points,
+          lock: true,
+          extendData: { ...VYCHOZI_STYL, ...(k.style || {}) },
+          styles: stylKresby(k.style),
+        });
+      });
+    } finally {
+      // Až po vyprázdnění fronty — callbacky knihovny nemusí běžet hned.
+      setTimeout(() => {
+        tichaZmena = false;
+      }, 0);
+    }
+  }
+
   /**
    * Srovná pohled: výchozí šířka svící a skok na konec dat.
    *
