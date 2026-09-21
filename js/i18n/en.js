@@ -29,6 +29,11 @@ export const en = {
   'watchlist.noFavourites': 'No favourites yet. Tap a star to add one.',
   'watchlist.favourite': 'Add to favourites',
   'watchlist.shown': 'Showing {shown} of {total} pairs',
+  'watchlist.colPair': 'Perp pair',
+  'watchlist.colPrice': 'Price',
+  'watchlist.colChange': '24h',
+  'watchlist.colTrend': 'Trend',
+  'watchlist.clear': 'Clear search',
   'watchlist.failed': 'Could not load the pair list.',
   'history.soon': 'Trade history is coming in the next step.',
 

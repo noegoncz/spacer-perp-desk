@@ -323,7 +323,8 @@ export class BybitClient {
   async getTickers() {
     const result = await this.publicGet('/v5/market/tickers', { category: 'linear' });
     return (result?.list ?? [])
-      .filter((t) => t.symbol?.endsWith('USDT'))
+      // Předlistingové páry se ještě neobchodují a jen by kazily seznam.
+      .filter((t) => t.symbol?.endsWith('USDT') && !t.curPreListingPhase)
       .map((t) => ({
         symbol: t.symbol,
         last: num(t.lastPrice),
@@ -331,6 +332,17 @@ export class BybitClient {
         turnover: num(t.turnover24h),
       }))
       .sort((a, b) => b.turnover - a.turnover);
+  }
+
+  /** Zavírací ceny za posledních 24 hodin — podklad pro mini-graf trendu. */
+  async getSparkline(symbol) {
+    const result = await this.publicGet('/v5/market/kline', {
+      category: 'linear',
+      symbol,
+      interval: '60',
+      limit: '24',
+    });
+    return (result?.list ?? []).map((row) => num(row[4])).reverse();
   }
 
   /** Otevřené příkazy k páru — limitky a podmíněné příkazy pro čáry v grafu. */

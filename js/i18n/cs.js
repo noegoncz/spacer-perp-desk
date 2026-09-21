@@ -25,6 +25,11 @@ export const cs = {
   'watchlist.noFavourites': 'Zatím žádné oblíbené. Přidej je hvězdičkou.',
   'watchlist.favourite': 'Přidat mezi oblíbené',
   'watchlist.shown': 'Zobrazeno {shown} z {total} párů',
+  'watchlist.colPair': 'Perp pár',
+  'watchlist.colPrice': 'Cena',
+  'watchlist.colChange': '24 h',
+  'watchlist.colTrend': 'Trend',
+  'watchlist.clear': 'Smazat hledání',
   'watchlist.failed': 'Seznam párů se nepodařilo načíst.',
   'history.soon': 'Historie obchodů přijde v dalším kroku.',
 

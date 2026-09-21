@@ -377,6 +377,17 @@ seřazených podle obratu za 24 h. Hvězdička přidá pár mezi oblíbené a ty
 prvních 150** podle obratu. **Při hledání se neořezává**, jinak by se hledaný
 pár nemusel vůbec objevit.
 
+Ověřeno 2026-09-21: všech 775 USDT symbolů v `category=linear` jsou opravdu
+**perpetuály**, ani jeden nemá datum dodání. Padesát z nich je ale
+v předlistingové fázi (`curPreListingPhase`) a ještě se neobchoduje — ty se
+odfiltrovávají, zbývá jich 725.
+
+**Mini-graf trendu za 24 h** u každého řádku. Bybit nemá hromadný endpoint na
+svíčky, takže se tahá **jeden pár za jedno volání** (24 hodinových svíček,
+~2 kB). Proto se načítá až pro řádky, které jsou vidět (`IntersectionObserver`
+s předstihem 150 px), nejvýš čtyři naráz, a jednou stažený pár se drží
+v paměti. Bez toho by otevření záložky spustilo 150 volání naráz.
+
 Klepnutí na pár otevře graf. Proto graf nově funguje **i bez otevřené pozice**:
 `chartSymbol` je zdroj pravdy o tom, co se kreslí, `chartPosition` může být
 `null`. Pak se nekreslí čáry pozice, panel pod grafem ustoupí a v hlavičce je

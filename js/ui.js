@@ -225,6 +225,7 @@ export function showView(name) {
 
 /* ---------- seznam trhů ---------- */
 
+const SVG_NS = 'http://www.w3.org/2000/svg';
 const HVEZDA = 'M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9L3.5 9.7l5.9-.8z';
 
 function zkratkaObratu(hodnota) {
@@ -236,48 +237,75 @@ function zkratkaObratu(hodnota) {
 
 export function renderWatchlist(radky, oblibene, onSelect, onToggleFav) {
   dom.watchList.replaceChildren(
-    ...radky.map((radekTrhu) => {
+    ...radky.map((trh) => {
       const radek = document.createElement('div');
       radek.className = 'watch-row';
+      radek.dataset.symbol = trh.symbol;
 
       const hvezda = document.createElement('button');
       hvezda.type = 'button';
-      hvezda.className = `watch-star ${oblibene.has(radekTrhu.symbol) ? 'on' : ''}`.trim();
+      hvezda.className = `watch-star ${oblibene.has(trh.symbol) ? 'on' : ''}`.trim();
       hvezda.setAttribute('aria-label', t('watchlist.favourite'));
-      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      const svg = document.createElementNS(SVG_NS, 'svg');
       svg.setAttribute('viewBox', '0 0 24 24');
-      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      const path = document.createElementNS(SVG_NS, 'path');
       path.setAttribute('d', HVEZDA);
       svg.append(path);
       hvezda.append(svg);
       hvezda.addEventListener('click', (e) => {
         e.stopPropagation(); // klepnutí na hvězdičku neotevírá graf
-        onToggleFav(radekTrhu.symbol);
+        onToggleFav(trh.symbol);
       });
 
       const nazev = document.createElement('div');
       nazev.className = 'watch-symbol';
-      nazev.textContent = radekTrhu.symbol;
+      nazev.textContent = trh.symbol;
       const obrat = document.createElement('span');
       obrat.className = 'watch-turnover';
-      obrat.textContent = zkratkaObratu(radekTrhu.turnover);
+      obrat.textContent = zkratkaObratu(trh.turnover);
       nazev.append(obrat);
 
-      const vpravo = document.createElement('div');
-      vpravo.className = 'watch-right';
-      const cena = document.createElement('span');
+      const cena = document.createElement('div');
       cena.className = 'watch-price';
-      cena.textContent = formatPrice(radekTrhu.last);
-      const zmena = document.createElement('span');
-      zmena.className = `watch-change ${pnlClass(radekTrhu.changePct)}`;
-      zmena.textContent = formatPercent(radekTrhu.changePct);
-      vpravo.append(cena, zmena);
+      cena.textContent = formatPrice(trh.last);
 
-      radek.append(hvezda, nazev, vpravo);
-      radek.addEventListener('click', () => onSelect(radekTrhu));
+      const zmena = document.createElement('div');
+      zmena.className = `watch-change ${pnlClass(trh.changePct)}`;
+      zmena.textContent = formatPercent(trh.changePct);
+
+      // Plátno mini-grafu zůstane prázdné, dokud se nedotáhnou data.
+      const spark = document.createElementNS(SVG_NS, 'svg');
+      spark.setAttribute('class', 'watch-spark');
+      spark.setAttribute('viewBox', '0 0 58 24');
+      spark.setAttribute('preserveAspectRatio', 'none');
+
+      radek.append(hvezda, nazev, cena, zmena, spark);
+      radek.addEventListener('click', () => onSelect(trh));
       return radek;
     }),
   );
+  return [...dom.watchList.children];
+}
+
+/** Mini-graf trendu za 24 h. Zelený, když cena skončila výš než začala. */
+export function drawSparkline(radek, hodnoty) {
+  const svg = radek.querySelector('.watch-spark');
+  if (!svg || !hodnoty?.length) return;
+
+  const min = Math.min(...hodnoty);
+  const max = Math.max(...hodnoty);
+  const rozsah = max - min || 1;
+  const krok = hodnoty.length > 1 ? 58 / (hodnoty.length - 1) : 58;
+
+  const body = hodnoty
+    .map((v, i) => `${(i * krok).toFixed(1)},${(22 - ((v - min) / rozsah) * 20).toFixed(1)}`)
+    .join(' ');
+
+  const cara = document.createElementNS(SVG_NS, 'polyline');
+  cara.setAttribute('points', body);
+  svg.replaceChildren(cara);
+  svg.setAttribute('class',
+    `watch-spark ${hodnoty[hodnoty.length - 1] >= hodnoty[0] ? 'up' : 'down'}`);
 }
 
 export function showWatchNote(text) {

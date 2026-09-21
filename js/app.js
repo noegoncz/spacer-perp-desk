@@ -129,6 +129,14 @@ function wireEvents() {
 
   el('watchSearch').addEventListener('input', (e) => {
     hledani = e.target.value;
+    el('watchClearBtn').hidden = !hledani;
+    vykresliTrhy();
+  });
+
+  el('watchClearBtn').addEventListener('click', () => {
+    hledani = '';
+    el('watchSearch').value = '';
+    el('watchClearBtn').hidden = true;
     vykresliTrhy();
   });
 
@@ -494,6 +502,54 @@ function postavNabidky() {
 /** Bybit má přes 700 USDT párů. Bez ořezu by se seznam na telefonu vlekl. */
 const LIMIT_SEZNAMU = 150;
 
+/*
+ * Mini-grafy se dotahují po jednom páru, takže se načítají až pro řádky,
+ * které jsou opravdu vidět. Jinak by se při otevření záložky vystřelilo
+ * 150 volání naráz. Jednou stažený pár se drží do konce běhu aplikace.
+ */
+const SOUBEZNYCH_GRAFU = 4;
+const grafyCache = new Map();
+const grafyFronta = [];
+let grafyBezi = 0;
+let sledovac = null;
+
+function odbavGrafy() {
+  while (grafyBezi < SOUBEZNYCH_GRAFU && grafyFronta.length) {
+    const { symbol, radek } = grafyFronta.shift();
+    grafyBezi += 1;
+    client
+      .getSparkline(symbol)
+      .then((data) => {
+        grafyCache.set(symbol, data);
+        if (radek.isConnected) ui.drawSparkline(radek, data);
+      })
+      .catch(() => {})
+      .finally(() => {
+        grafyBezi -= 1;
+        odbavGrafy();
+      });
+  }
+}
+
+function sledujGrafy(radky) {
+  sledovac?.disconnect();
+  sledovac = new IntersectionObserver((zaznamy) => {
+    for (const z of zaznamy) {
+      if (!z.isIntersecting) continue;
+      sledovac.unobserve(z.target);
+      const { symbol } = z.target.dataset;
+      if (grafyCache.has(symbol)) {
+        ui.drawSparkline(z.target, grafyCache.get(symbol));
+      } else {
+        grafyFronta.push({ symbol, radek: z.target });
+      }
+    }
+    odbavGrafy();
+  }, { rootMargin: '150px' });
+
+  radky.forEach((r) => sledovac.observe(r));
+}
+
 let trhy = [];
 let oblibene = new Set(store.loadFavourites());
 let jenOblibene = store.loadOnlyFavourites();
@@ -526,7 +582,8 @@ function vykresliTrhy() {
   // Při hledání se neořezává, jinak by se hledaný pár nemusel objevit.
   const vysledek = [...nahore, ...(dotaz ? zbytek : zbytek.slice(0, LIMIT_SEZNAMU))];
 
-  ui.renderWatchlist(vysledek, oblibene, openChartSymbol, prepniOblibeny);
+  const radky = ui.renderWatchlist(vysledek, oblibene, openChartSymbol, prepniOblibeny);
+  sledujGrafy(radky);
 
   if (!vysledek.length) {
     ui.showWatchNote(t(jenOblibene && !dotaz ? 'watchlist.noFavourites' : 'watchlist.empty'));

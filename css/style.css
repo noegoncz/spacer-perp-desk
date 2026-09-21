@@ -181,12 +181,29 @@ main {
 
 /* ---------- seznam trhů ---------- */
 
-.watch-tools { display: flex; gap: 8px; margin-bottom: 10px; }
+/* Řádky i hlavička sdílejí stejnou mřížku, aby sloupce lícovaly:
+   hvězdička | pár | cena | změna | mini-graf */
+.watch-head,
+.watch-row {
+  display: grid;
+  grid-template-columns: 34px 1fr auto 74px 58px;
+  align-items: center;
+  gap: 8px;
+}
+
+.watch-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.watch-search-wrap { position: relative; flex: 1; }
 
 .watch-search {
-  flex: 1;
+  width: 100%;
   min-height: var(--tap);
-  padding: 10px 12px;
+  padding: 10px 46px 10px 12px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -194,13 +211,42 @@ main {
   font-size: 0.92rem;
 }
 
+/* Vlastní křížek místo systémového: ten je vidět až po klepnutí do pole. */
+.watch-clear {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.watch-clear:active { background: var(--border); }
+
+.watch-head {
+  padding: 0 4px 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-dim);
+}
+.watch-head span:nth-child(3) { text-align: right; }
+.watch-head span:nth-child(4) { text-align: right; }
+.watch-head span:nth-child(5) { text-align: right; }
+
 .watch-list { display: flex; flex-direction: column; }
 
 .watch-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 4px;
+  padding: 9px 4px;
   border-bottom: 1px solid var(--border);
   cursor: pointer;
 }
@@ -219,15 +265,22 @@ main {
   flex: none;
 }
 .watch-star svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; }
-.watch-star.on { color: var(--warn); }
-.watch-star.on svg { fill: currentColor; }
+/* Zapnutý filtr i oblíbený pár vypadají stejně — plná žlutá hvězda. */
+.watch-star.on,
+.watch-star.active { color: var(--warn); }
+.watch-star.on svg,
+.watch-star.active svg { fill: currentColor; }
 
-.watch-symbol { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
-.watch-turnover { display: block; font-size: 0.7rem; font-weight: 400; color: var(--text-dim); }
+.watch-symbol { min-width: 0; font-weight: 600; font-size: 0.92rem; overflow-wrap: anywhere; }
+.watch-turnover { display: block; font-size: 0.68rem; font-weight: 400; color: var(--text-dim); }
 
-.watch-right { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.watch-price { display: block; font-size: 0.95rem; }
-.watch-change { display: block; font-size: 0.75rem; }
+.watch-price { text-align: right; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+.watch-change { text-align: right; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+
+.watch-spark { width: 58px; height: 24px; display: block; }
+.watch-spark polyline { fill: none; stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
+.watch-spark.up polyline { stroke: var(--long); }
+.watch-spark.down polyline { stroke: var(--short); }
 
 .watch-note {
   margin: 14px 0 0;

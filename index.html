@@ -190,13 +190,26 @@
   <!-- ===== Trhy ===== -->
   <section id="viewWatchlist" hidden>
     <div class="watch-tools">
-      <input type="search" id="watchSearch" class="watch-search"
-             data-i18n-ph="watchlist.searchPlaceholder" placeholder="e.g. BTC"
-             data-i18n-aria="watchlist.search" autocomplete="off" spellcheck="false">
-      <button type="button" id="onlyFavBtn" class="icon-btn tool-icon"
+      <!-- Hvězdička filtru je schválně vlevo a zarovnaná s hvězdičkami v seznamu. -->
+      <button type="button" id="onlyFavBtn" class="watch-star"
               data-i18n-aria="watchlist.onlyFavourites" data-i18n-title="watchlist.onlyFavourites">
         <svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9L3.5 9.7l5.9-.8z"/></svg>
       </button>
+      <div class="watch-search-wrap">
+        <input type="text" id="watchSearch" class="watch-search"
+               data-i18n-ph="watchlist.searchPlaceholder" placeholder="e.g. BTC"
+               data-i18n-aria="watchlist.search" autocomplete="off" spellcheck="false">
+        <button type="button" id="watchClearBtn" class="watch-clear" hidden
+                data-i18n-aria="watchlist.clear" data-i18n-title="watchlist.clear">✕</button>
+      </div>
+    </div>
+
+    <div class="watch-head">
+      <span></span>
+      <span data-i18n="watchlist.colPair">Perp pair</span>
+      <span data-i18n="watchlist.colPrice">Price</span>
+      <span data-i18n="watchlist.colChange">24h</span>
+      <span data-i18n="watchlist.colTrend">Trend</span>
     </div>
     <div id="watchList" class="watch-list"></div>
     <p id="watchNote" class="watch-note"></p>
