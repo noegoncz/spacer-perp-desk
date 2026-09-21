@@ -57,8 +57,10 @@ js/i18n/cs.js           # český slovník
 js/ui.js                # vykreslování DOM
 js/chart.js             # obal nad knihovnou grafu (KLineChart), o Bybitu neví
 js/draw.js              # dotykové kreslení se zaměřovacím křížem
+js/indikatory.js        # schémata nastavení indikátorů + vyhlazovací funkce (SMA/EMA/SMMA/WMA)
 js/app.js               # orchestrace, lifecycle, update service workeru
 vendor/                 # KLineChart + licence, stažené v repu (ne CDN)
+tools/                  # testy přes DevTools Protocol, bez API klíčů (viz tools/README.md)
 .github/workflows/deploy.yml
 ```
 
@@ -486,6 +488,22 @@ a obraz odskočil. Po dobu gesta se posun i zoom knihovny vypnou, šířka sví�
 se nastavuje přes `setBarSpace()` s útlumem `pomer ** 0.55`, a posun se vrátí
 teprve až **nezůstane na displeji žádný prst** — ne po prvním `touchend`.
 
+⚠ **Tlačítko s třídou `.interval-btn` musí mít `data-interval`, nebo se z něj
+nesmí vybírat.** Střed (CENTER) sdílí vzhled s timeframy a stojí v jejich liště.
+Posluchač `document.querySelectorAll('.interval-btn')` ho vzal jako přepnutí na
+interval `undefined`: graf se vyprázdnil (0 svíček, osa 0–10), zmizely kresby
+i čáry a střed se zbarvil jako aktivní. Selektory jsou proto
+`.interval-btn[data-interval]` a `zmenInterval()` prázdný interval odmítne.
+Test s mockem to dřív nechytil, protože mock vracel svíčky pro jakýkoli interval —
+`tools/mock-bybit.js` teď pro neexistující interval vrací prázdno.
+
+⚠ **Snímek kreseb při změně intervalu se bere jen jednou.** `setInterval()` si
+kresby zapamatuje z grafu a pak je z něj sundá. Při rychlém proklikávání
+timeframů byl graf už prázdný, druhý snímek byl prázdný a obnovilo se „nic“ —
+kresby zmizely z obrazovky, ač v úložišti zůstaly (po restartu byly zpátky).
+Ukládání se spouští jen vytvořením a potvrzenou úpravou, ne smazáním overlaye,
+proto se o data přijít nedá. Test: `tools/test-center-intervaly.py`.
+
 ⚠ Při testování gest dvěma prsty přes CDP je nutné dávat dotykovým bodům
 **výslovné `id`**. Bez nich Chrome přiřadí bod podle pořadí a pohyb zbylého
 prstu se tváří jako nový, třetí prst — test pak hlásí odskok, který v aplikaci
@@ -522,12 +540,19 @@ stupnice zůstane cenová, a sloupce si kreslíme sami do spodního pruhu panelu
 z právě viditelných svíček** — jinak jeden dávný výkyv zploští všechno ostatní.
 
 RSI je taky vlastní: vestavěné kreslí tři křivky, neumí pásma ani volbu zdroje
-ceny. Naše má jednu křivku, volitelný průměr, pásma s výplní a pevnou stupnici
-0–100. ⚠ Křivku knihovna **skrýt neumí** — vypnutý průměr se řeší průhlednou
+ceny. Naše má jednu křivku, volitelný průměr (**SMA, EMA, SMMA, WMA** — funkce
+`vyhladit()` v `js/indikatory.js`, ověřená proti ručně spočítaným hodnotám),
+pásma s výplní a pevnou stupnici 0–100. `calcParams` RSI je
+`[délka, délka průměru, zdroj ceny, typ průměru]`.
+
+⚠ **Pole ve schématu bez `param` se do výpočtu nedostane.** Volba zdroje ceny
+u RSI takhle první verzi nefungovala (nebylo vidět, protože testovací data
+měla `close = open + konstanta` a všechny zdroje dávaly stejné RSI). ⚠ Křivku knihovna **skrýt neumí** — vypnutý průměr se řeší průhlednou
 barvou.
 
 ⚠ `klinecharts.getChart()` ve verzi 10 **neexistuje**. K instanci grafu se
-z testu dostaneš jedině obalením `klinecharts.init` (viz scratchpad `zaklad.js`).
+z testu dostaneš jedině obalením `klinecharts.init` (viz `tools/mock-bybit.js`,
+instance je pak v `window.__graf`).
 
 ⚠ Vysouvací nabídky (`.sheet`) jsou **`position: fixed`**, ne `absolute`.
 Ve vnořeném rozvržení se jinak ukotví k rodiči a skončí uprostřed obrazovky,
@@ -647,6 +672,41 @@ Uživatel si výslovně nepřeje riskovat účet při vývoji zápisu. Pořadí 
 vyžaduje předem schválené adresy. Bez něj je nejhorší možný následek chyby
 špatný obchod, ne odtečení prostředků pryč z účtu. Tohle je ta vlastnost,
 která celý zápis dělá přijatelně bezpečným.
+
+## Plán a otevřené věci
+
+Pořadí, jak se na to má chodit. Odškrtnuté jsou hotové.
+
+### Nejbližší dodělávky (drobné)
+
+- [ ] **Čitelný popisek indikátoru** v hlavičce panelu. Knihovna vypisuje surové
+  `calcParams`, takže RSI ukazuje `RSI(14,14,1,3)` místo např. `RSI 14 · Close · WMA 14`.
+  (`createTooltipDataSource` u indikátoru, ověřit tvar v `vendor/klinecharts.js`.)
+- [ ] **Ověřit na telefonu** (v0.10.2): CENTER nemění interval ani nemaže kresby;
+  rychlé proklikání timeframů nemaže kresby.
+- [ ] **RSI dál** podle TradingView: Calculate Divergence, VWMA, SMA + Bollinger
+  Bands (BB StdDev), přechodová výplň pásem.
+- [ ] **Volume dál**: přesnost (precision), popisky na cenové ose.
+- [ ] **Nastavení ostatních indikátorů**: MACD, KDJ, MA, EMA, BOLL, SAR mají zatím
+  jen periody (a výšku panelu) — chybí barvy a přepínače viditelnosti čar.
+- [ ] **Alarmy**: nastavení nad rámec zapnuto/vypnuto.
+- [ ] **Volume profile** jako vlastní indikátor (odhad ze svíček, viz checkpoint 3).
+
+### Checkpointy
+
+1. ✅ Připojení a seznam pozic
+2. ✅ Graf se svíčkami
+3. ✅ Kreslení a indikátory (rozšiřuje se dál výše)
+4. ✅ Angličtina jako základ
+5. ⏳ Layout pro Fold — stav při přeložení telefonu
+6. ✅ Záložky Pozice / Trhy / Historie
+7. ⏳ Rozšířená data o účtu (equity, margin, funding, příkazy)
+8. ⏳ Pohodlí (řazení, varování před likvidací, vibrace)
+9. ⏳ **Bezpečnost — otisk prstu (WebAuthn PRF) + šifrovaný secret + testnet.
+   Musí být hotové před 11.**
+10. ⏳ APK přes Capacitor + notifikace
+11. ⏳ Zadávání příkazů — jen pokud se aplikace osvědčí; pořadí testnet →
+    subúčet → hlavní účet, výběr nikdy
 
 ## Časové limity u volání
 

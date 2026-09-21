@@ -111,6 +111,7 @@ export const en = {
   'indSet.zobrazitMa': 'Show MA',
   'indSet.barvaMa': 'MA colour',
   'indSet.zdroj': 'Source',
+  'indSet.typMa': 'Smoothing type',
   'indSet.podlePredchozi': 'Colour by previous close',
   'indSet.vyska': 'Height',
   'indSet.vyskaPanelu': 'Pane height',

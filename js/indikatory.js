@@ -23,11 +23,62 @@ const PALETA = ['#16c784', '#ea3943', '#f0b90b', '#4c9aff', '#a78bfa', '#e6edf5'
 /** Zdroj ceny pro výpočet. Čísly, ať jdou poslat jako calcParams. */
 export const ZDROJE = ['close', 'open', 'high', 'low'];
 
+/** Druhy klouzavého průměru. Pořadí je zároveň hodnota v calcParams. */
+export const TYPY_MA = ['sma', 'ema', 'smma', 'wma'];
+
+/**
+ * Vyhladí řadu průměrem zvoleného typu. Vstup smí začínat prázdnými
+ * hodnotami (rozběh indikátoru); průměr začne až po `delka` platných.
+ *
+ * Postup i rozběh jako v TradingView (ta.sma, ta.ema, ta.rma, ta.wma):
+ *   sma  — prostý průměr posledních `delka` hodnot
+ *   ema  — exponenciální, alfa = 2 / (delka + 1), začíná průměrem
+ *   smma — Wilderův (RMA), alfa = 1 / delka, začíná průměrem
+ *   wma  — lineárně vážený, nejnovější hodnota má největší váhu
+ * EMA a SMMA se první hodnotou seedují prostým průměrem, ne první cenou.
+ */
+export function vyhladit(hodnoty, delka, typ = 'sma') {
+  const n = Math.max(1, Math.round(delka) || 1);
+  const out = new Array(hodnoty.length).fill(undefined);
+  const platne = [];       // indexy v `hodnoty`, kde hodnota existuje
+  hodnoty.forEach((v, i) => { if (Number.isFinite(v)) platne.push(i); });
+  if (platne.length < n) return out;
+
+  const x = platne.map((i) => hodnoty[i]);
+  const vysl = new Array(x.length).fill(undefined);
+  const prumer = (od, doKonce) => {
+    let soucet = 0;
+    for (let i = od; i < doKonce; i += 1) soucet += x[i];
+    return soucet / (doKonce - od);
+  };
+
+  if (typ === 'ema' || typ === 'smma') {
+    const alfa = typ === 'ema' ? 2 / (n + 1) : 1 / n;
+    vysl[n - 1] = prumer(0, n);
+    for (let i = n; i < x.length; i += 1) {
+      vysl[i] = alfa * x[i] + (1 - alfa) * vysl[i - 1];
+    }
+  } else if (typ === 'wma') {
+    const jmenovatel = (n * (n + 1)) / 2;
+    for (let i = n - 1; i < x.length; i += 1) {
+      let soucet = 0;
+      for (let j = 0; j < n; j += 1) soucet += x[i - n + 1 + j] * (j + 1);
+      vysl[i] = soucet / jmenovatel;
+    }
+  } else {
+    for (let i = n - 1; i < x.length; i += 1) vysl[i] = prumer(i - n + 1, i + 1);
+  }
+
+  platne.forEach((idx, k) => { out[idx] = vysl[k]; });
+  return out;
+}
+
 const cislo = (klic, vychozi, min, max, param) =>
   ({ klic, typ: 'cislo', vychozi, min, max, param });
 const prepinac = (klic, vychozi) => ({ klic, typ: 'prepinac', vychozi });
 const barva = (klic, vychozi) => ({ klic, typ: 'barva', vychozi, paleta: PALETA });
-const vyber = (klic, vychozi, moznosti) => ({ klic, typ: 'vyber', vychozi, moznosti });
+const vyber = (klic, vychozi, moznosti, param) =>
+  ({ klic, typ: 'vyber', vychozi, moznosti, param });
 
 /**
  * Označí pole jako podřízené jinému přepínači. Dokud je přepínač vypnutý,
@@ -63,8 +114,10 @@ export const SCHEMATA = {
   RSI: [
     { sekce: 'inputs' },
     cislo('delka', 14, 2, 100, 0),
-    vyber('zdroj', 0, ZDROJE.map((z, i) => ({ hodnota: i, popisek: z, klicPopisku: `source.${z}` }))),
+    vyber('zdroj', 0, ZDROJE.map((z, i) => ({ hodnota: i, popisek: z, klicPopisku: `source.${z}` })), 2),
     prepinac('zobrazitMa', false),
+    podle(vyber('typMa', 0, TYPY_MA.map((z, i) => ({ hodnota: i, popisek: z.toUpperCase() })), 3),
+          'zobrazitMa'),
     podle(cislo('delkaMa', 14, 1, 100, 1), 'zobrazitMa'),
     { sekce: 'bands' },
     // Přepínač stojí před tím, co ovládá — zešedlá pole pak dávají smysl

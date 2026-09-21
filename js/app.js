@@ -190,7 +190,10 @@ function wireEvents() {
     if (chartSymbol) closeChart();
   });
 
-  document.querySelectorAll('.interval-btn').forEach((btn) => {
+  // Jen tlačítka, která interval opravdu nesou. Střed má stejný vzhled,
+  // ale žádný data-interval — bez tohoto filtru ho aplikace brala jako
+  // přepnutí na interval „undefined" a vyprázdnila graf.
+  document.querySelectorAll('.interval-btn[data-interval]').forEach((btn) => {
     btn.addEventListener('click', () => zmenInterval(btn.dataset.interval));
   });
 
@@ -475,6 +478,7 @@ async function nactiSvice() {
 }
 
 function zmenInterval(interval) {
+  if (!interval) return; // pojistka: bez intervalu není co načítat
   chartInterval = interval;
   ui.setActiveInterval(interval);
   if (!chartSymbol || !chart) return;

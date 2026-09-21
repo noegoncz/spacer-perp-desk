@@ -13,3 +13,7 @@ _site/
 .DS_Store
 Thumbs.db
 *.log
+
+# testy z tools/
+__pycache__/
+*.pyc

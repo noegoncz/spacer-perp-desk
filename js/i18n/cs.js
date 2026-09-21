@@ -107,6 +107,7 @@ export const cs = {
   'indSet.zobrazitMa': 'Zobrazit průměr',
   'indSet.barvaMa': 'Barva průměru',
   'indSet.zdroj': 'Zdroj ceny',
+  'indSet.typMa': 'Typ průměru',
   'indSet.podlePredchozi': 'Barvit podle předchozí svíčky',
   'indSet.vyska': 'Výška',
   'indSet.vyskaPanelu': 'Výška panelu',

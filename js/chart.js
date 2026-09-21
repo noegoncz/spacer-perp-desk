@@ -14,7 +14,7 @@
 import { createTouchDrawing } from './draw.js';
 import { formatPrice } from './format.js';
 import { t, getLocale } from './i18n.js';
-import { nactiNastaveni, parametryVypoctu, ZDROJE } from './indikatory.js';
+import { nactiNastaveni, parametryVypoctu, ZDROJE, TYPY_MA, vyhladit } from './indikatory.js';
 
 /** Datum a čas pro cenovku u kříže — stejné pásmo jako osa grafu. */
 function formatCas(timestamp) {
@@ -332,27 +332,24 @@ function registrovatRsi() {
     shortName: 'RSI',
     series: 'normal',
     precision: 2,
-    calcParams: [14, 14, 0],
+    calcParams: [14, 14, 0, 0], // délka, délka průměru, zdroj ceny, typ průměru
     figures: [
       { key: 'rsi', title: 'RSI: ', type: 'line' },
       { key: 'ma', title: 'MA: ', type: 'line' },
     ],
     calc: (data, indikator) => {
-      const [delkaVstup, delkaMaVstup, zdrojIndex] = indikator.calcParams || [];
+      const [delkaVstup, delkaMaVstup, zdrojIndex, typIndex] = indikator.calcParams || [];
       const delka = Math.max(2, Number(delkaVstup) || 14);
       const delkaMa = Math.max(1, Number(delkaMaVstup) || 14);
       const zdroj = ZDROJE[Number(zdrojIndex) || 0] || 'close';
+      const typMa = TYPY_MA[Number(typIndex) || 0] || 'sma';
 
-      const out = [];
+      const rada = new Array(data.length).fill(undefined);
       let prumerRustu = 0;
       let prumerPoklesu = 0;
-      let soucetMa = 0;
-      const okno = [];
 
-      for (let i = 0; i < data.length; i += 1) {
-        const cena = Number(data[i][zdroj]);
-        if (i === 0) { out.push({}); continue; }
-        const zmena = cena - Number(data[i - 1][zdroj]);
+      for (let i = 1; i < data.length; i += 1) {
+        const zmena = Number(data[i][zdroj]) - Number(data[i - 1][zdroj]);
         const rust = Math.max(0, zmena);
         const pokles = Math.max(0, -zmena);
 
@@ -365,16 +362,14 @@ function registrovatRsi() {
           prumerRustu = (prumerRustu * (delka - 1) + rust) / delka;
           prumerPoklesu = (prumerPoklesu * (delka - 1) + pokles) / delka;
         }
-
-        if (i < delka) { out.push({}); continue; }
-        const rsi = prumerPoklesu === 0 ? 100 : 100 - 100 / (1 + prumerRustu / prumerPoklesu);
-
-        okno.push(rsi);
-        soucetMa += rsi;
-        if (okno.length > delkaMa) soucetMa -= okno.shift();
-        out.push({ rsi, ma: okno.length === delkaMa ? soucetMa / delkaMa : undefined });
+        if (i < delka) continue;
+        rada[i] = prumerPoklesu === 0 ? 100 : 100 - 100 / (1 + prumerRustu / prumerPoklesu);
       }
-      return out;
+
+      // Průměr RSI se počítá vždy, i vypnutý — je to jen barva. Tím je
+      // přepnutí zobrazení okamžité a nevyžaduje přepočet.
+      const prumer = vyhladit(rada, delkaMa, typMa);
+      return rada.map((rsi, i) => (rsi === undefined ? {} : { rsi, ma: prumer[i] }));
     },
     draw: ({ ctx, chart, indicator, bounding }) => {
       const n = nactiNastaveni('RSI');
@@ -968,10 +963,18 @@ export function createPriceChart(container, layer, handlers = {}) {
      */
     setInterval(interval) {
       delkaObdobi = DELKA_OBDOBI[interval] || DELKA_OBDOBI['15'];
+      /*
+       * ⚠ Snímek kreseb se bere jen jednou, při prvním přepnutí. Při rychlém
+       * proklikávání timeframů je graf už vyprázdněný předchozím přepnutím,
+       * takže druhý snímek by byl prázdný a obnovilo by se „nic". Kresby pak
+       * na obrazovce zmizely, ač v úložišti zůstaly.
+       */
+      if (!prepinaSeInterval) {
+        zalohaKreseb = chart
+          .getOverlays({ groupId: SKUPINA_KRESBY })
+          .map((o) => ({ name: o.name, points: o.points, style: o.extendData }));
+      }
       prepinaSeInterval = true;
-      zalohaKreseb = chart
-        .getOverlays({ groupId: SKUPINA_KRESBY })
-        .map((o) => ({ name: o.name, points: o.points, style: o.extendData }));
       chart.removeOverlay({ groupId: SKUPINA_POZICE });
       chart.removeOverlay({ groupId: SKUPINA_KRESBY });
       idCarPozice = [];

@@ -502,7 +502,7 @@ export function showChartError(message) {
 }
 
 export function setActiveInterval(interval) {
-  document.querySelectorAll('.interval-btn').forEach((btn) => {
+  document.querySelectorAll('.interval-btn[data-interval]').forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.interval === interval);
   });
 }
