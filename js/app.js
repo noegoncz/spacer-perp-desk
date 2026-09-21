@@ -18,16 +18,12 @@ let lastPositions = [];
 /* ---------- stav grafu ---------- */
 
 /*
- * Čáry v grafu mají jednotný systém: všechny tenké, liší se barvou a typem
- * čárkování. Vstup je schválně fialový — modrá patří kresbám uživatele
- * a pletlo by se to.
+ * Čáry v grafu jsou jednotně **světle bílé** a tenké. Rozlišuje je výhradně
+ * typ čárkování a popisek u pravé osy — barevné čáry přes svíčky rušily.
  */
+const BILA = '#e6edf5';
 const BARVA_CARY = {
-  vstup: '#a78bfa',
-  likvidace: '#ea3943',
-  sl: '#f0b90b',
-  tp: '#16c784',
-  prikaz: '#8b9bb0',
+  vstup: BILA, likvidace: BILA, sl: BILA, tp: BILA, prikaz: BILA,
 };
 
 const CARKOVANI = {
@@ -218,7 +214,6 @@ function wireEvents() {
     const id = chart?.selectedId();
     if (id) chart.setAlarm(id, !chart.selectedStyle().alarm);
   });
-  el('moreToolsBtn').addEventListener('click', () => otevriNabidku('sheetDraw'));
 
   document.querySelectorAll('.tool-btn[data-tool]').forEach((btn) => {
     btn.addEventListener('click', () => vyberNastroj(btn.dataset.tool));
@@ -538,20 +533,6 @@ function vyberNastroj(nastroj) {
 }
 
 function postavNabidky() {
-  el('drawList').replaceChildren(
-    ...NASTROJE.map((n) => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'sheet-item';
-      btn.textContent = nazevNastroje(n.id);
-      btn.addEventListener('click', () => {
-        zavriNabidky();
-        vyberNastroj(n.id);
-      });
-      return btn;
-    }),
-  );
-
   el('indicatorList').replaceChildren(
     ...INDIKATORY.map((i) => {
       const btn = document.createElement('button');
@@ -975,7 +956,6 @@ function otevriNabidku(id) {
 }
 
 function zavriNabidky() {
-  el('sheetDraw').hidden = true;
   el('sheetIndicators').hidden = true;
 }
 

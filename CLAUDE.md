@@ -194,18 +194,19 @@ je přikupování, ne stop-loss.
 
 #### Jednotný systém čar
 
-Všechny čáry pozice mají **tloušťku 1**. Rozlišuje je barva a typ čárkování,
-ne tloušťka — jinak graf působí jako změť různých linek.
+Všechny čáry pozice jsou **světle bílé** (`#e6edf5`) a mají **tloušťku 1**.
+Rozlišuje je výhradně **typ čárkování** a popisek u pravé osy — barevné čáry
+přes svíčky rušily pohled.
 
-| čára | čárkování | barva |
-|---|---|---|
-| vstup | `7-3-2-3` čerchovaná | fialová `#a78bfa` |
-| likvidace | `12-5` dlouhá | červená |
-| SL / TP celé pozice | `6-4` | oranžová / zelená |
-| částečné TP a SL | `3-3` krátká | oranžová / zelená |
-| limitky | `1-4` tečkovaná | šedá |
+| čára | čárkování |
+|---|---|
+| vstup | `7-3-2-3` čerchovaná |
+| likvidace | `12-5` dlouhá |
+| SL / TP celé pozice | `6-4` |
+| částečné TP a SL | `3-3` krátká |
+| limitky | `1-4` tečkovaná |
 
-Vstup je **fialový schválně** — modrá patří kresbám uživatele a pletlo by se to.
+Bílá je zároveň **výchozí barva kreseb** a první v paletě.
 
 Popisky jsou u pravého okraje vedle cenové osy, **bez podkladu a rámečku**;
 barevný blok za textem jen ujídal pohled na svíčky.
@@ -441,6 +442,18 @@ pointerdown → touchstart → pointermove → touchmove → pointercancel
 nedělá nic. Volá se až ve chvíli, kdy je jasné, že jde o vodorovný tah.
 K tomu `touch-action: pan-y` na třech obrazovkách záložek — na grafu ne,
 tam by to sebralo dotyk vodorovně posuvným lištám.
+
+#### Rozvržení obrazovky grafu
+
+Shora dolů: **hlavička** (zpět, pár, PnL, celá obrazovka) → **údaje o pozici**
+→ **kreslicí lišta** → **graf** → **timeframy**.
+
+Údaje o pozici jsou nahoře schválně: pod nimi zůstane graf souvislý až
+k timeframům. V celé obrazovce ustoupí, nástroje zůstávají.
+
+Kreslicí lišta ukazuje **všech 12 nástrojů** plus magnet, indikátory a koš,
+proto jsou tlačítka 34 px. Na rozevřeném Foldu se vejdou bez posouvání, na
+zavřeném displeji se lišta posouvá do strany.
 
 Klepnutí na pár otevře graf. Proto graf nově funguje **i bez otevřené pozice**:
 `chartSymbol` je zdroj pravdy o tom, co se kreslí, `chartPosition` může být

@@ -274,11 +274,11 @@ function styly() {
 /* ---------- vzhled kreseb ---------- */
 
 /** Záměrně malá paleta. Velká se nepoužívá, jen se v ní člověk hrabe. */
-export const BARVY_KRESEB = ['#4c9aff', '#16c784', '#ea3943', '#f0b90b', '#a78bfa', '#e6edf5'];
+export const BARVY_KRESEB = ['#e6edf5', '#4c9aff', '#16c784', '#ea3943', '#f0b90b', '#a78bfa'];
 export const TLOUSTKY = [1, 2, 3];
 export const PRUHLEDNOSTI = [1, 0.6, 0.3];
 
-export const VYCHOZI_STYL = { color: BARVY_KRESEB[0], width: 2, opacity: 1 };
+export const VYCHOZI_STYL = { color: BARVY_KRESEB[0], width: 1, opacity: 1 };
 
 function rgba(hex, alpha) {
   const n = parseInt(hex.slice(1), 16);
