@@ -2,8 +2,8 @@
 
 import { BybitClient } from './bybit.js';
 import {
-  createPriceChart, NASTROJE, INDIKATORY, nazevNastroje, nazevIndikatoru,
-  BARVY_KRESEB, TLOUSTKY, PRUHLEDNOSTI,
+  createPriceChart, NASTROJE, INDIKATORY, popisIndikatoru,
+  IKONY_INDIKATORU, BARVY_KRESEB, TLOUSTKY, PRUHLEDNOSTI,
 } from './chart.js';
 import { t, setLanguage, applyStaticTexts, JAZYKY } from './i18n.js';
 import { priceDecimals, formatPrice } from './format.js';
@@ -18,12 +18,16 @@ let lastPositions = [];
 /* ---------- stav grafu ---------- */
 
 /*
- * Čáry v grafu jsou jednotně **světle bílé** a tenké. Rozlišuje je výhradně
- * typ čárkování a popisek u pravé osy — barevné čáry přes svíčky rušily.
+ * Čáry pozice si drží barvy podle významu — u SL, TP a likvidace nese barva
+ * informaci a vyplatí se. Bílá je naopak výchozí pro **kresby uživatele**,
+ * aby nepřebíjely svíčky.
  */
-const BILA = '#e6edf5';
 const BARVA_CARY = {
-  vstup: BILA, likvidace: BILA, sl: BILA, tp: BILA, prikaz: BILA,
+  vstup: '#a78bfa',
+  likvidace: '#ea3943',
+  sl: '#f0b90b',
+  tp: '#16c784',
+  prikaz: '#8b9bb0',
 };
 
 const CARKOVANI = {
@@ -38,7 +42,7 @@ let chart = null;          // instance se drží i po zavření, ať se otevír�
 let chartSymbol = null;    // null = graf je zavřený
 let chartPosition = null;  // null = pár bez otevřené pozice
 let chartTrh = null;       // poslední cena a změna, když pozice není
-let chartInterval = '15';
+let chartInterval = '240';  // 4h je pro přehled nejpoužitelnější
 let chartOrders = [];
 let chartLineKey = '';     // otisk čar, aby se nepřekreslovaly při každém ticku
 let ordersTimer = null;
@@ -539,8 +543,24 @@ function postavNabidky() {
       btn.type = 'button';
       btn.className = 'sheet-item';
       btn.dataset.indicator = i.id;
-      btn.textContent = nazevIndikatoru(i.id);
-      btn.addEventListener('click', () => chart.toggleIndicator(i.id, i.vlastniPanel));
+
+      const ikona = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      ikona.setAttribute('viewBox', '0 0 24 24');
+      ikona.innerHTML = IKONY_INDIKATORU[i.id] || '';
+
+      const zkratka = document.createElement('span');
+      zkratka.className = 'sheet-zkratka';
+      zkratka.textContent = i.id;
+
+      const popis = document.createElement('span');
+      popis.className = 'sheet-popis';
+      popis.textContent = popisIndikatoru(i.id);
+
+      btn.append(ikona, zkratka, popis);
+      btn.addEventListener('click', () => {
+        chart.toggleIndicator(i.id, i.vlastniPanel);
+        zavriNabidky(); // po výběru se roletka zavře, ať nepřekáží grafu
+      });
       return btn;
     }),
   );

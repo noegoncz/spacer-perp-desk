@@ -100,6 +100,19 @@ export const INDIKATORY = [
 ];
 
 export const nazevIndikatoru = (id) => t(`indicator.${id}`);
+export const popisIndikatoru = (id) => t(`indicatorDesc.${id}`);
+
+/** Drobné ikonky do nabídky, ať jde indikátor poznat i bez čtení. */
+export const IKONY_INDIKATORU = {
+  VOL: '<path d="M4 20V13M9 20V8M14 20V11M19 20V5"/>',
+  RSI: '<path d="M3 16c3-8 6 4 9-3s6 2 9-4"/><path d="M3 6h18M3 18h18" opacity=".4"/>',
+  MACD: '<path d="M3 14c3-6 6 2 9-4s6 4 9-2"/><path d="M6 19v-3M12 19v-5M18 19v-2"/>',
+  KDJ: '<path d="M3 15c4-7 8 3 12-5"/><path d="M3 18c4-5 8 4 12-7" opacity=".5"/><path d="M19 4v16"/>',
+  MA: '<path d="M3 15c4-6 8 2 12-4s4-2 6-3"/>',
+  EMA: '<path d="M3 17c4-4 6 1 9-5s6 1 9-4"/><circle cx="21" cy="8" r="1.6"/>',
+  BOLL: '<path d="M3 13c4-5 8 1 12-4s2-1 6-2"/><path d="M3 7c4-5 8 1 12-4" opacity=".45"/><path d="M3 19c4-5 8 1 12-4" opacity=".45"/>',
+  SAR: '<path d="M3 16c4-6 8 2 12-5"/><circle cx="6" cy="19" r="1.3"/><circle cx="11" cy="17" r="1.3"/><circle cx="16" cy="8" r="1.3"/><circle cx="21" cy="6" r="1.3"/>',
+};
 
 const HLAVNI_PANEL = 'candle_pane';
 const SKUPINA_POZICE = 'pozice';

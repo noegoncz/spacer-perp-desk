@@ -79,10 +79,6 @@
         <span id="chartBadge" class="badge"></span>
       </div>
       <div id="chartPnl" class="chart-pnl"></div>
-      <button type="button" id="fullscreenBtn" class="icon-btn tool-icon"
-              data-i18n-aria="chart.fullscreen" data-i18n-title="chart.fullscreen">
-        <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
-      </button>
     </header>
 
     <div id="chartInfo" class="chart-info"></div>
@@ -149,6 +145,11 @@
       <button type="button" class="tool-btn" id="eraseBtn"
               data-i18n-aria="chart.eraseDrawings" data-i18n-title="chart.eraseDrawings">
         <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
+      </button>
+      <!-- Celá obrazovka je vždy úplně vpravo, mimo kreslicí nástroje. -->
+      <button type="button" class="tool-btn tool-vpravo" id="fullscreenBtn"
+              data-i18n-aria="chart.fullscreen" data-i18n-title="chart.fullscreen">
+        <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
       </button>
     </div>
 

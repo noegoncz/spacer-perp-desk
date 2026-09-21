@@ -194,19 +194,19 @@ je přikupování, ne stop-loss.
 
 #### Jednotný systém čar
 
-Všechny čáry pozice jsou **světle bílé** (`#e6edf5`) a mají **tloušťku 1**.
-Rozlišuje je výhradně **typ čárkování** a popisek u pravé osy — barevné čáry
-přes svíčky rušily pohled.
+Všechny čáry pozice mají **tloušťku 1** a liší se barvou i čárkováním.
+U SL, TP a likvidace nese barva informaci, tam se vyplatí.
 
-| čára | čárkování |
-|---|---|
-| vstup | `7-3-2-3` čerchovaná |
-| likvidace | `12-5` dlouhá |
-| SL / TP celé pozice | `6-4` |
-| částečné TP a SL | `3-3` krátká |
-| limitky | `1-4` tečkovaná |
+| čára | čárkování | barva |
+|---|---|---|
+| vstup | `7-3-2-3` čerchovaná | fialová `#a78bfa` |
+| likvidace | `12-5` dlouhá | červená |
+| SL / TP celé pozice | `6-4` | oranžová / zelená |
+| částečné TP a SL | `3-3` krátká | oranžová / zelená |
+| limitky | `1-4` tečkovaná | šedá |
 
-Bílá je zároveň **výchozí barva kreseb** a první v paletě.
+**Kresby uživatele** mají naopak výchozí barvu **bílou** (první v paletě),
+aby nepřebíjely svíčky. Ostatní barvy zůstávají na výběr.
 
 Popisky jsou u pravého okraje vedle cenové osy, **bez podkladu a rámečku**;
 barevný blok za textem jen ujídal pohled na svíčky.
@@ -451,9 +451,17 @@ Shora dolů: **hlavička** (zpět, pár, PnL, celá obrazovka) → **údaje o po
 Údaje o pozici jsou nahoře schválně: pod nimi zůstane graf souvislý až
 k timeframům. V celé obrazovce ustoupí, nástroje zůstávají.
 
-Kreslicí lišta ukazuje **všech 12 nástrojů** plus magnet, indikátory a koš,
-proto jsou tlačítka 34 px. Na rozevřeném Foldu se vejdou bez posouvání, na
-zavřeném displeji se lišta posouvá do strany.
+Kreslicí lišta ukazuje **všech 12 nástrojů** plus magnet, indikátory, koš
+a celou obrazovku (ta je vždy úplně vpravo), proto jsou tlačítka 34 px. Na
+rozevřeném Foldu se vejdou bez posouvání, na zavřeném displeji se lišta
+posouvá do strany.
+
+Výchozí interval je **4h**.
+
+⚠ Vysouvací nabídky (`.sheet`) jsou **`position: fixed`**, ne `absolute`.
+Ve vnořeném rozvržení se jinak ukotví k rodiči a skončí uprostřed obrazovky,
+kde je uživatel nehledá. Nabídka indikátorů má v každém řádku ikonku, zkratku
+a stručný popis, a po výběru se sama zavře.
 
 Klepnutí na pár otevře graf. Proto graf nově funguje **i bez otevřené pozice**:
 `chartSymbol` je zdroj pravdy o tom, co se kreslí, `chartPosition` může být

@@ -144,6 +144,14 @@ export const en = {
   'draw.cancel': 'Cancel drawing',
 
   /* ---------- indicators ---------- */
+  'indicatorDesc.VOL': 'Traded volume per candle',
+  'indicatorDesc.RSI': 'Momentum 0–100, overbought and oversold',
+  'indicatorDesc.MACD': 'Trend momentum from two moving averages',
+  'indicatorDesc.KDJ': 'Stochastic oscillator with a third line',
+  'indicatorDesc.MA': 'Simple moving average of price',
+  'indicatorDesc.EMA': 'Moving average weighted to recent prices',
+  'indicatorDesc.BOLL': 'Volatility bands around a moving average',
+  'indicatorDesc.SAR': 'Dots marking possible trend reversals',
   'indicator.VOL': 'Volume',
   'indicator.RSI': 'RSI',
   'indicator.MACD': 'MACD',

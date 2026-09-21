@@ -140,6 +140,14 @@ export const cs = {
   'draw.cancel': 'Zrušit kreslení',
 
   /* ---------- indikátory ---------- */
+  'indicatorDesc.VOL': 'Zobchodovaný objem za svíčku',
+  'indicatorDesc.RSI': 'Síla trendu 0–100, překoupenost a přeprodanost',
+  'indicatorDesc.MACD': 'Momentum trendu ze dvou klouzavých průměrů',
+  'indicatorDesc.KDJ': 'Stochastický oscilátor se třetí čarou',
+  'indicatorDesc.MA': 'Jednoduchý klouzavý průměr ceny',
+  'indicatorDesc.EMA': 'Klouzavý průměr s důrazem na čerstvé ceny',
+  'indicatorDesc.BOLL': 'Pásma volatility kolem klouzavého průměru',
+  'indicatorDesc.SAR': 'Body naznačující možný obrat trendu',
   'indicator.VOL': 'Objem',
   'indicator.RSI': 'RSI',
   'indicator.MACD': 'MACD',
