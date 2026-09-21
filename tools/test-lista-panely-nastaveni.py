@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Tlacitko CENTER v liste timeframu, vyska panelu RSI a sedive volby."""
-import os, sys, time, json, base64
+import os, sys, tempfile, time, json, base64
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from dotyk import Prohlizec
 p = Prohlizec()
@@ -30,28 +30,7 @@ def klepni(x, y, cekat=1.0):
     p.prikaz('Input.dispatchTouchEvent', type='touchEnd', touchPoints=[])
     time.sleep(cekat)
 
-print('=== 1. tlacitko CENTER ===')
-print('v kreslici liste:', p.js("!!document.querySelector('.draw-toolbar #centerBtn')"), '(ma byt False)')
-print('v liste timeframu:', p.js("!!document.querySelector('.chart-tools #centerBtn')"), '(ma byt True)')
-c = rect('#centerBtn'); m = rect('.interval-btn[data-interval=M]')
-print('1M konci na x=%d, CENTER zacina na x=%d -> %s'
-      % (m['right'], c['left'],
-         'hned vedle' if 0 <= c['left'] - m['right'] < 20 else 'mezera %d px' % (c['left']-m['right'])))
-print('CENTER je videt cely:', p.js(
-  "(() => { const b=document.getElementById('centerBtn').getBoundingClientRect();"
-  "return b.right <= window.innerWidth + 1 && b.left >= -1; })()"))
-# funguje?
-p.js("window.__graf.scrollByDistance(-400)")
-time.sleep(1)
-pred = p.js("JSON.stringify(window.__graf.getVisibleRange())")
-klepni(c['x'], c['y'], 1.5)
-po = p.js("JSON.stringify(window.__graf.getVisibleRange())")
-print('rozsah pred klikem:', pred)
-print('rozsah po kliku:   ', po)
-print('CENTER funguje:', 'ANO' if pred != po else 'NE')
-print()
-
-print('=== 2. vyska panelu RSI ===')
+print('=== 1. vyska panelu RSI ===')
 def vyskaRsi():
     return p.js("""(() => {
       const g = window.__graf;
@@ -83,7 +62,7 @@ else:
     print('po volbe 40 %: ', vyskaRsi())
 print()
 
-print('=== 3. sedive zavisle volby ===')
+print('=== 2. sedive zavisle volby ===')
 def stavRadku():
     r = p.js("""JSON.stringify([...document.querySelectorAll('#settingsBody .nastaveni-radek')]
       .map(r => (r.classList.contains('nastaveni-radek--vypnuto') ? '[sede] ' : '       ')
@@ -112,7 +91,7 @@ if sb != 'null':
         ? 'ne, vsechna jsou zablokovana' : 'ANO - nekterá zustala aktivni!' : 'zadna zesedla';
     })()"""))
 snap = p.prikaz('Page.captureScreenshot', format='png')
-open('tri.png','wb').write(base64.b64decode(snap['data']))
+open(os.path.join(tempfile.gettempdir(), 'tri.png'),'wb').write(base64.b64decode(snap['data']))
 print()
 print('CELKEM CHYB:', p.js('(window.__chyby||[]).length'),
       p.js('(window.__chyby||[]).join(" | ")') or '')

@@ -553,6 +553,17 @@ export function createPriceChart(container, layer, handlers = {}) {
     chart.scrollToRealTime(0);
   }
 
+  /*
+   * ⚠ Srovnání se musí naplánovat až za vykreslení, ne přes `setTimeout(…, 0)`.
+   * Při otevření grafu se hned po něm ještě vracejí kresby a čáry pozice
+   * a plátno se překresluje; srovnání puštěné dřív se nestihlo projevit
+   * a pohled skončil o pár svíček před koncem dat — poslední svíčka tedy
+   * nebyla vidět. Dva snímky proto, že první jen zpracuje probíhající změny.
+   */
+  function srovnejAzPoVykresleni() {
+    requestAnimationFrame(() => requestAnimationFrame(srovnejPohled));
+  }
+
   chart.setLocale('en-US'); // knihovna češtinu nemá; ovlivňuje popisky v tooltipu
 
   let idCarPozice = [];
@@ -571,6 +582,7 @@ export function createPriceChart(container, layer, handlers = {}) {
   let posledniCary = [];
   let prepinaSeInterval = false;
   let zalohaKreseb = [];
+  let posledniInterval = null;
   let delkaObdobi = DELKA_OBDOBI['15'];
   let tikani = null;
 
@@ -964,6 +976,17 @@ export function createPriceChart(container, layer, handlers = {}) {
     setInterval(interval) {
       delkaObdobi = DELKA_OBDOBI[interval] || DELKA_OBDOBI['15'];
       /*
+       * ⚠ Na stejné období knihovna znovu nesáhne pro data — `getBars` se
+       * nezavolá a kresby by neměl kdo vrátit. Sundávat je tedy nesmíme.
+       * Pohled ale srovnat chceme: sem se při stejném intervalu dostane jen
+       * otevření grafu, a to má vždy začít u posledních svíček.
+       */
+      if (interval === posledniInterval) {
+        srovnejAzPoVykresleni();
+        return;
+      }
+      posledniInterval = interval;
+      /*
        * ⚠ Snímek kreseb se bere jen jednou, při prvním přepnutí. Při rychlém
        * proklikávání timeframů je graf už vyprázdněný předchozím přepnutím,
        * takže druhý snímek by byl prázdný a obnovilo by se „nic". Kresby pak
@@ -1045,9 +1068,6 @@ export function createPriceChart(container, layer, handlers = {}) {
     setMagnet(zapnuto) {
       magnet = zapnuto;
     },
-
-    /** Srovná pohled na aktuální svíčky. */
-    resetPohledu: srovnejPohled,
 
     getDrawings() {
       return chart

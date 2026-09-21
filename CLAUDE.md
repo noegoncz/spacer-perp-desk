@@ -467,7 +467,7 @@ posouvá do strany.
 
 Výchozí interval je **4h**.
 
-⚠ **Pomocná tlačítka lišty (magnet, indikátory, střed, koš, celá obrazovka)
+⚠ **Pomocná tlačítka lišty (magnet, indikátory, koš, celá obrazovka)
 jsou v napevno ukotvené části vpravo**, mimo posuvnou oblast s nástroji.
 Dřív byla v posuvné části a na úzkém displeji skončila mimo obrazovku —
 uživatel na ikonu indikátorů vůbec nedosáhl.
@@ -489,25 +489,42 @@ se nastavuje přes `setBarSpace()` s útlumem `pomer ** 0.55`, a posun se vrát�
 teprve až **nezůstane na displeji žádný prst** — ne po prvním `touchend`.
 
 ⚠ **Tlačítko s třídou `.interval-btn` musí mít `data-interval`, nebo se z něj
-nesmí vybírat.** Střed (CENTER) sdílí vzhled s timeframy a stojí v jejich liště.
-Posluchač `document.querySelectorAll('.interval-btn')` ho vzal jako přepnutí na
-interval `undefined`: graf se vyprázdnil (0 svíček, osa 0–10), zmizely kresby
-i čáry a střed se zbarvil jako aktivní. Selektory jsou proto
+nesmí vybírat.** Tlačítko středu (CENTER) chvíli sdílelo vzhled s timeframy
+a stálo v jejich liště. Posluchač `document.querySelectorAll('.interval-btn')`
+ho vzal jako přepnutí na interval `undefined`: graf se vyprázdnil (0 svíček,
+osa 0–10), zmizely kresby i čáry. Selektory jsou proto
 `.interval-btn[data-interval]` a `zmenInterval()` prázdný interval odmítne.
 Test s mockem to dřív nechytil, protože mock vracel svíčky pro jakýkoli interval —
 `tools/mock-bybit.js` teď pro neexistující interval vrací prázdno.
+
+**Tlačítko středu je zrušené** (uživatel 2026-09-21: „to je na nic"). Srovnání
+pohledu obstarává `srovnejPohled()` sám při otevření grafu a změně intervalu.
 
 ⚠ **Snímek kreseb při změně intervalu se bere jen jednou.** `setInterval()` si
 kresby zapamatuje z grafu a pak je z něj sundá. Při rychlém proklikávání
 timeframů byl graf už prázdný, druhý snímek byl prázdný a obnovilo se „nic“ —
 kresby zmizely z obrazovky, ač v úložišti zůstaly (po restartu byly zpátky).
 Ukládání se spouští jen vytvořením a potvrzenou úpravou, ne smazáním overlaye,
-proto se o data přijít nedá. Test: `tools/test-center-intervaly.py`.
+proto se o data přijít nedá. Test: `tools/test-rychle-prepinani.py`.
 
 ⚠ Při testování gest dvěma prsty přes CDP je nutné dávat dotykovým bodům
 **výslovné `id`**. Bez nich Chrome přiřadí bod podle pořadí a pohyb zbylého
 prstu se tváří jako nový, třetí prst — test pak hlásí odskok, který v aplikaci
 není. (Stálo to jeden falešný poplach.)
+
+⚠ **Na stejné období knihovna znovu nesáhne pro data.** `setPeriod()` se stejnou
+hodnotou nezavolá `getBars`, a právě v něm se kresby vracejí do grafu. Druhé
+klepnutí na už aktivní timeframe tak kresby sundalo a neměl je kdo vrátit —
+objevily se až po přepnutí na jiný timeframe. Ošetřeno dvakrát: `zmenInterval()`
+klepnutí na aktivní timeframe ignoruje (jako TradingView) a `setInterval()`
+v chart.js při shodném období kresby vůbec nesundává.
+Test: `tools/test-stejny-timeframe.py`.
+
+⚠ **Srovnání pohledu se plánuje přes `requestAnimationFrame`, ne `setTimeout(…, 0)`.**
+Po otevření grafu se ještě vracejí kresby a čáry pozice a plátno se překresluje;
+srovnání puštěné dřív se nestihlo projevit a pohled skončil o sedm svíček před
+koncem dat, takže poslední svíčka nebyla vidět. Dva snímky za sebou
+(`srovnejAzPoVykresleni()`), první jen zpracuje probíhající změny.
 
 #### Indikátory a jejich nastavení
 
@@ -682,8 +699,9 @@ Pořadí, jak se na to má chodit. Odškrtnuté jsou hotové.
 - [ ] **Čitelný popisek indikátoru** v hlavičce panelu. Knihovna vypisuje surové
   `calcParams`, takže RSI ukazuje `RSI(14,14,1,3)` místo např. `RSI 14 · Close · WMA 14`.
   (`createTooltipDataSource` u indikátoru, ověřit tvar v `vendor/klinecharts.js`.)
-- [ ] **Ověřit na telefonu** (v0.10.2): CENTER nemění interval ani nemaže kresby;
-  rychlé proklikání timeframů nemaže kresby.
+- [ ] **Ověřit na telefonu** (v0.10.3): druhé klepnutí na už aktivní timeframe
+  nesmí shodit kresby; rychlé proklikání timeframů taky ne; graf se po otevření
+  ukáže u posledních svíček.
 - [ ] **RSI dál** podle TradingView: Calculate Divergence, VWMA, SMA + Bollinger
   Bands (BB StdDev), přechodová výplň pásem.
 - [ ] **Volume dál**: přesnost (precision), popisky na cenové ose.

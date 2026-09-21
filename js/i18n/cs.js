@@ -141,7 +141,6 @@ export const cs = {
   'chart.moreTools': 'Další nástroje',
   'chart.cursor': 'Kurzor',
   'chart.magnet': 'Přichytávat ke svíčkám',
-  'chart.center': 'Vystředit graf',
   'chart.eraseDrawings': 'Smazat kresby',
   'chart.fullscreen': 'Celá obrazovka',
   'chart.resetZoom': 'Zpět na 100 %',

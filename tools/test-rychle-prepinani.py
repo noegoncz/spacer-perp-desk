@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""CENTER nesmi menit interval ani mazat kresby; rychle prepinani timeframu take ne."""
+"""Rychle proklikani timeframu nesmi shodit kresby ani cary pozice."""
 import os, sys, time, json
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from dotyk import Prohlizec
@@ -52,12 +52,4 @@ ok2 = r['kresby'] == z['kresby'] and r['cary'] == z['cary'] and r['svicek'] > 0
 print('  ->', 'V PORADKU' if ok2 else '!!! CHYBA: kresby nebo cary zmizely')
 print('  ulozene kresby v telefonu:',
       len(json.loads(ev("localStorage.getItem('perpdesk.drawings.JUPUSDT')"))), '(ma byt 2)')
-print()
-print('=== CENTER 5x za sebou ===')
-for i in range(5):
-    klepni('#centerBtn', 1.2)
-c = stav('po 5x CENTER')
-ok1 = c['kresby'] == z['kresby'] and c['svicek'] > 0 and c['aktivni'] == z['aktivni']
-print('  ->', 'V PORADKU' if ok1 else '!!! CHYBA: kresby/svicky/interval se zmenily')
-
 print('CELKEM CHYB:', ev('(window.__chyby||[]).length'))

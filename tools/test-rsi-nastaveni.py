@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import os, sys, time, json, base64
+import os, sys, tempfile, time, json, base64
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from dotyk import Prohlizec
 p = Prohlizec()
@@ -63,5 +63,5 @@ print('RSI se zdrojem Close: %.4f   se zdrojem Open: %.4f   params %s' % (pred, 
 print('  -> zdroj ma vliv:', 'ANO' if abs(pred - po['rsi']) > 1e-6 else 'NE (bug zustava)')
 p.js("document.getElementById('sheetBackdrop').click()"); time.sleep(0.8)
 snap = p.prikaz('Page.captureScreenshot', format='png')
-open('rsi_ma.png','wb').write(base64.b64decode(snap['data']))
+open(os.path.join(tempfile.gettempdir(), 'rsi_ma.png'),'wb').write(base64.b64decode(snap['data']))
 print('CELKEM CHYB:', ev('(window.__chyby||[]).length'), ev('(window.__chyby||[]).join(" | ")') or '')

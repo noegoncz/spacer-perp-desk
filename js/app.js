@@ -219,7 +219,6 @@ function wireEvents() {
   el('indicatorBtn').addEventListener('click', () => otevriNabidku('sheetIndicators'));
   el('settingsResetBtn').addEventListener('click', vratVychoziNastaveni);
   el('fullscreenBtn').addEventListener('click', prepniCelouObrazovku);
-  el('centerBtn').addEventListener('click', () => chart?.resetPohledu());
   document.addEventListener('fullscreenchange', osetriCelouObrazovku);
 
   el('styleDeleteBtn').addEventListener('click', () => chart?.deleteSelected());
@@ -479,6 +478,10 @@ async function nactiSvice() {
 
 function zmenInterval(interval) {
   if (!interval) return; // pojistka: bez intervalu není co načítat
+  // Klepnutí na už aktivní timeframe nedělá nic, jako v TradingView. Dřív
+  // shodilo kresby: knihovna na stejné období znovu nesáhne pro data, takže
+  // se nezavolal `getBars`, ve kterém se kresby vracejí zpátky.
+  if (interval === chartInterval && chartSymbol && chart) return;
   chartInterval = interval;
   ui.setActiveInterval(interval);
   if (!chartSymbol || !chart) return;

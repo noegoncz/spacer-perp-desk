@@ -17,3 +17,5 @@ Thumbs.db
 # testy z tools/
 __pycache__/
 *.pyc
+# snimky obrazovky z testu (ukladaji se do temp, tohle je pojistka)
+/*.png
