@@ -481,6 +481,10 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
 }
 .draw-toolbar::-webkit-scrollbar { display: none; }
 
+/* V celé obrazovce ustoupí údaje o pozici, ať zbude co nejvíc na graf.
+   Nástroje zůstávají — bez nich by celá obrazovka ztratila smysl. */
+.chart-view.cela-obrazovka .chart-info { display: none; }
+
 /* ---------- svislý posuvník vlevo ---------- */
 
 /* Při velkém přiblížení je jinak těžké s grafem hnout. Je tu vždy, aby

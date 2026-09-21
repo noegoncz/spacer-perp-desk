@@ -59,7 +59,7 @@ vendor/                 # KLineChart + licence, stažené v repu (ne CDN)
 
 Veškerá komunikace s burzou (REST i WebSocket) je **jen** v tomto modulu.
 Zbytek aplikace ho zná přes úzké API a nikdy nesahá na `fetch` ani `WebSocket`
-přímo. Důvod: v checkpointu 9 se aplikace balí do APK přes Capacitor a transport
+přímo. Důvod: v checkpointu 10 se aplikace balí do APK přes Capacitor a transport
 se bude muset vyměnit za nativní HTTP plugin (kvůli CORS/pozadí). Ta výměna se
 pak dělá na jednom místě.
 
@@ -138,7 +138,7 @@ produkčnímu API:
 Kontrola `retCode` sama o sobě nestačí.
 
 **Proxy tedy není potřeba.** Pokud by to Bybit někdy změnil, je to jediný důvod
-zrychlit checkpoint 9 (Capacitor nativní HTTP obchází CORS úplně).
+zrychlit checkpoint 10 (Capacitor nativní HTTP obchází CORS úplně).
 
 ### Podpis Bybit V5
 
@@ -291,7 +291,7 @@ vodorovné čáry bere přímo, u dvoubodových se dopočítá z přímky mezi b
 oproti minulé ceně. Alarm je **jednorázový** — po zaznění se vypne, jinak
 by zvonil při každém ticku. Zvuková a vibrační odezva plus pruh v UI.
 
-⚠ Upozornění při **zavřené** aplikaci potřebuje APK z checkpointu 9;
+⚠ Upozornění při **zavřené** aplikaci potřebuje APK z checkpointu 10;
 v prohlížeči to spolehlivě nejde.
 
 #### Svislý posun a celá obrazovka
@@ -363,14 +363,34 @@ skládání stránku nereloaduje, ale rozměry se mění a layout se musí přep
 plynule. Přepínat podle `matchMedia` na šířku a poměr stran, ne podle detekce
 zařízení.
 
-### 6) Rozšířená data
+### 6) Záložky na hlavní obrazovce a historie
+
+Hlavní obrazovka dostane nahoře tři záložky: **Otevřené pozice** (máme),
+**Sledované páry** a **Historie**.
+
+**Historie** vypíše posledních pár obchodů na páru se vším podstatným
+a po rozkliknutí ukáže graf z té doby s vyznačenými vstupy a výstupy.
+
+Ověřeno 2026-09-21, že Bybit tahle data dává a CORS je propouští:
+
+| Endpoint | K čemu |
+|---|---|
+| `/v5/position/closed-pnl` | uzavřené obchody: vstup, výstup, PnL, páka, čas |
+| `/v5/execution/list` | **jednotlivá plnění** — přesný čas a cena každého vstupu i výstupu |
+| `/v5/order/history` | historie příkazů |
+
+Pro značky v grafu je klíčový `execution/list`, ne `closed-pnl` — ten dává jen
+průměrný vstup a výstup, kdežto plnění mají přesné časy, takže se dají položit
+na správné svíčky. Obchod postavený z více nákupů a prodejů tak půjde ukázat
+tak, jak opravdu probíhal.
+
+### 7) Rozšířená data o účtu
 
 - Přehled účtu: equity, volný margin, využití marginu (`/v5/account/wallet-balance`).
 - Funding: příští sazba a čas do stržení, náklad na pozici za den.
 - Otevřené příkazy jako samostatný seznam, nejen čáry v grafu.
-- Realizované PnL a historie uzavřených obchodů (`/v5/position/closed-pnl`).
 
-### 7) Pohodlí
+### 8) Pohodlí
 
 - Řazení a filtrování pozic (PnL, velikost, blízkost likvidace).
 - Barevné varování na kartě při přiblížení k likvidaci, s volitelnou hranicí.
@@ -392,7 +412,7 @@ Foldu), ne jen PIN. Technicky to není přímočaré:
 - **PIN není alternativa k otisku, ale povinná záloha pod ním.** Otisk selhává
   u mokrého prstu a po restartu telefonu. Bez záložní cesty se uživatel ke svým
   klíčům nedostane.
-- Nejsilnější varianta přijde až s APK (checkpoint 9): **Android Keystore**
+- Nejsilnější varianta přijde až s APK (checkpoint 10): **Android Keystore**
   s hardwarově chráněným klíčem. To PWA neumí. Zvážit, jestli v PWA fázi
   nestačí jednodušší řešení a to pořádné nenechat až na APK.
 
@@ -400,7 +420,7 @@ Dál: přepínač na **testnet** (`api-testnet.bybit.com`, `stream-testnet.bybit
 Ověřeno, že testnet odpovídá včetně CORS stejně jako produkce, takže jde jen
 o výměnu základní adresy v `js/bybit.js`.
 
-**Tenhle checkpoint musí být hotový dřív než checkpoint 10.** Dokud je klíč
+**Tenhle checkpoint musí být hotový dřív než checkpoint 11.** Dokud je klíč
 read-only, je čitelný secret v `localStorage` přijatelné riziko — nejhorší
 následek je, že někdo uvidí pozice. S právem obchodovat je nejhorší následek
 vybydlený účet a stejné úložiště přijatelné přestává být.

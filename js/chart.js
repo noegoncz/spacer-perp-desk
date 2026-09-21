@@ -39,6 +39,22 @@ const BARVY = {
   kresba: '#4c9aff',
 };
 
+/** Délka jedné svíčky v ms — pro odpočet do jejího uzavření. */
+const DELKA_OBDOBI = {
+  1: 60e3, 5: 300e3, 15: 900e3, 60: 3600e3, 240: 14400e3,
+  D: 86400e3, W: 604800e3, M: 2592000e3,
+};
+
+/** mm:ss, u delších svíček h:mm:ss. */
+function odpocet(ms) {
+  const celkem = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(celkem / 3600);
+  const m = Math.floor((celkem % 3600) / 60);
+  const sek = celkem % 60;
+  const dd = (n) => String(n).padStart(2, '0');
+  return h > 0 ? `${h}:${dd(m)}:${dd(sek)}` : `${dd(m)}:${dd(sek)}`;
+}
+
 /** Bybit používá vlastní kódy intervalů, knihovna potřebuje jiný tvar. */
 const OBDOBI = {
   1: { type: 'minute', span: 1 },
@@ -146,6 +162,25 @@ function styly() {
         downWickColor: BARVY.pokles,
       },
       tooltip: { text: { color: BARVY.text, size: 11 } },
+      // Značka poslední ceny a pod ní odpočet do uzavření svíčky.
+      priceMark: {
+        show: true,
+        last: {
+          show: true,
+          line: { show: true, style: 'dashed', dashedValue: [4, 4], size: 1 },
+          text: { show: true, size: 11, paddingLeft: 4, paddingRight: 4,
+                  paddingTop: 3, paddingBottom: 3, borderRadius: 3 },
+          extendTexts: [{
+            show: true,
+            position: 'below_price',
+            color: '#ffffff',
+            backgroundColor: 'rgba(37, 49, 65, 0.95)',
+            size: 10,
+            paddingLeft: 4, paddingRight: 4, paddingTop: 2, paddingBottom: 2,
+            borderRadius: 3,
+          }],
+        },
+      },
     },
     xAxis: {
       axisLine: { color: BARVY.okraj },
@@ -250,6 +285,23 @@ export function createPriceChart(container, layer, handlers = {}) {
   // přebarvovat každou čáru znovu.
   let posledniStyl = { ...VYCHOZI_STYL };
   let dodatekKresby = null;
+  let delkaObdobi = DELKA_OBDOBI['15'];
+  let tikani = null;
+
+  /*
+   * Odpočet do uzavření svíčky u poslední ceny, jako v TradingView.
+   * Knihovna na to má `extendTexts` u značky poslední ceny; text dodá tenhle
+   * formátovač. Aby odpočet běžel i mezi ticky z burzy, jednou za sekundu se
+   * vynutí překreslení.
+   */
+  chart.setFormatter({
+    formatExtendText: ({ type, data }) => {
+      if (type !== 'last_price' || !data?.timestamp) return '';
+      const zbyva = data.timestamp + delkaObdobi - Date.now();
+      if (zbyva <= 0 || zbyva > delkaObdobi) return '';
+      return odpocet(zbyva);
+    },
+  });
 
   const vybranyStyl = () => ({ ...VYCHOZI_STYL, ...(upravovanaKresba?.extendData || {}) });
 
@@ -453,7 +505,15 @@ export function createPriceChart(container, layer, handlers = {}) {
     },
 
     setInterval(interval) {
+      delkaObdobi = DELKA_OBDOBI[interval] || DELKA_OBDOBI['15'];
       chart.setPeriod(OBDOBI[interval] || OBDOBI['15']);
+    },
+
+    /** Odpočet tiká jen s otevřeným grafem, ať nežere baterku na pozadí. */
+    setTicking(zapnuto) {
+      clearInterval(tikani);
+      tikani = null;
+      if (zapnuto) tikani = setInterval(() => chart.resize(), 1000);
     },
 
     updateCandle(bar) {
@@ -660,6 +720,7 @@ export function createPriceChart(container, layer, handlers = {}) {
     },
 
     destroy() {
+      clearInterval(tikani);
       observer.disconnect();
       K().dispose(container);
     },

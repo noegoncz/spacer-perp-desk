@@ -122,6 +122,7 @@ function wireEvents() {
 
   el('indicatorBtn').addEventListener('click', () => otevriNabidku('sheetIndicators'));
   el('fullscreenBtn').addEventListener('click', prepniCelouObrazovku);
+  document.addEventListener('fullscreenchange', osetriCelouObrazovku);
 
   el('styleDeleteBtn').addEventListener('click', () => chart?.deleteSelected());
   el('styleAlarmBtn').addEventListener('click', () => {
@@ -321,6 +322,7 @@ async function openChart(position) {
   chart.setInterval(chartInterval); // knihovna si data vyžádá sama
   client.setKlineSubscription(position.symbol, chartInterval);
   chart.restoreDrawings(store.loadDrawings(position.symbol));
+  chart.setTicking(true);
 
   await refreshChartOrders();
 
@@ -333,6 +335,8 @@ function closeChart() {
   // Nástroj se vrací na kurzor, ať graf příště nezačne v režimu kreslení.
   vyberNastroj('');
   zobrazPaletu(null);
+  chart?.setTicking(false);
+  poslednicCena = null;
   chartPosition = null;
   chartOrders = [];
   clearInterval(ordersTimer);
@@ -530,6 +534,12 @@ function zapojPosuvnik() {
     chart?.resetPohledu();
     posadBezec();
   });
+}
+
+/** V celé obrazovce má být vidět co nejvíc grafu, údaje o pozici ustoupí. */
+function osetriCelouObrazovku() {
+  const vCele = Boolean(document.fullscreenElement);
+  el('viewChart').classList.toggle('cela-obrazovka', vCele);
 }
 
 async function prepniCelouObrazovku() {
