@@ -14,6 +14,7 @@
 import { createTouchDrawing } from './draw.js';
 import { formatPrice } from './format.js';
 import { t, getLocale } from './i18n.js';
+import { nactiNastaveni, parametryVypoctu, ZDROJE } from './indikatory.js';
 
 /** Datum a čas pro cenovku u kříže — stejné pásmo jako osa grafu. */
 function formatCas(timestamp) {
@@ -89,7 +90,8 @@ export const nazevNastroje = (id) => t(`tool.${id}`);
 
 /** Indikátory nabízené uživateli, z 27 vestavěných. */
 export const INDIKATORY = [
-  { id: 'VOL', vlastniPanel: true },
+  // Objem se vkládá přímo do hlavního panelu, ne pod něj — viz registrovatObjem.
+  { id: 'VOL', vlastniPanel: false },
   { id: 'RSI', vlastniPanel: true },
   { id: 'MACD', vlastniPanel: true },
   { id: 'KDJ', vlastniPanel: true },
@@ -223,6 +225,190 @@ function registrovatZnackuPlneni() {
   });
 }
 
+/* ---------- vlastní indikátory ---------- */
+
+/**
+ * Objem vnořený do hlavního panelu, jak to dělá TradingView.
+ *
+ * Vestavěný `VOL` sem vložit nejde: má `series: 'volume'`, takže si vyrobí
+ * vlastní svislou osu, přebere jí pravou stupnici a sloupce roztáhne přes
+ * celou výšku — svíčky pak nejsou vidět (ověřeno, viz CLAUDE.md).
+ *
+ * Proto stejný název registrujeme znovu s prázdným `figures`. Bez figur
+ * indikátor do měřítka osy nemluví, cenová stupnice zůstane cenová, a
+ * sloupce si dokreslíme sami do spodního pruhu panelu.
+ */
+function registrovatObjem() {
+  K().registerIndicator({
+    name: 'VOL',
+    shortName: 'Vol',
+    series: 'normal',
+    calcParams: [20],
+    figures: [],
+    calc: (data, indikator) => {
+      const delka = Math.max(1, Number(indikator.calcParams?.[0]) || 20);
+      const out = [];
+      let soucet = 0;
+      for (let i = 0; i < data.length; i += 1) {
+        const k = data[i];
+        const v = Number(k.volume) || 0;
+        soucet += v;
+        if (i >= delka) soucet -= Number(data[i - delka].volume) || 0;
+        const predchozi = i > 0 ? data[i - 1].close : k.open;
+        out.push({
+          v,
+          // Obě varianty barvení spočítáme rovnou. Přepnutí je pak jen
+          // překreslení, ne přepočet celé řady.
+          rustOC: k.close >= k.open,
+          rustPC: k.close >= predchozi,
+          ma: i >= delka - 1 ? soucet / delka : undefined,
+        });
+      }
+      return out;
+    },
+    draw: ({ ctx, chart, indicator, bounding }) => {
+      const n = nactiNastaveni('VOL');
+      const vysledek = indicator.result || [];
+      const rozsah = chart.getVisibleRange();
+      const { gapBar } = chart.getBarSpace();
+      if (!rozsah) return true;
+
+      // Měřítko z právě viditelných svíček, ne z celé historie — jinak by
+      // jeden dávný výkyv zploštil všechno ostatní na neviditelnou čáru.
+      let max = 0;
+      for (let i = rozsah.from; i < rozsah.to; i += 1) {
+        const r = vysledek[i];
+        if (r && r.v > max) max = r.v;
+      }
+      if (max <= 0) return true;
+
+      const pas = bounding.height * (Number(n.vyska) || 22) / 100;
+      const dno = bounding.height;
+      const doPixelu = (hodnota) => dno - (hodnota / max) * pas;
+      const x = (i) =>
+        chart.convertToPixel({ dataIndex: i, value: 0 }, { paneId: HLAVNI_PANEL }).x;
+
+      ctx.save();
+      ctx.globalAlpha = Number(n.pruhlednost) || 0.45;
+      for (let i = rozsah.from; i < rozsah.to; i += 1) {
+        const r = vysledek[i];
+        if (!r) continue;
+        const roste = n.podlePredchozi ? r.rustPC : r.rustOC;
+        ctx.fillStyle = roste ? n.barvaRust : n.barvaPokles;
+        const y = doPixelu(r.v);
+        ctx.fillRect(x(i) - gapBar / 2, y, Math.max(1, gapBar), dno - y);
+      }
+
+      if (n.zobrazitMa) {
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = n.barvaMa;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        let zacato = false;
+        for (let i = rozsah.from; i < rozsah.to; i += 1) {
+          const r = vysledek[i];
+          if (!r || r.ma === undefined) continue;
+          const bx = x(i);
+          const by = doPixelu(r.ma);
+          if (zacato) ctx.lineTo(bx, by);
+          else { ctx.moveTo(bx, by); zacato = true; }
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+      return true; // výchozí kreslení knihovny přeskočit
+    },
+  });
+}
+
+/**
+ * RSI po vzoru TradingView: jedna křivka, volitelný klouzavý průměr a
+ * pásma překoupenosti s výplní. Vestavěné RSI kreslí tři křivky bez pásem
+ * a nedá se u něj zvolit zdroj ceny.
+ */
+function registrovatRsi() {
+  K().registerIndicator({
+    name: 'RSI',
+    shortName: 'RSI',
+    series: 'normal',
+    precision: 2,
+    calcParams: [14, 14, 0],
+    figures: [
+      { key: 'rsi', title: 'RSI: ', type: 'line' },
+      { key: 'ma', title: 'MA: ', type: 'line' },
+    ],
+    calc: (data, indikator) => {
+      const [delkaVstup, delkaMaVstup, zdrojIndex] = indikator.calcParams || [];
+      const delka = Math.max(2, Number(delkaVstup) || 14);
+      const delkaMa = Math.max(1, Number(delkaMaVstup) || 14);
+      const zdroj = ZDROJE[Number(zdrojIndex) || 0] || 'close';
+
+      const out = [];
+      let prumerRustu = 0;
+      let prumerPoklesu = 0;
+      let soucetMa = 0;
+      const okno = [];
+
+      for (let i = 0; i < data.length; i += 1) {
+        const cena = Number(data[i][zdroj]);
+        if (i === 0) { out.push({}); continue; }
+        const zmena = cena - Number(data[i - 1][zdroj]);
+        const rust = Math.max(0, zmena);
+        const pokles = Math.max(0, -zmena);
+
+        if (i <= delka) {
+          // Prvních `delka` změn tvoří prostý průměr, pak se vyhlazuje
+          // Wilderovým způsobem — stejně to počítá TradingView.
+          prumerRustu += rust / delka;
+          prumerPoklesu += pokles / delka;
+        } else {
+          prumerRustu = (prumerRustu * (delka - 1) + rust) / delka;
+          prumerPoklesu = (prumerPoklesu * (delka - 1) + pokles) / delka;
+        }
+
+        if (i < delka) { out.push({}); continue; }
+        const rsi = prumerPoklesu === 0 ? 100 : 100 - 100 / (1 + prumerRustu / prumerPoklesu);
+
+        okno.push(rsi);
+        soucetMa += rsi;
+        if (okno.length > delkaMa) soucetMa -= okno.shift();
+        out.push({ rsi, ma: okno.length === delkaMa ? soucetMa / delkaMa : undefined });
+      }
+      return out;
+    },
+    draw: ({ ctx, chart, indicator, bounding }) => {
+      const n = nactiNastaveni('RSI');
+      if (!n.zobrazitPasma) return false;
+      const naY = (hodnota) => {
+        const b = chart.convertToPixel({ value: hodnota }, { paneId: indicator.paneId });
+        return Array.isArray(b) ? b[0].y : b.y;
+      };
+      const horni = naY(Number(n.horniPasmo));
+      const dolni = naY(Number(n.dolniPasmo));
+      if (!Number.isFinite(horni) || !Number.isFinite(dolni)) return false;
+
+      ctx.save();
+      if (n.vypln) {
+        ctx.globalAlpha = 0.07;
+        ctx.fillStyle = n.barvaRsi;
+        ctx.fillRect(0, horni, bounding.width, dolni - horni);
+      }
+      ctx.globalAlpha = 0.6;
+      ctx.strokeStyle = n.barvaPasem;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      [horni, dolni].forEach((y) => {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(bounding.width, y);
+        ctx.stroke();
+      });
+      ctx.restore();
+      return false; // křivky nad pásmy dokreslí knihovna
+    },
+  });
+}
+
 function styly() {
   return {
     grid: {
@@ -313,6 +499,8 @@ function stylKresby(styl) {
 export function createPriceChart(container, layer, handlers = {}) {
   registrovatCaruPozice();
   registrovatZnackuPlneni();
+  registrovatObjem();
+  registrovatRsi();
 
   const chart = K().init(container, { styles: styly() });
   chart.setTimezone('Europe/Prague');
@@ -576,6 +764,100 @@ export function createPriceChart(container, layer, handlers = {}) {
    * posouvat a obraz poskakuje. Řeší se vypnutím posunu a zoomu grafu na
    * dobu, kdy prst drží osu.
    */
+  /**
+   * Přepíše indikátoru vstupy výpočtu a vynutí překreslení. Pole, která
+   * ovlivňují jen vzhled, si vlastní kreslení přečte samo, ale knihovna o
+   * nich neví — `overrideIndicator` je jediný spolehlivý způsob, jak ji
+   * donutit indikátor znovu nakreslit.
+   */
+  function pouzijNastaveni(nazev) {
+    const zmena = { name: nazev };
+    const parametry = parametryVypoctu(nazev);
+    if (parametry) zmena.calcParams = parametry;
+
+    if (nazev === 'RSI') {
+      const n = nactiNastaveni('RSI');
+      // Pevná stupnice 0–100 drží pásma na stejném místě i v klidném trhu.
+      zmena.minValue = n.pevnaStupnice ? 0 : null;
+      zmena.maxValue = n.pevnaStupnice ? 100 : null;
+      zmena.styles = {
+        lines: [
+          { color: n.barvaRsi, size: 1 },
+          // Knihovna křivku skrýt neumí; průhledná barva je jediný způsob,
+          // jak ji nechat spočítat, ale nevykreslit.
+          { color: n.zobrazitMa ? n.barvaMa : 'transparent', size: 1 },
+        ],
+      };
+    }
+
+    try {
+      chart.overrideIndicator(zmena);
+    } catch {
+      /* neznámý indikátor — nastavení prostě nemá co přepsat */
+    }
+  }
+
+  /*
+   * Zoom dvěma prsty.
+   *
+   * Vestavěný zoom knihovny je na telefonu příliš citlivý a hlavně: když se
+   * jeden prst zvedne dřív než druhý, zbylý prst okamžitě pokračuje jako
+   * posun a obraz odskočí. Prsty nejde z displeje sundat současně, takže se
+   * to dělo skoro pokaždé.
+   *
+   * Řešení: po dobu gesta dvěma prsty vypneme posun i zoom knihovny a šířku
+   * svíčky nastavujeme sami s útlumem. Po zvednutí prvního prstu zůstává
+   * posun vypnutý, dokud nezmizí i ten druhý.
+   */
+  const UTLUM_ZOOMU = 0.55;      // 1 = původní citlivost, méně = klidnější
+  const SIRKA_SVICE_MIN = 1;
+  const SIRKA_SVICE_MAX = 50;
+
+  function zapojZoomDvemaPrsty() {
+    let vychoziVzdalenost = 0;
+    let vychoziSirka = 0;
+    let stiskaji = false;
+
+    const vzdalenost = (dotyky) => {
+      const dx = dotyky[0].clientX - dotyky[1].clientX;
+      const dy = dotyky[0].clientY - dotyky[1].clientY;
+      return Math.hypot(dx, dy);
+    };
+
+    container.addEventListener('touchstart', (e) => {
+      if (e.touches.length < 2) return;
+      stiskaji = true;
+      vychoziVzdalenost = vzdalenost(e.touches);
+      vychoziSirka = chart.getBarSpace().bar;
+      chart.setScrollEnabled(false);
+      chart.setZoomEnabled(false);
+    }, { passive: true });
+
+    container.addEventListener('touchmove', (e) => {
+      if (!stiskaji || e.touches.length < 2 || vychoziVzdalenost <= 0) return;
+      const pomer = vzdalenost(e.touches) / vychoziVzdalenost;
+      // Mocnina menší než 1 stlačí velké i malé změny k sobě: prst ujede
+      // stejně, ale graf se zvětší méně.
+      const tlumeny = Math.pow(pomer, UTLUM_ZOOMU);
+      const sirka = Math.min(SIRKA_SVICE_MAX,
+                             Math.max(SIRKA_SVICE_MIN, vychoziSirka * tlumeny));
+      chart.setBarSpace(sirka);
+    }, { passive: true });
+
+    const konec = (e) => {
+      if (!stiskaji) return;
+      // Teprve až je pryč i poslední prst. Jinak by zbylý palec rozjel posun.
+      if (e.touches && e.touches.length > 0) return;
+      stiskaji = false;
+      vychoziVzdalenost = 0;
+      chart.setScrollEnabled(true);
+      chart.setZoomEnabled(true);
+    };
+    document.addEventListener('touchend', konec, { passive: true });
+    document.addEventListener('touchcancel', konec, { passive: true });
+  }
+  zapojZoomDvemaPrsty();
+
   function oddelGestaOsy() {
     const osa = chart.getDom(HLAVNI_PANEL, 'yAxis');
     if (!osa) return;
@@ -823,6 +1105,7 @@ export function createPriceChart(container, layer, handlers = {}) {
         : chart.createIndicator({ name: nazev, paneId: HLAVNI_PANEL });
 
       if (!id) return false;
+      pouzijNastaveni(nazev);
       aktivniIndikatory.add(nazev);
       handlers.onIndicatorsChanged?.();
       setTimeout(umistiVrstvu, 0);
@@ -835,9 +1118,17 @@ export function createPriceChart(container, layer, handlers = {}) {
         const id = jeVlastniPanel(nazev)
           ? chart.createIndicator(nazev)
           : chart.createIndicator({ name: nazev, paneId: HLAVNI_PANEL });
-        if (id) aktivniIndikatory.add(nazev);
+        if (!id) return;
+        pouzijNastaveni(nazev);
+        aktivniIndikatory.add(nazev);
       });
       setTimeout(umistiVrstvu, 0);
+    },
+
+    /** Promítne uložené nastavení do běžícího indikátoru. */
+    applyIndicatorSettings(nazev) {
+      if (!aktivniIndikatory.has(nazev)) return;
+      pouzijNastaveni(nazev);
     },
 
     activeIndicators() {

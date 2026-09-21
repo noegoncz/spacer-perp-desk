@@ -479,6 +479,45 @@ je až po zvednutí prstu.
 s novými svíčkami. Jinak se na okamžik přepočítaly na stará data, poskočily,
 a teprve pak naskočil nový graf.
 
+⚠ **Zoom dvěma prsty si řídíme sami** (`zapojZoomDvemaPrsty()` v chart.js).
+Vestavěný zoom knihovny je na telefonu moc citlivý a hlavně: prsty nejde
+z displeje sundat současně, takže zbylý prst okamžitě pokračoval jako posun
+a obraz odskočil. Po dobu gesta se posun i zoom knihovny vypnou, šířka svíčky
+se nastavuje přes `setBarSpace()` s útlumem `pomer ** 0.55`, a posun se vrátí
+teprve až **nezůstane na displeji žádný prst** — ne po prvním `touchend`.
+
+⚠ Při testování gest dvěma prsty přes CDP je nutné dávat dotykovým bodům
+**výslovné `id`**. Bez nich Chrome přiřadí bod podle pořadí a pohyb zbylého
+prstu se tváří jako nový, třetí prst — test pak hlásí odskok, který v aplikaci
+není. (Stálo to jeden falešný poplach.)
+
+#### Indikátory a jejich nastavení
+
+Schémata nastavení jsou v **`js/indikatory.js`**. Obrazovka nastavení se z nich
+generuje sama, takže přidat volbu (nebo celý indikátor) znamená sáhnout jen do
+toho souboru. Pole s `param: n` jde do `calcParams[n]`, tedy do výpočtu;
+ostatní pole jsou vzhled a stačí překreslit.
+
+⚠ **Objem se nedá vložit do hlavního panelu jako vestavěný `VOL`.** Má
+`series: 'volume'`, takže si vyrobí vlastní svislou osu, **přebere jí pravou
+stupnici** (místo ceny se ukazuje objem) a sloupce roztáhne přes celou výšku —
+svíčky pak nejsou vidět. Ověřeno měřením: osa se po vložení změnila z rozsahu
+cen na rozsah objemů.
+
+Proto je v `chart.js` pod stejným názvem `VOL` registrovaný **vlastní
+indikátor s prázdným `figures`**. Bez figur do měřítka osy nemluví, cenová
+stupnice zůstane cenová, a sloupce si kreslíme sami do spodního pruhu panelu
+(výška a průhlednost jsou nastavitelné). Měřítko sloupců se bere **jen
+z právě viditelných svíček** — jinak jeden dávný výkyv zploští všechno ostatní.
+
+RSI je taky vlastní: vestavěné kreslí tři křivky, neumí pásma ani volbu zdroje
+ceny. Naše má jednu křivku, volitelný průměr, pásma s výplní a pevnou stupnici
+0–100. ⚠ Křivku knihovna **skrýt neumí** — vypnutý průměr se řeší průhlednou
+barvou.
+
+⚠ `klinecharts.getChart()` ve verzi 10 **neexistuje**. K instanci grafu se
+z testu dostaneš jedině obalením `klinecharts.init` (viz scratchpad `zaklad.js`).
+
 ⚠ Vysouvací nabídky (`.sheet`) jsou **`position: fixed`**, ne `absolute`.
 Ve vnořeném rozvržení se jinak ukotví k rodiči a skončí uprostřed obrazovky,
 kde je uživatel nehledá. Nabídka indikátorů má v každém řádku ikonku, zkratku

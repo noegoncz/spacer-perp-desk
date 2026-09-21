@@ -2,9 +2,13 @@
 
 import { BybitClient } from './bybit.js';
 import {
-  createPriceChart, NASTROJE, INDIKATORY, popisIndikatoru,
+  createPriceChart, NASTROJE, INDIKATORY, popisIndikatoru, nazevIndikatoru,
   IKONY_INDIKATORU, BARVY_KRESEB, TLOUSTKY, PRUHLEDNOSTI,
 } from './chart.js';
+import {
+  SCHEMATA, maNastaveni, nactiNastaveni, ulozNastaveni, resetNastaveni,
+  popisekPole, popisekSekce, omez,
+} from './indikatory.js';
 import { t, setLanguage, applyStaticTexts, JAZYKY } from './i18n.js';
 import { priceDecimals, formatPrice } from './format.js';
 import * as store from './store.js';
@@ -210,6 +214,7 @@ function wireEvents() {
   el('onlyFavBtn').addEventListener('click', prepniJenOblibene);
 
   el('indicatorBtn').addEventListener('click', () => otevriNabidku('sheetIndicators'));
+  el('settingsResetBtn').addEventListener('click', vratVychoziNastaveni);
   el('fullscreenBtn').addEventListener('click', prepniCelouObrazovku);
   el('centerBtn').addEventListener('click', () => chart?.resetPohledu());
   document.addEventListener('fullscreenchange', osetriCelouObrazovku);
@@ -563,11 +568,166 @@ function postavNabidky() {
         chart.toggleIndicator(i.id, i.vlastniPanel);
         zavriNabidky(); // po výběru se roletka zavře, ať nepřekáží grafu
       });
-      return btn;
+
+      if (!maNastaveni(i.id)) return btn;
+
+      // Ozubené kolo vedle indikátoru, ne uvnitř — jinak by ťuknutí vedle
+      // něj indikátor omylem vyplo.
+      const radek = document.createElement('div');
+      radek.className = 'sheet-radek';
+      const ozubene = document.createElement('button');
+      ozubene.type = 'button';
+      ozubene.className = 'sheet-ozubene';
+      ozubene.setAttribute('aria-label', t('chart.indicatorSettings'));
+      ozubene.innerHTML =
+        '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/>'
+        + '<path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3'
+        + 'M5.2 5.2l2.1 2.1M16.7 16.7l2.1 2.1M18.8 5.2l-2.1 2.1M7.3 16.7l-2.1 2.1"/></svg>';
+      ozubene.addEventListener('click', () => otevriNastaveniIndikatoru(i.id));
+      radek.append(btn, ozubene);
+      return radek;
     }),
   );
 
   oznacAktivniIndikatory();
+}
+
+/* ---------- nastavení indikátorů ---------- */
+
+let nastavovanyIndikator = null;
+
+/**
+ * Obrazovka nastavení se skládá ze schématu v js/indikatory.js. Přidat volbu
+ * znamená doplnit ji tam — tady se nic nemění.
+ */
+function otevriNastaveniIndikatoru(id) {
+  nastavovanyIndikator = id;
+  const hodnoty = { ...nactiNastaveni(id) };
+  el('settingsTitle').textContent = nazevIndikatoru(id);
+
+  const zmen = (klic, hodnota) => {
+    hodnoty[klic] = hodnota;
+    ulozNastaveni(id, hodnoty);
+    chart?.applyIndicatorSettings(id);
+  };
+
+  const prvky = [];
+  (SCHEMATA[id] || []).forEach((p) => {
+    if (p.sekce) {
+      const nadpis = document.createElement('div');
+      nadpis.className = 'nastaveni-sekce';
+      nadpis.textContent = popisekSekce(p.sekce);
+      prvky.push(nadpis);
+      return;
+    }
+
+    // Schválně ne <label>: globální styl formulářů z něj dělá verzálky
+    // a žádné pole k popisku stejně nepatří — přepínač je tlačítko.
+    const radek = document.createElement('div');
+    radek.className = 'nastaveni-radek';
+    const popisek = document.createElement('span');
+    popisek.className = 'nastaveni-popisek';
+    popisek.textContent = popisekPole(id, p.klic);
+    radek.append(popisek);
+    radek.append(ovladacPole(p, hodnoty[p.klic], (v) => zmen(p.klic, v)));
+    prvky.push(radek);
+  });
+
+  el('settingsBody').replaceChildren(...prvky);
+  otevriNabidku('sheetSettings');
+}
+
+/** Ovládací prvek podle typu pole. Sem přibývají další typy. */
+function ovladacPole(p, hodnota, zmenen) {
+  if (p.typ === 'prepinac') {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'nastaveni-prepinac';
+    const vykresli = (v) => {
+      btn.classList.toggle('on', Boolean(v));
+      btn.setAttribute('aria-pressed', String(Boolean(v)));
+    };
+    vykresli(hodnota);
+    btn.addEventListener('click', () => {
+      hodnota = !hodnota;
+      vykresli(hodnota);
+      zmenen(hodnota);
+    });
+    return btn;
+  }
+
+  if (p.typ === 'barva') {
+    const box = document.createElement('div');
+    box.className = 'nastaveni-barvy';
+    p.paleta.forEach((barva) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'nastaveni-barva';
+      b.style.background = barva;
+      b.classList.toggle('on', barva === hodnota);
+      b.addEventListener('click', () => {
+        box.querySelectorAll('.nastaveni-barva').forEach((x) => x.classList.remove('on'));
+        b.classList.add('on');
+        zmenen(barva);
+      });
+      box.append(b);
+    });
+    return box;
+  }
+
+  if (p.typ === 'vyber') {
+    const box = document.createElement('div');
+    box.className = 'nastaveni-volby';
+    p.moznosti.forEach((m) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'nastaveni-volba';
+      b.textContent = m.klicPopisku ? t(m.klicPopisku) : m.popisek;
+      b.classList.toggle('on', m.hodnota === hodnota);
+      b.addEventListener('click', () => {
+        box.querySelectorAll('.nastaveni-volba').forEach((x) => x.classList.remove('on'));
+        b.classList.add('on');
+        zmenen(m.hodnota);
+      });
+      box.append(b);
+    });
+    return box;
+  }
+
+  // číslo: tlačítka −/+ vedle hodnoty. Na telefonu se trefí líp než klávesnice.
+  const box = document.createElement('div');
+  box.className = 'nastaveni-cislo';
+  const ubrat = document.createElement('button');
+  ubrat.type = 'button';
+  ubrat.textContent = '−';
+  const pridat = document.createElement('button');
+  pridat.type = 'button';
+  pridat.textContent = '+';
+  const pole = document.createElement('input');
+  pole.type = 'number';
+  pole.inputMode = 'numeric';
+  pole.min = String(p.min);
+  pole.max = String(p.max);
+  pole.value = String(hodnota);
+
+  const nastav = (v) => {
+    const platna = omez(p, v);
+    pole.value = String(platna);
+    zmenen(platna);
+  };
+  ubrat.addEventListener('click', () => nastav(Number(pole.value) - 1));
+  pridat.addEventListener('click', () => nastav(Number(pole.value) + 1));
+  pole.addEventListener('change', () => nastav(pole.value));
+
+  box.append(ubrat, pole, pridat);
+  return box;
+}
+
+function vratVychoziNastaveni() {
+  if (!nastavovanyIndikator) return;
+  resetNastaveni(nastavovanyIndikator);
+  chart?.applyIndicatorSettings(nastavovanyIndikator);
+  otevriNastaveniIndikatoru(nastavovanyIndikator); // překreslit s výchozími
 }
 
 /* ---------- seznam trhů ---------- */
@@ -980,6 +1140,7 @@ function otevriNabidku(id) {
 
 function zavriNabidky() {
   el('sheetIndicators').hidden = true;
+  el('sheetSettings').hidden = true;
   el('sheetBackdrop').hidden = true;
 }
 

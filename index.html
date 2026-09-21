@@ -213,6 +213,20 @@
       </div>
       <div class="sheet-body" id="indicatorList"></div>
     </div>
+
+    <!-- Nastavení jednoho indikátoru; obsah se skládá ze schématu -->
+    <div id="sheetSettings" class="sheet" hidden>
+      <div class="sheet-head">
+        <span id="settingsTitle"></span>
+        <div class="sheet-head-akce">
+          <button type="button" id="settingsResetBtn" class="text-btn"
+                  data-i18n="chart.resetSettings">Reset</button>
+          <button type="button" class="icon-btn" data-close="sheetSettings"
+                  data-i18n-aria="action.close">✕</button>
+        </div>
+      </div>
+      <div class="sheet-body nastaveni" id="settingsBody"></div>
+    </div>
   </section>
 
   <!-- ===== Trhy ===== -->

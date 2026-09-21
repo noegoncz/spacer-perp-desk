@@ -1070,6 +1070,135 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
 .sheet-item.active .sheet-zkratka { color: var(--accent); }
 .sheet-popis { font-size: 0.72rem; color: var(--text-dim); line-height: 1.35; }
 
+/* Indikátor s nastavením: řádek + ozubené kolo vedle, ne v něm. */
+.sheet-radek { display: flex; align-items: stretch; gap: 6px; }
+.sheet-radek .sheet-item { flex: 1; min-width: 0; }
+
+.sheet-ozubene {
+  flex: 0 0 var(--tap);
+  width: var(--tap);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.sheet-ozubene:active { background: var(--border); }
+.sheet-ozubene svg {
+  width: 20px; height: 20px; fill: none; stroke: var(--text-dim);
+  stroke-width: 1.6; stroke-linecap: round;
+}
+
+.sheet-head-akce { display: flex; align-items: center; gap: 4px; }
+
+.text-btn {
+  min-height: var(--tap);
+  padding: 0 10px;
+  border: 0;
+  background: none;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.text-btn:active { color: var(--text); }
+
+/* ---------- nastavení indikátoru ---------- */
+
+.nastaveni { gap: 2px; }
+
+.nastaveni-sekce {
+  margin-top: 10px;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.nastaveni-sekce:first-child { margin-top: 0; }
+
+.nastaveni-radek {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: var(--tap);
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+}
+.nastaveni-radek:last-child { border-bottom: 0; }
+
+.nastaveni-popisek { font-size: 0.82rem; }
+
+/* Číselník: hodnota mezi dvěma velkými tlačítky, ať se to trefí palcem. */
+.nastaveni-cislo { display: flex; align-items: center; gap: 2px; }
+.nastaveni-cislo button {
+  width: 34px; height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 1.05rem;
+  cursor: pointer;
+}
+.nastaveni-cislo button:active { background: var(--border); }
+.nastaveni-cislo input {
+  width: 52px;
+  height: 34px;
+  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.85rem;
+  /* Šipky prohlížeče jsou na dotyk k ničemu a kradou šířku. */
+  -moz-appearance: textfield;
+}
+.nastaveni-cislo input::-webkit-outer-spin-button,
+.nastaveni-cislo input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+.nastaveni-prepinac {
+  width: 46px; height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.nastaveni-prepinac::after {
+  content: '';
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  transition: transform 0.15s, background 0.15s;
+}
+.nastaveni-prepinac.on { background: rgba(22, 199, 132, 0.25); border-color: var(--long); }
+.nastaveni-prepinac.on::after { transform: translateX(18px); background: var(--long); }
+
+.nastaveni-barvy { display: flex; gap: 6px; }
+.nastaveni-barva {
+  width: 24px; height: 24px;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.nastaveni-barva.on { border-color: var(--text); }
+
+.nastaveni-volby { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.nastaveni-volba {
+  min-height: 30px;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+.nastaveni-volba.on { border-color: var(--accent); color: var(--accent); }
+
 /* Celá obrazovka sedí vždy úplně vpravo. */
 /* Ztmavené pozadí pod roletkou: nejde ji přehlédnout a klepnutí vedle zavře. */
 .sheet-backdrop {

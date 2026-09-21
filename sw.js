@@ -28,6 +28,7 @@ const SHELL = [
   './js/ui.js',
   './js/chart.js',
   './js/draw.js',
+  './js/indikatory.js',
   './js/i18n.js',
   './js/i18n/en.js',
   './js/i18n/cs.js',
