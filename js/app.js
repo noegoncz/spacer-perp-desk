@@ -64,6 +64,7 @@ const client = new BybitClient({
 /* ---------- start ---------- */
 
 function boot() {
+  hlidejTicheChyby();
   setLanguage(store.loadLanguage());
   applyStaticTexts();
   postavVyberJazyka();
@@ -77,6 +78,20 @@ function boot() {
   connectIfPossible();
 }
 
+/**
+ * Nic nesmí selhat potichu. Dřív zůstala aplikace viset na „Načítám pozice…"
+ * a uživatel neměl šanci zjistit proč — proto se každá neodchycená chyba
+ * ukáže v liště.
+ */
+function hlidejTicheChyby() {
+  const ukaz = (popis) => ui.showError(`⚠ ${popis}`);
+  window.addEventListener('error', (e) => ukaz(e.message || 'chyba'));
+  window.addEventListener('unhandledrejection', (e) => {
+    const duvod = e.reason;
+    ukaz((duvod && (duvod.message || duvod)) || 'chyba');
+  });
+}
+
 async function connectIfPossible() {
   const { apiKey, apiSecret } = store.loadCredentials();
 
@@ -88,7 +103,12 @@ async function connectIfPossible() {
 
   client.setCredentials(apiKey, apiSecret);
   ui.showPlaceholder(t('positions.loading'));
-  await client.start();
+  try {
+    await client.start();
+  } catch (err) {
+    ui.showError(err?.message || String(err));
+    ui.showPlaceholder(t('positions.failed'), t('action.openSettings'));
+  }
 }
 
 /* ---------- ovládání ---------- */

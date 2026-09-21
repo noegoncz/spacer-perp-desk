@@ -192,6 +192,7 @@ export const en = {
   'error.rateLimit': 'Too many requests to Bybit. Try again in a moment.',
   'error.outage': 'Bybit is having an outage (HTTP {status}). Try again in a moment.',
   'error.unexpected': 'Bybit returned an unexpected response (HTTP {status}){detail}.',
+  'error.timeout': 'Bybit did not respond in time. Check your connection.',
   'error.offline': 'Could not reach Bybit. Check your internet connection.',
   'error.noKeys': 'No API keys stored.',
 };

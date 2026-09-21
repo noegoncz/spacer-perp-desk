@@ -188,6 +188,7 @@ export const cs = {
   'error.rateLimit': 'Příliš mnoho požadavků na Bybit. Zkus to za chvíli.',
   'error.outage': 'Bybit má výpadek (HTTP {status}). Zkus to za chvíli.',
   'error.unexpected': 'Bybit vrátil neočekávanou odpověď (HTTP {status}){detail}.',
+  'error.timeout': 'Bybit neodpověděl včas. Zkontroluj připojení.',
   'error.offline': 'Nepodařilo se spojit s Bybitem. Zkontroluj připojení k internetu.',
   'error.noKeys': 'Nejsou uložené API klíče.',
 };

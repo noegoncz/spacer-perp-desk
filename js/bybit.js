@@ -35,13 +35,32 @@ function httpErrorMessage(status, statusText) {
   }
 }
 
+/**
+ * Kolik sekund čekat na odpověď.
+ *
+ * ⚠ `fetch` sám o sobě **žádný časový limit nemá**. Na telefonu se požadavek
+ * umí zaseknout natrvalo (přepnutí sítě, mrtvá Wi-Fi) a bez limitu by na něm
+ * aplikace uvázla bez jediné hlášky.
+ */
+const LIMIT_ODPOVEDI = 15000;
+
 /** Výchozí transport. Capacitor ho nahradí nativním HTTP pluginem. */
 async function defaultHttpGet(url, headers) {
+  const stopky = new AbortController();
+  const casovac = setTimeout(() => stopky.abort(), LIMIT_ODPOVEDI);
+
   let res;
   try {
-    res = await fetch(url, { method: 'GET', headers, cache: 'no-store' });
-  } catch {
-    throw new Error(t('error.offline'));
+    res = await fetch(url, {
+      method: 'GET',
+      headers,
+      cache: 'no-store',
+      signal: stopky.signal,
+    });
+  } catch (err) {
+    throw new Error(err?.name === 'AbortError' ? t('error.timeout') : t('error.offline'));
+  } finally {
+    clearTimeout(casovac);
   }
 
   const text = (await res.text()).trim();
@@ -450,11 +469,13 @@ export class BybitClient {
   async start() {
     if (!this.hasCredentials()) return false;
     this.running = true;
-    const ok = await this.refresh();
+
+    // Opakované dotahování se rozjede jako první. Kdyby se první načtení
+    // zaseklo, běželo by se dál zkoušet — dřív na něm aplikace uvázla.
+    this.startPolling();
     this.connectPrivate();
     this.connectPublic();
-    this.startPolling();
-    return ok;
+    return this.refresh();
   }
 
   stop() {

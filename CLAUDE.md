@@ -526,6 +526,27 @@ vyžaduje předem schválené adresy. Bez něj je nejhorší možný následek c
 špatný obchod, ne odtečení prostředků pryč z účtu. Tohle je ta vlastnost,
 která celý zápis dělá přijatelně bezpečným.
 
+## Časové limity u volání
+
+⚠ **`fetch` sám o sobě žádný časový limit nemá.** Na telefonu se požadavek umí
+zaseknout natrvalo (přepnutí sítě, mrtvá Wi-Fi). Stalo se ve verzi 0.7.0:
+`/v5/market/time` neodpovědělo, `refresh()` na něm uvázlo, a protože se
+opakované dotahování spouštělo až **po** něm, nikdy se nerozeběhlo — aplikace
+zůstala natrvalo na „Načítám pozice…" bez jediné hlášky.
+
+Proto `defaultHttpGet` používá `AbortController` s limitem 15 s a `start()`
+rozjíždí opakované dotahování **jako první**, ještě před prvním načtením.
+
+K tomu `hlidejTicheChyby()` v `app.js`: každá neodchycená chyba i zamítnutý
+slib se ukáží v chybové liště. Nic nesmí selhat potichu — zamrzlá obrazovka
+bez hlášky je to nejhorší, co uživatel může dostat.
+
+## Testování aplikace bez klíčů
+
+`tools/app-test.py` spustí aplikaci s podstrčenými odpověďmi Bybitu, takže jdou
+ověřit i cesty, které se bez přihlášení nespustí (vykreslení pozic, chování při
+chybě, zaseknuté spojení). Právě tak se našla ta chyba s chybějícím limitem.
+
 ## Testování dotykových gest
 
 ⚠ **Syntetické `PointerEvent` vyslané z JavaScriptu obcházejí rozhodování
