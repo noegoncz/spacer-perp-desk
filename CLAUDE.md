@@ -388,6 +388,15 @@ svíčky, takže se tahá **jeden pár za jedno volání** (24 hodinových sví�
 s předstihem 150 px), nejvýš čtyři naráz, a jednou stažený pár se drží
 v paměti. Bez toho by otevření záložky spustilo 150 volání naráz.
 
+Mezi oblíbenými a zbytkem je **dělicí tlačítko** („Zobrazit / skrýt všechny
+páry") se šipkami. Dělá totéž co hvězdička filtru nahoře, jen je po ruce tam,
+kde seznam končí. Při hledání se neukazuje — ve výsledcích by jen mátlo.
+
+Mezi záložkami jde **přejíždět prstem**. Aby se to nepletlo se svislým
+scrollováním, vyžaduje se pohyb aspoň 60 px a vodorovně víc než dvojnásobek
+svislého. Po přejetí se potlačí následné klepnutí, jinak by se otevřel pár
+pod prstem. Nad otevřeným grafem a v nastavení se přejíždění neuplatní.
+
 Klepnutí na pár otevře graf. Proto graf nově funguje **i bez otevřené pozice**:
 `chartSymbol` je zdroj pravdy o tom, co se kreslí, `chartPosition` může být
 `null`. Pak se nekreslí čáry pozice, panel pod grafem ustoupí a v hlavičce je

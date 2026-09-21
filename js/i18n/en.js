@@ -34,6 +34,8 @@ export const en = {
   'watchlist.colChange': '24h',
   'watchlist.colTrend': 'Trend',
   'watchlist.clear': 'Clear search',
+  'watchlist.showAll': 'Show all pairs',
+  'watchlist.hideAll': 'Hide all pairs',
   'watchlist.failed': 'Could not load the pair list.',
   'history.soon': 'Trade history is coming in the next step.',
 

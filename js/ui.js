@@ -235,56 +235,96 @@ function zkratkaObratu(hodnota) {
   return `${Math.round(hodnota / 1e3)} k`;
 }
 
-export function renderWatchlist(radky, oblibene, onSelect, onToggleFav) {
-  dom.watchList.replaceChildren(
-    ...radky.map((trh) => {
-      const radek = document.createElement('div');
-      radek.className = 'watch-row';
-      radek.dataset.symbol = trh.symbol;
+/**
+ * @param {object|null} delic dělicí tlačítko za oblíbenými:
+ *        `{ poIndexu, sbaleno, onClick }`
+ */
+export function renderWatchlist(radky, oblibene, onSelect, onToggleFav, delic = null) {
+  const prvky = [];
+  const vytvorRadek = (trh) => {
+    const radek = document.createElement('div');
+    radek.className = 'watch-row';
+    radek.dataset.symbol = trh.symbol;
 
-      const hvezda = document.createElement('button');
-      hvezda.type = 'button';
-      hvezda.className = `watch-star ${oblibene.has(trh.symbol) ? 'on' : ''}`.trim();
-      hvezda.setAttribute('aria-label', t('watchlist.favourite'));
-      const svg = document.createElementNS(SVG_NS, 'svg');
-      svg.setAttribute('viewBox', '0 0 24 24');
-      const path = document.createElementNS(SVG_NS, 'path');
-      path.setAttribute('d', HVEZDA);
-      svg.append(path);
-      hvezda.append(svg);
-      hvezda.addEventListener('click', (e) => {
-        e.stopPropagation(); // klepnutí na hvězdičku neotevírá graf
-        onToggleFav(trh.symbol);
-      });
+    const hvezda = document.createElement('button');
+    hvezda.type = 'button';
+    hvezda.className = `watch-star ${oblibene.has(trh.symbol) ? 'on' : ''}`.trim();
+    hvezda.setAttribute('aria-label', t('watchlist.favourite'));
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    const path = document.createElementNS(SVG_NS, 'path');
+    path.setAttribute('d', HVEZDA);
+    svg.append(path);
+    hvezda.append(svg);
+    hvezda.addEventListener('click', (e) => {
+      e.stopPropagation(); // klepnutí na hvězdičku neotevírá graf
+      onToggleFav(trh.symbol);
+    });
 
-      const nazev = document.createElement('div');
-      nazev.className = 'watch-symbol';
-      nazev.textContent = trh.symbol;
-      const obrat = document.createElement('span');
-      obrat.className = 'watch-turnover';
-      obrat.textContent = zkratkaObratu(trh.turnover);
-      nazev.append(obrat);
+    const nazev = document.createElement('div');
+    nazev.className = 'watch-symbol';
+    nazev.textContent = trh.symbol;
+    const obrat = document.createElement('span');
+    obrat.className = 'watch-turnover';
+    obrat.textContent = zkratkaObratu(trh.turnover);
+    nazev.append(obrat);
 
-      const cena = document.createElement('div');
-      cena.className = 'watch-price';
-      cena.textContent = formatPrice(trh.last);
+    const cena = document.createElement('div');
+    cena.className = 'watch-price';
+    cena.textContent = formatPrice(trh.last);
 
-      const zmena = document.createElement('div');
-      zmena.className = `watch-change ${pnlClass(trh.changePct)}`;
-      zmena.textContent = formatPercent(trh.changePct);
+    const zmena = document.createElement('div');
+    zmena.className = `watch-change ${pnlClass(trh.changePct)}`;
+    zmena.textContent = formatPercent(trh.changePct);
 
-      // Plátno mini-grafu zůstane prázdné, dokud se nedotáhnou data.
-      const spark = document.createElementNS(SVG_NS, 'svg');
-      spark.setAttribute('class', 'watch-spark');
-      spark.setAttribute('viewBox', '0 0 58 24');
-      spark.setAttribute('preserveAspectRatio', 'none');
+    // Plátno mini-grafu zůstane prázdné, dokud se nedotáhnou data.
+    const spark = document.createElementNS(SVG_NS, 'svg');
+    spark.setAttribute('class', 'watch-spark');
+    spark.setAttribute('viewBox', '0 0 58 24');
+    spark.setAttribute('preserveAspectRatio', 'none');
 
-      radek.append(hvezda, nazev, cena, zmena, spark);
-      radek.addEventListener('click', () => onSelect(trh));
-      return radek;
-    }),
-  );
-  return [...dom.watchList.children];
+    radek.append(hvezda, nazev, cena, zmena, spark);
+    radek.addEventListener('click', () => onSelect(trh));
+    return radek;
+  };
+
+  radky.forEach((trh, i) => {
+    prvky.push(vytvorRadek(trh));
+    if (delic && i === delic.poIndexu) prvky.push(vytvorDelic(delic));
+  });
+  // Když jsou vidět jen oblíbené, dělič patří na konec seznamu.
+  if (delic && delic.poIndexu >= radky.length - 1 && !prvky.some((p) => p.classList?.contains('watch-divider'))) {
+    prvky.push(vytvorDelic(delic));
+  }
+
+  dom.watchList.replaceChildren(...prvky);
+  return [...dom.watchList.querySelectorAll('.watch-row')];
+}
+
+const SIPKA_DOLU = 'M6 9l6 6 6-6';
+const SIPKA_NAHORU = 'M6 15l6-6 6 6';
+
+function vytvorDelic({ sbaleno, onClick }) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'watch-divider';
+
+  const sipka = (d) => {
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    const path = document.createElementNS(SVG_NS, 'path');
+    path.setAttribute('d', d);
+    svg.append(path);
+    return svg;
+  };
+
+  const smer = sbaleno ? SIPKA_DOLU : SIPKA_NAHORU;
+  const popis = document.createElement('span');
+  popis.textContent = t(sbaleno ? 'watchlist.showAll' : 'watchlist.hideAll');
+
+  btn.append(sipka(smer), popis, sipka(smer));
+  btn.addEventListener('click', onClick);
+  return btn;
 }
 
 /** Mini-graf trendu za 24 h. Zelený, když cena skončila výš než začala. */

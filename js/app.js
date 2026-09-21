@@ -72,6 +72,7 @@ function boot() {
   el('magnetBtn').classList.toggle('active', magnetZapnut);
   el('onlyFavBtn').classList.toggle('active', jenOblibene);
   wireEvents();
+  zapojPrejeti();
   registerServiceWorker();
   connectIfPossible();
 }
@@ -140,12 +141,7 @@ function wireEvents() {
     vykresliTrhy();
   });
 
-  el('onlyFavBtn').addEventListener('click', () => {
-    jenOblibene = !jenOblibene;
-    store.saveOnlyFavourites(jenOblibene);
-    el('onlyFavBtn').classList.toggle('active', jenOblibene);
-    vykresliTrhy();
-  });
+  el('onlyFavBtn').addEventListener('click', prepniJenOblibene);
 
   el('indicatorBtn').addEventListener('click', () => otevriNabidku('sheetIndicators'));
   el('fullscreenBtn').addEventListener('click', prepniCelouObrazovku);
@@ -582,7 +578,13 @@ function vykresliTrhy() {
   // Při hledání se neořezává, jinak by se hledaný pár nemusel objevit.
   const vysledek = [...nahore, ...(dotaz ? zbytek : zbytek.slice(0, LIMIT_SEZNAMU))];
 
-  const radky = ui.renderWatchlist(vysledek, oblibene, openChartSymbol, prepniOblibeny);
+  // Dělič dává smysl jen když nějaké oblíbené jsou a neprobíhá hledání —
+  // ve výsledcích hledání by jen mátl.
+  const delic = nahore.length && !dotaz
+    ? { poIndexu: nahore.length - 1, sbaleno: jenOblibene, onClick: prepniJenOblibene }
+    : null;
+
+  const radky = ui.renderWatchlist(vysledek, oblibene, openChartSymbol, prepniOblibeny, delic);
   sledujGrafy(radky);
 
   if (!vysledek.length) {
@@ -592,6 +594,14 @@ function vykresliTrhy() {
   }
 }
 
+/** Stejná funkce jako hvězdička filtru nahoře, jen dostupná i u seznamu. */
+function prepniJenOblibene() {
+  jenOblibene = !jenOblibene;
+  store.saveOnlyFavourites(jenOblibene);
+  el('onlyFavBtn').classList.toggle('active', jenOblibene);
+  vykresliTrhy();
+}
+
 function prepniOblibeny(symbol) {
   if (oblibene.has(symbol)) oblibene.delete(symbol);
   else oblibene.add(symbol);
@@ -599,9 +609,52 @@ function prepniOblibeny(symbol) {
   vykresliTrhy();
 }
 
+const ZALOZKY = ['positions', 'watchlist', 'history'];
+let aktivniZalozka = 'positions';
+
 function prepniZalozku(nazev) {
+  aktivniZalozka = nazev;
   ui.showView(nazev);
   if (nazev === 'watchlist') nactiTrhy();
+}
+
+/**
+ * Přejetí prstem mezi záložkami. Nespouští se nad otevřeným grafem ani
+ * v nastavení a poznat se musí od svislého scrollování — proto se vyžaduje
+ * výrazně delší pohyb vodorovně než svisle.
+ */
+function zapojPrejeti() {
+  const POTREBA = 60;
+  const hlavni = document.querySelector('main');
+  let start = null;
+  let prejeto = false;
+
+  hlavni.addEventListener('pointerdown', (e) => {
+    if (chartSymbol || !el('viewSettings').hidden) return;
+    start = { x: e.clientX, y: e.clientY };
+  }, { passive: true });
+
+  hlavni.addEventListener('pointerup', (e) => {
+    if (!start) return;
+    const dx = e.clientX - start.x;
+    const dy = e.clientY - start.y;
+    start = null;
+    if (Math.abs(dx) < POTREBA || Math.abs(dx) < Math.abs(dy) * 2) return;
+
+    const kam = ZALOZKY.indexOf(aktivniZalozka) + (dx < 0 ? 1 : -1);
+    if (kam < 0 || kam >= ZALOZKY.length) return;
+
+    prejeto = true;
+    prepniZalozku(ZALOZKY[kam]);
+  }, { passive: true });
+
+  // Po přejetí nesmí doběhnout klepnutí, jinak by se otevřel pár pod prstem.
+  hlavni.addEventListener('click', (e) => {
+    if (!prejeto) return;
+    prejeto = false;
+    e.stopPropagation();
+    e.preventDefault();
+  }, true);
 }
 
 /* ---------- alarmy ---------- */

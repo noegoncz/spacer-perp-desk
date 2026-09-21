@@ -30,6 +30,8 @@ export const cs = {
   'watchlist.colChange': '24 h',
   'watchlist.colTrend': 'Trend',
   'watchlist.clear': 'Smazat hledání',
+  'watchlist.showAll': 'Zobrazit všechny páry',
+  'watchlist.hideAll': 'Skrýt všechny páry',
   'watchlist.failed': 'Seznam párů se nepodařilo načíst.',
   'history.soon': 'Historie obchodů přijde v dalším kroku.',
 

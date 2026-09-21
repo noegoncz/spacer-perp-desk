@@ -198,11 +198,14 @@ main {
   margin-bottom: 10px;
 }
 
-.watch-search-wrap { position: relative; flex: 1; }
+/* display: flex na obalu; vložené pole by pod sebou nechalo místo na účaří
+   a křížek by pak seděl o pár pixelů výš, než vypadá střed rámečku. */
+.watch-search-wrap { position: relative; flex: 1; display: flex; }
 
 .watch-search {
   width: 100%;
   min-height: var(--tap);
+  display: block;
   padding: 10px 46px 10px 12px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -281,6 +284,38 @@ main {
 .watch-spark polyline { fill: none; stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
 .watch-spark.up polyline { stroke: var(--long); }
 .watch-spark.down polyline { stroke: var(--short); }
+
+/* Dělicí tlačítko mezi oblíbenými a zbytkem seznamu. */
+.watch-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 38px;
+  margin: 2px 0 0;
+  padding: 0 12px;
+  border: none;
+  border-top: 2px solid var(--accent);
+  border-bottom: 1px solid var(--border);
+  background: rgba(76, 154, 255, 0.09);
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+}
+.watch-divider:active { background: rgba(76, 154, 255, 0.18); }
+
+.watch-divider svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 
 .watch-note {
   margin: 14px 0 0;
