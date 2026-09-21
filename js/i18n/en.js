@@ -102,6 +102,7 @@ export const en = {
   'chart.moreTools': 'More tools',
   'chart.cursor': 'Cursor',
   'chart.magnet': 'Snap to candles',
+  'chart.center': 'Centre the chart',
   'chart.eraseDrawings': 'Delete drawings',
   'chart.fullscreen': 'Fullscreen',
   'chart.resetZoom': 'Reset view to 100%',

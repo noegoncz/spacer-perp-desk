@@ -345,6 +345,11 @@ export function createPriceChart(container, layer, handlers = {}) {
   // přebarvovat každou čáru znovu.
   let posledniStyl = { ...VYCHOZI_STYL };
   let dodatekKresby = null;
+  // Co je v grafu nakresleno — při změně intervalu se to na chvíli sundá
+  // a vrátí až s novými svíčkami, aby nic nepřeskakovalo zvlášť.
+  let posledniCary = [];
+  let prepinaSeInterval = false;
+  let zalohaKreseb = [];
   let delkaObdobi = DELKA_OBDOBI['15'];
   let tikani = null;
 
@@ -527,6 +532,34 @@ export function createPriceChart(container, layer, handlers = {}) {
     { passive: true },
   );
 
+  /*
+   * Gesto zahájené na cenové ose musí zůstat u osy, i když prst sjede do
+   * plochy grafu. Bez toho se při tažení palcem u okraje graf začne sám
+   * posouvat a obraz poskakuje. Řeší se vypnutím posunu a zoomu grafu na
+   * dobu, kdy prst drží osu.
+   */
+  function oddelGestaOsy() {
+    const osa = chart.getDom(HLAVNI_PANEL, 'yAxis');
+    if (!osa) return;
+    let drziOsu = false;
+
+    osa.addEventListener('touchstart', () => {
+      drziOsu = true;
+      chart.setScrollEnabled(false);
+      chart.setZoomEnabled(false);
+    }, { passive: true });
+
+    const pust = () => {
+      if (!drziOsu) return;
+      drziOsu = false;
+      chart.setScrollEnabled(true);
+      chart.setZoomEnabled(true);
+    };
+    document.addEventListener('touchend', pust, { passive: true });
+    document.addEventListener('touchcancel', pust, { passive: true });
+  }
+  setTimeout(oddelGestaOsy, 0);
+
   const observer = new ResizeObserver(() => {
     chart.resize();
     umistiVrstvu();
@@ -549,11 +582,16 @@ export function createPriceChart(container, layer, handlers = {}) {
           } catch {
             callback([], false);
           }
-          // Po dodání dat srovnat pohled, jinak by graf zůstal tam, kde
-          // ho nechal předchozí pár nebo interval.
+          // Po dodání dat srovnat pohled a vrátit čáry i kresby — všechno
+          // naskočí naráz, ne po částech.
           setTimeout(() => {
             umistiVrstvu();
             srovnejPohled();
+            if (prepinaSeInterval) {
+              prepinaSeInterval = false;
+              vykresliKresby(zalohaKreseb);
+              vykresliCary(posledniCary);
+            }
           }, 0);
         },
         subscribeBar: ({ callback }) => {
@@ -569,10 +607,21 @@ export function createPriceChart(container, layer, handlers = {}) {
       chart.setSymbol({ ticker, pricePrecision, volumePrecision: 0 });
     },
 
+    /**
+     * Při změně intervalu se čáry i kresby nejdřív sundají. Jinak se na
+     * chvilku přepočítají na staré svíčky, poskočí, a teprve pak naskočí
+     * nová data — což vypadalo rozbitě.
+     */
     setInterval(interval) {
       delkaObdobi = DELKA_OBDOBI[interval] || DELKA_OBDOBI['15'];
+      prepinaSeInterval = true;
+      zalohaKreseb = chart
+        .getOverlays({ groupId: SKUPINA_KRESBY })
+        .map((o) => ({ name: o.name, points: o.points, style: o.extendData }));
+      chart.removeOverlay({ groupId: SKUPINA_POZICE });
+      chart.removeOverlay({ groupId: SKUPINA_KRESBY });
+      idCarPozice = [];
       chart.setPeriod(OBDOBI[interval] || OBDOBI['15']);
-      setTimeout(srovnejPohled, 0);
     },
 
     /** Odpočet tiká jen s otevřeným grafem, ať nežere baterku na pozadí. */
@@ -589,17 +638,9 @@ export function createPriceChart(container, layer, handlers = {}) {
     /* ---------- čáry pozice ---------- */
 
     setPositionLines(lines) {
-      idCarPozice.forEach((id) => chart.removeOverlay({ id }));
-      idCarPozice = lines.map((l) =>
-        chart.createOverlay({
-          name: 'positionLine',
-          groupId: SKUPINA_POZICE,
-          points: [{ value: l.price }],
-          lock: true,
-          extendData: { color: l.color, title: l.title, dash: l.dash },
-        }),
-      );
-      umistiVrstvu();
+      posledniCary = lines;
+      // Během přepínání intervalu se nekreslí — vrátí se až s novými daty.
+      if (!prepinaSeInterval) vykresliCary(lines);
     },
 
     /* ---------- značky plnění při prohlížení obchodu ---------- */
@@ -658,25 +699,8 @@ export function createPriceChart(container, layer, handlers = {}) {
     },
 
     restoreDrawings(kresby) {
-      tichaZmena = true;
-      try {
-        chart.removeOverlay({ groupId: SKUPINA_KRESBY });
-        (kresby || []).forEach((k) => {
-          chart.createOverlay({
-            name: k.name,
-            groupId: SKUPINA_KRESBY,
-            points: k.points,
-            lock: true,
-            extendData: { ...VYCHOZI_STYL, ...(k.style || {}) },
-            styles: stylKresby(k.style),
-          });
-        });
-      } finally {
-        // Až po vyprázdnění fronty — callbacky knihovny nemusí běžet hned.
-        setTimeout(() => {
-          tichaZmena = false;
-        }, 0);
-      }
+      zalohaKreseb = kresby || [];
+      vykresliKresby(zalohaKreseb);
     },
 
     clearDrawings() {

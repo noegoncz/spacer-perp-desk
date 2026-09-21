@@ -211,6 +211,7 @@ function wireEvents() {
 
   el('indicatorBtn').addEventListener('click', () => otevriNabidku('sheetIndicators'));
   el('fullscreenBtn').addEventListener('click', prepniCelouObrazovku);
+  el('centerBtn').addEventListener('click', () => chart?.resetPohledu());
   document.addEventListener('fullscreenchange', osetriCelouObrazovku);
 
   el('styleDeleteBtn').addEventListener('click', () => chart?.deleteSelected());
@@ -244,6 +245,7 @@ function wireEvents() {
   document.querySelectorAll('[data-close]').forEach((btn) => {
     btn.addEventListener('click', zavriNabidky);
   });
+  el('sheetBackdrop').addEventListener('click', zavriNabidky);
 
   el('revealBtn').addEventListener('click', () => {
     const input = el('apiSecret');
@@ -972,11 +974,13 @@ function zobrazPaletu(styl) {
 
 function otevriNabidku(id) {
   zavriNabidky();
+  el('sheetBackdrop').hidden = false;
   el(id).hidden = false;
 }
 
 function zavriNabidky() {
   el('sheetIndicators').hidden = true;
+  el('sheetBackdrop').hidden = true;
 }
 
 /* ---------- čáry pozice ---------- */

@@ -716,10 +716,26 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
 
 /* ---------- ikony kreslení ---------- */
 
-.draw-toolbar {
+.draw-toolbar { gap: 4px; }
+
+/* Nástroje se posouvají, pomocná tlačítka zůstávají vždy po ruce vpravo —
+   jinak se na úzkém displeji odsunou mimo obrazovku a nejdou zmáčknout. */
+.tool-scroll {
+  display: flex;
   gap: 1px;
+  flex: 1;
+  min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
+}
+.tool-scroll::-webkit-scrollbar { display: none; }
+
+.tool-pinned {
+  display: flex;
+  gap: 1px;
+  flex: none;
+  padding-left: 5px;
+  border-left: 1px solid var(--border);
 }
 
 /* Oddělí kreslicí nástroje od pomůcek (magnet, indikátory, koš). */
@@ -1055,7 +1071,13 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
 .sheet-popis { font-size: 0.72rem; color: var(--text-dim); line-height: 1.35; }
 
 /* Celá obrazovka sedí vždy úplně vpravo. */
-.tool-vpravo { margin-left: auto; }
+/* Ztmavené pozadí pod roletkou: nejde ji přehlédnout a klepnutí vedle zavře. */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 29;
+  background: rgba(0, 0, 0, 0.55);
+}
 
 /* Karta pozice je klikací — otevírá graf. */
 .position { cursor: pointer; }

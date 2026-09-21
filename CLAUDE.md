@@ -458,6 +458,20 @@ posouvá do strany.
 
 Výchozí interval je **4h**.
 
+⚠ **Pomocná tlačítka lišty (magnet, indikátory, střed, koš, celá obrazovka)
+jsou v napevno ukotvené části vpravo**, mimo posuvnou oblast s nástroji.
+Dřív byla v posuvné části a na úzkém displeji skončila mimo obrazovku —
+uživatel na ikonu indikátorů vůbec nedosáhl.
+
+⚠ **Gesto zahájené na cenové ose musí zůstat u osy.** Když prst sjede do
+plochy grafu, knihovna by začala graf posouvat a obraz poskakuje. Řeší to
+`oddelGestaOsy()`: na `touchstart` nad osou vypne posun a zoom grafu a vrátí
+je až po zvednutí prstu.
+
+⚠ **Při změně intervalu se čáry i kresby nejdřív sundají** a vrátí až spolu
+s novými svíčkami. Jinak se na okamžik přepočítaly na stará data, poskočily,
+a teprve pak naskočil nový graf.
+
 ⚠ Vysouvací nabídky (`.sheet`) jsou **`position: fixed`**, ne `absolute`.
 Ve vnořeném rozvržení se jinak ukotví k rodiči a skončí uprostřed obrazovky,
 kde je uživatel nehledá. Nabídka indikátorů má v každém řádku ikonku, zkratku
