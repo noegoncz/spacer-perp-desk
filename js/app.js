@@ -66,11 +66,12 @@ const client = new BybitClient({
 });
 
 /**
- * Diagnostika se ukazuje jen dokud pozice nedorazily. Jakmile je vidět
- * seznam, je zbytečná a mizí.
+ * Diagnostika se ukazuje jen dokud se data nepodařilo načíst. Rozhoduje
+ * stav REST, ne počet pozic — nula otevřených pozic je běžný stav a žádnou
+ * diagnostiku si nezaslouží.
  */
 function ukazDiagnostiku() {
-  if (lastPositions.length || !client.hasCredentials()) {
+  if (!client.hasCredentials() || client.status.rest === 'ok') {
     ui.showDiagnostics(null);
     return;
   }
