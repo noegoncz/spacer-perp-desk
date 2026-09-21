@@ -192,7 +192,25 @@ ztráty, u shortu obráceně. **Heuristika platí jen na příkazy, které pozic
 zavírají** (`reduceOnly` nebo s `stopOrderType`); obyčejná limitka pod vstupem
 je přikupování, ne stop-loss.
 
-Popisky jsou schválně krátké, ať neujídají plochu grafu: `Vstup`, `SL`, `TP`
+#### Jednotný systém čar
+
+Všechny čáry pozice mají **tloušťku 1**. Rozlišuje je barva a typ čárkování,
+ne tloušťka — jinak graf působí jako změť různých linek.
+
+| čára | čárkování | barva |
+|---|---|---|
+| vstup | `7-3-2-3` čerchovaná | fialová `#a78bfa` |
+| likvidace | `12-5` dlouhá | červená |
+| SL / TP celé pozice | `6-4` | oranžová / zelená |
+| částečné TP a SL | `3-3` krátká | oranžová / zelená |
+| limitky | `1-4` tečkovaná | šedá |
+
+Vstup je **fialový schválně** — modrá patří kresbám uživatele a pletlo by se to.
+
+Popisky jsou u pravého okraje vedle cenové osy, **bez podkladu a rámečku**;
+barevný blok za textem jen ujídal pohled na svíčky.
+
+Popisky jsou schválně krátké: `Vstup`, `SL`, `TP`
 pro celou pozici a `TP1 (29 %)`, `SL1 (16 %)` pro částečné. Číslují se podle
 toho, v jakém pořadí je cena zasáhne — nejblíž vstupu je první.
 

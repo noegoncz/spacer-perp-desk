@@ -17,12 +17,25 @@ let lastPositions = [];
 
 /* ---------- stav grafu ---------- */
 
+/*
+ * Čáry v grafu mají jednotný systém: všechny tenké, liší se barvou a typem
+ * čárkování. Vstup je schválně fialový — modrá patří kresbám uživatele
+ * a pletlo by se to.
+ */
 const BARVA_CARY = {
-  vstup: '#4c9aff',
+  vstup: '#a78bfa',
   likvidace: '#ea3943',
   sl: '#f0b90b',
   tp: '#16c784',
   prikaz: '#8b9bb0',
+};
+
+const CARKOVANI = {
+  vstup: [7, 3, 2, 3],   // čerchovaná — referenční úroveň, odliší se na první pohled
+  likvidace: [12, 5],    // nejdelší mezery, nejvzdálenější a nejvážnější úroveň
+  uroven: [6, 4],        // SL a TP celé pozice
+  castecna: [3, 3],      // částečné TP a SL
+  prikaz: [1, 4],        // limitky, nejjemnější
 };
 
 let chart = null;          // instance se drží i po zavření, ať se otevírá svižně
@@ -1005,26 +1018,25 @@ function buildChartLines(position, orders) {
     return orders
       .map((o) => o.trigger ?? o.price)
       .filter(Boolean)
-      .map((price) => ({ price, color: BARVA_CARY.prikaz, title: t('line.limit'), dotted: true }));
+      .map((price) => ({ price, color: BARVA_CARY.prikaz,
+                         title: t('line.limit'), dash: CARKOVANI.prikaz }));
   }
 
-  lines.push({
-    price: position.entry,
-    color: BARVA_CARY.vstup,
-    title: t('line.entry'),
-    solid: true,
-    width: 2,
-  });
+  lines.push({ price: position.entry, color: BARVA_CARY.vstup,
+               title: t('line.entry'), dash: CARKOVANI.vstup });
 
   if (position.liq) {
-    lines.push({ price: position.liq, color: BARVA_CARY.likvidace, title: t('line.liquidation') });
+    lines.push({ price: position.liq, color: BARVA_CARY.likvidace,
+                 title: t('line.liquidation'), dash: CARKOVANI.likvidace });
   }
   // Úrovně platné pro celou pozici mají holý popisek, bez čísla.
   if (position.stopLoss) {
-    lines.push({ price: position.stopLoss, color: BARVA_CARY.sl, title: t('line.stopLoss') });
+    lines.push({ price: position.stopLoss, color: BARVA_CARY.sl,
+                 title: t('line.stopLoss'), dash: CARKOVANI.uroven });
   }
   if (position.takeProfit) {
-    lines.push({ price: position.takeProfit, color: BARVA_CARY.tp, title: t('line.takeProfit') });
+    lines.push({ price: position.takeProfit, color: BARVA_CARY.tp,
+                 title: t('line.takeProfit'), dash: CARKOVANI.uroven });
   }
 
   const tp = [];
@@ -1065,7 +1077,7 @@ function buildChartLines(position, orders) {
       price: o.price,
       color: BARVA_CARY.tp,
       title: popisek(t('line.takeProfitN', { n: i + 1 }), o),
-      dotted: true,
+      dash: CARKOVANI.castecna,
     });
   });
 
@@ -1074,12 +1086,13 @@ function buildChartLines(position, orders) {
       price: o.price,
       color: BARVA_CARY.sl,
       title: popisek(t('line.stopLossN', { n: i + 1 }), o),
-      dotted: true,
+      dash: CARKOVANI.castecna,
     });
   });
 
   limitky.forEach((o) => {
-    lines.push({ price: o.price, color: BARVA_CARY.prikaz, title: t('line.limit'), dotted: true });
+    lines.push({ price: o.price, color: BARVA_CARY.prikaz,
+                 title: t('line.limit'), dash: CARKOVANI.prikaz });
   });
 
   return lines;

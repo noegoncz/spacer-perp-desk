@@ -129,17 +129,37 @@ function registrovatCaruPozice() {
         {
           type: 'line',
           attrs: { coordinates: [{ x: 0, y }, { x: bounding.width, y }] },
+          // Všechny čáry stejně tenké. Rozlišuje je barva a typ čárkování,
+          // ne tloušťka — jinak graf působí jako změť různých linek.
           styles: {
             color: d.color,
-            size: d.width || 1,
-            style: d.solid ? 'solid' : 'dashed',
-            dashedValue: d.dotted ? [2, 3] : [5, 4],
+            size: 1,
+            style: 'dashed',
+            dashedValue: d.dash || [6, 4],
           },
         },
         {
+          // Popisek u pravého okraje, vedle cenové osy. Bez podkladu —
+          // barevný blok za textem ujídá pohled na svíčky.
           type: 'text',
-          attrs: { x: 6, y: y - 4, text: d.title || '', baseline: 'bottom' },
-          styles: { color: d.color, size: 11, family: 'sans-serif' },
+          attrs: {
+            x: bounding.width - 5,
+            y: y - 3,
+            text: d.title || '',
+            align: 'right',
+            baseline: 'bottom',
+          },
+          styles: {
+            color: d.color,
+            size: 11,
+            family: 'sans-serif',
+            backgroundColor: 'transparent',
+            borderSize: 0,
+            paddingLeft: 0,
+            paddingRight: 0,
+            paddingTop: 0,
+            paddingBottom: 0,
+          },
         },
       ];
     },
@@ -563,19 +583,11 @@ export function createPriceChart(container, layer, handlers = {}) {
           groupId: SKUPINA_POZICE,
           points: [{ value: l.price }],
           lock: true,
-          extendData: {
-            color: l.color,
-            title: l.title,
-            width: l.width,
-            solid: l.solid,
-            dotted: l.dotted,
-          },
+          extendData: { color: l.color, title: l.title, dash: l.dash },
         }),
       );
       umistiVrstvu();
     },
-
-    /* ---------- kreslení ---------- */
 
     /* ---------- značky plnění při prohlížení obchodu ---------- */
 
