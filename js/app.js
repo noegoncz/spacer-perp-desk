@@ -462,10 +462,8 @@ function closeChart() {
   ui.showChart(false);
 }
 
-/** Loader knihovny — ta si data vyžádá sama, jakmile dostane symbol a období. */
-async function nactiSvice() {
-  if (!chartSymbol) return [];
-  const bars = await client.getKlines(chartSymbol, chartInterval);
+async function nactiSviceProInterval(interval) {
+  const bars = await client.getKlines(chartSymbol, interval);
   return bars.map((b) => ({
     timestamp: b.time,
     open: b.open,
@@ -476,15 +474,58 @@ async function nactiSvice() {
   }));
 }
 
-function zmenInterval(interval) {
+/*
+ * Svíčky stažené dopředu pro interval, na který se právě přepíná. Platí na
+ * jedno použití — loader si je vyzvedne a zahodí.
+ */
+let pripraveneSvice = null;
+let posledniZadostOInterval = 0;
+
+/** Loader knihovny — ta si data vyžádá sama, jakmile dostane symbol a období. */
+async function nactiSvice() {
+  if (!chartSymbol) return [];
+  if (pripraveneSvice && pripraveneSvice.interval === chartInterval) {
+    const { bars } = pripraveneSvice;
+    pripraveneSvice = null;
+    return bars;
+  }
+  return nactiSviceProInterval(chartInterval);
+}
+
+/**
+ * Přepnutí timeframu.
+ *
+ * ⚠ Svíčky se stahují **dopředu** a graf se přepne, až jsou po ruce. Při
+ * přepnutí se totiž kresby z grafu sundají a vracejí se až s novými daty —
+ * bez předstihu by po celou dobu čekání na síť blikaly pryč. Na telefonu to
+ * byla klidně půlvteřina.
+ */
+async function zmenInterval(interval) {
   if (!interval) return; // pojistka: bez intervalu není co načítat
   // Klepnutí na už aktivní timeframe nedělá nic, jako v TradingView. Dřív
   // shodilo kresby: knihovna na stejné období znovu nesáhne pro data, takže
   // se nezavolal `getBars`, ve kterém se kresby vracejí zpátky.
   if (interval === chartInterval && chartSymbol && chart) return;
+
+  ui.setActiveInterval(interval); // odezva na klepnutí hned, ne až po síti
+  if (!chartSymbol || !chart) {
+    chartInterval = interval;
+    return;
+  }
+
+  // Když uživatel mezitím klepne jinam, tahle žádost se zahodí.
+  const zadost = ++posledniZadostOInterval;
+  let bars = null;
+  try {
+    bars = await nactiSviceProInterval(interval);
+  } catch {
+    /* nevadí — loader si data vyžádá sám, jen to blikne jako dřív */
+  }
+  // Mezitím mohl uživatel klepnout jinam nebo graf úplně zavřít.
+  if (zadost !== posledniZadostOInterval || !chartSymbol || !chart) return;
+
+  pripraveneSvice = bars ? { interval, bars } : null;
   chartInterval = interval;
-  ui.setActiveInterval(interval);
-  if (!chartSymbol || !chart) return;
   chart.setInterval(interval);
   client.setKlineSubscription(chartSymbol, interval);
 }

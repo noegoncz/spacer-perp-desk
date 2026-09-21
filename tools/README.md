@@ -25,6 +25,8 @@ starý kód.
 | `mock-bybit.js` | podstrčená data, falešné klíče, zachycení instance grafu do `window.__graf` |
 | `test-rychle-prepinani.py` | rychlé proklikání timeframů nemaže kresby ani čáry pozice |
 | `test-stejny-timeframe.py` | druhé klepnutí na aktivní timeframe nemaže kresby; graf se otevře u posledních svíček |
+| `test-probliknuti.py` | kresby při přepnutí timeframu ani na okamžik nezmizí (měří se z plátna) |
+| `test-legenda.py` | legenda indikátoru je čitelná, ne surové calcParams |
 | `test-zoom-dvema-prsty.py` | zoom dvěma prsty, odskok při zvednutí prstu |
 | `test-rsi-nastaveni.py` | typ průměru a zdroj ceny u RSI skutečně mění křivku |
 | `test-vyhlazovani.py` | SMA/EMA/SMMA/WMA proti ručně spočítaným hodnotám |

@@ -526,6 +526,18 @@ srovnání puštěné dřív se nestihlo projevit a pohled skončil o sedm sví�
 koncem dat, takže poslední svíčka nebyla vidět. Dva snímky za sebou
 (`srovnejAzPoVykresleni()`), první jen zpracuje probíhající změny.
 
+⚠ **Svíčky nového timeframu se stahují dopředu** (`zmenInterval()` v app.js).
+Při přepnutí se kresby z grafu sundají a vracejí se až s novými daty, takže
+bez předstihu blikaly pryč po celou dobu čekání na síť — na telefonu klidně
+půl vteřiny. Loader si předchystaná data vyzvedne z `pripraveneSvice`. Rychlé
+klepání ošetřuje počítadlo žádostí: starší odpověď se zahodí.
+
+⚠ **Kresby a čáry se vracejí ve stejném průchodu jako data**, ne přes
+`setTimeout`. Jakýkoli odklad znamená snímek, ve kterém graf nové svíčky už má
+a kresby ne — a ty probliknou. Měří to `tools/test-probliknuti.py`: kresba
+dostane nepřehlédnutelnou barvu a během přepínání se hustě vzorkuje plátno.
+Před opravou chyběla ve 37 ze 130 snímků, po ní v nule.
+
 #### Indikátory a jejich nastavení
 
 Schémata nastavení jsou v **`js/indikatory.js`**. Obrazovka nastavení se z nich
@@ -566,6 +578,13 @@ pásma s výplní a pevnou stupnici 0–100. `calcParams` RSI je
 u RSI takhle první verzi nefungovala (nebylo vidět, protože testovací data
 měla `close = open + konstanta` a všechny zdroje dávaly stejné RSI). ⚠ Křivku knihovna **skrýt neumí** — vypnutý průměr se řeší průhlednou
 barvou.
+
+⚠ **Legendu indikátoru skládá knihovna ze surových `calcParams`** — z „RSI(14,14,0,0)"
+uživatel nepozná nic. Přepisuje ji `createTooltipDataSource`, které stačí vrátit
+`calcParamsText`; hodnoty křivek si knihovna doplní sama (výchozí legendy staví
+dřív a vlastní zdroj přepíše jen to, co vrátí). Teď stojí v grafu
+`RSI 14 · Close · WMA 14` a `Vol MA 20`, a text se mění s nastavením.
+Test: `tools/test-legenda.py`.
 
 ⚠ `klinecharts.getChart()` ve verzi 10 **neexistuje**. K instanci grafu se
 z testu dostaneš jedině obalením `klinecharts.init` (viz `tools/mock-bybit.js`,
@@ -696,14 +715,10 @@ Pořadí, jak se na to má chodit. Odškrtnuté jsou hotové.
 
 ### Nejbližší dodělávky (drobné)
 
-- [ ] **Čitelný popisek indikátoru** v hlavičce panelu. Knihovna vypisuje surové
-  `calcParams`, takže RSI ukazuje `RSI(14,14,1,3)` místo např. `RSI 14 · Close · WMA 14`.
-  (`createTooltipDataSource` u indikátoru, ověřit tvar v `vendor/klinecharts.js`.)
-- [ ] **Ověřit na telefonu** (v0.10.3): druhé klepnutí na už aktivní timeframe
-  nesmí shodit kresby; rychlé proklikání timeframů taky ne; graf se po otevření
-  ukáže u posledních svíček.
+- [ ] **Ověřit na telefonu** (v0.10.4): kresby při přepínání timeframu ani
+  neprobliknou; graf se po otevření ukáže u posledních svíček.
 - [ ] **RSI dál** podle TradingView: Calculate Divergence, VWMA, SMA + Bollinger
-  Bands (BB StdDev), přechodová výplň pásem.
+  Bands (BB StdDev), přechodová výplň pásem. (SMA, EMA, SMMA a WMA hotové.)
 - [ ] **Volume dál**: přesnost (precision), popisky na cenové ose.
 - [ ] **Nastavení ostatních indikátorů**: MACD, KDJ, MA, EMA, BOLL, SAR mají zatím
   jen periody (a výšku panelu) — chybí barvy a přepínače viditelnosti čar.

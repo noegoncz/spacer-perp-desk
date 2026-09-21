@@ -245,6 +245,11 @@ function registrovatObjem() {
     series: 'normal',
     calcParams: [20],
     figures: [],
+    // Bez tohohle by v legendě stálo „Vol(20)" i s vypnutým průměrem.
+    createTooltipDataSource: ({ indicator }) => {
+      const n = nactiNastaveni('VOL');
+      return { calcParamsText: n.zobrazitMa ? ` MA ${indicator.calcParams?.[0]}` : '' };
+    },
     calc: (data, indikator) => {
       const delka = Math.max(1, Number(indikator.calcParams?.[0]) || 20);
       const out = [];
@@ -337,6 +342,20 @@ function registrovatRsi() {
       { key: 'rsi', title: 'RSI: ', type: 'line' },
       { key: 'ma', title: 'MA: ', type: 'line' },
     ],
+    /*
+     * Knihovna sama vypisuje surové `calcParams`, tedy „RSI(14,14,0,0)" —
+     * z toho uživatel nepozná nic. Vracíme jen text parametrů; hodnoty
+     * křivek si knihovna doplní sama.
+     */
+    createTooltipDataSource: ({ indicator }) => {
+      const [delka, delkaMa, zdrojIndex, typIndex] = indicator.calcParams || [];
+      const n = nactiNastaveni('RSI');
+      const casti = [String(delka), t(`source.${ZDROJE[Number(zdrojIndex) || 0] || 'close'}`)];
+      if (n.zobrazitMa) {
+        casti.push(`${(TYPY_MA[Number(typIndex) || 0] || 'sma').toUpperCase()} ${delkaMa}`);
+      }
+      return { calcParamsText: ` ${casti.join(' · ')}` };
+    },
     calc: (data, indikator) => {
       const [delkaVstup, delkaMaVstup, zdrojIndex, typIndex] = indikator.calcParams || [];
       const delka = Math.max(2, Number(delkaVstup) || 14);
@@ -943,17 +962,19 @@ export function createPriceChart(container, layer, handlers = {}) {
           } catch {
             callback([], false);
           }
-          // Po dodání dat srovnat pohled a vrátit čáry i kresby — všechno
-          // naskočí naráz, ne po částech.
-          setTimeout(() => {
-            umistiVrstvu();
-            srovnejPohled();
-            if (prepinaSeInterval) {
-              prepinaSeInterval = false;
-              vykresliKresby(zalohaKreseb);
-              vykresliCary(posledniCary);
-            }
-          }, 0);
+          /*
+           * ⚠ Kresby a čáry se musí vrátit **ve stejném průchodu jako data**,
+           * ne přes `setTimeout`. Odklad znamená snímek, ve kterém graf už
+           * nové svíčky má, ale kresby ještě ne — a ty na okamžik probliknou
+           * pryč. Srovnání pohledu odložit smí, to se na vzhledu neprojeví.
+           */
+          if (prepinaSeInterval) {
+            prepinaSeInterval = false;
+            vykresliKresby(zalohaKreseb);
+            vykresliCary(posledniCary);
+          }
+          umistiVrstvu();
+          srovnejAzPoVykresleni();
         },
         subscribeBar: ({ callback }) => {
           zivyCallback = callback;
