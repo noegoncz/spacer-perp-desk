@@ -156,6 +156,17 @@ main {
 
 /* ---------- záložky ---------- */
 
+/* pan-y říká prohlížeči: svislé scrollování si řiď sám, vodorovná gesta
+   nech nám. Bez toho si tah zabere na scrollování a přejíždění mezi
+   záložkami se nikdy nedokončí. Schválně jen na těchto třech obrazovkách —
+   graf má vlastní vodorovně posuvné lišty, které tím nesmí přijít o dotyk. */
+#viewPositions,
+#viewWatchlist,
+#viewHistory {
+  touch-action: pan-y;
+}
+
+
 .tabs {
   display: flex;
   gap: 4px;

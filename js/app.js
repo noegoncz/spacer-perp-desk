@@ -623,22 +623,60 @@ function prepniZalozku(nazev) {
  * v nastavení a poznat se musí od svislého scrollování — proto se vyžaduje
  * výrazně delší pohyb vodorovně než svisle.
  */
+/**
+ * Přejíždění mezi záložkami.
+ *
+ * ⚠ Staví na **dotykových** událostech, ne na ukazovátkových. Prohlížeč si
+ * gesto po pár pixelech vezme na scrollování a ukazovátkový proud ukončí
+ * (`pointercancel`), takže `pointerup` už nikdy nepřijde. Dotykové události
+ * přitom běží dál — ověřeno skutečným gestem, ne syntetickou událostí.
+ *
+ * `preventDefault()` na `touchmove` scrollování zastaví; na `pointermove`
+ * nedělá nic. Volá se až ve chvíli, kdy je jasné, že jde o vodorovný tah,
+ * aby svislé scrollování zůstalo normální.
+ */
 function zapojPrejeti() {
-  const POTREBA = 60;
+  const POTREBA = 55;      // kolik pixelů musí prst ujet, aby se záložka přepnula
+  const ROZHODNUTI = 12;   // od kolika pixelů poznáme, že jde o vodorovný tah
   const hlavni = document.querySelector('main');
   let start = null;
+  let vodorovne = false;
   let prejeto = false;
 
-  hlavni.addEventListener('pointerdown', (e) => {
-    if (chartSymbol || !el('viewSettings').hidden) return;
-    start = { x: e.clientX, y: e.clientY };
+  const zapomen = () => {
+    start = null;
+    vodorovne = false;
+  };
+
+  hlavni.addEventListener('touchstart', (e) => {
+    if (chartSymbol || !el('viewSettings').hidden || e.touches.length !== 1) {
+      zapomen();
+      return;
+    }
+    start = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    vodorovne = false;
   }, { passive: true });
 
-  hlavni.addEventListener('pointerup', (e) => {
-    if (!start) return;
-    const dx = e.clientX - start.x;
-    const dy = e.clientY - start.y;
-    start = null;
+  hlavni.addEventListener('touchmove', (e) => {
+    if (!start || e.touches.length !== 1) return;
+    const dx = e.touches[0].clientX - start.x;
+    const dy = e.touches[0].clientY - start.y;
+
+    if (!vodorovne && Math.abs(dx) > ROZHODNUTI && Math.abs(dx) > Math.abs(dy)) {
+      vodorovne = true;
+    }
+    if (vodorovne && e.cancelable) e.preventDefault();
+  }, { passive: false });
+
+  hlavni.addEventListener('touchend', (e) => {
+    if (!start || !vodorovne) {
+      zapomen();
+      return;
+    }
+    const dotyk = e.changedTouches[0];
+    const dx = dotyk.clientX - start.x;
+    const dy = dotyk.clientY - start.y;
+    zapomen();
     if (Math.abs(dx) < POTREBA || Math.abs(dx) < Math.abs(dy) * 2) return;
 
     const kam = ZALOZKY.indexOf(aktivniZalozka) + (dx < 0 ? 1 : -1);
@@ -647,6 +685,8 @@ function zapojPrejeti() {
     prejeto = true;
     prepniZalozku(ZALOZKY[kam]);
   }, { passive: true });
+
+  hlavni.addEventListener('touchcancel', zapomen, { passive: true });
 
   // Po přejetí nesmí doběhnout klepnutí, jinak by se otevřel pár pod prstem.
   hlavni.addEventListener('click', (e) => {

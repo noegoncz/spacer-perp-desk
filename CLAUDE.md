@@ -392,10 +392,25 @@ Mezi oblíbenými a zbytkem je **dělicí tlačítko** („Zobrazit / skrýt vš
 páry") se šipkami. Dělá totéž co hvězdička filtru nahoře, jen je po ruce tam,
 kde seznam končí. Při hledání se neukazuje — ve výsledcích by jen mátlo.
 
-Mezi záložkami jde **přejíždět prstem**. Aby se to nepletlo se svislým
-scrollováním, vyžaduje se pohyb aspoň 60 px a vodorovně víc než dvojnásobek
-svislého. Po přejetí se potlačí následné klepnutí, jinak by se otevřel pár
-pod prstem. Nad otevřeným grafem a v nastavení se přejíždění neuplatní.
+Mezi záložkami jde **přejíždět prstem**. Vyžaduje se pohyb aspoň 55 px
+a vodorovně víc než dvojnásobek svislého. Po přejetí se potlačí následné
+klepnutí, jinak by se otevřel pár pod prstem. Nad otevřeným grafem
+a v nastavení se přejíždění neuplatní.
+
+⚠ **Musí stát na dotykových událostech, ne na ukazovátkových.** Prohlížeč si
+gesto po pár pixelech vezme na svislé scrollování (prst má vždycky nějaký
+svislý posun) a ukazovátkový proud ukončí `pointercancel` — `pointerup` už
+nikdy nepřijde. Dotykové události přitom běží dál. Ověřeno skutečným gestem:
+
+```
+pointerdown → touchstart → pointermove → touchmove → pointercancel
+            → touchmove×8 → touchend
+```
+
+`preventDefault()` na `touchmove` scrollování zastaví; na `pointermove`
+nedělá nic. Volá se až ve chvíli, kdy je jasné, že jde o vodorovný tah.
+K tomu `touch-action: pan-y` na třech obrazovkách záložek — na grafu ne,
+tam by to sebralo dotyk vodorovně posuvným lištám.
 
 Klepnutí na pár otevře graf. Proto graf nově funguje **i bez otevřené pozice**:
 `chartSymbol` je zdroj pravdy o tom, co se kreslí, `chartPosition` může být
@@ -499,6 +514,16 @@ Uživatel si výslovně nepřeje riskovat účet při vývoji zápisu. Pořadí 
 vyžaduje předem schválené adresy. Bez něj je nejhorší možný následek chyby
 špatný obchod, ne odtečení prostředků pryč z účtu. Tohle je ta vlastnost,
 která celý zápis dělá přijatelně bezpečným.
+
+## Testování dotykových gest
+
+⚠ **Syntetické `PointerEvent` vyslané z JavaScriptu obcházejí rozhodování
+prohlížeče o gestech.** Projdou i u ovládání, které na telefonu nefunguje —
+stalo se přesně to u přejíždění mezi záložkami.
+
+Na gesta je proto `tools/touch-test.py`, který přes DevTools Protocol posílá
+skutečné dotyky. Návod k použití je v hlavičce souboru. Do nasazení se
+nedostane, workflow kopíruje jen `css`, `js`, `icons` a `vendor`.
 
 ## Lokální vývoj
 
