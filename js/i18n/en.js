@@ -113,6 +113,7 @@ export const en = {
   'indSet.zdroj': 'Source',
   'indSet.podlePredchozi': 'Colour by previous close',
   'indSet.vyska': 'Height',
+  'indSet.vyskaPanelu': 'Pane height',
   'indSet.pruhlednost': 'Opacity',
   'indSet.barvaRust': 'Rising',
   'indSet.barvaPokles': 'Falling',

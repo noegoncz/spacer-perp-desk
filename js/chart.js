@@ -795,6 +795,39 @@ export function createPriceChart(container, layer, handlers = {}) {
     } catch {
       /* neznámý indikátor — nastavení prostě nemá co přepsat */
     }
+    pouzijVyskuPanelu(nazev);
+  }
+
+  /*
+   * Výška vlastního panelu indikátoru. Zadává se v procentech plochy grafu,
+   * ne v pixelech — na rozevřeném Foldu a na zavřeném displeji je plocha
+   * jinak vysoká a pevná hodnota by jednou zabírala půlku, podruhé proužek.
+   */
+  const NEJMENE_PRO_SVICKY = 0.45; // svíčkám musí zbýt aspoň tolik plochy
+
+  function pouzijVyskuPanelu(nazev) {
+    const n = nactiNastaveni(nazev);
+    if (n.vyskaPanelu === undefined) return;
+    const indikator = chart.getIndicators({ name: nazev })?.[0];
+    if (!indikator?.paneId || indikator.paneId === HLAVNI_PANEL) return;
+
+    const plocha = container.clientHeight;
+    if (!plocha) return;
+    // Panely ostatních indikátorů si drží svoje; strop počítáme jen proti
+    // tomu, co je k dispozici, aby svíčky nikdy nezmizely úplně.
+    const strop = plocha * (1 - NEJMENE_PRO_SVICKY);
+    const vyska = Math.round(Math.min(strop, plocha * n.vyskaPanelu / 100));
+    if (vyska < 30) return;
+    try {
+      chart.setPaneOptions({ id: indikator.paneId, height: vyska });
+    } catch {
+      /* panel mezitím zmizel */
+    }
+  }
+
+  /** Po změně rozměrů se procenta musí přepočítat na nové pixely. */
+  function srovnejVyskyPanelu() {
+    aktivniIndikatory.forEach(pouzijVyskuPanelu);
   }
 
   /*
@@ -882,6 +915,7 @@ export function createPriceChart(container, layer, handlers = {}) {
 
   const observer = new ResizeObserver(() => {
     chart.resize();
+    srovnejVyskyPanelu();
     umistiVrstvu();
     kresleni.redraw();
   });

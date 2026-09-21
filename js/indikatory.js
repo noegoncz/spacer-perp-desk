@@ -30,14 +30,26 @@ const barva = (klic, vychozi) => ({ klic, typ: 'barva', vychozi, paleta: PALETA 
 const vyber = (klic, vychozi, moznosti) => ({ klic, typ: 'vyber', vychozi, moznosti });
 
 /**
+ * Označí pole jako podřízené jinému přepínači. Dokud je přepínač vypnutý,
+ * obrazovka pole zešedne a nejde na něj sáhnout — jinak by uživatel ladil
+ * barvu něčeho, co není vidět.
+ */
+const podle = (pole, prepinacKlic) => ({ ...pole, zavisi: prepinacKlic });
+
+/** Výška vlastního panelu v procentech plochy grafu. */
+const vyskaPanelu = () =>
+  vyber('vyskaPanelu', 25,
+    [20, 25, 30, 40].map((v) => ({ hodnota: v, popisek: `${v} %` })));
+
+/**
  * Schémata. Skupiny (`sekce`) jen dělí dlouhý seznam nadpisem, jako to dělá
  * TradingView záložkami Inputs / Style.
  */
 export const SCHEMATA = {
   VOL: [
     { sekce: 'inputs' },
-    cislo('delkaMa', 20, 1, 200, 0),
     prepinac('zobrazitMa', true),
+    podle(cislo('delkaMa', 20, 1, 200, 0), 'zobrazitMa'),
     prepinac('podlePredchozi', false),
     { sekce: 'style' },
     vyber('vyska', 22, [15, 22, 30, 40].map((v) => ({ hodnota: v, popisek: `${v} %` }))),
@@ -45,7 +57,7 @@ export const SCHEMATA = {
       [0.25, 0.45, 0.65, 0.85].map((v) => ({ hodnota: v, popisek: `${Math.round(v * 100)} %` }))),
     barva('barvaRust', '#16c784'),
     barva('barvaPokles', '#ea3943'),
-    barva('barvaMa', '#f0b90b'),
+    podle(barva('barvaMa', '#f0b90b'), 'zobrazitMa'),
   ],
 
   RSI: [
@@ -53,17 +65,20 @@ export const SCHEMATA = {
     cislo('delka', 14, 2, 100, 0),
     vyber('zdroj', 0, ZDROJE.map((z, i) => ({ hodnota: i, popisek: z, klicPopisku: `source.${z}` }))),
     prepinac('zobrazitMa', false),
-    cislo('delkaMa', 14, 1, 100, 1),
+    podle(cislo('delkaMa', 14, 1, 100, 1), 'zobrazitMa'),
     { sekce: 'bands' },
-    cislo('horniPasmo', 70, 1, 99),
-    cislo('dolniPasmo', 30, 1, 99),
+    // Přepínač stojí před tím, co ovládá — zešedlá pole pak dávají smysl
+    // na první pohled.
     prepinac('zobrazitPasma', true),
-    prepinac('vypln', true),
+    podle(cislo('horniPasmo', 70, 1, 99), 'zobrazitPasma'),
+    podle(cislo('dolniPasmo', 30, 1, 99), 'zobrazitPasma'),
+    podle(prepinac('vypln', true), 'zobrazitPasma'),
     prepinac('pevnaStupnice', true),
     { sekce: 'style' },
+    vyskaPanelu(),
     barva('barvaRsi', '#a78bfa'),
-    barva('barvaMa', '#f0b90b'),
-    barva('barvaPasem', '#8b9bb0'),
+    podle(barva('barvaMa', '#f0b90b'), 'zobrazitMa'),
+    podle(barva('barvaPasem', '#8b9bb0'), 'zobrazitPasma'),
   ],
 
   MACD: [
@@ -71,6 +86,8 @@ export const SCHEMATA = {
     cislo('kratka', 12, 1, 200, 0),
     cislo('dlouha', 26, 1, 200, 1),
     cislo('signal', 9, 1, 200, 2),
+    { sekce: 'style' },
+    vyskaPanelu(),
   ],
 
   KDJ: [
@@ -78,6 +95,8 @@ export const SCHEMATA = {
     cislo('delka', 9, 1, 200, 0),
     cislo('delkaK', 3, 1, 100, 1),
     cislo('delkaD', 3, 1, 100, 2),
+    { sekce: 'style' },
+    vyskaPanelu(),
   ],
 
   MA: [

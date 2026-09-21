@@ -676,10 +676,13 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
 
 .chart-tools { gap: 6px; }
 
-/* Intervaly se posouvají, tlačítka nástrojů zůstávají vždy vidět. */
+/* Intervaly se posouvají, tlačítka nástrojů zůstávají vždy vidět.
+   `flex: 0 1 auto` je schválně: skupina se smí smrsknout a posouvat, ale
+   nesmí se roztáhnout přes zbylé místo — jinak by mezi 1M a tlačítkem
+   středu zela díra. */
 .intervals {
   display: flex;
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   gap: 6px;
   overflow-x: auto;
@@ -703,6 +706,19 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
   background: var(--accent);
   border-color: var(--accent);
   color: #06121f;
+}
+
+/* Tlačítko se samotnou ikonou v liště timeframů — užší, ať nekrade místo. */
+.interval-btn--ikona {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  padding: 0;
+}
+.interval-btn--ikona svg {
+  width: 19px; height: 19px; fill: none; stroke: currentColor;
+  stroke-width: 1.7; stroke-linecap: round;
 }
 
 /* min-height: 0 je nutné, jinak flexbox nedovolí plátnu zmenšit se pod obsah. */
@@ -1128,6 +1144,13 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
 .nastaveni-radek:last-child { border-bottom: 0; }
 
 .nastaveni-popisek { font-size: 0.82rem; }
+
+/* Volba, kterou vypnul nadřazený přepínač. Zůstane vidět (ať je jasné, co
+   se zapnutím objeví), ale nejde na ni sáhnout. */
+.nastaveni-radek--vypnuto { opacity: 0.35; }
+.nastaveni-radek--vypnuto .nastaveni-popisek { color: var(--text-dim); }
+.nastaveni-radek--vypnuto button,
+.nastaveni-radek--vypnuto input { pointer-events: none; cursor: default; }
 
 /* Číselník: hodnota mezi dvěma velkými tlačítky, ať se to trefí palcem. */
 .nastaveni-cislo { display: flex; align-items: center; gap: 2px; }

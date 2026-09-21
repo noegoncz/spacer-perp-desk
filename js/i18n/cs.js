@@ -109,6 +109,7 @@ export const cs = {
   'indSet.zdroj': 'Zdroj ceny',
   'indSet.podlePredchozi': 'Barvit podle předchozí svíčky',
   'indSet.vyska': 'Výška',
+  'indSet.vyskaPanelu': 'Výška panelu',
   'indSet.pruhlednost': 'Průhlednost',
   'indSet.barvaRust': 'Růst',
   'indSet.barvaPokles': 'Pokles',

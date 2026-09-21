@@ -498,6 +498,17 @@ generuje sama, takže přidat volbu (nebo celý indikátor) znamená sáhnout je
 toho souboru. Pole s `param: n` jde do `calcParams[n]`, tedy do výpočtu;
 ostatní pole jsou vzhled a stačí překreslit.
 
+⚠ **Pole podřízené přepínači se obaluje `podle(pole, 'klicPrepinace')`.** Když
+je přepínač vypnutý, řádek zešedne a jeho ovládání se zablokuje — jinak by
+uživatel ladil barvu něčeho, co není vidět. Přepínač musí ve schématu stát
+**před** tím, co ovládá, aby zešedlá pole dávala smysl na první pohled.
+
+Výška vlastního panelu (`vyskaPanelu`) se zadává **v procentech plochy grafu**,
+ne v pixelech: na rozevřeném Foldu a na zavřeném displeji je plocha jinak
+vysoká a pevná hodnota by jednou zabrala půlku, podruhé proužek. Uplatňuje se
+přes `setPaneOptions({ id, height })` (výchozí výška panelu knihovny je 100 px)
+a přepočítává se i při změně rozměrů. Svíčkám vždy zbyde aspoň 45 % plochy.
+
 ⚠ **Objem se nedá vložit do hlavního panelu jako vestavěný `VOL`.** Má
 `series: 'volume'`, takže si vyrobí vlastní svislou osu, **přebere jí pravou
 stupnici** (místo ceny se ukazuje objem) a sloupce roztáhne přes celou výšku —
@@ -680,6 +691,13 @@ stalo se přesně to u přejíždění mezi záložkami.
 Na gesta je proto `tools/touch-test.py`, který přes DevTools Protocol posílá
 skutečné dotyky. Návod k použití je v hlavičce souboru. Do nasazení se
 nedostane, workflow kopíruje jen `css`, `js`, `icons` a `vendor`.
+
+⚠ **Testovací prohlížeč musí mít čistý profil, nebo vypnutý service worker.**
+Jednou zaregistrovaný worker servíruje zakešované moduly, takže test ukazuje
+starý kód a úpravy vypadají, že se neprovedly. Stalo se to u nastavení
+indikátorů: obrazovka tvrdošíjně ukazovala staré schéma, přestože soubor na
+disku byl nový. Odregistrování za běhu nestačí — stránka se už načetla
+z cache, pomůže až nový `--user-data-dir`.
 
 ## Lokální vývoj
 

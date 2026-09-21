@@ -605,10 +605,25 @@ function otevriNastaveniIndikatoru(id) {
   const hodnoty = { ...nactiNastaveni(id) };
   el('settingsTitle').textContent = nazevIndikatoru(id);
 
+  // Řádky podřízené nějakému přepínači, ať jde jejich dostupnost přepnout
+  // hned po jeho přepnutí, bez skládání celé obrazovky znovu.
+  const podrizene = [];
+
+  const prekresliDostupnost = () => {
+    podrizene.forEach(({ radek, na }) => {
+      const dostupne = Boolean(hodnoty[na]);
+      radek.classList.toggle('nastaveni-radek--vypnuto', !dostupne);
+      radek.querySelectorAll('button, input').forEach((prvek) => {
+        prvek.disabled = !dostupne;
+      });
+    });
+  };
+
   const zmen = (klic, hodnota) => {
     hodnoty[klic] = hodnota;
     ulozNastaveni(id, hodnoty);
     chart?.applyIndicatorSettings(id);
+    prekresliDostupnost();
   };
 
   const prvky = [];
@@ -630,10 +645,12 @@ function otevriNastaveniIndikatoru(id) {
     popisek.textContent = popisekPole(id, p.klic);
     radek.append(popisek);
     radek.append(ovladacPole(p, hodnoty[p.klic], (v) => zmen(p.klic, v)));
+    if (p.zavisi) podrizene.push({ radek, na: p.zavisi });
     prvky.push(radek);
   });
 
   el('settingsBody').replaceChildren(...prvky);
+  prekresliDostupnost();
   otevriNabidku('sheetSettings');
 }
 
