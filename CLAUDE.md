@@ -541,6 +541,19 @@ K tomu `hlidejTicheChyby()` v `app.js`: každá neodchycená chyba i zamítnutý
 slib se ukáží v chybové liště. Nic nesmí selhat potichu — zamrzlá obrazovka
 bez hlášky je to nejhorší, co uživatel může dostat.
 
+## Diagnostika v aplikaci
+
+Dokud nejsou vidět pozice, ukazuje se pod hláškou **diagnostický blok**: krok,
+počet pokusů, stav REST i WebSocketu, čas posledních dat a poslední chyba
+s časem. K tomu tlačítko **Zkusit znovu**.
+
+Důvod: chybu na cizím telefonu jinak nejde než hádat, a hádání už dvakrát
+minulo. Uživatel blok vyfotí a je hned jasné, kde se to zaseklo. Jakmile
+pozice dorazí, blok zmizí.
+
+Stopu plní `client.zapisDiag()` v `js/bybit.js`. ⚠ Chyba v `syncTime()` se
+už **nesmí polykat potichu** — zapisuje se do stopy, i když se běží dál.
+
 ## Testování aplikace bez klíčů
 
 `tools/app-test.py` spustí aplikaci s podstrčenými odpověďmi Bybitu, takže jdou

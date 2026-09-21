@@ -12,6 +12,7 @@ export const cs = {
   'action.settings': 'Nastavení',
   'action.close': 'Zavřít',
   'action.back': 'Zpět na pozice',
+  'action.retry': 'Zkusit znovu',
   'action.openSettings': 'Otevřít nastavení',
 
   'tabs.positions': 'Pozice',

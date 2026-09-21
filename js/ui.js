@@ -26,6 +26,8 @@ const dom = {
   placeholder: el('placeholder'),
   placeholderText: el('placeholderText'),
   placeholderBtn: el('placeholderBtn'),
+  retryBtn: el('retryBtn'),
+  diagLine: el('diagLine'),
   versionLabel: el('versionLabel'),
   lastUpdate: el('lastUpdate'),
   viewPositions: el('viewPositions'),
@@ -175,6 +177,13 @@ export function showPlaceholder(text, buttonLabel = null) {
   dom.placeholderText.textContent = text;
   dom.placeholderBtn.hidden = !buttonLabel;
   if (buttonLabel) dom.placeholderBtn.textContent = buttonLabel;
+}
+
+/** Ukáže, co klient právě dělá. Bez dat se to jinak hádá naslepo. */
+export function showDiagnostics(radky) {
+  dom.diagLine.hidden = !radky;
+  dom.diagLine.textContent = radky || '';
+  dom.retryBtn.hidden = !radky;
 }
 
 const STATUS_TRIDA = {

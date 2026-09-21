@@ -47,8 +47,12 @@ const client = new BybitClient({
     chart.updateCandle(bar);
     zkontrolujAlarmy(bar.close, bar.time);
   },
+  onDiag() {
+    ukazDiagnostiku();
+  },
   onStatus(status) {
     ui.renderStatus(status);
+    ukazDiagnostiku();
     // Chybu maže až úspěšné REST načtení. Kdyby se mazala při každé nové
     // pozici, schoval by ji i pouhý tick ceny, zatímco načítání dál padá.
     if (status.rest === 'ok') ui.clearError();
@@ -60,6 +64,29 @@ const client = new BybitClient({
     }
   },
 });
+
+/**
+ * Diagnostika se ukazuje jen dokud pozice nedorazily. Jakmile je vidět
+ * seznam, je zbytečná a mizí.
+ */
+function ukazDiagnostiku() {
+  if (lastPositions.length || !client.hasCredentials()) {
+    ui.showDiagnostics(null);
+    return;
+  }
+  const d = client.diag;
+  const s = client.status;
+  const cas = (t) => (t ? new Date(t).toLocaleTimeString(undefined, { hour12: false }) : '—');
+  ui.showDiagnostics(
+    `krok: ${d.krok}
+`
+    + `pokusů: ${d.pokusu}   REST: ${s.rest}   WS: ${s.ws}
+`
+    + `poslední data: ${cas(s.lastUpdate)}
+`
+    + `chyba: ${d.posledniChyba || '—'}${d.casChyby ? ' (' + cas(d.casChyby) + ')' : ''}`,
+  );
+}
 
 /* ---------- start ---------- */
 
@@ -103,6 +130,7 @@ async function connectIfPossible() {
 
   client.setCredentials(apiKey, apiSecret);
   ui.showPlaceholder(t('positions.loading'));
+  ukazDiagnostiku();
   try {
     await client.start();
   } catch (err) {
@@ -117,6 +145,9 @@ function wireEvents() {
   el('settingsBtn').addEventListener('click', openSettings);
   el('backBtn').addEventListener('click', () => ui.showView('positions'));
   el('placeholderBtn').addEventListener('click', openSettings);
+  el('retryBtn').addEventListener('click', () => {
+    if (client.hasCredentials()) client.refresh();
+  });
 
   el('refreshBtn').addEventListener('click', () => {
     if (client.hasCredentials()) client.refresh();

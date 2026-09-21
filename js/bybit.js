@@ -205,6 +205,21 @@ export class BybitClient {
     this.klineTopic = null;
 
     this.status = { ws: 'idle', rest: 'idle', lastUpdate: null };
+
+    /**
+     * Stopa toho, co klient právě dělá. Bez ní se chyba na cizím telefonu
+     * hledá jen hádáním — což už jednou stálo dvě zbytečná kola.
+     */
+    this.diag = { krok: 'start', pokusu: 0, posledniChyba: null, casChyby: null };
+  }
+
+  zapisDiag(krok, chyba = null) {
+    this.diag.krok = krok;
+    if (chyba) {
+      this.diag.posledniChyba = chyba;
+      this.diag.casChyby = Date.now();
+    }
+    this.handlers.onDiag?.(this.diag);
   }
 
   setCredentials(apiKey, apiSecret) {
@@ -241,8 +256,10 @@ export class BybitClient {
       const json = await this.httpGet(`${REST_BASE}/v5/market/time`, {});
       const serverMs = Number(json?.result?.timeNano ?? 0) / 1e6 || Number(json?.time ?? 0);
       if (serverMs > 0) this.timeOffset = Math.round(serverMs - Date.now());
-    } catch {
-      // Offline start — offset zůstane 0 a zkusí se znovu při dalším refreshi.
+    } catch (err) {
+      // Běží se dál s offsetem 0, ale chyba se musí zaznamenat — dřív mizela
+      // beze stopy a schovávala tím, že je čas serveru nedostupný.
+      this.zapisDiag('čas serveru selhal', err.message || String(err));
     }
   }
 
@@ -273,8 +290,11 @@ export class BybitClient {
   /** Načte otevřené linear USDT pozice a nahradí jimi celý stav. */
   async refresh() {
     this.setStatus({ rest: 'loading' });
+    this.diag.pokusu += 1;
+    this.zapisDiag('čas serveru');
     try {
       await this.syncTime();
+      this.zapisDiag('pozice');
       const result = await this.signedGet('/v5/position/list', {
         category: 'linear',
         settleCoin: 'USDT',
@@ -287,11 +307,13 @@ export class BybitClient {
         if (p.size > 0) this.positions.set(positionKey(p), p);
       }
 
+      this.zapisDiag(`hotovo, pozic: ${this.positions.size}`);
       this.setStatus({ rest: 'ok', lastUpdate: Date.now() });
       this.emitPositions();
       this.syncTickerSubscriptions();
       return true;
     } catch (err) {
+      this.zapisDiag('chyba', err.message || String(err));
       this.setStatus({ rest: 'error' });
       this.emitError(err.message || String(err));
       return false;

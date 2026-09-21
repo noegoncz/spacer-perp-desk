@@ -16,6 +16,7 @@ export const en = {
   'action.settings': 'Settings',
   'action.close': 'Close',
   'action.back': 'Back to positions',
+  'action.retry': 'Try again',
   'action.openSettings': 'Open settings',
 
   'tabs.positions': 'Positions',

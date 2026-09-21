@@ -509,6 +509,19 @@ main {
   color: var(--text-dim);
 }
 .placeholder p { margin: 0 0 16px; line-height: 1.5; }
+.placeholder .secondary-btn { width: auto; margin: 0 auto; }
+
+/* Diagnostika: ať jde vyfotit a poslat, když něco nejde. */
+.diag-line {
+  margin: 18px 0 0 !important;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.68rem;
+  line-height: 1.6 !important;
+  color: var(--text-dim);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
 
 /* ---------- nastavení ---------- */
 
