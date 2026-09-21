@@ -284,40 +284,21 @@ export function createPriceChart(container, layer, handlers = {}) {
   const chart = K().init(container, { styles: styly() });
   chart.setTimezone('Europe/Prague');
 
-  /*
-   * Svislý posun a roztažení cenové osy. Knihovna osu normálně dopočítává
-   * sama podle viditelných svíček; `createRange` ten výsledek jen posune
-   * a roztáhne, takže automatika zůstává a jen se na ni dívá „jinudy".
-   */
-  let posunY = 0; // podíl rozsahu
-  let zoomY = 1;
   const VYCHOZI_SIRKA_SVICE = 10;
 
-  chart.overrideYAxis({
-    createRange: ({ defaultRange }) => {
-      if (posunY === 0 && zoomY === 1) return defaultRange;
-      const { from, to } = defaultRange;
-      const stred = (from + to) / 2;
-      const puvodni = to - from;
-      const novy = puvodni * zoomY;
-      const offset = puvodni * posunY;
-      const f = stred - novy / 2 + offset;
-      const tt = stred + novy / 2 + offset;
-      return { ...defaultRange, from: f, to: tt, range: tt - f, realFrom: f, realTo: tt, realRange: tt - f };
-    },
-  });
-
-  // Překreslení se sdruží do jednoho snímku, ať tažení prstem neseká.
-  let cekaNaSnimek = false;
-  function prekresliOsu() {
-    if (cekaNaSnimek) return;
-    cekaNaSnimek = true;
-    requestAnimationFrame(() => {
-      cekaNaSnimek = false;
-      chart.resize();
-      kresleni.redraw();
-    });
+  /**
+   * Srovná pohled: výchozí šířka svící a skok na konec dat.
+   *
+   * ⚠ Volá se při otevření grafu i při změně intervalu. Instance grafu se
+   * mezi otevřeními recykluje kvůli rychlosti, takže by si jinak nesla posun
+   * a přiblížení z minula — uživatel pak po otevření hledal, kde vůbec jsou
+   * aktuální svíčky.
+   */
+  function srovnejPohled() {
+    chart.setBarSpace(VYCHOZI_SIRKA_SVICE);
+    chart.scrollToRealTime(0);
   }
+
   chart.setLocale('en-US'); // knihovna češtinu nemá; ovlivňuje popisky v tooltipu
 
   let idCarPozice = [];
@@ -535,7 +516,12 @@ export function createPriceChart(container, layer, handlers = {}) {
           } catch {
             callback([], false);
           }
-          setTimeout(umistiVrstvu, 0);
+          // Po dodání dat srovnat pohled, jinak by graf zůstal tam, kde
+          // ho nechal předchozí pár nebo interval.
+          setTimeout(() => {
+            umistiVrstvu();
+            srovnejPohled();
+          }, 0);
         },
         subscribeBar: ({ callback }) => {
           zivyCallback = callback;
@@ -553,6 +539,7 @@ export function createPriceChart(container, layer, handlers = {}) {
     setInterval(interval) {
       delkaObdobi = DELKA_OBDOBI[interval] || DELKA_OBDOBI['15'];
       chart.setPeriod(OBDOBI[interval] || OBDOBI['15']);
+      setTimeout(srovnejPohled, 0);
     },
 
     /** Odpočet tiká jen s otevřeným grafem, ať nežere baterku na pozadí. */
@@ -636,27 +623,8 @@ export function createPriceChart(container, layer, handlers = {}) {
       magnet = zapnuto;
     },
 
-    /* ---------- svislý posun a reset pohledu ---------- */
-
-    /** `delta` je podíl výšky grafu; kladné posouvá pohled dolů. */
-    posunSvisle(delta) {
-      posunY = Math.max(-2, Math.min(2, posunY + delta));
-      prekresliOsu();
-      return posunY;
-    },
-
-    posunSvislyPodil() {
-      return posunY;
-    },
-
-    /** Zpět na 100 %: automatická osa, výchozí šířka svící, konec dat. */
-    resetPohledu() {
-      posunY = 0;
-      zoomY = 1;
-      chart.setBarSpace(VYCHOZI_SIRKA_SVICE);
-      chart.scrollToRealTime();
-      prekresliOsu();
-    },
+    /** Srovná pohled na aktuální svíčky. */
+    resetPohledu: srovnejPohled,
 
     getDrawings() {
       return chart

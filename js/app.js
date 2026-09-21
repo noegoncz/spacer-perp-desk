@@ -407,7 +407,6 @@ async function otevriGraf(symbol, position, trh) {
     oznacAktivniIndikatory();
     postavNabidky();
     postavPaletu();
-    zapojPosuvnik();
   }
 
   chart.setSymbol(symbol, priceDecimals(position?.entry ?? trh?.last ?? 0));
@@ -877,46 +876,8 @@ function zkontrolujAlarmy(cena, cas) {
   poslednicCena = cena;
 }
 
-/* ---------- svislý posun a celá obrazovka ---------- */
+/* ---------- celá obrazovka ---------- */
 
-function zapojPosuvnik() {
-  const pruh = el('vscroll');
-  const bezec = el('vscrollThumb');
-  let drzeno = null;
-
-  const posadBezec = () => {
-    // Střed dráhy je nulový posun; kladný posun jede dolů.
-    const podil = Math.max(-1, Math.min(1, chart?.posunSvislyPodil() ?? 0));
-    bezec.style.top = `${(0.5 + podil / 2) * 66}%`;
-  };
-
-  pruh.addEventListener('pointerdown', (e) => {
-    if (!chart || e.target.closest('.vscroll-reset')) return;
-    pruh.setPointerCapture(e.pointerId);
-    drzeno = e.clientY;
-    pruh.classList.add('active');
-  });
-
-  pruh.addEventListener('pointermove', (e) => {
-    if (drzeno === null) return;
-    const delta = (e.clientY - drzeno) / Math.max(1, pruh.clientHeight);
-    drzeno = e.clientY;
-    chart.posunSvisle(delta * 1.5);
-    posadBezec();
-  });
-
-  const pust = () => {
-    drzeno = null;
-    pruh.classList.remove('active');
-  };
-  pruh.addEventListener('pointerup', pust);
-  pruh.addEventListener('pointercancel', pust);
-
-  el('resetViewBtn').addEventListener('click', () => {
-    chart?.resetPohledu();
-    posadBezec();
-  });
-}
 
 /** V celé obrazovce má být vidět co nejvíc grafu, údaje o pozici ustoupí. */
 function osetriCelouObrazovku() {

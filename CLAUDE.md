@@ -294,15 +294,27 @@ by zvonil při každém ticku. Zvuková a vibrační odezva plus pruh v UI.
 ⚠ Upozornění při **zavřené** aplikaci potřebuje APK z checkpointu 10;
 v prohlížeči to spolehlivě nejde.
 
-#### Svislý posun a celá obrazovka
+#### Srovnání pohledu a celá obrazovka
 
-Vlevo v grafu je úzký pruh, který posouvá cenovou osu. Knihovna osu normálně
-dopočítává sama podle viditelných svíček; `overrideYAxis({ createRange })`
-ten výsledek jen posune a roztáhne, takže automatika zůstává zachovaná.
-Tlačítko dole vrátí pohled na 100 % (výchozí šířka svící + skok na konec dat).
+⚠ **Instance grafu se mezi otevřeními recykluje** kvůli rychlosti, takže si
+nese posun i přiblížení z minula. Uživatel pak po otevření grafu hledal, kde
+vůbec jsou aktuální svíčky — poslední svíčka byla klidně trojnásobek šířky
+plátna mimo obraz. Proto `srovnejPohled()` (výchozí šířka svící + skok na
+konec dat) běží **po dodání dat i po změně intervalu**.
+
+Měřením ověřeno: po srovnání je vidět ~48 svíček, poslední je v pravé části
+plátna a svíčky vyplňují okolo 88 % výšky.
+
+Dřív tu byl svislý posuvník vlevo s vlastním `createRange`. Zrušen — uživateli
+překážel a jeho přínos nahradilo automatické srovnání. Osu si knihovna zase
+počítá sama podle viditelných svíček.
+
+⚠ Ověřeno, že **čáry pozice cenovou osu neroztahují** (ani likvidace 74 % pod
+cenou). Kdyby graf někdy vypadal zmáčknutě, viník je jinde — nejspíš zase
+zděděný posun.
 
 Tlačítko v hlavičce přepíná skutečnou celou obrazovku přes Fullscreen API;
-všechny nástroje zůstávají.
+všechny nástroje zůstávají, ustoupí jen údaje o pozici.
 
 #### Volume profile
 

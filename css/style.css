@@ -727,64 +727,6 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
    Nástroje zůstávají — bez nich by celá obrazovka ztratila smysl. */
 .chart-view.cela-obrazovka .chart-info { display: none; }
 
-/* ---------- svislý posuvník vlevo ---------- */
-
-/* Při velkém přiblížení je jinak těžké s grafem hnout. Je tu vždy, aby
-   byla cesta zpět na 100 % dostupná v každé situaci. */
-.vscroll {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  z-index: 5;
-  width: 26px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 6px 0;
-  touch-action: none;
-  background: linear-gradient(to right, rgba(19, 26, 35, 0.75), rgba(19, 26, 35, 0));
-}
-
-.vscroll-track {
-  position: relative;
-  flex: 1;
-  width: 5px;
-  margin: 2px 0 6px;
-  border-radius: 3px;
-  background: var(--surface-2);
-}
-
-.vscroll-thumb {
-  position: absolute;
-  left: 0;
-  width: 100%;
-  height: 34%;
-  border-radius: 3px;
-  background: var(--text-dim);
-  opacity: 0.7;
-}
-.vscroll.active .vscroll-thumb { background: var(--accent); opacity: 1; }
-
-.vscroll-reset {
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  background: var(--surface);
-  color: var(--text-dim);
-  cursor: pointer;
-  flex: none;
-}
-.vscroll-reset svg {
-  width: 14px; height: 14px; fill: none; stroke: currentColor;
-  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
-}
-.vscroll-reset:active { color: var(--accent); border-color: var(--accent); }
-
 /* ---------- paleta vzhledu vybrané kresby ---------- */
 
 .style-panel {

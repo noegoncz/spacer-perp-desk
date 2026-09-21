@@ -90,14 +90,6 @@
       <!-- Vrstva pro zaměřovací kříž; sedne přesně na plochu se svíčkami. -->
       <div id="drawLayer" class="draw-layer"></div>
 
-      <!-- Svislý posuvník: při velkém přiblížení je jinak těžké s grafem hnout. -->
-      <div id="vscroll" class="vscroll" data-i18n-aria="chart.verticalPan" role="slider" aria-valuenow="0">
-        <div class="vscroll-track"><div class="vscroll-thumb" id="vscrollThumb"></div></div>
-        <button type="button" id="resetViewBtn" class="vscroll-reset"
-                data-i18n-aria="chart.resetZoom" data-i18n-title="chart.resetZoom">
-          <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 15v5h-5"/><path d="M4 4l6 6M20 20l-6-6"/></svg>
-        </button>
-      </div>
 
       <!-- Vzhled vybrané kresby. Dole, aby nepřekrýval cenové dění nahoře. -->
       <div id="stylePanel" class="style-panel" hidden>
