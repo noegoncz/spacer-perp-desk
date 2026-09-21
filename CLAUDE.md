@@ -715,8 +715,12 @@ Pořadí, jak se na to má chodit. Odškrtnuté jsou hotové.
 
 ### Nejbližší dodělávky (drobné)
 
-- [ ] **Ověřit na telefonu** (v0.10.4): kresby při přepínání timeframu ani
+- [ ] **Ověřit na telefonu** (v0.10.5): kresby při přepínání timeframu ani
   neprobliknou; graf se po otevření ukáže u posledních svíček.
+- [ ] **Zvážit kontrolu shody verzí** mezi `index.html` a `js/version.js`.
+  Rozpadlá aktualizace (nová stránka + starý skript) se teď přežije, ale
+  aplikace o nesouladu neví a běží dál se starým kódem, dokud se worker
+  nepřehoupne sám.
 - [ ] **RSI dál** podle TradingView: Calculate Divergence, VWMA, SMA + Bollinger
   Bands (BB StdDev), přechodová výplň pásem. (SMA, EMA, SMMA a WMA hotové.)
 - [ ] **Volume dál**: přesnost (precision), popisky na cenové ose.
@@ -740,6 +744,31 @@ Pořadí, jak se na to má chodit. Odškrtnuté jsou hotové.
 10. ⏳ APK přes Capacitor + notifikace
 11. ⏳ Zadávání příkazů — jen pokud se aplikace osvědčí; pořadí testnet →
     subúčet → hlavní účet, výběr nikdy
+
+## Start aplikace musí být neprůstřelný
+
+⚠ **Registrace service workeru stojí v `boot()` jako první**, hned za hlídáním
+tichých chyb. Je to jediná cesta, kterou se telefon dostane k opravné verzi.
+Dřív visela až za sestavením obrazovky — a když sestavení spadlo, aplikace se
+nemohla opravit ani stažením nové verze. Nikdy ji neposouvej níž.
+
+⚠ **Na prvky se věší přes `naUdalost(id, …)` a `prepniTridu(id, …)`**, ne přímo
+přes `el('x').addEventListener`. Chybějící prvek se přeskočí místo pádu.
+
+Proč: při aktualizaci umí prohlížeč krátce servírovat **novou `index.html`
+se starým `app.js`** (nebo naopak). Starý kód pak sahá na prvek, který v nové
+stránce už není. Stalo se 2026-09-21 po odstranění tlačítka středu: telefon
+zůstal na verzi 0.10.1, ukazoval „Loading…", „Not connected" a červenou lištu
+„Cannot read properties of null (reading 'addEventListener')". Aplikace se
+z toho sama nedostala, protože se start nedobral k registraci workeru.
+
+Test: `tools/test-odolny-start.py` servíruje stránku bez pěti tlačítek
+a ověřuje, že se aplikace přesto sestaví, načte pozice a registraci spustí.
+Na starém kódu padá stejně jako telefon uživatele.
+
+⚠ Ten test **neměří `getRegistrations()`**. V headless Chrome registrace
+uspěje (`register()` se splní), ale ve výpisu se stejně neobjeví — měřil by
+vrtoch prohlížeče, ne aplikaci. Počítá se proto volání `register()`.
 
 ## Časové limity u volání
 

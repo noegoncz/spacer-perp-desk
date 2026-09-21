@@ -16,6 +16,28 @@ import * as ui from './ui.js';
 
 const el = (id) => document.getElementById(id);
 
+/*
+ * ⚠ Prvek nemusí existovat. Při aktualizaci umí prohlížeč krátce servírovat
+ * **novou index.html se starým app.js** (nebo naopak) — starý kód pak hledá
+ * prvek, který v nové stránce už není, `addEventListener` spadne na null
+ * a s ním celý start aplikace.
+ *
+ * Stalo se 2026-09-21 ve verzi 0.10.1 po odstranění tlačítka středu:
+ * „Cannot read properties of null (reading 'addEventListener')" a aplikace
+ * zůstala viset na „Loading…". Horší než ta chyba byl důsledek — start se
+ * nedostal k registraci service workeru, takže se aplikace nemohla sama
+ * opravit ani stažením nové verze.
+ */
+function naUdalost(id, udalost, obsluha) {
+  const prvek = el(id);
+  if (!prvek) return;
+  prvek.addEventListener(udalost, obsluha);
+}
+
+function prepniTridu(id, trida, zapnuto) {
+  el(id)?.classList.toggle(trida, zapnuto);
+}
+
 let hideAmounts = store.loadHideAmounts();
 let lastPositions = [];
 
@@ -110,16 +132,22 @@ function ukazDiagnostiku() {
 
 function boot() {
   hlidejTicheChyby();
+  /*
+   * ⚠ Registrace service workeru musí stát **před** vším, co může spadnout.
+   * Je to jediná cesta, jak se aplikace dostane k opravné verzi; kdyby
+   * visela až za sestavením obrazovky, jedna chyba v něm by telefon nechala
+   * natrvalo na rozbité verzi.
+   */
+  registerServiceWorker();
   setLanguage(store.loadLanguage());
   applyStaticTexts();
   postavVyberJazyka();
   ui.renderVersion(self.APP_VERSION, self.APP_BUILD);
-  el('hideBtn').classList.toggle('active', hideAmounts);
-  el('magnetBtn').classList.toggle('active', magnetZapnut);
-  el('onlyFavBtn').classList.toggle('active', jenOblibene);
+  prepniTridu('hideBtn', 'active', hideAmounts);
+  prepniTridu('magnetBtn', 'active', magnetZapnut);
+  prepniTridu('onlyFavBtn', 'active', jenOblibene);
   wireEvents();
   zapojPrejeti();
-  registerServiceWorker();
   connectIfPossible();
 }
 
@@ -160,19 +188,19 @@ async function connectIfPossible() {
 /* ---------- ovládání ---------- */
 
 function wireEvents() {
-  el('settingsBtn').addEventListener('click', openSettings);
-  el('backBtn').addEventListener('click', () => ui.showView('positions'));
-  el('placeholderBtn').addEventListener('click', openSettings);
-  el('retryBtn').addEventListener('click', () => {
+  naUdalost('settingsBtn', 'click', openSettings);
+  naUdalost('backBtn', 'click', () => ui.showView('positions'));
+  naUdalost('placeholderBtn', 'click', openSettings);
+  naUdalost('retryBtn', 'click', () => {
     if (client.hasCredentials()) client.refresh();
   });
 
-  el('refreshBtn').addEventListener('click', () => {
+  naUdalost('refreshBtn', 'click', () => {
     if (client.hasCredentials()) client.refresh();
     else openSettings();
   });
 
-  el('hideBtn').addEventListener('click', () => {
+  naUdalost('hideBtn', 'click', () => {
     hideAmounts = !hideAmounts;
     store.saveHideAmounts(hideAmounts);
     el('hideBtn').classList.toggle('active', hideAmounts);
@@ -185,7 +213,7 @@ function wireEvents() {
   });
 
   // Zpět z grafu vede přes historii, ať funguje i hardwarové tlačítko zpět.
-  el('chartBackBtn').addEventListener('click', () => history.back());
+  naUdalost('chartBackBtn', 'click', () => history.back());
   window.addEventListener('popstate', () => {
     if (chartSymbol) closeChart();
   });
@@ -201,28 +229,28 @@ function wireEvents() {
     btn.addEventListener('click', () => prepniZalozku(btn.dataset.tab));
   });
 
-  el('watchSearch').addEventListener('input', (e) => {
+  naUdalost('watchSearch', 'input', (e) => {
     hledani = e.target.value;
     el('watchClearBtn').hidden = !hledani;
     vykresliTrhy();
   });
 
-  el('watchClearBtn').addEventListener('click', () => {
+  naUdalost('watchClearBtn', 'click', () => {
     hledani = '';
     el('watchSearch').value = '';
     el('watchClearBtn').hidden = true;
     vykresliTrhy();
   });
 
-  el('onlyFavBtn').addEventListener('click', prepniJenOblibene);
+  naUdalost('onlyFavBtn', 'click', prepniJenOblibene);
 
-  el('indicatorBtn').addEventListener('click', () => otevriNabidku('sheetIndicators'));
-  el('settingsResetBtn').addEventListener('click', vratVychoziNastaveni);
-  el('fullscreenBtn').addEventListener('click', prepniCelouObrazovku);
+  naUdalost('indicatorBtn', 'click', () => otevriNabidku('sheetIndicators'));
+  naUdalost('settingsResetBtn', 'click', vratVychoziNastaveni);
+  naUdalost('fullscreenBtn', 'click', prepniCelouObrazovku);
   document.addEventListener('fullscreenchange', osetriCelouObrazovku);
 
-  el('styleDeleteBtn').addEventListener('click', () => chart?.deleteSelected());
-  el('styleAlarmBtn').addEventListener('click', () => {
+  naUdalost('styleDeleteBtn', 'click', () => chart?.deleteSelected());
+  naUdalost('styleAlarmBtn', 'click', () => {
     const id = chart?.selectedId();
     if (id) chart.setAlarm(id, !chart.selectedStyle().alarm);
   });
@@ -231,7 +259,7 @@ function wireEvents() {
     btn.addEventListener('click', () => vyberNastroj(btn.dataset.tool));
   });
 
-  el('magnetBtn').addEventListener('click', () => {
+  naUdalost('magnetBtn', 'click', () => {
     magnetZapnut = !magnetZapnut;
     store.saveMagnet(magnetZapnut);
     el('magnetBtn').classList.toggle('active', magnetZapnut);
@@ -239,7 +267,7 @@ function wireEvents() {
     chart?.setMagnet(magnetZapnut);
   });
 
-  el('eraseBtn').addEventListener('click', () => {
+  naUdalost('eraseBtn', 'click', () => {
     // Když má uživatel kresbu v úpravách, koš maže jen ji — jinak všechny.
     if (chart?.hasSelection()) {
       chart.deleteSelected();
@@ -252,16 +280,16 @@ function wireEvents() {
   document.querySelectorAll('[data-close]').forEach((btn) => {
     btn.addEventListener('click', zavriNabidky);
   });
-  el('sheetBackdrop').addEventListener('click', zavriNabidky);
+  naUdalost('sheetBackdrop', 'click', zavriNabidky);
 
-  el('revealBtn').addEventListener('click', () => {
+  naUdalost('revealBtn', 'click', () => {
     const input = el('apiSecret');
     input.type = input.type === 'password' ? 'text' : 'password';
   });
 
-  el('saveBtn').addEventListener('click', saveAndConnect);
-  el('testBtn').addEventListener('click', testCredentials);
-  el('clearBtn').addEventListener('click', clearCredentials);
+  naUdalost('saveBtn', 'click', saveAndConnect);
+  naUdalost('testBtn', 'click', testCredentials);
+  naUdalost('clearBtn', 'click', clearCredentials);
 
   // Android uspaná WS spojení tiše zabíjí — po návratu do popředí se ověří stav.
   document.addEventListener('visibilitychange', () => {
@@ -1411,7 +1439,7 @@ async function registerServiceWorker() {
     location.reload();
   });
 
-  el('updateBtn').addEventListener('click', () => {
+  naUdalost('updateBtn', 'click', () => {
     const waiting = registration.waiting;
     ui.showUpdateBar(false);
 
