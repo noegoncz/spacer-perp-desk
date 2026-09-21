@@ -295,12 +295,15 @@ export class BybitClient {
    * Svíčky vzestupně podle času. Bybit je vrací od nejnovější, graf je
    * potřebuje obráceně.
    */
-  async getKlines(symbol, interval, limit = 500) {
+  async getKlines(symbol, interval, limit = 500, endTime = null) {
     const result = await this.publicGet('/v5/market/kline', {
       category: 'linear',
       symbol,
       interval,
       limit: String(limit),
+      // Bez `end` vrací Bybit nejnovější svíčky; při prohlížení starého
+      // obchodu potřebujeme okno kolem jeho času.
+      ...(endTime ? { end: String(Math.ceil(endTime)) } : {}),
     });
     // Čas zůstává v milisekundách, jak ho Bybit posílá. Objem je potřeba
     // pro indikátor objemu v grafu.
@@ -332,6 +335,64 @@ export class BybitClient {
         turnover: num(t.turnover24h),
       }))
       .sort((a, b) => b.turnover - a.turnover);
+  }
+
+  /**
+   * Uzavřené obchody, nejnovější první.
+   *
+   * ⚠ `side` v téhle odpovědi je strana **zavírací** objednávky, ne směr
+   * pozice — dlouhá pozice se zavírá prodejem. Směr se proto odvozuje
+   * z cen a zisku, což je samo o sobě konzistentní: když se vydělalo
+   * a výstup byl výš než vstup, šlo o long.
+   */
+  async getClosedTrades(limit = 50) {
+    const result = await this.signedGet('/v5/position/closed-pnl', {
+      category: 'linear',
+      limit: String(limit),
+    });
+    return (result?.list ?? []).map((r) => {
+      const entry = num(r.avgEntryPrice);
+      const exit = num(r.avgExitPrice);
+      const pnl = num(r.closedPnl);
+      const long = entry === exit ? r.side === 'Sell' : (exit > entry) === (pnl >= 0);
+      return {
+        id: r.orderId,
+        symbol: r.symbol,
+        long,
+        qty: num(r.qty),
+        entry,
+        exit,
+        pnl,
+        value: num(r.cumEntryValue),
+        leverage: r.leverage ? num(r.leverage) : null,
+        openedAt: Number(r.createdTime),
+        closedAt: Number(r.updatedTime),
+      };
+    });
+  }
+
+  /**
+   * Jednotlivá plnění na páru v daném okně. Právě díky nim jdou vstupy
+   * a výstupy položit na správné svíčky — průměry z uzavřených obchodů
+   * by daly jednu značku uprostřed ničeho.
+   */
+  async getExecutions(symbol, startTime, endTime) {
+    const result = await this.signedGet('/v5/execution/list', {
+      category: 'linear',
+      symbol,
+      startTime: String(Math.floor(startTime)),
+      endTime: String(Math.ceil(endTime)),
+      limit: '100',
+    });
+    return (result?.list ?? [])
+      .filter((e) => e.execType === 'Trade')
+      .map((e) => ({
+        buy: e.side === 'Buy',
+        price: num(e.execPrice),
+        qty: num(e.execQty),
+        time: Number(e.execTime),
+      }))
+      .sort((a, b) => a.time - b.time);
   }
 
   /** Zavírací ceny za posledních 24 hodin — podklad pro mini-graf trendu. */

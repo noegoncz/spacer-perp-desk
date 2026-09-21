@@ -335,6 +335,54 @@ main {
   color: var(--text-dim);
 }
 
+/* ---------- historie obchodů ---------- */
+
+.history-list { display: flex; flex-direction: column; gap: 10px; }
+
+.trade {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
+  border-radius: var(--radius);
+  padding: 11px 13px;
+  cursor: pointer;
+}
+.trade.long  { border-left-color: var(--long); }
+.trade.short { border-left-color: var(--short); }
+.trade:active { background: var(--surface-2); }
+
+.trade-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.trade-symbol { font-size: 1rem; font-weight: 650; }
+
+.trade-pnl {
+  font-size: 1rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.trade-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px 10px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--border);
+}
+
+.trade-when {
+  margin-top: 8px;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---------- souhrn ---------- */
 
 .summary {

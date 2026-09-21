@@ -417,7 +417,7 @@ Klepnutí na pár otevře graf. Proto graf nově funguje **i bez otevřené pozi
 `null`. Pak se nekreslí čáry pozice, panel pod grafem ustoupí a v hlavičce je
 místo PnL změna za 24 h. Příkazy se dotahují jen s uloženými klíči.
 
-#### Historie (zbývá)
+#### ✅ Historie
 
 **Historie** vypíše posledních pár obchodů na páru se vším podstatným
 a po rozkliknutí ukáže graf z té doby s vyznačenými vstupy a výstupy.
@@ -432,8 +432,19 @@ Ověřeno 2026-09-21, že Bybit tahle data dává a CORS je propouští:
 
 Pro značky v grafu je klíčový `execution/list`, ne `closed-pnl` — ten dává jen
 průměrný vstup a výstup, kdežto plnění mají přesné časy, takže se dají položit
-na správné svíčky. Obchod postavený z více nákupů a prodejů tak půjde ukázat
-tak, jak opravdu probíhal.
+na správné svíčky. Obchod postavený z více nákupů a prodejů se tak ukáže tak,
+jak opravdu probíhal.
+
+⚠ **`side` v `closed-pnl` je strana zavírací objednávky, ne směr pozice** —
+dlouhá pozice se zavírá prodejem. Směr se proto odvozuje z cen a zisku:
+když se vydělalo a výstup byl výš než vstup, šlo o long. Je to samo o sobě
+konzistentní a nezávisí to na výkladu cizího pole.
+
+Klepnutí na obchod otevře graf z jeho doby se značkami plnění (trojúhelník
+ve směru obchodu + popisek). **Interval se volí podle délky obchodu** — na
+hodinový obchod je denní svíčka k ničemu a na dvouměsíční zase minutová.
+Kline se načítá s parametrem `end`, jinak by Bybit vrátil nejnovější svíčky
+místo těch z doby obchodu.
 
 ### 7) Rozšířená data o účtu
 

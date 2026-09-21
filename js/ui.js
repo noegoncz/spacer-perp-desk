@@ -1,6 +1,6 @@
 /** Vykreslování. Žádná logika kolem Bybitu, jen DOM. */
 
-import { t } from './i18n.js';
+import { t, getLocale } from './i18n.js';
 import {
   formatPrice,
   formatSize,
@@ -36,6 +36,8 @@ const dom = {
   tabs: document.querySelector('.tabs'),
   watchList: el('watchList'),
   watchNote: el('watchNote'),
+  historyList: el('historyList'),
+  historyNote: el('historyNote'),
   settingsMsg: el('settingsMsg'),
   updateBar: el('updateBar'),
   chartSymbol: el('chartSymbol'),
@@ -221,6 +223,76 @@ export function showView(name) {
     btn.classList.toggle('active', btn.dataset.tab === name);
   });
   window.scrollTo(0, 0);
+}
+
+/* ---------- historie obchodů ---------- */
+
+/** Doba držení v čitelné podobě: 2 d 5 h, 3 h 12 m, 45 m. */
+function trvani(ms) {
+  const minuty = Math.max(0, Math.round(ms / 60000));
+  const dny = Math.floor(minuty / 1440);
+  const hodiny = Math.floor((minuty % 1440) / 60);
+  const zbytek = minuty % 60;
+  if (dny) return `${dny} d ${hodiny} h`;
+  if (hodiny) return `${hodiny} h ${zbytek} m`;
+  return `${zbytek} m`;
+}
+
+function datumCas(timestamp) {
+  return new Date(timestamp).toLocaleString(getLocale(), {
+    day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+}
+
+export function renderHistory(obchody, hide, onSelect) {
+  dom.historyList.replaceChildren(
+    ...obchody.map((o) => {
+      const karta = document.createElement('article');
+      karta.className = `trade ${o.long ? 'long' : 'short'}`;
+      karta.setAttribute('role', 'button');
+      karta.tabIndex = 0;
+
+      const hlava = document.createElement('div');
+      hlava.className = 'trade-head';
+
+      const vlevo = document.createElement('div');
+      const symbol = document.createElement('span');
+      symbol.className = 'trade-symbol';
+      symbol.textContent = o.symbol;
+      const odznak = document.createElement('span');
+      odznak.className = `badge ${o.long ? 'long' : 'short'}`;
+      odznak.textContent = t(o.long ? 'position.long' : 'position.short');
+      if (o.leverage) odznak.textContent += ` ${formatSize(o.leverage)}×`;
+      vlevo.append(symbol, odznak);
+
+      const pnl = document.createElement('div');
+      pnl.className = `trade-pnl ${pnlClass(o.pnl)}`;
+      pnl.textContent = hide ? MASK : `${formatSignedUsd(o.pnl)} USDT`;
+
+      hlava.append(vlevo, pnl);
+
+      const mrizka = document.createElement('div');
+      mrizka.className = 'trade-grid';
+      mrizka.append(
+        cell(t('history.qty'), hide ? MASK : formatSize(o.qty)),
+        cell(t('history.entryAvg'), formatPrice(o.entry)),
+        cell(t('history.exitAvg'), formatPrice(o.exit)),
+      );
+
+      const kdy = document.createElement('div');
+      kdy.className = 'trade-when';
+      kdy.textContent = `${datumCas(o.openedAt)} → ${datumCas(o.closedAt)}`
+        + `  ·  ${t('history.duration')} ${trvani(o.closedAt - o.openedAt)}`;
+
+      karta.append(hlava, mrizka, kdy);
+      karta.addEventListener('click', () => onSelect(o));
+      return karta;
+    }),
+  );
+}
+
+export function showHistoryNote(text) {
+  dom.historyNote.textContent = text || '';
 }
 
 /* ---------- seznam trhů ---------- */

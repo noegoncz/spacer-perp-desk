@@ -104,6 +104,7 @@ export const nazevIndikatoru = (id) => t(`indicator.${id}`);
 const HLAVNI_PANEL = 'candle_pane';
 const SKUPINA_POZICE = 'pozice';
 const SKUPINA_KRESBY = 'kresby';
+const SKUPINA_ZNACKY = 'znacky';
 
 let zaregistrovano = false;
 
@@ -139,6 +140,50 @@ function registrovatCaruPozice() {
           type: 'text',
           attrs: { x: 6, y: y - 4, text: d.title || '', baseline: 'bottom' },
           styles: { color: d.color, size: 11, family: 'sans-serif' },
+        },
+      ];
+    },
+  });
+}
+
+/**
+ * Značka jednoho plnění: trojúhelník ve směru obchodu a cena u něj.
+ * Sedí na konkrétní svíčce, protože zná přesný čas plnění.
+ */
+function registrovatZnackuPlneni() {
+  K().registerOverlay({
+    name: 'tradeMark',
+    totalStep: 1,
+    needDefaultPointFigure: false,
+    needDefaultXAxisFigure: false,
+    needDefaultYAxisFigure: false,
+    createPointFigures: ({ overlay, coordinates }) => {
+      const d = overlay.extendData || {};
+      const { x, y } = coordinates[0];
+      const smer = d.vstup ? 1 : -1;
+      const zaklad = y + smer * 13;
+      return [
+        {
+          type: 'polygon',
+          attrs: {
+            coordinates: [
+              { x, y: y + smer * 3 },
+              { x: x - 6, y: zaklad },
+              { x: x + 6, y: zaklad },
+            ],
+          },
+          styles: { style: 'fill', color: d.color },
+        },
+        {
+          type: 'text',
+          attrs: {
+            x,
+            y: zaklad + (d.vstup ? 2 : -2),
+            text: d.title || '',
+            align: 'center',
+            baseline: d.vstup ? 'top' : 'bottom',
+          },
+          styles: { color: d.color, size: 10, family: 'sans-serif' },
         },
       ];
     },
@@ -234,6 +279,7 @@ function stylKresby(styl) {
 
 export function createPriceChart(container, layer, handlers = {}) {
   registrovatCaruPozice();
+  registrovatZnackuPlneni();
 
   const chart = K().init(container, { styles: styly() });
   chart.setTimezone('Europe/Prague');
@@ -543,6 +589,30 @@ export function createPriceChart(container, layer, handlers = {}) {
     },
 
     /* ---------- kreslení ---------- */
+
+    /* ---------- značky plnění při prohlížení obchodu ---------- */
+
+    setTradeMarks(znacky) {
+      chart.removeOverlay({ groupId: SKUPINA_ZNACKY });
+      (znacky || []).forEach((z) => {
+        chart.createOverlay({
+          name: 'tradeMark',
+          groupId: SKUPINA_ZNACKY,
+          points: [{ timestamp: z.time, value: z.price }],
+          lock: true,
+          extendData: { vstup: z.vstup, color: z.color, title: z.title },
+        });
+      });
+    },
+
+    clearTradeMarks() {
+      chart.removeOverlay({ groupId: SKUPINA_ZNACKY });
+    },
+
+    /** Posune pohled na dobu obchodu. */
+    scrollToTime(timestamp) {
+      chart.scrollToTimestamp(timestamp, 0);
+    },
 
     /** `dodatek` doplní vlastnosti nové kresby, např. rovnou zapnutý alarm. */
     startDrawing(nastroj, dodatek = null) {

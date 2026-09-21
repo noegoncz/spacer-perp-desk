@@ -108,6 +108,7 @@ function wireEvents() {
     store.saveHideAmounts(hideAmounts);
     el('hideBtn').classList.toggle('active', hideAmounts);
     ui.renderPositions(lastPositions, hideAmounts, openChart);
+    if (obchody.length) ui.renderHistory(obchody, hideAmounts, otevriProhlidku);
     if (chartSymbol) {
       ui.renderChartHeader(chartSymbol, chartPosition, hideAmounts, chartTrh);
       ui.renderChartInfo(chartPosition, hideAmounts);
@@ -313,10 +314,16 @@ function clearCredentials() {
 /* ---------- graf ---------- */
 
 /** Z karty pozice. */
-const openChart = (position) => otevriGraf(position.symbol, position, null);
+const openChart = (position) => {
+  prohlizenyObchod = null;
+  return otevriGraf(position.symbol, position, null);
+};
 
 /** Ze seznamu trhů — pár, na kterém pozici mít nemusím. */
-const openChartSymbol = (trh) => otevriGraf(trh.symbol, null, trh);
+const openChartSymbol = (trh) => {
+  prohlizenyObchod = null;
+  return otevriGraf(trh.symbol, null, trh);
+};
 
 async function otevriGraf(symbol, position, trh) {
   chartSymbol = symbol;
@@ -355,6 +362,7 @@ async function otevriGraf(symbol, position, trh) {
   chart.setInterval(chartInterval); // knihovna si data vyžádá sama
   client.setKlineSubscription(symbol, chartInterval);
   chart.restoreDrawings(store.loadDrawings(symbol));
+  if (!prohlizenyObchod) chart.clearTradeMarks();
   chart.setTicking(true);
 
   await refreshChartOrders();
@@ -365,6 +373,8 @@ async function otevriGraf(symbol, position, trh) {
 }
 
 function closeChart() {
+  chart?.clearTradeMarks();
+  prohlizenyObchod = null;
   chartSymbol = null;
   chartTrh = null;
   // Nástroj se vrací na kurzor, ať graf příště nezačne v režimu kreslení.
@@ -546,6 +556,9 @@ function sledujGrafy(radky) {
   radky.forEach((r) => sledovac.observe(r));
 }
 
+let obchody = [];
+let prohlizenyObchod = null;  // když se graf otevřel z historie
+
 let trhy = [];
 let oblibene = new Set(store.loadFavourites());
 let jenOblibene = store.loadOnlyFavourites();
@@ -616,6 +629,7 @@ function prepniZalozku(nazev) {
   aktivniZalozka = nazev;
   ui.showView(nazev);
   if (nazev === 'watchlist') nactiTrhy();
+  if (nazev === 'history') nactiHistorii();
 }
 
 /**
@@ -695,6 +709,82 @@ function zapojPrejeti() {
     e.stopPropagation();
     e.preventDefault();
   }, true);
+}
+
+/* ---------- historie obchodů ---------- */
+
+/** Interval podle délky obchodu, ať je v grafu vidět, co se dělo kolem. */
+function intervalProObchod(trvaniMs) {
+  const hodiny = trvaniMs / 3600e3;
+  if (hodiny <= 2) return '1';
+  if (hodiny <= 8) return '5';
+  if (hodiny <= 36) return '15';
+  if (hodiny <= 144) return '60';
+  if (hodiny <= 720) return '240';
+  return 'D';
+}
+
+async function nactiHistorii() {
+  if (!client.hasCredentials()) {
+    ui.renderHistory([], hideAmounts, () => {});
+    ui.showHistoryNote(t('history.needKeys'));
+    return;
+  }
+  if (obchody.length) {
+    ui.renderHistory(obchody, hideAmounts, otevriProhlidku);
+    ui.showHistoryNote('');
+    return;
+  }
+
+  ui.showHistoryNote(t('history.loading'));
+  try {
+    obchody = await client.getClosedTrades(50);
+  } catch (err) {
+    ui.showHistoryNote(err.message || t('history.failed'));
+    return;
+  }
+  ui.renderHistory(obchody, hideAmounts, otevriProhlidku);
+  ui.showHistoryNote(obchody.length ? '' : t('history.none'));
+}
+
+/**
+ * Otevře graf z doby obchodu a vyznačí do něj jednotlivá plnění.
+ * Značky staví na `execution/list`, ne na průměrech z uzavřeného obchodu —
+ * průměr by dal jednu značku uprostřed ničeho, kdežto plnění mají přesné
+ * časy, takže sednou na správné svíčky.
+ */
+async function otevriProhlidku(obchod) {
+  prohlizenyObchod = obchod;
+  chartInterval = intervalProObchod(obchod.closedAt - obchod.openedAt);
+  await otevriGraf(obchod.symbol, null, null);
+
+  try {
+    // Okno se rozšíří na obě strany, ať jsou vidět i okolní svíčky.
+    const rezerva = Math.max(3600e3, (obchod.closedAt - obchod.openedAt) * 0.5);
+    const plneni = await client.getExecutions(
+      obchod.symbol,
+      obchod.openedAt - rezerva,
+      obchod.closedAt + rezerva,
+    );
+    if (prohlizenyObchod !== obchod) return;
+
+    chart.setTradeMarks(
+      plneni.map((p) => {
+        const vstup = p.buy === obchod.long;
+        return {
+          time: p.time,
+          price: p.price,
+          vstup,
+          color: vstup ? BARVA_CARY.vstup : (obchod.pnl >= 0 ? BARVA_CARY.tp : BARVA_CARY.likvidace),
+          title: t(vstup ? 'trade.entry' : 'trade.exit'),
+        };
+      }),
+    );
+    chart.scrollToTime(obchod.closedAt);
+    if (plneni.length) ui.showChartError('');
+  } catch (err) {
+    ui.showChartError(err.message || String(err));
+  }
 }
 
 /* ---------- alarmy ---------- */
