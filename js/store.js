@@ -86,6 +86,28 @@ export function saveMagnet(value) {
   write('perpdesk.magnet', value ? '1' : '0');
 }
 
+/** Oblíbené páry — řadí se v seznamu nahoru. */
+export function loadFavourites() {
+  try {
+    return JSON.parse(read('perpdesk.favourites') || '[]');
+  } catch {
+    return [];
+  }
+}
+
+export function saveFavourites(symboly) {
+  write('perpdesk.favourites', JSON.stringify(symboly || []));
+}
+
+/** Skrytí všech ostatních párů, když uživateli stačí oblíbené. */
+export function loadOnlyFavourites() {
+  return read('perpdesk.onlyFavourites') === '1';
+}
+
+export function saveOnlyFavourites(value) {
+  write('perpdesk.onlyFavourites', value ? '1' : '0');
+}
+
 /** Jazyk aplikace. Výchozí je angličtina, ne nastavení prohlížeče. */
 export function loadLanguage() {
   return read('perpdesk.language') || 'en';

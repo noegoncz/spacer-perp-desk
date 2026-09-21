@@ -316,6 +316,23 @@ export class BybitClient {
       .reverse();
   }
 
+  /**
+   * Všechny linear USDT páry se základními čísly, seřazené podle obratu.
+   * Veřejné, nepotřebuje klíče — seznam jde ukázat i před přihlášením.
+   */
+  async getTickers() {
+    const result = await this.publicGet('/v5/market/tickers', { category: 'linear' });
+    return (result?.list ?? [])
+      .filter((t) => t.symbol?.endsWith('USDT'))
+      .map((t) => ({
+        symbol: t.symbol,
+        last: num(t.lastPrice),
+        changePct: num(t.price24hPcnt) * 100,
+        turnover: num(t.turnover24h),
+      }))
+      .sort((a, b) => b.turnover - a.turnover);
+  }
+
   /** Otevřené příkazy k páru — limitky a podmíněné příkazy pro čáry v grafu. */
   async getOpenOrders(symbol) {
     const result = await this.signedGet('/v5/order/realtime', {

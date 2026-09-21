@@ -14,6 +14,20 @@ export const cs = {
   'action.back': 'Zpět na pozice',
   'action.openSettings': 'Otevřít nastavení',
 
+  'tabs.positions': 'Pozice',
+  'tabs.watchlist': 'Trhy',
+  'tabs.history': 'Historie',
+  'watchlist.search': 'Hledat páry',
+  'watchlist.searchPlaceholder': 'např. BTC',
+  'watchlist.onlyFavourites': 'Jen oblíbené',
+  'watchlist.loading': 'Načítám páry…',
+  'watchlist.empty': 'Žádný pár neodpovídá.',
+  'watchlist.noFavourites': 'Zatím žádné oblíbené. Přidej je hvězdičkou.',
+  'watchlist.favourite': 'Přidat mezi oblíbené',
+  'watchlist.shown': 'Zobrazeno {shown} z {total} párů',
+  'watchlist.failed': 'Seznam párů se nepodařilo načíst.',
+  'history.soon': 'Historie obchodů přijde v dalším kroku.',
+
   /* ---------- stav spojení ---------- */
   'status.idle': 'Nepřipojeno',
   'status.connecting': 'Připojuji…',

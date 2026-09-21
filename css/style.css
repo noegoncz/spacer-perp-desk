@@ -154,6 +154,88 @@ main {
   line-height: 1.4;
 }
 
+/* ---------- záložky ---------- */
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  padding: 3px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+}
+
+.tab {
+  flex: 1;
+  min-height: 38px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.tab.active { background: var(--surface-2); color: var(--text); }
+
+/* ---------- seznam trhů ---------- */
+
+.watch-tools { display: flex; gap: 8px; margin-bottom: 10px; }
+
+.watch-search {
+  flex: 1;
+  min-height: var(--tap);
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 0.92rem;
+}
+
+.watch-list { display: flex; flex-direction: column; }
+
+.watch-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.watch-row:active { background: var(--surface); }
+
+.watch-star {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--border);
+  cursor: pointer;
+  flex: none;
+}
+.watch-star svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; }
+.watch-star.on { color: var(--warn); }
+.watch-star.on svg { fill: currentColor; }
+
+.watch-symbol { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.watch-turnover { display: block; font-size: 0.7rem; font-weight: 400; color: var(--text-dim); }
+
+.watch-right { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.watch-price { display: block; font-size: 0.95rem; }
+.watch-change { display: block; font-size: 0.75rem; }
+
+.watch-note {
+  margin: 14px 0 0;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
 /* ---------- souhrn ---------- */
 
 .summary {

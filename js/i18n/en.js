@@ -18,6 +18,20 @@ export const en = {
   'action.back': 'Back to positions',
   'action.openSettings': 'Open settings',
 
+  'tabs.positions': 'Positions',
+  'tabs.watchlist': 'Markets',
+  'tabs.history': 'History',
+  'watchlist.search': 'Search pairs',
+  'watchlist.searchPlaceholder': 'e.g. BTC',
+  'watchlist.onlyFavourites': 'Favourites only',
+  'watchlist.loading': 'Loading pairs…',
+  'watchlist.empty': 'No pair matches.',
+  'watchlist.noFavourites': 'No favourites yet. Tap a star to add one.',
+  'watchlist.favourite': 'Add to favourites',
+  'watchlist.shown': 'Showing {shown} of {total} pairs',
+  'watchlist.failed': 'Could not load the pair list.',
+  'history.soon': 'Trade history is coming in the next step.',
+
   /* ---------- connection status ---------- */
   'status.idle': 'Not connected',
   'status.connecting': 'Connecting…',

@@ -26,7 +26,9 @@ const BARVA_CARY = {
 };
 
 let chart = null;          // instance se drží i po zavření, ať se otevírá svižně
-let chartPosition = null;  // null = graf je zavřený
+let chartSymbol = null;    // null = graf je zavřený
+let chartPosition = null;  // null = pár bez otevřené pozice
+let chartTrh = null;       // poslední cena a změna, když pozice není
 let chartInterval = '15';
 let chartOrders = [];
 let chartLineKey = '';     // otisk čar, aby se nepřekreslovaly při každém ticku
@@ -41,7 +43,7 @@ const client = new BybitClient({
     syncOpenChart(list);
   },
   onKline(bar) {
-    if (!chart || !chartPosition) return;
+    if (!chart || !chartSymbol) return;
     chart.updateCandle(bar);
     zkontrolujAlarmy(bar.close, bar.time);
   },
@@ -68,6 +70,7 @@ function boot() {
   ui.renderVersion(self.APP_VERSION, self.APP_BUILD);
   el('hideBtn').classList.toggle('active', hideAmounts);
   el('magnetBtn').classList.toggle('active', magnetZapnut);
+  el('onlyFavBtn').classList.toggle('active', jenOblibene);
   wireEvents();
   registerServiceWorker();
   connectIfPossible();
@@ -104,8 +107,8 @@ function wireEvents() {
     store.saveHideAmounts(hideAmounts);
     el('hideBtn').classList.toggle('active', hideAmounts);
     ui.renderPositions(lastPositions, hideAmounts, openChart);
-    if (chartPosition) {
-      ui.renderChartHeader(chartPosition, hideAmounts);
+    if (chartSymbol) {
+      ui.renderChartHeader(chartSymbol, chartPosition, hideAmounts, chartTrh);
       ui.renderChartInfo(chartPosition, hideAmounts);
     }
   });
@@ -113,11 +116,27 @@ function wireEvents() {
   // Zpět z grafu vede přes historii, ať funguje i hardwarové tlačítko zpět.
   el('chartBackBtn').addEventListener('click', () => history.back());
   window.addEventListener('popstate', () => {
-    if (chartPosition) closeChart();
+    if (chartSymbol) closeChart();
   });
 
   document.querySelectorAll('.interval-btn').forEach((btn) => {
     btn.addEventListener('click', () => zmenInterval(btn.dataset.interval));
+  });
+
+  document.querySelectorAll('.tab').forEach((btn) => {
+    btn.addEventListener('click', () => prepniZalozku(btn.dataset.tab));
+  });
+
+  el('watchSearch').addEventListener('input', (e) => {
+    hledani = e.target.value;
+    vykresliTrhy();
+  });
+
+  el('onlyFavBtn').addEventListener('click', () => {
+    jenOblibene = !jenOblibene;
+    store.saveOnlyFavourites(jenOblibene);
+    el('onlyFavBtn').classList.toggle('active', jenOblibene);
+    vykresliTrhy();
   });
 
   el('indicatorBtn').addEventListener('click', () => otevriNabidku('sheetIndicators'));
@@ -139,6 +158,7 @@ function wireEvents() {
     magnetZapnut = !magnetZapnut;
     store.saveMagnet(magnetZapnut);
     el('magnetBtn').classList.toggle('active', magnetZapnut);
+  el('onlyFavBtn').classList.toggle('active', jenOblibene);
     chart?.setMagnet(magnetZapnut);
   });
 
@@ -194,10 +214,11 @@ function postavVyberJazyka() {
     applyStaticTexts();
     ui.renderPositions(lastPositions, hideAmounts, openChart);
     ui.renderStatus(client.status);
+    if (trhy.length) vykresliTrhy();
     if (chart) {
       postavNabidky();
-      if (chartPosition) {
-        ui.renderChartHeader(chartPosition, hideAmounts);
+      if (chartSymbol) {
+        ui.renderChartHeader(chartSymbol, chartPosition, hideAmounts, chartTrh);
         ui.renderChartInfo(chartPosition, hideAmounts);
         applyChartLines(true);
       }
@@ -287,12 +308,20 @@ function clearCredentials() {
 
 /* ---------- graf ---------- */
 
-async function openChart(position) {
+/** Z karty pozice. */
+const openChart = (position) => otevriGraf(position.symbol, position, null);
+
+/** Ze seznamu trhů — pár, na kterém pozici mít nemusím. */
+const openChartSymbol = (trh) => otevriGraf(trh.symbol, null, trh);
+
+async function otevriGraf(symbol, position, trh) {
+  chartSymbol = symbol;
   chartPosition = position;
+  chartTrh = trh;
   chartOrders = [];
   chartLineKey = '';
 
-  ui.renderChartHeader(position, hideAmounts);
+  ui.renderChartHeader(symbol, position, hideAmounts, trh);
   ui.renderChartInfo(position, hideAmounts);
   ui.setActiveInterval(chartInterval);
   ui.showChartError('');
@@ -309,19 +338,19 @@ async function openChart(position) {
       onIndicatorsChanged: ulozIndikatory,
       onSelectionChanged: zobrazPaletu,
     });
-    postavPaletu();
-    zapojPosuvnik();
     chart.setLoader(nactiSvice);
     chart.setMagnet(magnetZapnut);
     chart.restoreIndicators(store.loadIndicators(), maVlastniPanel);
     oznacAktivniIndikatory();
     postavNabidky();
+    postavPaletu();
+    zapojPosuvnik();
   }
 
-  chart.setSymbol(position.symbol, priceDecimals(position.entry));
+  chart.setSymbol(symbol, priceDecimals(position?.entry ?? trh?.last ?? 0));
   chart.setInterval(chartInterval); // knihovna si data vyžádá sama
-  client.setKlineSubscription(position.symbol, chartInterval);
-  chart.restoreDrawings(store.loadDrawings(position.symbol));
+  client.setKlineSubscription(symbol, chartInterval);
+  chart.restoreDrawings(store.loadDrawings(symbol));
   chart.setTicking(true);
 
   await refreshChartOrders();
@@ -332,6 +361,8 @@ async function openChart(position) {
 }
 
 function closeChart() {
+  chartSymbol = null;
+  chartTrh = null;
   // Nástroj se vrací na kurzor, ať graf příště nezačne v režimu kreslení.
   vyberNastroj('');
   zobrazPaletu(null);
@@ -347,8 +378,8 @@ function closeChart() {
 
 /** Loader knihovny — ta si data vyžádá sama, jakmile dostane symbol a období. */
 async function nactiSvice() {
-  if (!chartPosition) return [];
-  const bars = await client.getKlines(chartPosition.symbol, chartInterval);
+  if (!chartSymbol) return [];
+  const bars = await client.getKlines(chartSymbol, chartInterval);
   return bars.map((b) => ({
     timestamp: b.time,
     open: b.open,
@@ -362,17 +393,18 @@ async function nactiSvice() {
 function zmenInterval(interval) {
   chartInterval = interval;
   ui.setActiveInterval(interval);
-  if (!chartPosition || !chart) return;
+  if (!chartSymbol || !chart) return;
   chart.setInterval(interval);
-  client.setKlineSubscription(chartPosition.symbol, interval);
+  client.setKlineSubscription(chartSymbol, interval);
 }
 
 async function refreshChartOrders() {
-  const position = chartPosition;
-  if (!position) return;
+  const symbol = chartSymbol;
+  // Bez klíčů příkazy nenačteme; graf samotný je veřejný a běží dál.
+  if (!symbol || !client.hasCredentials()) return;
   try {
-    const orders = await client.getOpenOrders(position.symbol);
-    if (chartPosition?.symbol !== position.symbol) return;
+    const orders = await client.getOpenOrders(symbol);
+    if (chartSymbol !== symbol) return;
     chartOrders = orders;
     applyChartLines(true);
     ui.showChartError('');
@@ -384,8 +416,8 @@ async function refreshChartOrders() {
 /* ---------- kresby a indikátory ---------- */
 
 function ulozKresby() {
-  if (!chart || !chartPosition) return;
-  store.saveDrawings(chartPosition.symbol, chart.getDrawings());
+  if (!chart || !chartSymbol) return;
+  store.saveDrawings(chartSymbol, chart.getDrawings());
 }
 
 function ulozIndikatory() {
@@ -455,6 +487,64 @@ function postavNabidky() {
   );
 
   oznacAktivniIndikatory();
+}
+
+/* ---------- seznam trhů ---------- */
+
+/** Bybit má přes 700 USDT párů. Bez ořezu by se seznam na telefonu vlekl. */
+const LIMIT_SEZNAMU = 150;
+
+let trhy = [];
+let oblibene = new Set(store.loadFavourites());
+let jenOblibene = store.loadOnlyFavourites();
+let hledani = '';
+
+async function nactiTrhy() {
+  if (trhy.length) {
+    vykresliTrhy();
+    return;
+  }
+  ui.showWatchNote(t('watchlist.loading'));
+  try {
+    trhy = await client.getTickers();
+  } catch {
+    ui.showWatchNote(t('watchlist.failed'));
+    return;
+  }
+  vykresliTrhy();
+}
+
+function vykresliTrhy() {
+  const dotaz = hledani.trim().toUpperCase();
+  let seznam = trhy;
+  if (dotaz) seznam = seznam.filter((r) => r.symbol.includes(dotaz));
+  if (jenOblibene) seznam = seznam.filter((r) => oblibene.has(r.symbol));
+
+  // Oblíbené vždy nahoře, zbytek zůstává seřazený podle obratu.
+  const nahore = seznam.filter((r) => oblibene.has(r.symbol));
+  const zbytek = seznam.filter((r) => !oblibene.has(r.symbol));
+  // Při hledání se neořezává, jinak by se hledaný pár nemusel objevit.
+  const vysledek = [...nahore, ...(dotaz ? zbytek : zbytek.slice(0, LIMIT_SEZNAMU))];
+
+  ui.renderWatchlist(vysledek, oblibene, openChartSymbol, prepniOblibeny);
+
+  if (!vysledek.length) {
+    ui.showWatchNote(t(jenOblibene && !dotaz ? 'watchlist.noFavourites' : 'watchlist.empty'));
+  } else {
+    ui.showWatchNote(t('watchlist.shown', { shown: vysledek.length, total: trhy.length }));
+  }
+}
+
+function prepniOblibeny(symbol) {
+  if (oblibene.has(symbol)) oblibene.delete(symbol);
+  else oblibene.add(symbol);
+  store.saveFavourites([...oblibene]);
+  vykresliTrhy();
+}
+
+function prepniZalozku(nazev) {
+  ui.showView(nazev);
+  if (nazev === 'watchlist') nactiTrhy();
 }
 
 /* ---------- alarmy ---------- */
@@ -657,6 +747,14 @@ function orderSide(order, position) {
 function buildChartLines(position, orders) {
   const lines = [];
 
+  // Bez pozice nejde příkazy zařadit na stranu zisku či ztráty — chybí vstup.
+  if (!position) {
+    return orders
+      .map((o) => o.trigger ?? o.price)
+      .filter(Boolean)
+      .map((price) => ({ price, color: BARVA_CARY.prikaz, title: t('line.limit'), dotted: true }));
+  }
+
   lines.push({
     price: position.entry,
     color: BARVA_CARY.vstup,
@@ -739,7 +837,7 @@ function buildChartLines(position, orders) {
  * vytvářely při každém ticku ceny, protože pozice chodí i z ticker streamu.
  */
 function applyChartLines(force = false) {
-  if (!chart || !chartPosition) return;
+  if (!chart || !chartSymbol) return;
 
   const lines = buildChartLines(chartPosition, chartOrders);
   const key = lines.map((l) => `${l.title}@${l.price}`).join('|');
@@ -751,7 +849,7 @@ function applyChartLines(force = false) {
 
 /** Pozice se mění za běhu — graf musí držet krok s PnL, SL/TP i likvidací. */
 function syncOpenChart(list) {
-  if (!chartPosition) return;
+  if (!chartPosition || !chartSymbol) return;
 
   const fresh = list.find(
     (p) => p.symbol === chartPosition.symbol && p.positionIdx === chartPosition.positionIdx,
@@ -763,7 +861,7 @@ function syncOpenChart(list) {
   }
 
   chartPosition = fresh;
-  ui.renderChartHeader(fresh, hideAmounts);
+  ui.renderChartHeader(chartSymbol, fresh, hideAmounts);
   // Panel se překresluje pokaždé — mark, PnL i ROE se mění s každým tickem.
   ui.renderChartInfo(fresh, hideAmounts);
   applyChartLines();

@@ -38,6 +38,15 @@
 <div id="errorBar" class="error-bar" hidden></div>
 
 <main>
+  <nav class="tabs" role="tablist">
+    <button type="button" class="tab active" data-tab="positions" role="tab"
+            data-i18n="tabs.positions">Positions</button>
+    <button type="button" class="tab" data-tab="watchlist" role="tab"
+            data-i18n="tabs.watchlist">Markets</button>
+    <button type="button" class="tab" data-tab="history" role="tab"
+            data-i18n="tabs.history">History</button>
+  </nav>
+
   <!-- ===== Pozice ===== -->
   <section id="viewPositions">
     <div class="summary" id="summary" hidden>
@@ -175,6 +184,28 @@
         <button type="button" class="icon-btn" data-close="sheetIndicators" data-i18n-aria="action.close">✕</button>
       </div>
       <div class="sheet-body" id="indicatorList"></div>
+    </div>
+  </section>
+
+  <!-- ===== Trhy ===== -->
+  <section id="viewWatchlist" hidden>
+    <div class="watch-tools">
+      <input type="search" id="watchSearch" class="watch-search"
+             data-i18n-ph="watchlist.searchPlaceholder" placeholder="e.g. BTC"
+             data-i18n-aria="watchlist.search" autocomplete="off" spellcheck="false">
+      <button type="button" id="onlyFavBtn" class="icon-btn tool-icon"
+              data-i18n-aria="watchlist.onlyFavourites" data-i18n-title="watchlist.onlyFavourites">
+        <svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9L3.5 9.7l5.9-.8z"/></svg>
+      </button>
+    </div>
+    <div id="watchList" class="watch-list"></div>
+    <p id="watchNote" class="watch-note"></p>
+  </section>
+
+  <!-- ===== Historie ===== -->
+  <section id="viewHistory" hidden>
+    <div class="placeholder">
+      <p data-i18n="history.soon">Trade history is coming in the next step.</p>
     </div>
   </section>
 

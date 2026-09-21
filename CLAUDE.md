@@ -365,8 +365,24 @@ zařízení.
 
 ### 6) Záložky na hlavní obrazovce a historie
 
-Hlavní obrazovka dostane nahoře tři záložky: **Otevřené pozice** (máme),
-**Sledované páry** a **Historie**.
+Hlavní obrazovka má nahoře tři záložky: **Pozice**, **Trhy** a **Historie**.
+
+#### ✅ Trhy
+
+Všech ~775 linear USDT párů z `/v5/market/tickers` (veřejné, bez klíčů),
+seřazených podle obratu za 24 h. Hvězdička přidá pár mezi oblíbené a ty se
+řadí navrch. Hledání filtruje celý seznam, přepínač ukáže jen oblíbené.
+
+⚠ Bez ořezu by se seznam na telefonu vlekl, takže se kreslí **oblíbené plus
+prvních 150** podle obratu. **Při hledání se neořezává**, jinak by se hledaný
+pár nemusel vůbec objevit.
+
+Klepnutí na pár otevře graf. Proto graf nově funguje **i bez otevřené pozice**:
+`chartSymbol` je zdroj pravdy o tom, co se kreslí, `chartPosition` může být
+`null`. Pak se nekreslí čáry pozice, panel pod grafem ustoupí a v hlavičce je
+místo PnL změna za 24 h. Příkazy se dotahují jen s uloženými klíči.
+
+#### Historie (zbývá)
 
 **Historie** vypíše posledních pár obchodů na páru se vším podstatným
 a po rozkliknutí ukáže graf z té doby s vyznačenými vstupy a výstupy.

@@ -31,6 +31,11 @@ const dom = {
   viewPositions: el('viewPositions'),
   viewSettings: el('viewSettings'),
   viewChart: el('viewChart'),
+  viewWatchlist: el('viewWatchlist'),
+  viewHistory: el('viewHistory'),
+  tabs: document.querySelector('.tabs'),
+  watchList: el('watchList'),
+  watchNote: el('watchNote'),
   settingsMsg: el('settingsMsg'),
   updateBar: el('updateBar'),
   chartSymbol: el('chartSymbol'),
@@ -207,8 +212,76 @@ export function clearError() {
 
 export function showView(name) {
   dom.viewPositions.hidden = name !== 'positions';
+  dom.viewWatchlist.hidden = name !== 'watchlist';
+  dom.viewHistory.hidden = name !== 'history';
   dom.viewSettings.hidden = name !== 'settings';
+  // V nastavení záložky nedávají smysl, je to odbočka mimo hlavní obrazovku.
+  dom.tabs.hidden = name === 'settings';
+  document.querySelectorAll('.tab').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.tab === name);
+  });
   window.scrollTo(0, 0);
+}
+
+/* ---------- seznam trhů ---------- */
+
+const HVEZDA = 'M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9L3.5 9.7l5.9-.8z';
+
+function zkratkaObratu(hodnota) {
+  if (!Number.isFinite(hodnota) || hodnota <= 0) return '';
+  if (hodnota >= 1e9) return `${(hodnota / 1e9).toFixed(1)} B`;
+  if (hodnota >= 1e6) return `${(hodnota / 1e6).toFixed(0)} M`;
+  return `${Math.round(hodnota / 1e3)} k`;
+}
+
+export function renderWatchlist(radky, oblibene, onSelect, onToggleFav) {
+  dom.watchList.replaceChildren(
+    ...radky.map((radekTrhu) => {
+      const radek = document.createElement('div');
+      radek.className = 'watch-row';
+
+      const hvezda = document.createElement('button');
+      hvezda.type = 'button';
+      hvezda.className = `watch-star ${oblibene.has(radekTrhu.symbol) ? 'on' : ''}`.trim();
+      hvezda.setAttribute('aria-label', t('watchlist.favourite'));
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', HVEZDA);
+      svg.append(path);
+      hvezda.append(svg);
+      hvezda.addEventListener('click', (e) => {
+        e.stopPropagation(); // klepnutí na hvězdičku neotevírá graf
+        onToggleFav(radekTrhu.symbol);
+      });
+
+      const nazev = document.createElement('div');
+      nazev.className = 'watch-symbol';
+      nazev.textContent = radekTrhu.symbol;
+      const obrat = document.createElement('span');
+      obrat.className = 'watch-turnover';
+      obrat.textContent = zkratkaObratu(radekTrhu.turnover);
+      nazev.append(obrat);
+
+      const vpravo = document.createElement('div');
+      vpravo.className = 'watch-right';
+      const cena = document.createElement('span');
+      cena.className = 'watch-price';
+      cena.textContent = formatPrice(radekTrhu.last);
+      const zmena = document.createElement('span');
+      zmena.className = `watch-change ${pnlClass(radekTrhu.changePct)}`;
+      zmena.textContent = formatPercent(radekTrhu.changePct);
+      vpravo.append(cena, zmena);
+
+      radek.append(hvezda, nazev, vpravo);
+      radek.addEventListener('click', () => onSelect(radekTrhu));
+      return radek;
+    }),
+  );
+}
+
+export function showWatchNote(text) {
+  dom.watchNote.textContent = text || '';
 }
 
 /**
@@ -219,9 +292,19 @@ export function showChart(visible) {
   dom.viewChart.hidden = !visible;
 }
 
-export function renderChartHeader(position, hide) {
+/** Graf se otevírá i na páru bez pozice — pak místo PnL ukazuje cenu. */
+export function renderChartHeader(symbol, position, hide, trh = null) {
+  dom.chartSymbol.textContent = symbol;
+
+  if (!position) {
+    dom.chartBadge.className = 'badge';
+    dom.chartBadge.textContent = '';
+    dom.chartPnl.className = `chart-pnl ${pnlClass(trh?.changePct ?? 0)}`;
+    dom.chartPnl.textContent = trh ? formatPercent(trh.changePct) : '';
+    return;
+  }
+
   const isLong = position.side !== 'Sell';
-  dom.chartSymbol.textContent = position.symbol;
   dom.chartBadge.className = `badge ${isLong ? 'long' : 'short'}`;
   dom.chartBadge.textContent = t(isLong ? 'position.long' : 'position.short');
   if (position.leverage) {
@@ -236,6 +319,10 @@ export function renderChartHeader(position, hide) {
  * sám píše na cenovou osu.
  */
 export function renderChartInfo(position, hide) {
+  // Bez pozice není co ukazovat; panel ustoupí grafu.
+  dom.chartInfo.hidden = !position;
+  if (!position) return;
+
   const ret = returnPercent(position);
   const distance = liquidationDistance(position);
   const margin =
