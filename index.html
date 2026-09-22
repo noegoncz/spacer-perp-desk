@@ -22,7 +22,28 @@
 
 <header class="topbar">
   <div class="topbar-left">
-    <h1>PerpyX</h1>
+    <div class="topbar-brand">
+      <!-- Stejné tkané X jako ikona appky (icons/icon-*.png), jen bez vlastní
+           dlaždice — na tmavém pozadí hlavičky ji nepotřebuje. -->
+      <svg class="brand-mark" viewBox="0 0 100 100" aria-hidden="true">
+        <defs>
+          <linearGradient id="brandGrad" x1="8" y1="8" x2="92" y2="92" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#22d3ee"/>
+            <stop offset="100%" stop-color="#7c5cff"/>
+          </linearGradient>
+        </defs>
+        <g transform="translate(50,50)">
+          <g transform="rotate(-45)">
+            <rect x="-32" y="-8" width="22" height="16" rx="4" fill="url(#brandGrad)"/>
+            <rect x="10" y="-8" width="22" height="16" rx="4" fill="url(#brandGrad)"/>
+          </g>
+          <g transform="rotate(45)">
+            <rect x="-32" y="-8" width="64" height="16" rx="4" fill="url(#brandGrad)"/>
+          </g>
+        </g>
+      </svg>
+      <h1>PerpyX</h1>
+    </div>
     <div class="status" id="status">
       <span class="dot" id="statusDot"></span>
       <span id="statusText">Not connected</span>

@@ -7,6 +7,44 @@ název odshora) — je to jen adresář a URL, ne jméno aplikace. Přejmenován
 repozitáře je samostatné rozhodnutí (mění se tím živá adresa GitHub Pages),
 zatím k němu nedošlo.
 
+## Vizuální identita
+
+Ikona a značka appky je **tkané X** — dva pruhy s gradientem tyrkysová
+`#22d3ee` → fialová `#7c5cff` na tmavé dlaždici `#0d1420`, kde jeden pruh
+vizuálně podjíždí druhý (rozdělený na dvě části s mezerou, druhý pruh vcelku
+nakreslený přes ni). Vzniklo brainstormem v konverzaci 2026-09-22 — několik
+kol zamítnutých směrů (holé zaměřovací kříže → moc chladné a technické;
+jednoduché barevné/tučné „X" → moc jednoduché; maskot robota/sovy → možná
+moc hravé na seriózní tradingovou appku) než se ustálilo na týž tvar použitý
+jak pro ikonu appky, tak jako poslední písmeno v nápisu „PerpyX" — uživatel
+výslovně chtěl, aby to bylo **totéž**, ne dvě různé grafiky.
+
+- SVG definice (jediný zdroj pravdy pro tvar): dvě `rect` o `width 64 height
+  16 rx 4` v `<g transform="translate(50,50) rotate(±45)">` uvnitř
+  `viewBox="0 0 100 100"`; „podjíždějící" pruh je rozdělený na dva `rect`
+  (šířka 22, mezera 20) místo jednoho vcelku.
+- `icons/icon-192.png` a `icons/icon-512.png`: ikona na zaoblené dlaždici
+  (`rx 22`), vyrenderováno z SVG přes headless Chrome (`Page.captureScreenshot`
+  s průhledným pozadím) — appka nemá build krok, takže se PNG negeneruje
+  automaticky, jen jednorázově pro tenhle vzhled.
+- `icons/maskable-512.png` je **jiná** varianta, ne jen zmenšenina: bez
+  zaoblených rohů (OS aplikuje svou vlastní masku) a X zmenšené na 82 %,
+  ať se vejde do bezpečné zóny ~66 % poloměru a žádná maska (kruh, čtverec
+  se zaoblením, kapka) mu neusekne hroty.
+- V hlavičce appky (`index.html`, `.topbar-brand`) je stejná grafika vložená
+  přímo jako inline SVG vedle `<h1>PerpyX</h1>`, tentokrát **bez vlastní
+  dlaždice** — na tmavém pozadí lišty by dlaždice jen duplikovala pozadí.
+  Text nápisu zůstává v prostém řezu, ne v gradientu: v `.topbar h1` je
+  `font-size: 1.05rem` (~17 px), kde by se jemné detaily gradientu i vlastní
+  písmo Sora ztratily. Propracovanější wordmark (Sora, gradient přes celé
+  „X", ikona + nápis vedle sebe) je promyšlený pro **větší kontexty** —
+  README, případná úvodní obrazovka, opis appky v obchodě — ne pro
+  16px lištu v telefonu.
+- ⚠ Font **Sora** z Google Fonts se používá **jen** ve wordmark náhledech
+  (zatím žádné v repu), ne v appce samotné — appka drží zavedený
+  `-apple-system, "Segoe UI", Roboto, system-ui, sans-serif` všude, ať se
+  nezavádí síťová závislost na fontu do PWA, která má fungovat i offline.
+
 ## Kontext
 
 - **Jediné cílové zařízení:** Samsung Galaxy Z Fold 5 (Android, Chrome).
