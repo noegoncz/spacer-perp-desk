@@ -1342,3 +1342,19 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
   .pos-grid { grid-template-columns: repeat(2, 1fr); }
   main { padding-left: 12px; padding-right: 12px; }
 }
+
+/*
+ * Rozevřený Fold — víc místa na šířku. Karta pozice má 4 nebo 5 buněk
+ * (velikost, vstup, mark, likvidace, a `to liquidation`, jen když jde
+ * spočítat). Napevno 3 sloupce nechávaly poslední řádek nevyvážený —
+ * u 5 buněk osamocené dvě s obří mezerou navíc. Pět sloupců se u 5 buněk
+ * (běžný případ) vyplní přesně beze zbytku.
+ *
+ * ⚠ Podmínka jde na šířku i poměr stran, ne na konkrétní zařízení — telefon
+ * na šířku by při pouhé kontrole šířky spadl do stejného pravidla, přitom
+ * mu širší karta nemusí sednout stejně dobře. Fold rozevřený je málem
+ * čtvercový (~0.8), proto min-aspect-ratio 3/4.
+ */
+@media (min-width: 480px) and (min-aspect-ratio: 3/4) {
+  .pos-grid { grid-template-columns: repeat(5, 1fr); }
+}

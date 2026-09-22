@@ -552,7 +552,7 @@ telefonu — anglicky 1,234.56, česky 1 234,56.
 `en.js` i `cs.js`. Kontrola, že se na to nezapomnělo: hledání řetězců
 s diakritikou v `js/*.js` mimo komentáře musí vracet prázdno.
 
-### 5) Layout pro Fold
+### ✅ 5) Layout pro Fold
 
 - **Zavřený displej** (úzký, cover screen): seznam pozic.
 - **Rozevřený**: graf zůstává **přes celou obrazovku**, ne vedle seznamu.
@@ -561,11 +561,34 @@ Rozhodnuto uživatelem po vyzkoušení checkpointu 2. Původní zadání znělo
 „rozevřený: graf + seznam vedle sebe", ale v praxi se osvědčil celoobrazovkový
 graf v obou polohách. Rozdělené zobrazení se zatím **nedělá**.
 
-Zbývá tedy: chování při přeložení telefonu. Stav (otevřený graf, vybraný pár,
+Zbývalo tedy: chování při přeložení telefonu. Stav (otevřený graf, vybraný pár,
 interval, zoom, scroll seznamu) musí přeložení přežít — Android při změně
 skládání stránku nereloaduje, ale rozměry se mění a layout se musí přepnout
 plynule. Přepínat podle `matchMedia` na šířku a poměr stran, ne podle detekce
 zařízení.
+
+**Ověřeno 2026-09-22 přes CDP na rozměrech Z Fold 5** (zavřený cover
+~344×882, rozevřený hlavní displej ~673×841): stav grafu (pár, interval,
+zoom/`barSpace`) **už přežíval sám** — appka se při přeložení nereloaduje,
+proměnné zůstávají v paměti a KLineChart má vlastní `ResizeObserver`
+(`chart.js`), který canvas i kreslicí vrstvu (`umistiVrstvu()`) přepočítá
+při každé změně rozměrů kontejneru. Šířku svíčky (`setBarSpace`) resize
+sám od sebe nemění — jen se při širším plátně přirozeně zobrazí víc
+svíček za stejnou cenu, což je správně.
+
+⚠ **Jediné, co reálně chybělo:** karta pozice (`.pos-grid`) měla napevno
+3 sloupce. U pěti buněk (velikost, vstup, mark, likvidace, `to liquidation`)
+to na širokém rozevřeném displeji nechávalo poslední řádek nevyvážený —
+dvě osamocené hodnoty s obří mezerou místo nich. Doplněno v `css/style.css`
+o `@media (min-width: 480px) and (min-aspect-ratio: 3/4) { .pos-grid {
+grid-template-columns: repeat(5, 1fr); } }` — podmínka jde na šířku **i**
+poměr stran (ne jen šířku), ať telefon na šířku nespadne do stejného
+pravidla jen proto, že je taky široký.
+
+Test: `tools/test-preloseni-foldu.py` — simuluje přeložení změnou rozměrů
+okna bez reloadu (`Emulation.setDeviceMetricsOverride`), ověří že pár,
+interval a zoom zůstanou stejné, a že karta pozice dostane 5 sloupců na
+rozevřeném displeji.
 
 ### 6) Záložky na hlavní obrazovce a historie
 
@@ -937,7 +960,7 @@ Pořadí, jak se na to má chodit. Odškrtnuté jsou hotové.
 2. ✅ Graf se svíčkami
 3. ✅ Kreslení a indikátory (rozšiřuje se dál výše)
 4. ✅ Angličtina jako základ
-5. ⏳ Layout pro Fold — stav při přeložení telefonu
+5. ✅ Layout pro Fold — stav při přeložení telefonu
 6. ✅ Záložky Pozice / Trhy / Historie
 7. ⏳ Rozšířená data o účtu (equity, margin, funding, příkazy)
 8. ⏳ Pohodlí (řazení, varování před likvidací, vibrace)
