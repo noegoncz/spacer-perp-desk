@@ -34,9 +34,17 @@ starý kód.
 | `test-rsi-nastaveni.py` | typ průměru a zdroj ceny u RSI skutečně mění křivku |
 | `test-vyhlazovani.py` | SMA/EMA/SMMA/WMA proti ručně spočítaným hodnotám |
 | `test-lista-panely-nastaveni.py` | výška panelu indikátoru, zešednutí závislých voleb |
+| `test-alarmy.py` | cenový alarm: zadání, hladina v grafu, zaznění při protnutí, opakování |
 
 ⚠ Dotykovým bodům u gest dvěma prsty dávej výslovné `id`, jinak se pohyb
 zbylého prstu tváří jako třetí prst a test hlásí odskok, který v aplikaci není.
+
+⚠ Klepnutí posílej **skutečným dotykem** (`Input.dispatchTouchEvent`), ne
+syntetickým `PointerEvent` z JavaScriptu. Ten se při výběru hladiny alarmu
+občas ztratil a test hlásil chybu, která v aplikaci není.
+
+⚠ Kdo zapisuje alarmy přímo do `localStorage`, musí stránku přenačíst —
+`js/alarmy.js` čte úložiště jen jednou za běh.
 
 ⚠ Testovací data musí mít **nezávislé** open a close. Když je `close = open + konstanta`,
 dávají všechny zdroje ceny stejné RSI a volba zdroje vypadá, že nefunguje.

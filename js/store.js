@@ -63,6 +63,24 @@ export function saveDrawings(symbol, drawings) {
 }
 
 /**
+ * Cenové alarmy. Schválně **jeden společný seznam** se symbolem u každého
+ * alarmu, ne rozdělený po párech: hlídat se musí i pár, který zrovna není
+ * otevřený, a přehled všech alarmů pak bude stačit načíst z jednoho místa.
+ */
+export function loadAlarms() {
+  try {
+    const list = JSON.parse(read('perpdesk.alarms') || '[]');
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveAlarms(alarmy) {
+  write('perpdesk.alarms', JSON.stringify(alarmy || []));
+}
+
+/**
  * Zapnuté indikátory. Schválně společné pro všechny páry — kdo chce RSI,
  * chce ho všude, ne si ho zapínat u každého páru znovu.
  */

@@ -13,6 +13,8 @@
   --short: #ea3943;
   --accent: #4c9aff;
   --warn: #f0b90b;
+  /* Alarmy — barva, kterou v grafu nemá nic jiného (viz BARVA_ALARMU). */
+  --alarm: #22d3ee;
   --radius: 14px;
   --tap: 44px;
 }
@@ -1103,6 +1105,40 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
   cursor: pointer;
 }
 .text-btn:active { color: var(--text); }
+.text-btn.danger { color: var(--short); }
+
+/* ---------- alarm ---------- */
+
+/* Uložení je závěr formuláře, ne jedna z voleb — stojí pod ním přes šířku. */
+.sheet-akce { margin-top: 10px; }
+.sheet-akce .primary-btn { width: 100%; }
+
+.alarm-note {
+  margin: 8px 0 0;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+
+/* Cena má víc míst než perioda indikátoru, proto širší pole. */
+.nastaveni-cislo.cena input { width: 96px; }
+
+.nastaveni-text {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  /* Bez tohohle vezme Chrome pro pole i placeholder svůj monospace. */
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+/* Hladina alarmu v grafu je tyrkysová; zvonek v liště to má napovědět. */
+.tool-btn.ma-alarm svg { stroke: var(--alarm); }
 
 /* ---------- nastavení indikátoru ---------- */
 

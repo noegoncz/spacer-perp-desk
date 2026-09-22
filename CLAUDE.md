@@ -58,6 +58,7 @@ js/ui.js                # vykreslování DOM
 js/chart.js             # obal nad knihovnou grafu (KLineChart), o Bybitu neví
 js/draw.js              # dotykové kreslení se zaměřovacím křížem
 js/indikatory.js        # schémata nastavení indikátorů + vyhlazovací funkce (SMA/EMA/SMMA/WMA)
+js/alarmy.js            # cenové alarmy: model, vyhodnocení protnutí, ukládání
 js/app.js               # orchestrace, lifecycle, update service workeru
 vendor/                 # KLineChart + licence, stažené v repu (ne CDN)
 tools/                  # testy přes DevTools Protocol, bez API klíčů (viz tools/README.md)
@@ -339,11 +340,46 @@ průhlednosti, zvonek (alarm) a koš. Styl se drží v `extendData` overlaye,
 takže se ukládá i načítá spolu s body. Nová kresba převezme naposledy
 nastavený vzhled.
 
-**Alarm při protnutí cenou** je v `app.js`. Hodnota kresby v čase se u
-vodorovné čáry bere přímo, u dvoubodových se dopočítá z přímky mezi body
-(a za koncem extrapoluje). Protnutí se pozná ze změny znaménka rozdílu
-oproti minulé ceně. Alarm je **jednorázový** — po zaznění se vypne, jinak
-by zvonil při každém ticku. Zvuková a vibrační odezva plus pruh v UI.
+**Alarm zavěšený na kresbě** (zvonek v paletě) je v `app.js`. Hodnota kresby
+v čase se u vodorovné čáry bere přímo, u dvoubodových se dopočítá z přímky mezi
+body (a za koncem extrapoluje). Protnutí se pozná ze změny znaménka rozdílu
+oproti minulé ceně. Je **jednorázový** — po zaznění se vypne, jinak by zvonil
+při každém ticku. Hodí se na šikmé čáry, které cenový alarm neumí.
+
+#### Cenové alarmy
+
+Samostatná entita v **`js/alarmy.js`** (hladina, podmínka, opakování, platnost,
+zpráva, zvuk, vibrace), ne vlastnost kresby: alarm musí přežít smazání kreseb
+i zavření grafu. Kreslicí nástroj „cenový alarm" proto zmizel a nahradil ho
+**zvonek v ukotvené části kreslicí lišty** — otevře obrazvku s předvyplněnou
+aktuální cenou, podle dialogu „Create alert" v TradingView.
+
+- Ukládá se **jeden společný seznam** (`perpdesk.alarms`) se symbolem u každého
+  alarmu, ne rozdělený po párech — hlídat se musí i pár, který zrovna není
+  otevřený, a přehled všech alarmů pak půjde načíst z jednoho místa.
+- V grafu má alarm **vlastní overlay `alarmLine`**: tyrkysová `#22d3ee`
+  (barva, kterou nic jiného nemá), čárkování `6-3-2-3` a **ikona budíku**
+  u popisku. Klepnutí na hladinu ji otevře k úpravě.
+- Jednorázový alarm po zaznění **zešedne, ale nesmaže se** — hladina zůstane
+  vidět a jde ji zase zapnout. Mazání je vždy na uživateli.
+- Modul drží seznam v paměti a čte `localStorage` jen jednou za běh. Jediný
+  zapisovatel je aplikace sama, takže to stačí; ⚠ testy, které zapisují alarmy
+  do úložiště zvenčí, musí stránku přenačíst, jinak jsou jejich data neviditelná.
+
+⚠ **Protnutí se pozná jen ze dvou cen po sobě**, takže první cena po otevření
+alarm nikdy nespustí — jen založí referenci. Bez toho by se při startu spustily
+všechny alarmy pod aktuální cenou.
+
+⚠ **Mark cena a uzavírací cena svíčky se nesmějí míchat.** Pár s otevřenou
+pozicí se hlídá z ticker streamu i se zavřeným grafem, otevřený pár z živé
+svíčky. Kdyby do jedné hladiny padaly obě, jejich rozdíl by kolem ní vyrobil
+protnutí, které se nestalo. Proto `onPositions` otevřený pár přeskakuje
+a `closeChart` zahodí referenční cenu.
+
+Alarm na páru **bez pozice a bez otevřeného grafu se nehlídá** — aplikace pro
+takový pár nemá odkud brát cenu. Píše se to i v nápovědě pod formulářem.
+
+Zvuk je dvojí pípnutí spočítané přes WebAudio, v repozitáři žádný soubor není.
 
 ⚠ Upozornění při **zavřené** aplikaci potřebuje APK z checkpointu 10;
 v prohlížeči to spolehlivě nejde.
@@ -761,13 +797,11 @@ Pořadí, jak se na to má chodit. Odškrtnuté jsou hotové.
 - [ ] **Volume dál**: přesnost (precision), popisky na cenové ose.
 - [ ] **Nastavení ostatních indikátorů**: MACD, KDJ, MA, EMA, BOLL, SAR mají zatím
   jen periody (a výšku panelu) — chybí barvy a přepínače viditelnosti čar.
-- [ ] **Alarmy — vlastní obrazovka a vzhled.** Podle TradingView (screenshot
-  2026-09-22, dialog „Create alert"). Převzít: podmínka (protnutí hladiny,
-  případně směr nahoru/dolů), **Trigger** (jen jednou / při každém protnutí),
-  **Expiration** (platnost, pak alarm sám zmizí), vlastní **zpráva** a volba
-  způsobu upozornění. V grafu má mít alarm **jinou čáru než kresby** —
-  čerchovanou, vlastní barvou, s ikonou budíku u popisku. Zadávání musí být
-  pohodlné, ne přes kreslicí nástroj.
+- [x] **Alarmy — vlastní obrazovka a vzhled** (v0.11.0). Podmínka, trigger,
+  platnost, zpráva, zvuk i vibrace; vlastní tyrkysová čára s budíkem. Popsáno
+  výš v „Cenové alarmy". Zbývá k tomu: **přehled všech alarmů** napříč páry
+  (data pro něj už v jednom seznamu jsou) a případně **tažení hladiny prstem**
+  místo číselníku.
 - [ ] **Notifikace při zavřené aplikaci — rozhodnout cestu.** Když je aplikace
   zavřená, žádný její kód neběží; service worker prohlížeč uspí. Periodic
   Background Sync o časování rozhoduje sám (hodiny, ne vteřiny) a je

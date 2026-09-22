@@ -132,13 +132,15 @@
                 data-i18n-aria="tool.simpleAnnotation" data-i18n-title="tool.simpleAnnotation">
           <svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>
       </button>
-          <button type="button" class="tool-btn" data-tool="alarmLine"
-                data-i18n-aria="tool.alarmLine" data-i18n-title="tool.alarmLine">
-          <svg viewBox="0 0 24 24"><path d="M18 15V10a6 6 0 10-12 0v5l-2 3h16z"/><path d="M10 21h4"/></svg>
-      </button>
       </div>
 
       <div class="tool-pinned">
+        <!-- Alarm se zadává odsud, ne kreslením: klepnutí otevře nastavení
+             s předvyplněnou aktuální cenou. -->
+        <button type="button" class="tool-btn" id="alarmBtn"
+                data-i18n-aria="alarm.new" data-i18n-title="alarm.new">
+          <svg viewBox="0 0 24 24"><path d="M18 15V10a6 6 0 10-12 0v5l-2 3h16z"/><path d="M10 21h4"/></svg>
+        </button>
         <button type="button" class="tool-btn" id="magnetBtn"
                 data-i18n-aria="chart.magnet" data-i18n-title="chart.magnet">
           <svg viewBox="0 0 24 24"><path d="M6 4v8a6 6 0 0012 0V4"/><path d="M6 9h5M13 9h5"/></svg>
@@ -222,6 +224,25 @@
         </div>
       </div>
       <div class="sheet-body nastaveni" id="settingsBody"></div>
+    </div>
+
+    <!-- Nastavení jednoho alarmu: hladina, podmínka, opakování, platnost -->
+    <div id="sheetAlarm" class="sheet" hidden>
+      <div class="sheet-head">
+        <span id="alarmTitle" data-i18n="alarm.new">New alert</span>
+        <div class="sheet-head-akce">
+          <button type="button" id="alarmDeleteBtn" class="text-btn danger" hidden
+                  data-i18n="alarm.delete">Delete</button>
+          <button type="button" class="icon-btn" data-close="sheetAlarm"
+                  data-i18n-aria="action.close">✕</button>
+        </div>
+      </div>
+      <div class="sheet-body nastaveni" id="alarmBody"></div>
+      <p id="alarmNote" class="alarm-note"></p>
+      <div class="sheet-akce">
+        <button type="button" id="alarmSaveBtn" class="primary-btn"
+                data-i18n="alarm.save">Save alert</button>
+      </div>
     </div>
   </section>
 

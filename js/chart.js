@@ -120,6 +120,16 @@ const HLAVNI_PANEL = 'candle_pane';
 const SKUPINA_POZICE = 'pozice';
 const SKUPINA_KRESBY = 'kresby';
 const SKUPINA_ZNACKY = 'znacky';
+const SKUPINA_ALARMY = 'alarmy';
+
+/**
+ * Alarm má v grafu **vlastní vzhled**, ať se neplete s kresbami ani s čarami
+ * pozice: tyrkysová (jinou barvu nic jiného nemá), čerchovaná a s ikonou
+ * budíku u popisku. Vypnutý alarm zešedne, ale zůstane vidět.
+ */
+export const BARVA_ALARMU = '#22d3ee';
+const BARVA_ALARMU_VYPNUTY = '#5a6a7d';
+const CARKOVANI_ALARMU = [6, 3, 2, 3];
 
 let zaregistrovano = false;
 
@@ -166,6 +176,81 @@ function registrovatCaruPozice() {
           },
           styles: {
             color: d.color,
+            size: 11,
+            family: 'sans-serif',
+            backgroundColor: 'transparent',
+            borderSize: 0,
+            paddingLeft: 0,
+            paddingRight: 0,
+            paddingTop: 0,
+            paddingBottom: 0,
+          },
+        },
+      ];
+    },
+  });
+}
+
+/** Ikonka budíku z figur knihovny — ciferník, ručičky a dvě ouška. */
+function budik(stred, barva) {
+  const { x, y } = stred;
+  const cara = (souradnice) => ({
+    type: 'line',
+    attrs: { coordinates: souradnice },
+    styles: { color: barva, size: 1 },
+  });
+  return [
+    {
+      type: 'arc',
+      attrs: { x, y, r: 4.5, startAngle: 0, endAngle: Math.PI * 2 },
+      styles: { color: barva, size: 1 },
+    },
+    cara([{ x, y: y - 2.5 }, { x, y }]),
+    cara([{ x, y }, { x: x + 2.2, y }]),
+    cara([{ x: x - 3.4, y: y - 3.4 }, { x: x - 5.4, y: y - 5.4 }]),
+    cara([{ x: x + 3.4, y: y - 3.4 }, { x: x + 5.4, y: y - 5.4 }]),
+  ];
+}
+
+/**
+ * Cenový alarm: vodorovná hladina s budíkem u popisku. Vlastní overlay
+ * proto, že vestavěný `priceLine` neumí popisek ani ikonu.
+ */
+function registrovatCaruAlarmu() {
+  K().registerOverlay({
+    name: 'alarmLine',
+    totalStep: 1,
+    needDefaultPointFigure: false,
+    needDefaultXAxisFigure: false,
+    needDefaultYAxisFigure: false,
+    createPointFigures: ({ overlay, coordinates, bounding }) => {
+      const d = overlay.extendData || {};
+      const y = coordinates[0].y;
+      const barva = d.aktivni === false ? BARVA_ALARMU_VYPNUTY : BARVA_ALARMU;
+      const text = d.title || '';
+      /*
+       * Šířku vykresleného textu knihovna neprozradí, takže se odhaduje —
+       * budík stojí kousek vlevo od popisku a pár pixelů sem tam nevadí.
+       */
+      const stred = { x: bounding.width - 13 - text.length * 6.2, y: y - 7 };
+      return [
+        {
+          type: 'line',
+          attrs: { coordinates: [{ x: 0, y }, { x: bounding.width, y }] },
+          styles: { color: barva, size: 1, style: 'dashed', dashedValue: CARKOVANI_ALARMU },
+        },
+        ...budik(stred, barva),
+        {
+          type: 'text',
+          attrs: {
+            x: bounding.width - 5,
+            y: y - 3,
+            text,
+            align: 'right',
+            baseline: 'bottom',
+          },
+          styles: {
+            color: barva,
             size: 11,
             family: 'sans-serif',
             backgroundColor: 'transparent',
@@ -512,6 +597,7 @@ function stylKresby(styl) {
 
 export function createPriceChart(container, layer, handlers = {}) {
   registrovatCaruPozice();
+  registrovatCaruAlarmu();
   registrovatZnackuPlneni();
   registrovatObjem();
   registrovatRsi();
@@ -534,6 +620,20 @@ export function createPriceChart(container, layer, handlers = {}) {
       }),
     );
     umistiVrstvu();
+  }
+
+  /** Vykreslí hladiny alarmů. Kreslí se stejně jako čáry pozice, mimo kresby. */
+  function vykresliAlarmy(seznam) {
+    chart.removeOverlay({ groupId: SKUPINA_ALARMY });
+    (seznam || []).forEach((a) => {
+      chart.createOverlay({
+        name: 'alarmLine',
+        groupId: SKUPINA_ALARMY,
+        points: [{ value: a.price }],
+        lock: true, // hladina se mění v nastavení alarmu, ne taháním po grafu
+        extendData: { id: a.id, title: a.title, aktivni: a.aktivni },
+      });
+    });
   }
 
   /** Vykreslí kresby uživatele bez hlášení změn — jde o obnovu, ne úpravu. */
@@ -599,6 +699,7 @@ export function createPriceChart(container, layer, handlers = {}) {
   // Co je v grafu nakresleno — při změně intervalu se to na chvíli sundá
   // a vrátí až s novými svíčkami, aby nic nepřeskakovalo zvlášť.
   let posledniCary = [];
+  let posledniAlarmy = [];
   let prepinaSeInterval = false;
   let zalohaKreseb = [];
   let posledniInterval = null;
@@ -746,6 +847,22 @@ export function createPriceChart(container, layer, handlers = {}) {
     },
   });
 
+  /** Jak daleko od hladiny ještě klepnutí platí — prst je tlustší než čára. */
+  const DOSAH_ALARMU = 14;
+
+  function alarmPodPrstem(y) {
+    let nej = null;
+    for (const o of chart.getOverlays({ groupId: SKUPINA_ALARMY })) {
+      const cil = toPixel({ value: o.points?.[0]?.value });
+      if (!Number.isFinite(cil.y)) continue;
+      const vzdalenost = Math.abs(cil.y - y);
+      if (vzdalenost < DOSAH_ALARMU && (!nej || vzdalenost < nej.vzdalenost)) {
+        nej = { id: o.extendData?.id, vzdalenost };
+      }
+    }
+    return nej?.id || null;
+  }
+
   /**
    * Klepnutí na hotovou kresbu ji vezme do úprav. Vrstva je v klidu průchozí,
    * takže se posloucha přímo na grafu — a tažení se od klepnutí pozná podle
@@ -779,7 +896,13 @@ export function createPriceChart(container, layer, handlers = {}) {
         upravovanaKresba = kresby[index];
         kresleni.beginEdit(upravovanaKresba.points);
         handlers.onSelectionChanged?.(vybranyStyl());
+        return;
       }
+
+      // Klepnutí na hladinu alarmu ji otevře k úpravě. Až za kresbami:
+      // alarm je jen čára, kdežto kresba pod prstem bývá záměr.
+      const alarm = alarmPodPrstem(my);
+      if (alarm) handlers.onAlarmTapped?.(alarm);
     },
     { passive: true },
   );
@@ -972,6 +1095,7 @@ export function createPriceChart(container, layer, handlers = {}) {
             prepinaSeInterval = false;
             vykresliKresby(zalohaKreseb);
             vykresliCary(posledniCary);
+            vykresliAlarmy(posledniAlarmy);
           }
           umistiVrstvu();
           srovnejAzPoVykresleni();
@@ -1021,6 +1145,7 @@ export function createPriceChart(container, layer, handlers = {}) {
       prepinaSeInterval = true;
       chart.removeOverlay({ groupId: SKUPINA_POZICE });
       chart.removeOverlay({ groupId: SKUPINA_KRESBY });
+      chart.removeOverlay({ groupId: SKUPINA_ALARMY });
       idCarPozice = [];
       chart.setPeriod(OBDOBI[interval] || OBDOBI['15']);
     },
@@ -1059,6 +1184,13 @@ export function createPriceChart(container, layer, handlers = {}) {
       posledniCary = lines;
       // Během přepínání intervalu se nekreslí — vrátí se až s novými daty.
       if (!prepinaSeInterval) vykresliCary(lines);
+    },
+
+    /* ---------- hladiny alarmů ---------- */
+
+    setAlarmLines(seznam) {
+      posledniAlarmy = seznam || [];
+      if (!prepinaSeInterval) vykresliAlarmy(posledniAlarmy);
     },
 
     /* ---------- značky plnění při prohlížení obchodu ---------- */
