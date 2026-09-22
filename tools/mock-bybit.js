@@ -29,7 +29,9 @@ window.fetch = function (vstup) {
     const platny = ['1','5','15','60','240','D','W','M'].includes(iv);
     const krok = { '1':60e3,'5':300e3,'15':900e3,'60':3600e3,'240':14400e3,
                    D:86400e3, W:604800e3, M:2592000e3 }[iv] || 14400e3;
-    const l = []; let t = Date.now();
+    // Časy musí sedět na skutečné hranice svíček, jinak živá svíčka z burzy
+    // vyjde „starší" než naše poslední a knihovna ji právem zahodí.
+    const l = []; let t = Math.floor(Date.now() / krok) * krok;
     if (platny) for (let i=0;i<300;i++){ const b=0.30+Math.sin(i/9)*0.01;
       l.push([String(t-i*krok),String(b),String(b+0.004),String(b-0.004),
               String(b+0.004*Math.sin(i*2.3)),'900','1']); }

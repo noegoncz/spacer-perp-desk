@@ -149,6 +149,32 @@ Kontrola `retCode` sama o sobě nestačí.
 **Proxy tedy není potřeba.** Pokud by to Bybit někdy změnil, je to jediný důvod
 zrychlit checkpoint 10 (Capacitor nativní HTTP obchází CORS úplně).
 
+### ⚠ Adresy streamů — `public` v cestě
+
+```
+wss://stream.bybit.com/v5/public/linear    ← veřejný (svíčky, ticker)
+wss://stream.bybit.com/v5/private          ← privátní (pozice)
+```
+
+Veřejná adresa **musí obsahovat `public`**. Bez něj se spojení vůbec nenaváže:
+zavře se kódem 1006, tiše, a aplikace jen pořád dokola zkouší znovu.
+
+Stalo se to a nikdo si toho dlouho nevšiml (opraveno 2026-09-22, v0.10.7).
+Veřejný stream **nikdy nefungoval**, takže se živé svíčky nehýbaly a mark cena
+se měnila jen při dotazu po 30 s. Vypadalo to jako chybějící funkce, přitom šlo
+o jedno chybějící slovo v adrese.
+
+⚠ **Podstrčená data takovou chybu z principu neodhalí** — mock odpoví na cokoli,
+takže se špatná adresa tváří v pořádku. Proto je `tools/test-spojeni-burza.py`,
+který jde **proti skutečné burze** a ověří, že se každá adresa opravdu otevře
+a že v datech jsou pole, která čteme. Klíče na to nejsou potřeba, všechno
+potřebné je veřejné. Pouštěj ho po každém zásahu do `js/bybit.js`.
+
+⚠ **Svíčky v mocku musí sedět na skutečné hranice období**
+(`Math.floor(Date.now() / krok) * krok`). S vymyšlenými časy vyjde živá svíčka
+z burzy „starší" než poslední podstrčená a knihovna ji právem zahodí — což
+vypadá jako chyba aplikace, ale je to chyba testu. Taky na to jeden test doplatil.
+
 ### Podpis Bybit V5
 
 REST GET:
@@ -794,6 +820,18 @@ Na starém kódu padá stejně jako telefon uživatele.
 ⚠ Ten test **neměří `getRegistrations()`**. V headless Chrome registrace
 uspěje (`register()` se splní), ale ve výpisu se stejně neobjeví — měřil by
 vrtoch prohlížeče, ne aplikaci. Počítá se proto volání `register()`.
+
+## Odkud berou obrazovky data
+
+| co | zdroj | jak často |
+|---|---|---|
+| pozice | privátní WebSocket + REST záchrana | push; REST každých 30 s |
+| živá svíčka v grafu | veřejný WS `kline.{interval}.{symbol}` | push při každém ticku |
+| mark cena, změna 24 h | veřejný WS `tickers.{symbol}` | push |
+| historie svíček | REST `/v5/market/kline` | při otevření grafu a změně intervalu |
+
+Graf tedy **nemá žádný obnovovací interval** — svíčka se hýbe, jak přicházejí
+ticky. Když se nehýbe, je rozbité spojení, ne časování.
 
 ## Časové limity u volání
 

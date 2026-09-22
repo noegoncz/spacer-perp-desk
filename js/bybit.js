@@ -11,7 +11,13 @@ import { t } from './i18n.js';
 
 const REST_BASE = 'https://api.bybit.com';
 const WS_PRIVATE = 'wss://stream.bybit.com/v5/private';
-const WS_PUBLIC_LINEAR = 'wss://stream.bybit.com/v5/linear';
+/*
+ * ⚠ V cestě musí být `public`. Bez něj se spojení vůbec nenaváže (zavře se
+ * s kódem 1006) a tiše — aplikace jen pořád dokola zkouší znovu. Veřejný
+ * stream proto nikdy nefungoval: živé svíčky se nehýbaly a mark cena se
+ * měnila jen při dotazu po 30 s. Ověřeno proti burze, viz CLAUDE.md.
+ */
+const WS_PUBLIC_LINEAR = 'wss://stream.bybit.com/v5/public/linear';
 
 const RECV_WINDOW = '10000';
 
