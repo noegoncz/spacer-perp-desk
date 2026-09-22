@@ -245,7 +245,12 @@ const caraAlarmu = (souradnice, barva) => ({
   styles: { color: barva, size: 1, style: 'dashed', dashedValue: CARKOVANI_ALARMU },
 });
 
-const barvaAlarmu = (d) => (d.aktivni === false ? BARVA_ALARMU_VYPNUTY : BARVA_ALARMU);
+/**
+ * Vypnutý alarm zešedne. Zapnutý si drží barvu, se kterou vznikl — alarm
+ * z kresby zůstává v barvě té kresby, ostatní jsou tyrkysové.
+ */
+const barvaAlarmu = (d) =>
+  (d.aktivni === false ? BARVA_ALARMU_VYPNUTY : (d.color || BARVA_ALARMU));
 
 /**
  * Tři podoby alarmu: pevná hladina, šikmá čára a okamžik v čase. Vlastní
@@ -275,23 +280,44 @@ function registrovatCaryAlarmu() {
   });
 
   /*
-   * Šikmá čára. Kreslí se od prvního bodu až k pravému okraji, ne jen mezi
-   * body — hlídaná úroveň se za koncem extrapoluje a uživatel musí vidět,
-   * kudy čára povede, až tam cena dojde.
+   * Šikmá čára si nechává **barvu i délku původní kresby** — mění se jen
+   * čárkování a přibude budík. Prodlužovat ji k okraji se neosvědčilo:
+   * z kresby se tím stala nekonečná čára přes celý graf.
    */
   K().registerOverlay({
     ...zaklad,
     name: 'alarmTrend',
-    createPointFigures: ({ overlay, coordinates, bounding }) => {
+    createPointFigures: ({ overlay, coordinates }) => {
       const d = overlay.extendData || {};
       const [a, b] = coordinates;
       if (!a || !b) return [];
       const barva = barvaAlarmu(d);
-      const smernice = (b.y - a.y) / ((b.x - a.x) || 1);
-      const yKraj = a.y + smernice * (bounding.width - a.x);
+      // Popisek visí na pravějším konci, aby nezakrýval samotnou čáru.
+      const konec = a.x >= b.x ? a : b;
       return [
-        caraAlarmu([{ x: a.x, y: a.y }, { x: bounding.width, y: yKraj }], barva),
-        ...popisAlarmu(d.title || '', bounding.width - 5, yKraj, barva),
+        caraAlarmu([a, b], barva),
+        ...budik({ x: konec.x + 9, y: konec.y }, barva),
+        {
+          type: 'text',
+          attrs: {
+            x: konec.x + 17,
+            y: konec.y,
+            text: d.title || '',
+            align: 'left',
+            baseline: 'middle',
+          },
+          styles: {
+            color: barva,
+            size: 11,
+            family: 'sans-serif',
+            backgroundColor: 'transparent',
+            borderSize: 0,
+            paddingLeft: 0,
+            paddingRight: 0,
+            paddingTop: 0,
+            paddingBottom: 0,
+          },
+        },
       ];
     },
   });
@@ -699,7 +725,9 @@ export function createPriceChart(container, layer, handlers = {}) {
         ...tvar,
         groupId: SKUPINA_ALARMY,
         lock: true, // alarm se mění v jeho nastavení, ne taháním po grafu
-        extendData: { id: a.id, typ: a.typ, title: a.title, aktivni: a.aktivni },
+        extendData: {
+          id: a.id, typ: a.typ, title: a.title, aktivni: a.aktivni, color: a.barva,
+        },
       });
     });
   }
@@ -1384,10 +1412,18 @@ export function createPriceChart(container, layer, handlers = {}) {
 
     selectedStyle: vybranyStyl,
 
-    /** Tvar a body vybrané kresby — podklad pro alarm, který z ní vznikne. */
+    /**
+     * Tvar, body a vzhled vybrané kresby — podklad pro alarm, který z ní
+     * vznikne. Barva se přenáší, aby alarm zůstal tou čárou, kterou
+     * uživatel nakreslil, jen jinak čárkovanou.
+     */
     selectedDrawing() {
       if (!upravovanaKresba) return null;
-      return { name: upravovanaKresba.name, points: upravovanaKresba.points };
+      return {
+        name: upravovanaKresba.name,
+        points: upravovanaKresba.points,
+        style: vybranyStyl(),
+      };
     },
 
     selectedId() {

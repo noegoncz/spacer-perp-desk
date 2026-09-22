@@ -108,8 +108,16 @@ a = ulozene()[-1] if ulozene() else {}
 print('formulář se otevřel:', otevreno, ' typ alarmu:', a.get('typ'),
       ' bodů:', len(a.get('body') or []))
 print('kreseb zbylo:', kreseb(), ' alarmů v grafu:', alarmu())
+
+# Alarm si musí nechat barvu kresby a **její délku** — ne se protáhnout přes
+# celý graf, jak to dělala první verze.
+vzhled = json.loads(ev("""JSON.stringify((() => {
+  const o = window.__graf.getOverlays({ groupId: 'alarmy' })[0];
+  return { barva: o.extendData.color, bodu: o.points.length }; })())""") or '{}')
+print('barva z kresby:', vzhled.get('barva'), ' bodů v grafu:', vzhled.get('bodu'))
 vysledky.append(vybrana and otevreno and a.get('typ') == 'cara'
-                and len(a.get('body') or []) == 2 and kreseb() == 0 and alarmu() == 1)
+                and len(a.get('body') or []) == 2 and kreseb() == 0 and alarmu() == 1
+                and bool(vzhled.get('barva')) and vzhled.get('bodu') == 2)
 print()
 
 # ---- vodorovná čára → pevná hladina ----

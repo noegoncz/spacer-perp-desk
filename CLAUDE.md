@@ -349,7 +349,7 @@ kreseb i zavření grafu. Tři typy podle toho, co hlídají:
 | typ | co hlídá | tvar v grafu |
 |---|---|---|
 | `cena` | pevnou hladinu | vodorovná čára (`alarmLine`) |
-| `cara` | úroveň, která se mění s časem — přímka dvěma body, za koncem extrapolovaná | šikmá čára od prvního bodu k pravému okraji (`alarmTrend`) |
+| `cara` | úroveň, která se mění s časem — přímka dvěma body, za koncem extrapolovaná | šikmá čára **v původní délce a barvě kresby** (`alarmTrend`) |
 | `cas` | okamžik v budoucnosti, cena do toho nemluví | svislá čára (`alarmTime`) |
 
 **Dvě cesty, jak alarm vzniká** (kreslicí nástroj „cenový alarm" zmizel, obě
@@ -363,6 +363,22 @@ ho nahradily):
    geometrií a rovnou se otevře jeho nastavení. Kresba tím **zaniká** — jinak
    by na stejném místě ležely dvě čáry a nebylo by poznat, která zvoní.
 
+##### Obrazovka alarmu
+
+Vejít se musí na **zavřený displej Foldu**, jinak zůstane tlačítko Uložit pod
+okrajem a uživatel netuší, že tam ještě něco je (stalo se, v0.12.0). Proto:
+
+- řádky v `#sheetAlarm` jsou nižší než v nastavení indikátorů,
+- zvuk, vibrace a notifikace jsou **tři ikony v jednom řádku**, ne tři řádky
+  s přepínači,
+- `.sheet-akce` je `position: sticky` u spodního okraje, takže Uložit je vidět
+  vždycky. Měří to `tools/test-alarmy.py` na emulovaných 430×820.
+
+Zaměřovač je **hlavní cesta k hladině**, proto je to tlačítko přes celou šířku
+pod číselníkem, ne ikonka vedle něj. Pod ním stojí **vzdálenost hladiny od
+vstupu do pozice a od aktuální ceny v procentech** — v tom uživatel o hladinách
+přemýšlí, ne v absolutní ceně. Procenta se přepočítávají při každé změně ceny.
+
 Další vlastnosti:
 
 - Ukládá se **jeden společný seznam** (`perpdesk.alarms`) se symbolem u každého
@@ -370,8 +386,14 @@ Další vlastnosti:
   otevřený, a přehled všech alarmů pak půjde načíst z jednoho místa.
 - Barva je tyrkysová `#22d3ee` (jinou takovou v grafu nic nemá), čárkování
   `6-3-2-3` a u popisku je **ikona budíku**. Klepnutí na čáru ji otevře
-  k úpravě; u šikmé se měří svisle od **prodloužené** přímky, aby šlo klepnout
-  i tam, kam kresba nesahala.
+  k úpravě; u šikmé se měří svisle od prodloužené přímky, aby šlo klepnout
+  i tam, kam kresba nesahá.
+- ⚠ **Alarm z kresby si nechává barvu i délku té kresby** a mění jen čárkování.
+  První verze ho protahovala k pravému okraji, „aby bylo vidět, kudy čára
+  povede" — z úhledné trendové čáry se tím stala nekonečná čára přes celý
+  graf a uživatel to odmítl. Hlídaná úroveň se **za koncem čáry počítá dál**
+  (přímka se extrapoluje), jen se to nekreslí; píše se to v poznámce pod
+  formulářem, aby to nebylo skryté chování.
 - Jednorázový alarm po zaznění **zešedne, ale nesmaže se** — čára zůstane vidět
   a jde ji zase zapnout. Mazání je vždy na uživateli.
 - Modul drží seznam v paměti a čte `localStorage` jen jednou za běh. Jediný
@@ -836,17 +858,30 @@ Pořadí, jak se na to má chodit. Odškrtnuté jsou hotové.
   na alarm. Popsáno výš v „Cenové alarmy". Zbývá k tomu: **přehled všech
   alarmů** napříč páry (data pro něj už v jednom seznamu jsou) a **tažení
   hotové čáry prstem** bez otvírání nastavení.
-- [ ] **Notifikace při zavřené aplikaci — rozhodnout cestu.** Když je aplikace
-  zavřená, žádný její kód neběží; service worker prohlížeč uspí. Periodic
-  Background Sync o časování rozhoduje sám (hodiny, ne vteřiny) a je
-  experimentální, takže na cenové alarmy nestačí. Zbývají dvě cesty:
-  **(a) server** hlídá veřejné ceny a pošle web push — tak to dělá TradingView
-  i TabTrader; API klíč by ven nešel, jen pár a hladina, ale hladiny alarmů
-  by telefon opustily a hosting je potřeba platit a udržovat;
-  **(b) APK** (checkpoint 10) s během na pozadí — nic neodchází, nic se
-  neplatí, ale Samsung služby na pozadí zabíjí, takže to chce výjimku
-  z optimalizace baterie. ⚠ Uživatel používá **Brave**; u varianty (a) nejdřív
-  ověřit push přímo na jeho telefonu.
+- [ ] **Notifikace při zhasnutém displeji — rozhodnout cestu.** ⚠ Ověřeno
+  uživatelem 2026-09-22 (v0.12.0): notifikace z běžící stránky dorazí jen
+  **dokud je displej zapnutý**. Jakmile telefon zhasne, Android stránku uspí
+  a alarm mlčí — pro sledování trhu je tedy PWA v tomhle stavu nepoužitelná
+  a je to hlavní důvod jít dál. Možnosti:
+  - **(a) APK přes Capacitor** (checkpoint 10) s **foreground service**:
+    trvalá notifikace „Perp Desk hlídá 3 alarmy", vlastní WebSocket
+    v nativní vrstvě a `LocalNotifications`. Běží při zhasnutém displeji,
+    nic neodchází z telefonu, nic se neplatí. Chce výjimku z optimalizace
+    baterie (Samsung služby na pozadí zabíjí) a APK se musí instalovat mimo
+    obchod. **Pro vlastní provoz jediná rozumná cesta.**
+  - **(b) Server + web push (FCM/VAPID)**: server drží spojení na Bybit,
+    hlídá hladiny a pošle push, který Android doručí i se zhasnutým
+    displejem. Tak to dělá TradingView i TabTrader. API klíč ven nejde, ale
+    **hladiny alarmů telefon opustí**, hosting se platí a udržuje a přibývá
+    GDPR. **Pro komerční provoz nevyhnutelné** (bez něj by každý zákazník
+    musel instalovat APK mimo obchod a na iOS by to nešlo vůbec).
+  - **(c) Obojí**: nativní hlídání jako základ, push ze serveru jako záloha,
+    až by se aplikace prodávala. Jeden WS na burzu pro všechny zákazníky,
+    ne jeden na uživatele.
+  - Periodic Background Sync **nestačí** — o časování rozhoduje prohlížeč
+    (hodiny, ne vteřiny) a je experimentální.
+  - ⚠ Uživatel používá **Brave**; u varianty (b) nejdřív ověřit push přímo
+    na jeho telefonu.
 - [ ] **Volume profile** jako vlastní indikátor (odhad ze svíček, viz checkpoint 3).
 
 ### Checkpointy

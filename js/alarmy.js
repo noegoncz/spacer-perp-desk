@@ -73,6 +73,7 @@ export function novy(symbol, cena) {
     platnostDnu: 0,
     vyprsi: null,
     zprava: '',
+    barva: null,  // z kresby, ze které alarm vznikl; jinak výchozí tyrkysová
     zvuk: true,
     vibrace: true,
     notifikace: true,
@@ -89,7 +90,9 @@ export function novy(symbol, cena) {
  * jednobodové (vodorovná, cenová) hlídají pevnou hladinu.
  */
 export function zKresby(symbol, kresba) {
-  const zaklad = novy(symbol, 0);
+  // Barva kresby jde s alarmem dál — uživatel má čáru poznat podle toho,
+  // jak si ji nakreslil, ne podle toho, že z ní udělal alarm.
+  const zaklad = { ...novy(symbol, 0), barva: kresba?.style?.color || null };
   const body = (kresba?.points || []).filter(Boolean);
   const prvni = body[0] || {};
 

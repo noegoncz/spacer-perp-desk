@@ -192,6 +192,25 @@ print('opakovaný alarm — zůstal zapnutý:', opakovany.get('aktivni'),
       ' zaznění:', zaznelo, '(mají být 3)')
 print()
 
+# ---- formulář se vejde i na zavřený displej Foldu ----
+# Uživatel hlásil, že tlačítko Uložit bylo pod okrajem obrazovky. Sheet má
+# proto nízké řádky a tlačítko přilepené ke spodku.
+p.prikaz('Emulation.setDeviceMetricsOverride', width=430, height=820,
+         deviceScaleFactor=1, mobile=True)
+time.sleep(0.6)
+klepni(200, y_hladiny(uroven))  # otevřít úpravu alarmu
+vejdeSe = ev("""(() => {
+  const btn = document.getElementById('alarmSaveBtn').getBoundingClientRect();
+  return btn.height > 0 && btn.bottom <= window.innerHeight && btn.top >= 0; })()""")
+podil = ev("""Math.round(100 * document.getElementById('sheetAlarm')
+  .getBoundingClientRect().height / window.innerHeight)""")
+print('na úzkém displeji je Uložit vidět bez scrollování:', vejdeSe,
+      ' (nastavení zabírá', podil, '% výšky)')
+ev("document.getElementById('sheetBackdrop').click()")
+p.prikaz('Emulation.clearDeviceMetricsOverride')
+time.sleep(0.6)
+print()
+
 # ---- přepnutí timeframu hladinu neztratí ----
 ev("document.getElementById('sheetBackdrop').click()")
 time.sleep(0.3)
@@ -207,5 +226,5 @@ print()
 ok = (kriz and otevreno and zavreno and len(ulozene()) == 1 and predcasne == 0
       and pipnuti >= 1 and vibrace >= 1 and pruh
       and po.get('aktivni') is False and opakovany.get('aktivni') is True
-      and zaznelo == 3 and uprava and po_prepnuti == 1 and not chyby)
+      and zaznelo == 3 and uprava and vejdeSe and po_prepnuti == 1 and not chyby)
 print('VÝSLEDEK:', 'ALARMY FUNGUJÍ' if ok else '!!! ALARMY MAJÍ CHYBU')

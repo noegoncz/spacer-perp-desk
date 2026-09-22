@@ -10,7 +10,7 @@ import {
   popisekPole, popisekSekce, omez,
 } from './indikatory.js';
 import { t, setLanguage, applyStaticTexts, JAZYKY } from './i18n.js';
-import { priceDecimals, formatPrice } from './format.js';
+import { priceDecimals, formatPrice, formatPercent } from './format.js';
 import * as alarmy from './alarmy.js';
 import * as store from './store.js';
 import * as ui from './ui.js';
@@ -1301,6 +1301,7 @@ function vykresliAlarmy() {
       price: a.price,
       body: a.body,
       cas: a.cas,
+      barva: a.barva,
       aktivni: a.aktivni,
       title: popisAlarmu(a),
     })),
@@ -1394,21 +1395,57 @@ const IKONA_ZAMERENI =
   '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/>'
   + '<path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>';
 
+/**
+ * Zaměřovač je hlavní cesta k hladině, proto stojí přes celou šířku pod
+ * číselníkem a ne jako ikonka vedle něj — musí být na první pohled jasné,
+ * že cenu netřeba ťukat.
+ */
+function tlacitkoZamereni() {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'alarm-pick';
+  btn.innerHTML = `${IKONA_ZAMERENI}<span>${t('alarm.pickInChart')}</span>`;
+  btn.addEventListener('click', vyberHladinuVGrafu);
+  return btn;
+}
+
+/**
+ * Vzdálenost hladiny od vstupu do pozice a od aktuální ceny, v procentech.
+ * Tohle je to, v čem uživatel o hladinách přemýšlí — ne v absolutní ceně.
+ */
+function ukazVzdalenosti() {
+  const prvek = el('alarmDistances');
+  const a = upravovanyAlarm;
+  if (!prvek || !a) return;
+
+  const uroven = a.typ === 'cara' ? alarmy.uroven(a) : Number(a.price);
+  const cena = Number(aktualniCena());
+  const vstup = Number(chartPosition?.entry) || 0;
+
+  const casti = [];
+  if (vstup > 0 && Number.isFinite(uroven)) {
+    casti.push(`${t('alarm.fromEntry')} ${formatPercent(((uroven - vstup) / vstup) * 100)}`);
+  }
+  if (cena > 0 && Number.isFinite(uroven)) {
+    casti.push(`${t('alarm.fromPrice')} ${formatPercent(((uroven - cena) / cena) * 100)}`);
+  }
+  prvek.textContent = casti.join('   ·   ');
+  prvek.hidden = !casti.length;
+}
+
+function radekVzdalenosti() {
+  const prvek = document.createElement('div');
+  prvek.id = 'alarmDistances';
+  prvek.className = 'alarm-distances';
+  return prvek;
+}
+
 function poleCeny() {
   const mista = priceDecimals(upravovanyAlarm.price || aktualniCena());
   const krok = krokCeny(Number(upravovanyAlarm.price) || 0, mista);
 
   const box = document.createElement('div');
   box.className = 'nastaveni-cislo cena';
-
-  // Zaměřovač je první, protože je to rychlejší cesta než ťukat číslo.
-  const zamerovac = document.createElement('button');
-  zamerovac.type = 'button';
-  zamerovac.className = 'nastaveni-zamer';
-  zamerovac.innerHTML = IKONA_ZAMERENI;
-  zamerovac.setAttribute('aria-label', t('alarm.pickInChart'));
-  zamerovac.title = t('alarm.pickInChart');
-  zamerovac.addEventListener('click', vyberHladinuVGrafu);
 
   const pole = document.createElement('input');
   pole.type = 'number';
@@ -1421,6 +1458,7 @@ function poleCeny() {
     const cislo = Math.max(0, Number(hodnota) || 0);
     upravovanyAlarm.price = Number(cislo.toFixed(mista));
     pole.value = String(upravovanyAlarm.price);
+    ukazVzdalenosti();
   };
 
   const tlacitko = (popis, zmena) => {
@@ -1432,7 +1470,58 @@ function poleCeny() {
   };
 
   pole.addEventListener('change', () => nastav(pole.value));
-  box.append(zamerovac, tlacitko('−', -krok), pole, tlacitko('+', krok));
+  box.append(tlacitko('−', -krok), pole, tlacitko('+', krok));
+  return box;
+}
+
+/** Odezva alarmu: zvuk, vibrace, notifikace — vedle sebe místo tří řádků. */
+const ODEZVY = [
+  {
+    klic: 'zvuk',
+    popisek: 'alarm.sound',
+    ikona: '<svg viewBox="0 0 24 24"><path d="M5 9v6h4l5 4V5L9 9z"/>'
+      + '<path d="M17 8a5 5 0 010 8"/></svg>',
+  },
+  {
+    klic: 'vibrace',
+    popisek: 'alarm.vibrate',
+    ikona: '<svg viewBox="0 0 24 24"><rect x="8" y="4" width="8" height="16" rx="2"/>'
+      + '<path d="M4 9v6M20 9v6"/></svg>',
+  },
+  {
+    klic: 'notifikace',
+    popisek: 'alarm.notification',
+    ikona: '<svg viewBox="0 0 24 24"><path d="M18 15V10a6 6 0 10-12 0v5l-2 3h16z"/>'
+      + '<path d="M10 21h4"/></svg>',
+  },
+];
+
+function prepinaceOdezvy() {
+  const box = document.createElement('div');
+  box.className = 'alarm-odezva';
+
+  ODEZVY.forEach(({ klic, popisek, ikona }) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'alarm-odezva-btn';
+    btn.innerHTML = ikona;
+    btn.dataset.klic = klic;
+    btn.setAttribute('aria-label', t(popisek));
+    btn.title = t(popisek);
+    btn.classList.toggle('on', upravovanyAlarm[klic] !== false);
+
+    btn.addEventListener('click', async () => {
+      const zapnout = !btn.classList.contains('on');
+      // Notifikace se musí nejdřív povolit; bez povolení přepínač nenaskočí.
+      if (klic === 'notifikace' && zapnout && !(await zajistiPovoleniNotifikaci())) {
+        el('alarmNote').textContent = t('alarm.notifDenied');
+        return;
+      }
+      upravovanyAlarm[klic] = zapnout;
+      btn.classList.toggle('on', zapnout);
+    });
+    box.append(btn);
+  });
   return box;
 }
 
@@ -1500,9 +1589,13 @@ function postavFormularAlarmu() {
   const prvky = [];
 
   // Co alarm hlídá, se řídí typem: hladinu, šikmou čáru, nebo čas.
-  if (a.typ === 'cas') prvky.push(radekAlarmu('alarm.time', poleCasu()));
-  else if (a.typ === 'cara') prvky.push(radekAlarmu('alarm.trendLevel', textUrovne()));
-  else prvky.push(radekAlarmu('alarm.price', poleCeny()));
+  if (a.typ === 'cas') {
+    prvky.push(radekAlarmu('alarm.time', poleCasu()));
+  } else if (a.typ === 'cara') {
+    prvky.push(radekAlarmu('alarm.trendLevel', textUrovne()), radekVzdalenosti());
+  } else {
+    prvky.push(radekAlarmu('alarm.price', poleCeny()), tlacitkoZamereni(), radekVzdalenosti());
+  }
 
   // Podmínka ani opakování nedávají u času smysl — ten nastane jednou.
   if (a.typ !== 'cas') {
@@ -1527,12 +1620,10 @@ function postavFormularAlarmu() {
 
   prvky.push(
     radekAlarmu('alarm.message', poleZpravy()),
-    radekAlarmu('alarm.sound',
-      ovladacPole({ typ: 'prepinac' }, a.zvuk, (v) => { a.zvuk = v; })),
-    radekAlarmu('alarm.vibrate',
-      ovladacPole({ typ: 'prepinac' }, a.vibrace, (v) => { a.vibrace = v; })),
-    radekAlarmu('alarm.notification',
-      ovladacPole({ typ: 'prepinac' }, a.notifikace, prepniNotifikace)),
+    // Zvuk, vibrace a notifikace jsou tři ikony v jednom řádku, ne tři
+    // řádky s přepínači — formulář se jinak nevejde na displej a tlačítko
+    // Uložit zůstane pod okrajem.
+    radekAlarmu('alarm.alerting', prepinaceOdezvy()),
   );
 
   // Zapnutí se nabízí jen u uloženého alarmu; nový je zapnutý z podstaty.
@@ -1542,23 +1633,8 @@ function postavFormularAlarmu() {
   }
 
   el('alarmBody').replaceChildren(...prvky);
+  ukazVzdalenosti();
   ukazPoznamkuAlarmu();
-}
-
-/**
- * Povolení notifikací se vyžádá až při zapnutí přepínače — ptát se na ně
- * hned po spuštění aplikace je otravné a lidé to odklepnou pryč.
- */
-async function prepniNotifikace(zapnuto) {
-  const a = upravovanyAlarm;
-  if (!a) return;
-  if (zapnuto && !(await zajistiPovoleniNotifikaci())) {
-    a.notifikace = false;
-    postavFormularAlarmu(); // přepínač se vrátí zpátky na vypnuto
-    el('alarmNote').textContent = t('alarm.notifDenied');
-    return;
-  }
-  a.notifikace = zapnuto;
 }
 
 /** Pod formulářem stojí, kdy alarm vyprší, kdy naposled zazněl a co neumí. */

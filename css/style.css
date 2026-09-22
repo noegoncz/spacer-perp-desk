@@ -1109,39 +1109,93 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
 
 /* ---------- alarm ---------- */
 
-/* Uložení je závěr formuláře, ne jedna z voleb — stojí pod ním přes šířku. */
-.sheet-akce { margin-top: 10px; }
+/* Uložení je závěr formuláře, ne jedna z voleb — stojí pod ním přes šířku.
+   Drží se u spodního okraje i při odscrollování: na úzkém displeji jinak
+   zůstalo pod okrajem a uživatel netušil, že ještě něco je. */
+.sheet-akce {
+  position: sticky;
+  bottom: 0;
+  margin-top: 4px;
+  padding: 8px 0 2px;
+  background: var(--surface);
+}
 .sheet-akce .primary-btn { width: 100%; }
 
 .alarm-note {
-  margin: 8px 0 0;
-  font-size: 0.72rem;
+  margin: 6px 0 0;
+  font-size: 0.7rem;
   color: var(--text-dim);
-  line-height: 1.4;
+  line-height: 1.35;
 }
 
-/* Cena má víc míst než perioda indikátoru, proto širší pole. */
-.nastaveni-cislo.cena input { width: 88px; }
+/* Formulář alarmu má hodně řádků, proto jsou nižší než v nastavení
+   indikátoru — musí se vejít i s tlačítkem na zavřený displej Foldu. */
+#sheetAlarm .nastaveni-radek { min-height: 40px; padding: 0; }
+#sheetAlarm .sheet-body { gap: 0; }
 
-/* Zaměřovač: rychlejší cesta k hladině než ťukat číslo na klávesnici. */
-.nastaveni-zamer {
-  width: 34px; height: 34px;
+/* Zaměřovač je hlavní cesta k hladině, tak vypadá jako tlačítko, ne ikonka. */
+.alarm-pick {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 4px;
+  gap: 8px;
+  width: 100%;
+  min-height: var(--tap);
+  margin: 6px 0 2px;
   border: 1px solid var(--alarm);
-  border-radius: 8px;
+  border-radius: 10px;
   background: rgba(34, 211, 238, 0.12);
+  color: var(--alarm);
+  font-size: 0.85rem;
+  font-weight: 600;
   cursor: pointer;
 }
-.nastaveni-zamer svg {
-  width: 18px; height: 18px;
+.alarm-pick:active { background: rgba(34, 211, 238, 0.24); }
+.alarm-pick svg {
+  width: 20px; height: 20px;
   fill: none;
   stroke: var(--alarm);
   stroke-width: 1.8;
   stroke-linecap: round;
 }
+
+/* Vzdálenost hladiny od vstupu a od ceny — v procentech se o hladinách
+   uvažuje, ne v absolutní ceně. */
+.alarm-distances {
+  padding: 2px 0 6px;
+  font-size: 0.74rem;
+  color: var(--text-dim);
+  text-align: right;
+}
+
+/* Odezva: zvuk, vibrace, notifikace vedle sebe místo tří řádků. */
+.alarm-odezva { display: flex; gap: 6px; }
+.alarm-odezva-btn {
+  width: 38px; height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  cursor: pointer;
+}
+.alarm-odezva-btn svg {
+  width: 18px; height: 18px;
+  fill: none;
+  stroke: var(--text-dim);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.alarm-odezva-btn.on {
+  border-color: var(--long);
+  background: rgba(22, 199, 132, 0.18);
+}
+.alarm-odezva-btn.on svg { stroke: var(--long); }
+
+/* Cena má víc míst než perioda indikátoru, proto širší pole. */
+.nastaveni-cislo.cena input { width: 88px; }
 
 /* Hodnota, kterou nelze měnit (úroveň šikmé čáry se počítá z času). */
 .nastaveni-hodnota { font-size: 0.85rem; color: var(--alarm); }
