@@ -9,7 +9,7 @@ import {
   SCHEMATA, maNastaveni, nactiNastaveni, ulozNastaveni, resetNastaveni,
   popisekPole, popisekSekce, omez,
 } from './indikatory.js';
-import { t, setLanguage, applyStaticTexts, JAZYKY } from './i18n.js';
+import { t, setLanguage, applyStaticTexts, JAZYKY, getLocale } from './i18n.js';
 import { priceDecimals, formatPrice, formatPercent } from './format.js';
 import * as alarmy from './alarmy.js';
 import * as store from './store.js';
@@ -1137,6 +1137,11 @@ async function otevriProhlidku(obchod) {
 /** Rozpracovaný alarm v nastavení; do úložiště jde až po klepnutí na Uložit. */
 let upravovanyAlarm = null;
 
+/** Datum a čas v jazyce aplikace, ne podle nastavení telefonu. */
+const datumCas = (ms) => new Date(ms).toLocaleString(getLocale(), {
+  day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit',
+});
+
 /**
  * Zvuk alarmu přes WebAudio — v repozitáři žádný soubor není, tón si
  * prohlížeč spočítá sám.
@@ -1550,7 +1555,9 @@ function poleCasu() {
 function textUrovne() {
   const span = document.createElement('span');
   span.className = 'nastaveni-hodnota';
-  span.textContent = formatPrice(alarmy.uroven(upravovanyAlarm));
+  const uroven = alarmy.uroven(upravovanyAlarm);
+  // Doběhlá čára už žádnou úroveň nemá; pomlčka je poctivější než číslo.
+  span.textContent = Number.isFinite(uroven) ? formatPrice(uroven) : '—';
   return span;
 }
 
@@ -1642,22 +1649,20 @@ function ukazPoznamkuAlarmu() {
   const a = upravovanyAlarm;
   if (!a) return;
   const radky = [t('alarm.hint')];
-  if (a.typ === 'cara') radky.unshift(t('alarm.trendHint'));
+  if (a.typ === 'cara') {
+    const rozsah = alarmy.rozsahCary(a);
+    radky.unshift(alarmy.dobehla(a)
+      ? t('alarm.trendEnded')
+      : t('alarm.trendHint', { date: rozsah ? datumCas(rozsah.do) : '—' }));
+  }
   // Svislá čára se kreslí většinou do historie; ať uživatel hned vidí, že
   // takový alarm nedává smysl, a nedozví se to až po klepnutí na Uložit.
   if (a.typ === 'cas' && !(Number(a.cas) > Date.now())) radky.unshift(t('alarm.needFuture'));
   if (a.platnostDnu && a.typ !== 'cas') {
-    radky.unshift(t('alarm.expiresOn', {
-      date: new Date(Date.now() + a.platnostDnu * 86400e3)
-        .toLocaleString(undefined, { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }),
-    }));
+    radky.unshift(t('alarm.expiresOn', { date: datumCas(Date.now() + a.platnostDnu * 86400e3) }));
   }
   if (a.spusteno) {
-    radky.unshift(t('alarm.lastFired', {
-      time: new Date(a.spusteno).toLocaleString(undefined, {
-        day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit',
-      }),
-    }));
+    radky.unshift(t('alarm.lastFired', { time: datumCas(a.spusteno) }));
   }
   el('alarmNote').textContent = radky.join('\n');
 }

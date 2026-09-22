@@ -349,7 +349,7 @@ kreseb i zavření grafu. Tři typy podle toho, co hlídají:
 | typ | co hlídá | tvar v grafu |
 |---|---|---|
 | `cena` | pevnou hladinu | vodorovná čára (`alarmLine`) |
-| `cara` | úroveň, která se mění s časem — přímka dvěma body, za koncem extrapolovaná | šikmá čára **v původní délce a barvě kresby** (`alarmTrend`) |
+| `cara` | úroveň, která se mění s časem — přímka dvěma body, **platná jen po délku čáry** | šikmá čára **v původní délce a barvě kresby** (`alarmTrend`) |
 | `cas` | okamžik v budoucnosti, cena do toho nemluví | svislá čára (`alarmTime`) |
 
 **Dvě cesty, jak alarm vzniká** (kreslicí nástroj „cenový alarm" zmizel, obě
@@ -391,9 +391,13 @@ Další vlastnosti:
 - ⚠ **Alarm z kresby si nechává barvu i délku té kresby** a mění jen čárkování.
   První verze ho protahovala k pravému okraji, „aby bylo vidět, kudy čára
   povede" — z úhledné trendové čáry se tím stala nekonečná čára přes celý
-  graf a uživatel to odmítl. Hlídaná úroveň se **za koncem čáry počítá dál**
-  (přímka se extrapoluje), jen se to nekreslí; píše se to v poznámce pod
-  formulářem, aby to nebylo skryté chování.
+  graf a uživatel to odmítl.
+- ⚠ **Šikmý alarm platí jen po délku čáry.** Za jejím koncem `uroven()` vrací
+  NaN a alarm se při první kontrole **sám vypne** (zešedne). Rozhodl tak
+  uživatel a je to správně: extrapolovaná přímka by jednou zahoukala kdesi
+  mimo nakreslenou čáru a nikdo by nechápal proč. Do kdy alarm platí, stojí
+  v poznámce pod formulářem; po doběhnutí je tam místo toho výzva čáru
+  posunout. Test: `tools/test-alarm-z-kresby.py`.
 - Jednorázový alarm po zaznění **zešedne, ale nesmaže se** — čára zůstane vidět
   a jde ji zase zapnout. Mazání je vždy na uživateli.
 - Modul drží seznam v paměti a čte `localStorage` jen jednou za běh. Jediný

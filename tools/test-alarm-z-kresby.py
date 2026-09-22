@@ -22,6 +22,21 @@ mock = open(os.path.join(KOREN, 'tools', 'mock-bybit.js'), encoding='utf-8').rea
 mock += """
 localStorage.removeItem('perpdesk.alarms');
 localStorage.removeItem('perpdesk.drawings.JUPUSDT');
+// Řízený WebSocket, ať jde poslat cena jako z burzy (viz test-zive-svicky.py).
+window.__ws = [];
+window.WebSocket = function (url) {
+  this.url = url;
+  this.readyState = 0;
+  this.send = () => {};
+  this.close = () => { this.readyState = 3; };
+  window.__ws.push(this);
+  setTimeout(() => { this.readyState = 1; if (this.onopen) this.onopen(); }, 60);
+};
+window.WebSocket.OPEN = 1;
+window.__zprava = (topic, data) => {
+  window.__ws.forEach((s) => { if (s.onmessage) s.onmessage({ data: JSON.stringify({ topic, data }) }); });
+};
+navigator.vibrate = () => { window.__vibrace = (window.__vibrace || 0) + 1; return true; };
 """
 
 p = Prohlizec()
@@ -118,6 +133,24 @@ print('barva z kresby:', vzhled.get('barva'), ' bodů v grafu:', vzhled.get('bod
 vysledky.append(vybrana and otevreno and a.get('typ') == 'cara'
                 and len(a.get('body') or []) == 2 and kreseb() == 0 and alarmu() == 1
                 and bool(vzhled.get('barva')) and vzhled.get('bodu') == 2)
+print()
+
+# ---- za koncem čáry alarm mlčí a sám se vypne ----
+# Čára se kreslila doprostřed grafu, takže oba její body leží v minulosti:
+# hlídat už nemá co. Cena přes její úroveň tedy nesmí nic spustit.
+uroven = (a.get('body') or [{}])[-1].get('value')
+vibrace_pred = ev("window.__vibrace") or 0
+for cena in (round(uroven - 0.01, 5), round(uroven + 0.01, 5)):
+    t_svicky = ev("window.__graf.getDataList().slice(-1)[0].timestamp")
+    ev("""window.__zprava('kline.240.JUPUSDT', [{ start: %d, open: '%s', high: '%s',
+      low: '%s', close: '%s', volume: '10', confirm: false }])"""
+       % (t_svicky, cena, cena, cena, cena))
+    time.sleep(0.6)
+po = [x for x in ulozene() if x.get('typ') == 'cara'][0]
+zvonilo = (ev("window.__vibrace") or 0) - vibrace_pred
+print('cena protla úroveň doběhlé čáry → zaznění:', zvonilo, '(má být 0)')
+print('doběhlá čára se sama vypnula:', po.get('aktivni') is False)
+vysledky.append(zvonilo == 0 and po.get('aktivni') is False)
 print()
 
 # ---- vodorovná čára → pevná hladina ----

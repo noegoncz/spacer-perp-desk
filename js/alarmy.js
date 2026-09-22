@@ -109,10 +109,19 @@ export function zKresby(symbol, kresba) {
   return { ...zaklad, typ: 'cena', price: Number(prvni.value) || 0 };
 }
 
+/** Od kdy do kdy šikmá čára platí — mimo tenhle úsek se nehlídá. */
+export function rozsahCary(alarm) {
+  const [a, b] = alarm?.body || [];
+  if (!a || !b || !Number.isFinite(a.timestamp) || !Number.isFinite(b.timestamp)) return null;
+  return { od: Math.min(a.timestamp, b.timestamp), do: Math.max(a.timestamp, b.timestamp) };
+}
+
 /**
- * Úroveň, kterou alarm právě hlídá. U šikmé čáry se dopočítá z přímky mezi
- * body a **za koncem extrapoluje** — alarm má smysl hlavně v budoucnosti,
- * kam kresba ještě nesahá.
+ * Úroveň, kterou alarm právě hlídá.
+ *
+ * U šikmé čáry se dopočítá z přímky mezi body a **platí jen po její délku**.
+ * Za koncem vrací NaN: kdyby se přímka extrapolovala donekonečna, alarm by
+ * jednou zahoukal kdesi mimo nakreslenou čáru a uživatel by netušil proč.
  */
 export function uroven(alarm, cas = Date.now()) {
   if (!alarm || alarm.typ === 'cas') return NaN;
@@ -121,8 +130,19 @@ export function uroven(alarm, cas = Date.now()) {
   const [a, b] = alarm.body || [];
   if (!a || !Number.isFinite(a.value)) return NaN;
   if (!b || !Number.isFinite(b.value) || a.timestamp === b.timestamp) return Number(a.value);
+
+  const rozsah = rozsahCary(alarm);
+  if (rozsah && (cas < rozsah.od || cas > rozsah.do)) return NaN;
+
   const podil = (cas - a.timestamp) / (b.timestamp - a.timestamp);
   return a.value + (b.value - a.value) * podil;
+}
+
+/** Doběhla už šikmá čára do konce? Takový alarm se sám vypíná. */
+export function dobehla(alarm, cas = Date.now()) {
+  if (alarm?.typ !== 'cara') return false;
+  const rozsah = rozsahCary(alarm);
+  return Boolean(rozsah) && cas > rozsah.do;
 }
 
 /**
@@ -187,14 +207,23 @@ export function zkontroluj(symbol, cena, ted = Date.now()) {
   if (!Number.isFinite(predchozi)) return [];
 
   const spustene = [];
+  let zmena = false;
   for (const a of seznam()) {
     if (a.symbol !== symbol || !a.aktivni || a.typ === 'cas') continue;
+    // Doběhlá čára se vypne sama; visela by jinak jako aktivní alarm,
+    // který už z principu nemá co hlídat.
+    if (dobehla(a, ted)) {
+      a.aktivni = false;
+      zmena = true;
+      continue;
+    }
     if (!protnuto(a, predchozi, cena, ted)) continue;
     a.spusteno = ted;
     if (!a.opakovat) a.aktivni = false;
     spustene.push(a);
+    zmena = true;
   }
-  if (spustene.length) zapis();
+  if (zmena) zapis();
   return spustene;
 }
 
