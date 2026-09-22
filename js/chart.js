@@ -1032,8 +1032,25 @@ export function createPriceChart(container, layer, handlers = {}) {
       if (zapnuto) tikani = setInterval(() => chart.resize(), 1000);
     },
 
+    /**
+     * Živá svíčka z burzy.
+     *
+     * ⚠ Knihovna chce pole **`timestamp`**, zatímco modul Bybitu mluví o
+     * `time`. Svíčku s cizím názvem pole **tiše zahodí** — nic nevypíše,
+     * jen se nic nestane. Graf pak vypadá, že živé svíčky neumíme, a cena
+     * naskočí až po přenačtení dat. Ověřeno měřením: s `time` zůstala
+     * poslední cena 0.3, s `timestamp` se změnila.
+     */
     updateCandle(bar) {
-      zivyCallback?.(bar);
+      if (!bar) return;
+      zivyCallback?.({
+        timestamp: bar.timestamp ?? bar.time,
+        open: bar.open,
+        high: bar.high,
+        low: bar.low,
+        close: bar.close,
+        volume: bar.volume,
+      });
     },
 
     /* ---------- čáry pozice ---------- */

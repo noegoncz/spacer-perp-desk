@@ -586,6 +586,14 @@ dřív a vlastní zdroj přepíše jen to, co vrátí). Teď stojí v grafu
 `RSI 14 · Close · WMA 14` a `Vol MA 20`, a text se mění s nastavením.
 Test: `tools/test-legenda.py`.
 
+⚠ **Živá svíčka musí mít pole `timestamp`, ne `time`.** Knihovna svíčku
+s cizím názvem pole **tiše zahodí** — nic nevypíše, jen se nic nestane.
+Modul Bybitu mluví o `time`, takže překlad dělá `updateCandle()` v chart.js.
+Bez něj vypadalo, že živé svíčky vůbec neumíme: cena se v grafu hnula až po
+přenačtení dat při změně timeframu. Odběr `kline.{interval}.{symbol}` přitom
+běžel správně celou dobu. Ověřeno měřením: s `time` zůstala poslední cena
+0.3, s `timestamp` se změnila. Test: `tools/test-zive-svicky.py`.
+
 ⚠ `klinecharts.getChart()` ve verzi 10 **neexistuje**. K instanci grafu se
 z testu dostaneš jedině obalením `klinecharts.init` (viz `tools/mock-bybit.js`,
 instance je pak v `window.__graf`).
@@ -726,7 +734,24 @@ Pořadí, jak se na to má chodit. Odškrtnuté jsou hotové.
 - [ ] **Volume dál**: přesnost (precision), popisky na cenové ose.
 - [ ] **Nastavení ostatních indikátorů**: MACD, KDJ, MA, EMA, BOLL, SAR mají zatím
   jen periody (a výšku panelu) — chybí barvy a přepínače viditelnosti čar.
-- [ ] **Alarmy**: nastavení nad rámec zapnuto/vypnuto.
+- [ ] **Alarmy — vlastní obrazovka a vzhled.** Podle TradingView (screenshot
+  2026-09-22, dialog „Create alert"). Převzít: podmínka (protnutí hladiny,
+  případně směr nahoru/dolů), **Trigger** (jen jednou / při každém protnutí),
+  **Expiration** (platnost, pak alarm sám zmizí), vlastní **zpráva** a volba
+  způsobu upozornění. V grafu má mít alarm **jinou čáru než kresby** —
+  čerchovanou, vlastní barvou, s ikonou budíku u popisku. Zadávání musí být
+  pohodlné, ne přes kreslicí nástroj.
+- [ ] **Notifikace při zavřené aplikaci — rozhodnout cestu.** Když je aplikace
+  zavřená, žádný její kód neběží; service worker prohlížeč uspí. Periodic
+  Background Sync o časování rozhoduje sám (hodiny, ne vteřiny) a je
+  experimentální, takže na cenové alarmy nestačí. Zbývají dvě cesty:
+  **(a) server** hlídá veřejné ceny a pošle web push — tak to dělá TradingView
+  i TabTrader; API klíč by ven nešel, jen pár a hladina, ale hladiny alarmů
+  by telefon opustily a hosting je potřeba platit a udržovat;
+  **(b) APK** (checkpoint 10) s během na pozadí — nic neodchází, nic se
+  neplatí, ale Samsung služby na pozadí zabíjí, takže to chce výjimku
+  z optimalizace baterie. ⚠ Uživatel používá **Brave**; u varianty (a) nejdřív
+  ověřit push přímo na jeho telefonu.
 - [ ] **Volume profile** jako vlastní indikátor (odhad ze svíček, viz checkpoint 3).
 
 ### Checkpointy
