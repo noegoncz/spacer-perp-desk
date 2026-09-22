@@ -34,7 +34,8 @@ starý kód.
 | `test-rsi-nastaveni.py` | typ průměru a zdroj ceny u RSI skutečně mění křivku |
 | `test-vyhlazovani.py` | SMA/EMA/SMMA/WMA proti ručně spočítaným hodnotám |
 | `test-lista-panely-nastaveni.py` | výška panelu indikátoru, zešednutí závislých voleb |
-| `test-alarmy.py` | cenový alarm: zadání, hladina v grafu, zaznění při protnutí, opakování |
+| `test-alarmy.py` | cenový alarm: zadání křížem, hladina v grafu, zaznění při protnutí, opakování |
+| `test-alarm-z-kresby.py` | zvonek u kresby z ní udělá alarm (trendová → čára, vodorovná → hladina, svislá → čas) |
 
 ⚠ Dotykovým bodům u gest dvěma prsty dávej výslovné `id`, jinak se pohyb
 zbylého prstu tváří jako třetí prst a test hlásí odskok, který v aplikaci není.

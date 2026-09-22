@@ -74,7 +74,7 @@ let chartOrders = [];
 let chartLineKey = '';     // otisk čar, aby se nepřekreslovaly při každém ticku
 let ordersTimer = null;
 let magnetZapnut = store.loadMagnet();
-let poslednicCena = null;  // kvůli detekci protnutí kresby cenou
+let poslednicCena = null;  // poslední cena z grafu — předvyplní hladinu alarmu
 
 const client = new BybitClient({
   onPositions(list) {
@@ -94,7 +94,7 @@ const client = new BybitClient({
   onKline(bar) {
     if (!chart || !chartSymbol) return;
     chart.updateCandle(bar);
-    zkontrolujAlarmyKreseb(bar.close, bar.time);
+    poslednicCena = bar.close;
     zkontrolujHladiny(chartSymbol, bar.close);
   },
   onDiag() {
@@ -159,7 +159,20 @@ function boot() {
   prepniTridu('onlyFavBtn', 'active', jenOblibene);
   wireEvents();
   zapojPrejeti();
+  odemkniZvuk();
+  hlidejCasoveAlarmy();
   connectIfPossible();
+}
+
+/**
+ * Prohlížeč nepustí zvuk, dokud uživatel na stránku nesáhne. Kontext se
+ * proto probudí při prvním dotyku — ve chvíli, kdy má alarm zaznít, už
+ * uživatel telefon v ruce mít nemusí.
+ */
+function odemkniZvuk() {
+  const probud = () => pripravZvuk();
+  document.addEventListener('pointerdown', probud, { once: true, passive: true });
+  document.addEventListener('touchstart', probud, { once: true, passive: true });
 }
 
 /**
@@ -256,7 +269,7 @@ function wireEvents() {
   naUdalost('onlyFavBtn', 'click', prepniJenOblibene);
 
   naUdalost('indicatorBtn', 'click', () => otevriNabidku('sheetIndicators'));
-  naUdalost('alarmBtn', 'click', () => otevriAlarm(null));
+  naUdalost('alarmBtn', 'click', novyAlarmKrizem);
   naUdalost('alarmSaveBtn', 'click', ulozAlarm);
   naUdalost('alarmDeleteBtn', 'click', smazAlarm);
   naUdalost('settingsResetBtn', 'click', vratVychoziNastaveni);
@@ -264,10 +277,7 @@ function wireEvents() {
   document.addEventListener('fullscreenchange', osetriCelouObrazovku);
 
   naUdalost('styleDeleteBtn', 'click', () => chart?.deleteSelected());
-  naUdalost('styleAlarmBtn', 'click', () => {
-    const id = chart?.selectedId();
-    if (id) chart.setAlarm(id, !chart.selectedStyle().alarm);
-  });
+  naUdalost('styleAlarmBtn', 'click', alarmZKresby);
 
   document.querySelectorAll('.tool-btn[data-tool]').forEach((btn) => {
     btn.addEventListener('click', () => vyberNastroj(btn.dataset.tool));
@@ -1122,103 +1132,151 @@ async function otevriProhlidku(obchod) {
   }
 }
 
-/* ---------- alarmy ---------- */
-
-/**
- * Hodnota kresby v daném čase. Vodorovná čára má jednu úroveň, u dvoubodových
- * se hodnota dopočítá (a za koncem extrapoluje) z přímky mezi body.
- */
-function hodnotaKresbyVCase(kresba, cas) {
-  const body = kresba.points || [];
-  if (!body.length) return null;
-  if (body.length === 1 || !Number.isFinite(body[1]?.timestamp)) {
-    return Number.isFinite(body[0].value) ? body[0].value : null;
-  }
-  const [a, b] = body;
-  if (!Number.isFinite(a.timestamp) || a.timestamp === b.timestamp) return a.value;
-  const podil = (cas - a.timestamp) / (b.timestamp - a.timestamp);
-  return a.value + (b.value - a.value) * podil;
-}
-
-/**
- * Alarm zavěšený na kresbě (zvonek v paletě vzhledu). Hlídá i šikmou čáru,
- * což hladinový alarm neumí. Je jednorázový — po zaznění se vypne, jinak by
- * zvonil při každém ticku.
- */
-function zkontrolujAlarmyKreseb(cena, cas) {
-  if (!Number.isFinite(cena)) return;
-  const kresby = chart.getDrawings().filter((k) => k.style?.alarm);
-
-  for (const kresba of kresby) {
-    const uroven = hodnotaKresbyVCase(kresba, cas);
-    if (uroven === null || poslednicCena === null) continue;
-
-    const pred = poslednicCena - uroven;
-    const ted = cena - uroven;
-    if (pred !== 0 && (pred < 0) === (ted < 0)) continue; // neprotnuto
-
-    ozviSe({ zvuk: true, vibrace: true });
-    ui.showNotice(t('alarm.crossed', { price: formatPrice(uroven) }));
-    chart.setAlarm(kresba.id, false);
-  }
-  poslednicCena = cena;
-}
-
 /* ---------- cenové alarmy ---------- */
 
 /** Rozpracovaný alarm v nastavení; do úložiště jde až po klepnutí na Uložit. */
 let upravovanyAlarm = null;
 
 /**
- * Pípnutí přes WebAudio. Zvuk v repozitáři schválně není — dvě krátká
- * pípnutí spočítá prohlížeč sám a nic se nemusí stahovat.
+ * Zvuk alarmu přes WebAudio — v repozitáři žádný soubor není, tón si
+ * prohlížeč spočítá sám.
+ *
+ * ⚠ Sinus na 880 Hz byl v telefonu v kapse skoro neslyšet. Alarm musí být
+ * pronikavý, ne hezký: obdélníková vlna je plná vyšších harmonických, na
+ * které je sluch (a reproduktor telefonu) citlivější, a tón skáče mezi dvěma
+ * výškami — kolísání si ucho všimne spíš než stálého pípnutí.
  */
 let zvukovyKontext = null;
 
-function zapipej() {
+/** (posun v sekundách, frekvence) — houkačka, ne cinknutí. */
+const TONY_ALARMU = [
+  [0, 988], [0.18, 1319], [0.36, 988], [0.54, 1319], [0.72, 988], [0.9, 1319],
+];
+const DELKA_TONU = 0.16;
+const HLASITOST = 0.9;
+
+/**
+ * Prohlížeč nespustí zvuk, dokud uživatel na stránku nesáhl. Kontext se
+ * proto vyrábí a probouzí při prvním dotyku, ne až ve chvíli, kdy alarm
+ * zazvoní — tehdy už uživatel telefon v ruce mít nemusí.
+ */
+function pripravZvuk() {
   try {
     const Kontext = window.AudioContext || window.webkitAudioContext;
-    if (!Kontext) return;
+    if (!Kontext) return null;
     zvukovyKontext = zvukovyKontext || new Kontext();
-    zvukovyKontext.resume?.();
-    const start = zvukovyKontext.currentTime;
-    [0, 0.3].forEach((odstup) => {
-      const ton = zvukovyKontext.createOscillator();
-      const hlasitost = zvukovyKontext.createGain();
-      ton.type = 'sine';
-      ton.frequency.value = 880;
-      // Náběh a doznění, ať to necvakne. Nula v exponenciále nejde, proto 0.0001.
-      hlasitost.gain.setValueAtTime(0.0001, start + odstup);
-      hlasitost.gain.exponentialRampToValueAtTime(0.4, start + odstup + 0.02);
-      hlasitost.gain.exponentialRampToValueAtTime(0.0001, start + odstup + 0.22);
-      ton.connect(hlasitost).connect(zvukovyKontext.destination);
-      ton.start(start + odstup);
-      ton.stop(start + odstup + 0.24);
-    });
+    if (zvukovyKontext.state === 'suspended') zvukovyKontext.resume?.();
+    return zvukovyKontext;
   } catch {
-    // Zvuk je bonus; vibrace a pruh v UI fungují i bez něj.
+    return null;
   }
 }
 
-function ozviSe({ zvuk, vibrace }) {
-  if (vibrace !== false) navigator.vibrate?.([120, 70, 120]);
-  if (zvuk !== false) zapipej();
+function zapipej() {
+  const kontext = pripravZvuk();
+  if (!kontext) return;
+  try {
+    const start = kontext.currentTime;
+    TONY_ALARMU.forEach(([odstup, frekvence]) => {
+      const ton = kontext.createOscillator();
+      const hlasitost = kontext.createGain();
+      ton.type = 'square';
+      ton.frequency.value = frekvence;
+      // Náběh a doznění, ať to necvakne. Nula v exponenciále nejde, proto 0.0001.
+      hlasitost.gain.setValueAtTime(0.0001, start + odstup);
+      hlasitost.gain.exponentialRampToValueAtTime(HLASITOST, start + odstup + 0.01);
+      hlasitost.gain.exponentialRampToValueAtTime(0.0001, start + odstup + DELKA_TONU);
+      ton.connect(hlasitost).connect(kontext.destination);
+      ton.start(start + odstup);
+      ton.stop(start + odstup + DELKA_TONU + 0.01);
+    });
+  } catch {
+    // Zvuk je bonus; vibrace, notifikace a pruh v UI fungují i bez něj.
+  }
 }
 
-/** Nová cena páru — zkontroluje hladiny a ohlásí, co zaznělo. */
+/**
+ * Systémová notifikace.
+ *
+ * ⚠ Musí jít přes **service worker**, ne přes `new Notification()` — mobilní
+ * Chrome konstruktor nepodporuje a vyhodí výjimku. Doručí se, jen dokud
+ * stránka žije (i na pozadí); notifikace se zavřenou aplikací potřebuje APK.
+ */
+async function ukazNotifikaci(alarm, text) {
+  if (alarm.notifikace === false) return;
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  try {
+    const registrace = await navigator.serviceWorker?.getRegistration();
+    if (!registrace?.showNotification) return;
+    await registrace.showNotification(t('alarm.notifTitle', { symbol: alarm.symbol }), {
+      body: text,
+      icon: 'icons/icon-192.png',
+      badge: 'icons/icon-192.png',
+      tag: `alarm-${alarm.id}`,
+      vibrate: [120, 70, 120],
+      requireInteraction: true, // ať nezmizí dřív, než se na telefon podíváš
+    });
+  } catch {
+    // Notifikace je bonus, ostatní odezva běží dál.
+  }
+}
+
+/** Povolení se ptá až ve chvíli, kdy si uživatel notifikace vysloveně zapne. */
+async function zajistiPovoleniNotifikaci() {
+  if (!('Notification' in window)) return false;
+  if (Notification.permission === 'granted') return true;
+  if (Notification.permission === 'denied') return false;
+  try {
+    return (await Notification.requestPermission()) === 'granted';
+  } catch {
+    return false;
+  }
+}
+
+function ozviSe(alarm, text) {
+  if (alarm.vibrace !== false) navigator.vibrate?.([120, 70, 120, 70, 200]);
+  if (alarm.zvuk !== false) zapipej();
+  ukazNotifikaci(alarm, text);
+}
+
+/** Text, který uživatel uvidí: jeho vlastní zpráva, jinak co se stalo. */
+function textAlarmu(a) {
+  if (a.zprava) return a.zprava;
+  if (a.typ === 'cas') return t('alarm.timeHit', { symbol: a.symbol });
+  return t('alarm.hit', { symbol: a.symbol, price: formatPrice(alarmy.uroven(a)) });
+}
+
+function ohlasAlarmy(spustene) {
+  for (const a of spustene) {
+    const text = textAlarmu(a);
+    ozviSe(a, text);
+    ui.showNotice(text);
+  }
+}
+
+/** Nová cena páru — zkontroluje alarmy a ohlásí, co zaznělo. */
 function zkontrolujHladiny(symbol, cena) {
   const spustene = alarmy.zkontroluj(symbol, cena);
   if (!spustene.length) return;
-
-  for (const a of spustene) {
-    ozviSe(a);
-    ui.showNotice(
-      a.zprava
-      || t('alarm.hit', { symbol: a.symbol, price: formatPrice(a.price) }),
-    );
-  }
-  // Jednorázový alarm po zaznění zešedne, takže se hladiny musí překreslit.
+  ohlasAlarmy(spustene);
+  // Jednorázový alarm po zaznění zešedne, takže se čáry musí překreslit.
   if (symbol === chartSymbol) vykresliAlarmy();
+}
+
+/**
+ * Časové alarmy tikají i bez cen a bez otevřeného grafu, takže se hlídají
+ * vlastním odpočtem. Deset sekund je dost jemné — přesnost na vteřinu u
+ * upozornění na čas nikdo nepotřebuje.
+ */
+const KROK_CASOVYCH_ALARMU = 10000;
+
+function hlidejCasoveAlarmy() {
+  setInterval(() => {
+    const spustene = alarmy.zkontrolujCas();
+    if (!spustene.length) return;
+    ohlasAlarmy(spustene);
+    vykresliAlarmy();
+  }, KROK_CASOVYCH_ALARMU);
 }
 
 /** Cena, na které alarm nabídne hladinu: živá svíčka, jinak mark nebo trh. */
@@ -1228,6 +1286,7 @@ function aktualniCena() {
 
 /** Popisek u čáry: vlastní zpráva, jinak jen značka se směrem podmínky. */
 function popisAlarmu(a) {
+  if (a.typ === 'cas') return a.zprava || t('alarm.label');
   const smer = a.smer === 'up' ? '↑ ' : a.smer === 'down' ? '↓ ' : '';
   return smer + (a.zprava || t('alarm.label'));
 }
@@ -1238,12 +1297,46 @@ function vykresliAlarmy() {
   chart.setAlarmLines(
     seznam.map((a) => ({
       id: a.id,
+      typ: a.typ,
       price: a.price,
+      body: a.body,
+      cas: a.cas,
       aktivni: a.aktivni,
       title: popisAlarmu(a),
     })),
   );
   prepniTridu('alarmBtn', 'ma-alarm', seznam.some((a) => a.aktivni));
+}
+
+/**
+ * Nový alarm se zadává **křížem v grafu**, ne číslem: hladinu si uživatel
+ * ukáže prstem tam, kam se dívá. Číselník v nastavení zůstává na doladění.
+ */
+function novyAlarmKrizem() {
+  if (!chart || !chartSymbol) return;
+  vyberNastroj(''); // rozdělané kreslení by se s křížem pralo
+  chart.pickPrice(t('alarm.pickHint'), (bod) => {
+    if (!Number.isFinite(bod?.value)) return;
+    // Kříž vrací cenu s plnou přesností pixelu; do alarmu patří zaokrouhlená
+    // na platná místa páru, jinak by v nastavení stálo 0,3021886009304391.
+    otevriAlarm(alarmy.novy(chartSymbol, zaokrouhliCenu(bod.value)));
+  });
+}
+
+/**
+ * Zvonek u vybrané kresby. Z kresby se stane alarm se stejnou geometrií:
+ * vodorovná a cenová čára hlídá hladinu, trendová svou úroveň v čase,
+ * svislá okamžik. Kresba tím zaniká — jinak by na stejném místě ležely
+ * dvě čáry a nebylo by poznat, která z nich zvoní.
+ */
+function alarmZKresby() {
+  if (!chart || !chartSymbol) return;
+  const kresba = chart.selectedDrawing();
+  if (!kresba) return;
+  const alarm = alarmy.zKresby(chartSymbol, kresba);
+  if (alarm.typ === 'cena') alarm.price = zaokrouhliCenu(alarm.price);
+  chart.deleteSelected();
+  otevriAlarm(alarm);
 }
 
 /**
@@ -1256,16 +1349,34 @@ function krokCeny(cena, mista) {
   return Math.max(nejmensi, Number((cena * 0.001).toFixed(mista)));
 }
 
+/** Na tolik desetinných míst, kolik jich má cena páru. */
+const zaokrouhliCenu = (cena) => Number(Number(cena).toFixed(priceDecimals(cena)));
+
 function otevriAlarm(alarm) {
   if (!chartSymbol) return;
-  upravovanyAlarm = alarm
-    ? { ...alarm }
-    : alarmy.novy(chartSymbol, Number(aktualniCena()) || 0);
+  upravovanyAlarm = { ...(alarm || alarmy.novy(chartSymbol, Number(aktualniCena()) || 0)) };
 
-  el('alarmTitle').textContent = t(alarm ? 'alarm.edit' : 'alarm.new');
-  el('alarmDeleteBtn').hidden = !alarm;
+  // O nadpisu i koši rozhoduje `id`: rozpracovaný alarm, který se vrátil
+  // z výběru hladiny v grafu, je pořád ještě nový.
+  const ulozeny = Boolean(upravovanyAlarm.id);
+  el('alarmTitle').textContent = t(ulozeny ? 'alarm.edit' : 'alarm.new');
+  el('alarmDeleteBtn').hidden = !ulozeny;
   postavFormularAlarmu();
   otevriNabidku('sheetAlarm');
+}
+
+/**
+ * Doladění hladiny ukázáním v grafu. Nastavení se na chvíli zavře, aby bylo
+ * na graf vidět, a po potvrzení se otevře zpátky i s ostatními volbami.
+ */
+function vyberHladinuVGrafu() {
+  if (!chart || !chartSymbol || !upravovanyAlarm) return;
+  const rozpracovany = upravovanyAlarm;
+  zavriNabidky();
+  chart.pickPrice(t('alarm.pickHint'), (bod) => {
+    if (Number.isFinite(bod?.value)) rozpracovany.price = zaokrouhliCenu(bod.value);
+    otevriAlarm(rozpracovany);
+  });
 }
 
 /** Řádek nastavení: popisek vlevo, ovládání vpravo. */
@@ -1279,12 +1390,26 @@ function radekAlarmu(klic, ovladac) {
   return radek;
 }
 
+const IKONA_ZAMERENI =
+  '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/>'
+  + '<path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>';
+
 function poleCeny() {
   const mista = priceDecimals(upravovanyAlarm.price || aktualniCena());
   const krok = krokCeny(Number(upravovanyAlarm.price) || 0, mista);
 
   const box = document.createElement('div');
   box.className = 'nastaveni-cislo cena';
+
+  // Zaměřovač je první, protože je to rychlejší cesta než ťukat číslo.
+  const zamerovac = document.createElement('button');
+  zamerovac.type = 'button';
+  zamerovac.className = 'nastaveni-zamer';
+  zamerovac.innerHTML = IKONA_ZAMERENI;
+  zamerovac.setAttribute('aria-label', t('alarm.pickInChart'));
+  zamerovac.title = t('alarm.pickInChart');
+  zamerovac.addEventListener('click', vyberHladinuVGrafu);
+
   const pole = document.createElement('input');
   pole.type = 'number';
   pole.inputMode = 'decimal';
@@ -1307,8 +1432,37 @@ function poleCeny() {
   };
 
   pole.addEventListener('change', () => nastav(pole.value));
-  box.append(tlacitko('−', -krok), pole, tlacitko('+', krok));
+  box.append(zamerovac, tlacitko('−', -krok), pole, tlacitko('+', krok));
   return box;
+}
+
+/** Vstup `datetime-local` — na Androidu otevře nativní výběr data a času. */
+function poleCasu() {
+  const pad = (n) => String(n).padStart(2, '0');
+  const doVstupu = (ms) => {
+    const d = new Date(ms);
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+      + `T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
+  const pole = document.createElement('input');
+  pole.type = 'datetime-local';
+  pole.className = 'nastaveni-text';
+  pole.value = doVstupu(Number(upravovanyAlarm.cas) || Date.now());
+  pole.addEventListener('change', () => {
+    const ms = new Date(pole.value).getTime();
+    if (Number.isFinite(ms)) upravovanyAlarm.cas = ms;
+    ukazPoznamkuAlarmu();
+  });
+  return pole;
+}
+
+/** U šikmé čáry se hladina nezadává — mění se s časem, tak se jen ukáže. */
+function textUrovne() {
+  const span = document.createElement('span');
+  span.className = 'nastaveni-hodnota';
+  span.textContent = formatPrice(alarmy.uroven(upravovanyAlarm));
+  return span;
 }
 
 function poleZpravy() {
@@ -1343,29 +1497,43 @@ function postavFormularAlarmu() {
       ),
     );
 
-  const prvky = [
-    radekAlarmu('alarm.price', poleCeny()),
-    volba('alarm.condition', [
-      { hodnota: 'any', klicPopisku: 'alarm.crossAny' },
-      { hodnota: 'up', klicPopisku: 'alarm.crossUp' },
-      { hodnota: 'down', klicPopisku: 'alarm.crossDown' },
-    ], a.smer, (v) => { a.smer = v; }),
-    volba('alarm.trigger', [
-      { hodnota: false, klicPopisku: 'alarm.onlyOnce' },
-      { hodnota: true, klicPopisku: 'alarm.everyTime' },
-    ], Boolean(a.opakovat), (v) => { a.opakovat = v; }),
-    volba('alarm.expiration', [
-      { hodnota: 0, klicPopisku: 'alarm.noExpiry' },
-      { hodnota: 1, klicPopisku: 'alarm.day1' },
-      { hodnota: 7, klicPopisku: 'alarm.day7' },
-      { hodnota: 30, klicPopisku: 'alarm.day30' },
-    ], Number(a.platnostDnu) || 0, (v) => { a.platnostDnu = v; }),
+  const prvky = [];
+
+  // Co alarm hlídá, se řídí typem: hladinu, šikmou čáru, nebo čas.
+  if (a.typ === 'cas') prvky.push(radekAlarmu('alarm.time', poleCasu()));
+  else if (a.typ === 'cara') prvky.push(radekAlarmu('alarm.trendLevel', textUrovne()));
+  else prvky.push(radekAlarmu('alarm.price', poleCeny()));
+
+  // Podmínka ani opakování nedávají u času smysl — ten nastane jednou.
+  if (a.typ !== 'cas') {
+    prvky.push(
+      volba('alarm.condition', [
+        { hodnota: 'any', klicPopisku: 'alarm.crossAny' },
+        { hodnota: 'up', klicPopisku: 'alarm.crossUp' },
+        { hodnota: 'down', klicPopisku: 'alarm.crossDown' },
+      ], a.smer, (v) => { a.smer = v; }),
+      volba('alarm.trigger', [
+        { hodnota: false, klicPopisku: 'alarm.onlyOnce' },
+        { hodnota: true, klicPopisku: 'alarm.everyTime' },
+      ], Boolean(a.opakovat), (v) => { a.opakovat = v; }),
+      volba('alarm.expiration', [
+        { hodnota: 0, klicPopisku: 'alarm.noExpiry' },
+        { hodnota: 1, klicPopisku: 'alarm.day1' },
+        { hodnota: 7, klicPopisku: 'alarm.day7' },
+        { hodnota: 30, klicPopisku: 'alarm.day30' },
+      ], Number(a.platnostDnu) || 0, (v) => { a.platnostDnu = v; }),
+    );
+  }
+
+  prvky.push(
     radekAlarmu('alarm.message', poleZpravy()),
     radekAlarmu('alarm.sound',
       ovladacPole({ typ: 'prepinac' }, a.zvuk, (v) => { a.zvuk = v; })),
     radekAlarmu('alarm.vibrate',
       ovladacPole({ typ: 'prepinac' }, a.vibrace, (v) => { a.vibrace = v; })),
-  ];
+    radekAlarmu('alarm.notification',
+      ovladacPole({ typ: 'prepinac' }, a.notifikace, prepniNotifikace)),
+  );
 
   // Zapnutí se nabízí jen u uloženého alarmu; nový je zapnutý z podstaty.
   if (a.id) {
@@ -1377,12 +1545,32 @@ function postavFormularAlarmu() {
   ukazPoznamkuAlarmu();
 }
 
+/**
+ * Povolení notifikací se vyžádá až při zapnutí přepínače — ptát se na ně
+ * hned po spuštění aplikace je otravné a lidé to odklepnou pryč.
+ */
+async function prepniNotifikace(zapnuto) {
+  const a = upravovanyAlarm;
+  if (!a) return;
+  if (zapnuto && !(await zajistiPovoleniNotifikaci())) {
+    a.notifikace = false;
+    postavFormularAlarmu(); // přepínač se vrátí zpátky na vypnuto
+    el('alarmNote').textContent = t('alarm.notifDenied');
+    return;
+  }
+  a.notifikace = zapnuto;
+}
+
 /** Pod formulářem stojí, kdy alarm vyprší, kdy naposled zazněl a co neumí. */
 function ukazPoznamkuAlarmu() {
   const a = upravovanyAlarm;
   if (!a) return;
   const radky = [t('alarm.hint')];
-  if (a.platnostDnu) {
+  if (a.typ === 'cara') radky.unshift(t('alarm.trendHint'));
+  // Svislá čára se kreslí většinou do historie; ať uživatel hned vidí, že
+  // takový alarm nedává smysl, a nedozví se to až po klepnutí na Uložit.
+  if (a.typ === 'cas' && !(Number(a.cas) > Date.now())) radky.unshift(t('alarm.needFuture'));
+  if (a.platnostDnu && a.typ !== 'cas') {
     radky.unshift(t('alarm.expiresOn', {
       date: new Date(Date.now() + a.platnostDnu * 86400e3)
         .toLocaleString(undefined, { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }),
@@ -1401,8 +1589,12 @@ function ukazPoznamkuAlarmu() {
 function ulozAlarm() {
   const a = upravovanyAlarm;
   if (!a) return;
-  if (!(Number(a.price) > 0)) {
+  if (a.typ === 'cena' && !(Number(a.price) > 0)) {
     el('alarmNote').textContent = t('alarm.needPrice');
+    return;
+  }
+  if (a.typ === 'cas' && !(Number(a.cas) > Date.now())) {
+    el('alarmNote').textContent = t('alarm.needFuture');
     return;
   }
   // Úprava vypnutého alarmu ho zase zapne — kdo mění hladinu, chce ho hlídat.
@@ -1497,7 +1689,6 @@ function zobrazPaletu(styl) {
   oznac('styleColors', 'color', styl.color);
   oznac('styleWidths', 'width', styl.width);
   oznac('styleOpacity', 'opacity', styl.opacity);
-  el('styleAlarmBtn').classList.toggle('on', Boolean(styl.alarm));
 }
 
 const NABIDKY = ['sheetIndicators', 'sheetSettings', 'sheetAlarm'];

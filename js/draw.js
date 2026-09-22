@@ -102,6 +102,7 @@ export function createTouchDrawing({
   let prichyceno = false; // kříž sedí na ceně svíčky
   let editace = null; // { body, index }
   let smycka = null;
+  let vlastniNavod = ''; // přebije text v pruhu, když se neklade bod kresby
 
   /** Magnet: u svíčky se kříž sám nalepí na otevření, high, low nebo close. */
   function sMagnetem(x, y) {
@@ -112,6 +113,9 @@ export function createTouchDrawing({
 
   function navod() {
     if (rezim === 'create') {
+      // Vlastní popisek má přednost — u alarmu se neklade bod kresby,
+      // ale hladina, a „1. bod z 1" by uživateli nic neřeklo.
+      if (vlastniNavod) return vlastniNavod;
       const cislo = celkem - potreba + 1;
       return potreba === 1 && celkem > 1
         ? t('draw.finish', { n: cislo, total: celkem })
@@ -312,6 +316,7 @@ export function createTouchDrawing({
     }
     const body = hotoveBody.map((b) => fromPixel(b.x, b.y));
     hotoveBody = [];
+    vlastniNavod = '';
     nastavRezim('idle');
     onCreate?.(body);
   }
@@ -319,17 +324,22 @@ export function createTouchDrawing({
   function konec() {
     hotoveBody = [];
     editace = null;
+    vlastniNavod = '';
     nastavRezim('idle');
     onCancel?.();
   }
 
   return {
-    /** Spustí kreslení nové kresby o daném počtu bodů. */
-    beginCreate(pocetBodu) {
+    /**
+     * Spustí kladení bodů křížem. `popis` přebije návod v pruhu — používá
+     * ho zadávání alarmu, které bod kresby neklade.
+     */
+    beginCreate(pocetBodu, popis = '') {
       hotoveBody = [];
       potreba = pocetBodu;
       celkem = pocetBodu;
       editace = null;
+      vlastniNavod = popis;
       prichyceno = false;
       kriz = { x: layer.clientWidth / 2, y: layer.clientHeight / 2 };
       nastavRezim('create');

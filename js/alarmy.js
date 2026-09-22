@@ -12,6 +12,15 @@
 
 import * as store from './store.js';
 
+/**
+ * Typ alarmu podle toho, co hlídá:
+ *   cena — pevná hladina (vodorovná čára),
+ *   cara — šikmá čára ze dvou bodů; hlídaná úroveň se mění s časem
+ *          a za koncem se extrapoluje, jako by čára pokračovala,
+ *   cas  — okamžik v budoucnosti (svislá čára), cena do toho nemluví.
+ */
+export const TYPY = ['cena', 'cara', 'cas'];
+
 /** Podmínka: protnutí kterýmkoli směrem, jen zdola nahoru, jen shora dolů. */
 export const SMERY = ['any', 'up', 'down'];
 
@@ -55,7 +64,10 @@ export function novy(symbol, cena) {
   return {
     id: '',
     symbol,
+    typ: 'cena',
     price: Number(cena) || 0,
+    body: null,   // typ 'cara': dva body {timestamp, value}
+    cas: null,    // typ 'cas': okamžik v ms
     smer: 'any',
     opakovat: false,
     platnostDnu: 0,
@@ -63,9 +75,51 @@ export function novy(symbol, cena) {
     zprava: '',
     zvuk: true,
     vibrace: true,
+    notifikace: true,
     aktivni: true,
     spusteno: null,
   };
+}
+
+/**
+ * Alarm z hotové kresby. Uživatel nakreslí čáru tam, kam se dívá, a zvonkem
+ * z ní udělá alarm — nemusí pak hledat cenu na klávesnici.
+ *
+ * Svislá čára hlídá čas, dvoubodové čáry hlídají svou úroveň v čase,
+ * jednobodové (vodorovná, cenová) hlídají pevnou hladinu.
+ */
+export function zKresby(symbol, kresba) {
+  const zaklad = novy(symbol, 0);
+  const body = (kresba?.points || []).filter(Boolean);
+  const prvni = body[0] || {};
+
+  if (kresba?.name === 'verticalStraightLine') {
+    return { ...zaklad, typ: 'cas', cas: Number(prvni.timestamp) || Date.now() };
+  }
+  if (body.length >= 2 && Number.isFinite(body[1]?.value)) {
+    return {
+      ...zaklad,
+      typ: 'cara',
+      body: body.slice(0, 2).map((b) => ({ timestamp: b.timestamp, value: b.value })),
+    };
+  }
+  return { ...zaklad, typ: 'cena', price: Number(prvni.value) || 0 };
+}
+
+/**
+ * Úroveň, kterou alarm právě hlídá. U šikmé čáry se dopočítá z přímky mezi
+ * body a **za koncem extrapoluje** — alarm má smysl hlavně v budoucnosti,
+ * kam kresba ještě nesahá.
+ */
+export function uroven(alarm, cas = Date.now()) {
+  if (!alarm || alarm.typ === 'cas') return NaN;
+  if (alarm.typ !== 'cara') return Number(alarm.price);
+
+  const [a, b] = alarm.body || [];
+  if (!a || !Number.isFinite(a.value)) return NaN;
+  if (!b || !Number.isFinite(b.value) || a.timestamp === b.timestamp) return Number(a.value);
+  const podil = (cas - a.timestamp) / (b.timestamp - a.timestamp);
+  return a.value + (b.value - a.value) * podil;
 }
 
 /**
@@ -103,9 +157,9 @@ export function uklidVyprsele(ted = Date.now()) {
   return true;
 }
 
-/** Protnula cena hladinu ve směru, na který si uživatel počkal? */
-export function protnuto(alarm, predchozi, cena) {
-  const u = Number(alarm.price);
+/** Protnula cena hlídanou úroveň ve směru, na který si uživatel počkal? */
+export function protnuto(alarm, predchozi, cena, cas = Date.now()) {
+  const u = uroven(alarm, cas);
   if (!Number.isFinite(u) || !Number.isFinite(predchozi) || !Number.isFinite(cena)) return false;
   const nahoru = predchozi < u && cena >= u;
   const dolu = predchozi > u && cena <= u;
@@ -131,10 +185,28 @@ export function zkontroluj(symbol, cena, ted = Date.now()) {
 
   const spustene = [];
   for (const a of seznam()) {
-    if (a.symbol !== symbol || !a.aktivni) continue;
-    if (!protnuto(a, predchozi, cena)) continue;
+    if (a.symbol !== symbol || !a.aktivni || a.typ === 'cas') continue;
+    if (!protnuto(a, predchozi, cena, ted)) continue;
     a.spusteno = ted;
     if (!a.opakovat) a.aktivni = false;
+    spustene.push(a);
+  }
+  if (spustene.length) zapis();
+  return spustene;
+}
+
+/**
+ * Časové alarmy, kterým právě nastal čas. Jdou napříč páry — čas plyne
+ * i tomu páru, který zrovna není otevřený, a cena do toho nemluví.
+ * Opakování u nich nedává smysl, takže se vždy vypnou.
+ */
+export function zkontrolujCas(ted = Date.now()) {
+  const spustene = [];
+  for (const a of seznam()) {
+    if (a.typ !== 'cas' || !a.aktivni) continue;
+    if (!Number.isFinite(a.cas) || a.cas > ted) continue;
+    a.spusteno = ted;
+    a.aktivni = false;
     spustene.push(a);
   }
   if (spustene.length) zapis();

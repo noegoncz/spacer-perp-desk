@@ -92,6 +92,12 @@ def klepni(x, y):
     time.sleep(0.5)
 
 
+def radek_formulare(popisek):
+    """Řádek nastavení podle popisku — pořadí se s typem alarmu mění."""
+    return ("""[...document.querySelectorAll('#alarmBody .nastaveni-radek')]
+      .find((r) => r.querySelector('.nastaveni-popisek').textContent === '%s')""" % popisek)
+
+
 def y_hladiny(cena):
     """Kde v okně leží daná cena — kam tedy klepnout na hladinu alarmu."""
     return ev("""(() => {
@@ -113,13 +119,20 @@ cena_ted = ev("window.__graf.getDataList().slice(-1)[0].close")
 print('cena v grafu:', cena_ted)
 
 # ---- zadání alarmu přes zvonek v liště ----
+# Zvonek nespustí formulář rovnou: nejdřív se hladina ukáže křížem v grafu,
+# protože ťukat cenu na klávesnici je na telefonu nejpomalejší cesta.
 ev("document.getElementById('alarmBtn').click()")
 time.sleep(0.5)
+kriz = ev("!!document.querySelector('.draw-layer.kresli')")
+stred = ev("""(() => { const r = document.getElementById('drawLayer').getBoundingClientRect();
+  return JSON.stringify([r.left + r.width / 2, r.top + r.height / 2]); })()""")
+klepni(*json.loads(stred))  # klepnutí potvrdí hladinu pod křížem
+print('zvonek spustil kříž:', kriz)
 otevreno = ev("!document.getElementById('sheetAlarm').hidden")
 poli = ev("document.querySelectorAll('#alarmBody .nastaveni-radek').length")
 predvyplnena = ev("document.querySelector('#alarmBody input[type=number]').value")
 print('formulář otevřen:', otevreno, ' řádků:', poli,
-      ' předvyplněná cena:', predvyplnena)
+      ' hladina z grafu:', predvyplnena)
 
 # Hladina kousek nad cenou, ať ji jde protnout směrem nahoru.
 uroven = round(cena_ted + 0.01, 5)
@@ -163,21 +176,18 @@ print('klepnutí na hladinu otevřelo úpravu:', uprava, '—', nadpis,
 print()
 
 # ---- opakovaný alarm zůstává zapnutý ----
-# Pořadí řádků: cena, podmínka, spouštění, platnost, zpráva, zvuk, vibrace, zapnutý.
-ev("""(() => {
-  const radky = document.querySelectorAll('#alarmBody .nastaveni-radek');
-  radky[2].querySelectorAll('.nastaveni-volba')[1].click();  // Pokaždé
-  radky[7].querySelector('.nastaveni-prepinac').click();     // zase zapnout
-})()""")
+ev("%s.querySelectorAll('.nastaveni-volba')[1].click()" % radek_formulare('Trigger'))
+ev("%s.querySelector('.nastaveni-prepinac').click()" % radek_formulare('Active'))
 ev("document.getElementById('alarmSaveBtn').click()")
 time.sleep(0.6)
-# Tři přechody přes hladinu (dolů, nahoru, dolů) = tři zaznění po dvou pípnutích.
-pred = ev("window.__pipnuti") or 0
+# Tři přechody přes hladinu (dolů, nahoru, dolů) = tři zaznění. Počítají se
+# přes vibrace: těch je jedna na zaznění, kdežto tónů má houkačka víc.
+pred = ev("window.__vibrace") or 0
 posli_cenu(round(uroven - 0.01, 5))
 posli_cenu(round(uroven + 0.01, 5))
 posli_cenu(round(uroven - 0.01, 5))
 opakovany = ulozene()[0] if ulozene() else {}
-zaznelo = ((ev("window.__pipnuti") or 0) - pred) // 2
+zaznelo = (ev("window.__vibrace") or 0) - pred
 print('opakovaný alarm — zůstal zapnutý:', opakovany.get('aktivni'),
       ' zaznění:', zaznelo, '(mají být 3)')
 print()
@@ -194,7 +204,7 @@ chyby = ev('(window.__chyby||[]).join(" | ")') or ''
 print('chyby v konzoli:', chyby or '(žádné)')
 print()
 
-ok = (otevreno and zavreno and len(ulozene()) == 1 and predcasne == 0
+ok = (kriz and otevreno and zavreno and len(ulozene()) == 1 and predcasne == 0
       and pipnuti >= 1 and vibrace >= 1 and pruh
       and po.get('aktivni') is False and opakovany.get('aktivni') is True
       and zaznelo == 3 and uprava and po_prepnuti == 1 and not chyby)

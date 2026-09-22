@@ -340,31 +340,47 @@ průhlednosti, zvonek (alarm) a koš. Styl se drží v `extendData` overlaye,
 takže se ukládá i načítá spolu s body. Nová kresba převezme naposledy
 nastavený vzhled.
 
-**Alarm zavěšený na kresbě** (zvonek v paletě) je v `app.js`. Hodnota kresby
-v čase se u vodorovné čáry bere přímo, u dvoubodových se dopočítá z přímky mezi
-body (a za koncem extrapoluje). Protnutí se pozná ze změny znaménka rozdílu
-oproti minulé ceně. Je **jednorázový** — po zaznění se vypne, jinak by zvonil
-při každém ticku. Hodí se na šikmé čáry, které cenový alarm neumí.
-
 #### Cenové alarmy
 
-Samostatná entita v **`js/alarmy.js`** (hladina, podmínka, opakování, platnost,
-zpráva, zvuk, vibrace), ne vlastnost kresby: alarm musí přežít smazání kreseb
-i zavření grafu. Kreslicí nástroj „cenový alarm" proto zmizel a nahradil ho
-**zvonek v ukotvené části kreslicí lišty** — otevře obrazvku s předvyplněnou
-aktuální cenou, podle dialogu „Create alert" v TradingView.
+Samostatná entita v **`js/alarmy.js`** (podmínka, opakování, platnost, zpráva,
+zvuk, vibrace, notifikace), ne vlastnost kresby: alarm musí přežít smazání
+kreseb i zavření grafu. Tři typy podle toho, co hlídají:
+
+| typ | co hlídá | tvar v grafu |
+|---|---|---|
+| `cena` | pevnou hladinu | vodorovná čára (`alarmLine`) |
+| `cara` | úroveň, která se mění s časem — přímka dvěma body, za koncem extrapolovaná | šikmá čára od prvního bodu k pravému okraji (`alarmTrend`) |
+| `cas` | okamžik v budoucnosti, cena do toho nemluví | svislá čára (`alarmTime`) |
+
+**Dvě cesty, jak alarm vzniká** (kreslicí nástroj „cenový alarm" zmizel, obě
+ho nahradily):
+
+1. **Zvonek v ukotvené části kreslicí lišty** → přes graf se položí zaměřovací
+   kříž, klepnutí určí hladinu a teprve pak se otevře nastavení. Ťukat cenu na
+   klávesnici je na telefonu nejpomalejší cesta; číselník v nastavení zůstal
+   jen na doladění a je u něj **zaměřovač**, který kříž vyvolá znovu.
+2. **Zvonek v paletě vybrané kresby** → z kresby se stane alarm se stejnou
+   geometrií a rovnou se otevře jeho nastavení. Kresba tím **zaniká** — jinak
+   by na stejném místě ležely dvě čáry a nebylo by poznat, která zvoní.
+
+Další vlastnosti:
 
 - Ukládá se **jeden společný seznam** (`perpdesk.alarms`) se symbolem u každého
   alarmu, ne rozdělený po párech — hlídat se musí i pár, který zrovna není
   otevřený, a přehled všech alarmů pak půjde načíst z jednoho místa.
-- V grafu má alarm **vlastní overlay `alarmLine`**: tyrkysová `#22d3ee`
-  (barva, kterou nic jiného nemá), čárkování `6-3-2-3` a **ikona budíku**
-  u popisku. Klepnutí na hladinu ji otevře k úpravě.
-- Jednorázový alarm po zaznění **zešedne, ale nesmaže se** — hladina zůstane
-  vidět a jde ji zase zapnout. Mazání je vždy na uživateli.
+- Barva je tyrkysová `#22d3ee` (jinou takovou v grafu nic nemá), čárkování
+  `6-3-2-3` a u popisku je **ikona budíku**. Klepnutí na čáru ji otevře
+  k úpravě; u šikmé se měří svisle od **prodloužené** přímky, aby šlo klepnout
+  i tam, kam kresba nesahala.
+- Jednorázový alarm po zaznění **zešedne, ale nesmaže se** — čára zůstane vidět
+  a jde ji zase zapnout. Mazání je vždy na uživateli.
 - Modul drží seznam v paměti a čte `localStorage` jen jednou za běh. Jediný
   zapisovatel je aplikace sama, takže to stačí; ⚠ testy, které zapisují alarmy
   do úložiště zvenčí, musí stránku přenačíst, jinak jsou jejich data neviditelná.
+- Časové alarmy tikají vlastním odpočtem po 10 s, protože nezávisí na cenách
+  ani na otevřeném grafu. Čas v minulosti se uložit nedá a formulář to řekne
+  hned při otevření, ne až u tlačítka Uložit — svislá čára se skoro vždy kreslí
+  do historie.
 
 ⚠ **Protnutí se pozná jen ze dvou cen po sobě**, takže první cena po otevření
 alarm nikdy nespustí — jen založí referenci. Bez toho by se při startu spustily
@@ -379,10 +395,27 @@ a `closeChart` zahodí referenční cenu.
 Alarm na páru **bez pozice a bez otevřeného grafu se nehlídá** — aplikace pro
 takový pár nemá odkud brát cenu. Píše se to i v nápovědě pod formulářem.
 
-Zvuk je dvojí pípnutí spočítané přes WebAudio, v repozitáři žádný soubor není.
+##### Odezva: zvuk, vibrace, notifikace
 
-⚠ Upozornění při **zavřené** aplikaci potřebuje APK z checkpointu 10;
-v prohlížeči to spolehlivě nejde.
+Zvuk počítá WebAudio, v repozitáři žádný soubor není.
+
+⚠ **Sinus 880 Hz byl v telefonu skoro neslyšet.** Alarm musí být pronikavý, ne
+hezký: teď je to **obdélníková vlna** (plná vyšších harmonických, na které je
+sluch i reproduktor telefonu citlivější) a tón **skáče mezi 988 a 1319 Hz**
+šestkrát po sobě — kolísání si ucho všimne spíš než stálého pípnutí.
+
+⚠ **Zvukový kontext se probouzí při prvním dotyku na stránku**, ne až když má
+alarm zaznít. Prohlížeč zvuk bez interakce nepustí a ve chvíli zaznění už
+uživatel telefon v ruce mít nemusí.
+
+⚠ **Systémová notifikace musí jít přes service worker**
+(`registration.showNotification`). Mobilní Chrome konstruktor `new Notification()`
+nepodporuje a vyhodí výjimku. Povolení se vyžádá až při zapnutí přepínače
+u konkrétního alarmu, ne při startu aplikace.
+
+⚠ Notifikace dorazí, jen dokud stránka žije (i na pozadí). Upozornění při
+**zavřené** aplikaci potřebuje APK z checkpointu 10; v prohlížeči to
+spolehlivě nejde.
 
 #### Srovnání pohledu a celá obrazovka
 
@@ -797,11 +830,12 @@ Pořadí, jak se na to má chodit. Odškrtnuté jsou hotové.
 - [ ] **Volume dál**: přesnost (precision), popisky na cenové ose.
 - [ ] **Nastavení ostatních indikátorů**: MACD, KDJ, MA, EMA, BOLL, SAR mají zatím
   jen periody (a výšku panelu) — chybí barvy a přepínače viditelnosti čar.
-- [x] **Alarmy — vlastní obrazovka a vzhled** (v0.11.0). Podmínka, trigger,
-  platnost, zpráva, zvuk i vibrace; vlastní tyrkysová čára s budíkem. Popsáno
-  výš v „Cenové alarmy". Zbývá k tomu: **přehled všech alarmů** napříč páry
-  (data pro něj už v jednom seznamu jsou) a případně **tažení hladiny prstem**
-  místo číselníku.
+- [x] **Alarmy — vlastní obrazovka a vzhled** (v0.11.0, rozšířeno v 0.12.0).
+  Podmínka, trigger, platnost, zpráva, zvuk, vibrace i systémová notifikace;
+  tři typy (hladina, šikmá čára, čas), zadávání křížem v grafu a převod kresby
+  na alarm. Popsáno výš v „Cenové alarmy". Zbývá k tomu: **přehled všech
+  alarmů** napříč páry (data pro něj už v jednom seznamu jsou) a **tažení
+  hotové čáry prstem** bez otvírání nastavení.
 - [ ] **Notifikace při zavřené aplikaci — rozhodnout cestu.** Když je aplikace
   zavřená, žádný její kód neběží; service worker prohlížeč uspí. Periodic
   Background Sync o časování rozhoduje sám (hodiny, ne vteřiny) a je

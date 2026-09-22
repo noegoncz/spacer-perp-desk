@@ -1121,7 +1121,30 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
 }
 
 /* Cena má víc míst než perioda indikátoru, proto širší pole. */
-.nastaveni-cislo.cena input { width: 96px; }
+.nastaveni-cislo.cena input { width: 88px; }
+
+/* Zaměřovač: rychlejší cesta k hladině než ťukat číslo na klávesnici. */
+.nastaveni-zamer {
+  width: 34px; height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 4px;
+  border: 1px solid var(--alarm);
+  border-radius: 8px;
+  background: rgba(34, 211, 238, 0.12);
+  cursor: pointer;
+}
+.nastaveni-zamer svg {
+  width: 18px; height: 18px;
+  fill: none;
+  stroke: var(--alarm);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+/* Hodnota, kterou nelze měnit (úroveň šikmé čáry se počítá z času). */
+.nastaveni-hodnota { font-size: 0.85rem; color: var(--alarm); }
 
 .nastaveni-text {
   flex: 1;

@@ -146,13 +146,23 @@ export const cs = {
   'chart.resetZoom': 'Zpět na 100 %',
   'chart.verticalPan': 'Posunout graf svisle',
   'style.delete': 'Smazat kresbu',
-  'style.alarm': 'Alarm při protnutí cenou',
+  'style.alarm': 'Udělat z kresby alarm',
 
   /* ---------- cenové alarmy ---------- */
   'alarm.new': 'Nový alarm',
   'alarm.edit': 'Úprava alarmu',
   'alarm.label': 'Alarm',
   'alarm.price': 'Cena',
+  'alarm.time': 'Čas',
+  'alarm.trendLevel': 'Úroveň teď',
+  'alarm.pickHint': 'Klepnutím urči hladinu alarmu',
+  'alarm.pickInChart': 'Vybrat hladinu v grafu',
+  'alarm.notification': 'Notifikace',
+  'alarm.notifTitle': 'Alarm {symbol}',
+  'alarm.notifDenied': 'Notifikace jsou pro tuhle stránku zakázané. Povol je v nastavení prohlížeče.',
+  'alarm.needFuture': 'Vyber čas v budoucnosti.',
+  'alarm.timeHit': '{symbol}: nastal nastavený čas',
+  'alarm.trendHint': 'Alarm drží čáru, takže se hlídaná úroveň mění s časem.',
   'alarm.condition': 'Podmínka',
   'alarm.crossAny': 'Protnutí',
   'alarm.crossUp': 'Protnutí nahoru',
@@ -176,7 +186,6 @@ export const cs = {
   'alarm.expiresOn': 'Vyprší {date}.',
   'alarm.lastFired': 'Naposled zazněl {time}.',
   'alarm.hit': '{symbol} dosáhl {price}',
-  'alarm.crossed': 'Cena protnula {price}',
   'alarm.hint': 'Alarmy hlídají otevřená aplikace, a to páry s otevřenou pozicí '
     + 'a pár zobrazený v grafu. Upozornění při zavřené aplikaci potřebuje '
     + 'aplikaci pro Android.',
