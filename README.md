@@ -1,4 +1,4 @@
-# Spacer Perp Desk
+# PerpyX
 
 Mobilní PWA pro sledování otevřených perpetual pozic na Bybitu. Náhrada za
 TabTrader, dělaná na Samsung Galaxy Z Fold 5.
@@ -8,7 +8,7 @@ TabTrader, dělaná na Samsung Galaxy Z Fold 5.
 ## Spuštění v telefonu
 
 1. Otevři `https://noegoncz.github.io/spacer-perp-desk/` v Chrome.
-2. Menu Chrome → *Přidat na plochu*. Na ploše se objeví ikona **Perp Desk**.
+2. Menu Chrome → *Přidat na plochu*. Na ploše se objeví ikona **PerpyX**.
 3. V aplikaci otevři ⚙ a vlož read-only API klíč z Bybitu.
 
 Klíč i secret se ukládají **jen do localStorage telefonu**. Neodcházejí nikam

@@ -1,6 +1,11 @@
-# Spacer Perp Desk
+# PerpyX
 
 Mobilní PWA pro monitoring otevřených perpetual pozic na Bybitu. Náhrada za TabTrader.
+
+Projekt v repu i na GitHubu se pořád jmenuje `spacer-perp-desk` (pracovní
+název odshora) — je to jen adresář a URL, ne jméno aplikace. Přejmenování
+repozitáře je samostatné rozhodnutí (mění se tím živá adresa GitHub Pages),
+zatím k němu nedošlo.
 
 ## Kontext
 
@@ -8,7 +13,7 @@ Mobilní PWA pro monitoring otevřených perpetual pozic na Bybitu. Náhrada za 
   Neřešíme desktop ani iOS, neřešíme starší prohlížeče.
 - **Jazyk:** komunikace s uživatelem **česky**. UI aplikace je **anglicky**
   (výchozí), čeština je volitelná mutace. Kód a komentáře **zůstávají česky**.
-- **Popisek ikony na ploše:** `Perp Desk` (pole `short_name` v manifestu).
+- **Popisek ikony na ploše:** `PerpyX` (pole `short_name` v manifestu).
 - **Režim:** read-only monitoring. Aplikace nikdy neodesílá obchodní příkazy.
   API klíč se používá výhradně read-only.
 
@@ -868,7 +873,7 @@ Pořadí, jak se na to má chodit. Odškrtnuté jsou hotové.
   a alarm mlčí — pro sledování trhu je tedy PWA v tomhle stavu nepoužitelná
   a je to hlavní důvod jít dál. Možnosti:
   - **(a) APK přes Capacitor** (checkpoint 10) s **foreground service**:
-    trvalá notifikace „Perp Desk hlídá 3 alarmy", vlastní WebSocket
+    trvalá notifikace „PerpyX hlídá 3 alarmy", vlastní WebSocket
     v nativní vrstvě a `LocalNotifications`. Běží při zhasnutém displeji,
     nic neodchází z telefonu, nic se neplatí. Chce výjimku z optimalizace
     baterie (Samsung služby na pozadí zabíjí) a APK se musí instalovat mimo
