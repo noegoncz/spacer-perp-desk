@@ -749,8 +749,9 @@ Pořadí, jak se na to má chodit. Odškrtnuté jsou hotové.
 
 ### Nejbližší dodělávky (drobné)
 
-- [ ] **Ověřit na telefonu** (v0.10.5): kresby při přepínání timeframu ani
-  neprobliknou; graf se po otevření ukáže u posledních svíček.
+- [ ] **Zbývá ověřit na telefonu** (v0.10.7): že kresby při přepínání timeframu
+  ani neproblikávají a že se graf po otevření ukáže u posledních svíček.
+  Uživatel už potvrdil gesta, mizení kreseb na stejném timeframu i živé svíčky.
 - [ ] **Zvážit kontrolu shody verzí** mezi `index.html` a `js/version.js`.
   Rozpadlá aktualizace (nová stránka + starý skript) se teď přežije, ale
   aplikace o nesouladu neví a běží dál se starým kódem, dokud se worker
