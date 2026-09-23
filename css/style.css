@@ -626,6 +626,79 @@ main {
 .position.blizko-likvidace.long,
 .position.blizko-likvidace.short { border-left-color: var(--short); }
 
+/* ---------- proužek úrovní v kartě pozice ---------- */
+
+.pos-ladder { margin-top: 10px; }
+
+/* Podklad nese i význam stran: vlevo ztráta, vpravo zisk. Barvy jsou
+   schválně sotva znatelné, hlavní sdělení nesou čáry nad nimi. */
+.ladder-track {
+  position: relative;
+  height: 26px;
+  border-radius: 6px;
+  background:
+    linear-gradient(90deg,
+      rgba(234, 57, 67, 0.16),
+      rgba(234, 57, 67, 0) 42%,
+      rgba(22, 199, 132, 0) 58%,
+      rgba(22, 199, 132, 0.16)),
+    var(--surface-2);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+/* Jednotlivé příkazy jako čárky na stupnici starého rádia. */
+.ladder-track .tick {
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+}
+.ladder-track .tick.sl    { background: var(--warn); }
+.ladder-track .tick.tp    { background: var(--long); }
+.ladder-track .tick.limit { background: var(--text-dim); }
+
+/* Úroveň pro celou pozici je vyšší a silnější než dílčí příkaz. */
+.ladder-track .tick.cela { top: 2px; bottom: 2px; width: 3px; margin-left: -1.5px; }
+
+/* Vstup je vždy uprostřed a čerchovaný, stejně jako v grafu. */
+.ladder-track .tick.entry {
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: repeating-linear-gradient(
+    180deg, #a78bfa 0 4px, transparent 4px 7px);
+}
+
+/* Aktuální cena — jediná věc na proužku, která se hýbe, proto svítí. */
+.ladder-now {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  width: 3px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: var(--text);
+  box-shadow: 0 0 7px rgba(230, 237, 245, 0.85);
+}
+
+.ladder-legend {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 5px;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+}
+.ladder-legend .sl { color: var(--warn); }
+.ladder-legend .tp { color: var(--long); }
+.ladder-legend .chibi,
+.ladder-legend .chybi { color: var(--text-dim); opacity: 0.7; }
+.ladder-velikost { color: var(--text-dim); }
+
 /* Funding na kartě je doplněk, ne hlavní číslo. */
 .pos-funding {
   margin-top: 8px;

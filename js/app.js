@@ -110,10 +110,16 @@ const client = new BybitClient({
   onAccount(ucet, chyba) {
     ucetStav = { ucet, chyba };
     ui.renderAccount(ucet, chyba, hideAmounts);
+    // Equity se ukazuje i v kartách (velikost pozice vůči účtu), takže
+    // karty musí dostat šanci se překreslit, až dorazí.
+    if (ucet) vykresliPozice();
   },
   onOrders(orders, chyba) {
     otevrenePrikazy = orders;
-    ui.renderOrders(orders, hideAmounts, otevriPrikaz, chyba ? t('orders.failed') : null);
+    // Proužek v kartě i seznam „bez pozice" se staví tady — obojí závisí
+    // na tom, které páry mají otevřenou pozici.
+    vykresliPozice();
+    if (chyba) ui.renderOrders([], hideAmounts, otevriPrikaz, t('orders.failed'));
   },
   onKline(bar) {
     if (!chart || !chartSymbol) return;
@@ -169,10 +175,36 @@ function serazenePozice() {
   });
 }
 
+/** Příkazy rozdělené podle páru — karta pozice si bere ty svoje. */
+function prikazyPodleParu() {
+  const mapa = new Map();
+  for (const o of otevrenePrikazy) {
+    if (!mapa.has(o.symbol)) mapa.set(o.symbol, []);
+    mapa.get(o.symbol).push(o);
+  }
+  return mapa;
+}
+
 /** Překreslí seznam pozic i lištu nad ním podle aktuálního řazení a filtru. */
 function vykresliPozice() {
   const seznam = serazenePozice();
-  ui.renderPositions(seznam, hideAmounts, openChart, prahLikvidace);
+  const prikazy = prikazyPodleParu();
+  ui.renderPositions(seznam, hideAmounts, openChart, prahLikvidace, {
+    zebrik: (p) => zebrikPozice(p, prikazy.get(p.symbol) || []),
+    equity: ucetStav.ucet?.equity ?? null,
+  });
+
+  /*
+   * Samostatný seznam zůstává jen pro příkazy na párech **bez otevřené
+   * pozice** — ty by se jinak neměly kde ukázat, proužek v kartě je bez
+   * pozice nemá kam nakreslit. Zbytek je vidět rovnou v kartě.
+   */
+  const sPozici = new Set(lastPositions.map((p) => p.symbol));
+  ui.renderOrders(
+    otevrenePrikazy.filter((o) => !sPozici.has(o.symbol)),
+    hideAmounts,
+    otevriPrikaz,
+  );
   ui.renderPositionTools(
     {
       viditelne: lastPositions.length > 0,
@@ -246,6 +278,52 @@ function ohlasZasah(klic, symbol, cena) {
   const text = t(klic, { symbol, price: formatPrice(cena) });
   ozviSe({ zvuk: true, vibrace: true, notifikace: true, symbol, id: `sltp-${symbol}` }, text);
   ui.showNotice(text);
+}
+
+/**
+ * Podklad pro proužek úrovní v kartě pozice.
+ *
+ * Smysl: bez otevření grafu má být vidět, jestli a kolik mám nastavených
+ * příkazů na obě strany a jak blízko k nim cena je. Vstup je uprostřed,
+ * vlevo strana ztráty (SL), vpravo strana zisku (TP) — u shortu se to
+ * zrcadlí, aby „vlevo = ztráta" platilo pořád.
+ *
+ * Vrací jen ceny a druhy; přepočet na pixely dělá ui.js, sem obchodní
+ * logika patří a kreslení ne.
+ */
+function zebrikPozice(p, orders) {
+  if (!p.entry || !p.mark) return null;
+
+  const znacky = [];
+  const pridej = (cena, druh, qty = 0) => {
+    if (!Number.isFinite(cena) || cena <= 0) return;
+    znacky.push({
+      cena,
+      druh,
+      // Podíl z pozice dává smysl jen u částečných příkazů; SL/TP celé
+      // pozice je prostě celá pozice.
+      podil: p.size > 0 && qty > 0 && qty < p.size ? qty / p.size : null,
+    });
+  };
+
+  pridej(p.stopLoss, 'sl');
+  pridej(p.takeProfit, 'tp');
+
+  for (const o of orders) {
+    const cena = o.trigger ?? o.price;
+    if (!cena) continue;
+    // Bybit vrací SL a TP pozice i jako podmíněné příkazy — bez tohohle by
+    // na proužku stála každá úroveň dvakrát (stejně jako u čar v grafu).
+    if (samePrice(cena, p.stopLoss) || samePrice(cena, p.takeProfit)) continue;
+    pridej(cena, orderSide(o, p) || 'limit', o.qty);
+  }
+
+  return {
+    vstup: p.entry,
+    mark: p.mark,
+    long: p.side !== 'Sell',
+    znacky,
+  };
 }
 
 /** Klepnutí na příkaz v seznamu otevře graf toho páru. */
@@ -369,9 +447,8 @@ function wireEvents() {
     store.saveHideAmounts(hideAmounts);
     el('hideBtn').classList.toggle('active', hideAmounts);
     vykresliPozice();
-    // Skrývání částek platí i pro přehled účtu a příkazy, ne jen pro karty.
+    // Skrývání částek platí i pro přehled účtu, ne jen pro karty.
     ui.renderAccount(ucetStav.ucet, ucetStav.chyba, hideAmounts);
-    ui.renderOrders(otevrenePrikazy, hideAmounts, otevriPrikaz);
     if (obchody.length) ui.renderHistory(obchody, hideAmounts, otevriProhlidku);
     if (chartSymbol) {
       ui.renderChartHeader(chartSymbol, chartPosition, hideAmounts, chartTrh);
@@ -502,9 +579,8 @@ function postavVyberJazyka() {
     setLanguage(select.value);
     applyStaticTexts();
     vykresliPozice();
-    // Přehled účtu i příkazy mají vlastní popisky, překreslit je taky.
+    // Přehled účtu má vlastní popisky, překreslit ho taky.
     ui.renderAccount(ucetStav.ucet, ucetStav.chyba, hideAmounts);
-    ui.renderOrders(otevrenePrikazy, hideAmounts, otevriPrikaz);
     ui.renderStatus(client.status);
     if (trhy.length) vykresliTrhy();
     if (chart) {

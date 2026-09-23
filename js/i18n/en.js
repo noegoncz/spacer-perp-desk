@@ -257,12 +257,17 @@ export const en = {
 
   'funding.label': 'Funding',
   'funding.next': 'in {time}',
+  'funding.perInterval': '{amount} USDT/{interval}',
   'funding.perDay': '{amount} USDT/day',
+  'funding.totalPaid': 'paid so far {amount} USDT',
+  'funding.totalEarned': 'earned so far {amount} USDT',
   'funding.youPay': 'you pay',
   'funding.youGet': 'you receive',
 
-  'orders.title': 'Open orders',
+  'orders.title': 'Orders without a position',
   'orders.none': 'No open orders.',
+  'ladder.sl': 'SL',
+  'ladder.tp': 'TP',
   'orders.limit': 'Limit',
   'orders.market': 'Market',
   'orders.trigger': 'trigger {price}',

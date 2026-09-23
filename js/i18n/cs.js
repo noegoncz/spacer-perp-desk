@@ -253,12 +253,17 @@ export const cs = {
 
   'funding.label': 'Funding',
   'funding.next': 'za {time}',
+  'funding.perInterval': '{amount} USDT/{interval}',
   'funding.perDay': '{amount} USDT/den',
+  'funding.totalPaid': 'zaplaceno celkem {amount} USDT',
+  'funding.totalEarned': 'získáno celkem {amount} USDT',
   'funding.youPay': 'platíš',
   'funding.youGet': 'dostáváš',
 
-  'orders.title': 'Otevřené příkazy',
+  'orders.title': 'Příkazy bez pozice',
   'orders.none': 'Žádné otevřené příkazy.',
+  'ladder.sl': 'SL',
+  'ladder.tp': 'TP',
   'orders.limit': 'Limit',
   'orders.market': 'Market',
   'orders.trigger': 'spouštěč {price}',

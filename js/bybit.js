@@ -137,6 +137,9 @@ function normalizePosition(raw) {
     stopLoss: optionalNum(raw.stopLoss),
     takeProfit: optionalNum(raw.takeProfit),
     positionIdx: raw.positionIdx ?? 0,
+    // Kdy pozice vznikla — od toho se počítá, za jak dlouhou dobu se
+    // sčítá zaplacený funding.
+    openedAt: Number(raw.createdTime) || null,
     updatedAt: Date.now(),
   };
 }
@@ -227,6 +230,8 @@ export class BybitClient {
     this.subscribedSymbols = new Set();
     this.klineTopic = null;
 
+    /** UNIFIED nebo CONTRACT; zjistí se při prvním načtení přehledu účtu. */
+    this.typUctu = '';
     /** Funding interval páru se prakticky nemění — stačí se zeptat jednou. */
     this.fundingIntervaly = new Map();
     /** Sazba funding se mění po hodinách; častější dotazování nemá smysl. */
@@ -390,10 +395,20 @@ export class BybitClient {
       if (ulozene && ted - ulozene.kdy < 600000) return;
       try {
         const funding = await this.getFunding(symbol);
-        if (funding) {
-          this.fundingCache.set(symbol, { kdy: ted, funding });
-          zmena = true;
+        if (!funding) return;
+
+        // Součet zaplaceného je zvlášť: potřebuje oprávnění Wallet, které
+        // klíč mít nemusí. Když nevyjde, zbytek fundingu se ukáže dál.
+        let zaplaceno = null;
+        const pozice = [...this.positions.values()].find((p) => p.symbol === symbol);
+        try {
+          zaplaceno = await this.getFundingPaid(symbol, pozice?.openedAt);
+        } catch {
+          /* bez oprávnění Wallet se součet prostě neukáže */
         }
+
+        this.fundingCache.set(symbol, { kdy: ted, funding: { ...funding, zaplaceno } });
+        zmena = true;
       } catch {
         /* funding je doplněk, bez něj se pozice ukazuje dál */
       }
@@ -596,6 +611,8 @@ export class BybitClient {
           ? podil * 100
           : (equity > 0 ? (pouzity / equity) * 100 : null);
 
+        // Typ účtu si pamatujeme — transaction-log ho potřebuje taky.
+        this.typUctu = accountType;
         return {
           ucet: { equity, volny, vyuziti, pouzity, typ: accountType },
           chyba: null,
@@ -626,6 +643,50 @@ export class BybitClient {
       nextAt: Number(row.nextFundingTime) || null,
       minut,
     };
+  }
+
+  /**
+   * Kolik funding pozice zatím stála, nebo vynesla — od jejího otevření.
+   *
+   * Bere se z `transaction-log`, typ `SETTLEMENT`: to jsou právě jednotlivá
+   * stržení fundingu. `funding` je **záporné, když se platí**; starší
+   * odpovědi ho nemusí mít, tam zbývá `cashFlow`.
+   *
+   * ⚠ Stejně jako přehled účtu tohle potřebuje oprávnění Wallet. Volající
+   * to musí umět přežít — bez součtu se pozice ukazuje dál.
+   */
+  async getFundingPaid(symbol, odKdy) {
+    let celkem = 0;
+    let pocet = 0;
+    let cursor = '';
+
+    // Tři stránky po 50 pokryjí i pozici drženou měsíc (3 stržení denně).
+    // Dál se ptát nemá cenu, součet by stejně nikdo nečetl do haléře.
+    for (let stranka = 0; stranka < 3; stranka += 1) {
+      const result = await this.signedGet('/v5/account/transaction-log', {
+        accountType: this.typUctu || 'UNIFIED',
+        category: 'linear',
+        currency: 'USDT',
+        type: 'SETTLEMENT',
+        limit: '50',
+        ...(odKdy ? { startTime: String(Math.floor(odKdy)) } : {}),
+        ...(cursor ? { cursor } : {}),
+      });
+
+      const radky = result?.list ?? [];
+      for (const r of radky) {
+        if (r.symbol !== symbol) continue;
+        const castka = Number(r.funding ?? r.cashFlow ?? r.change);
+        if (Number.isFinite(castka) && castka !== 0) {
+          celkem += castka;
+          pocet += 1;
+        }
+      }
+
+      cursor = result?.nextPageCursor || '';
+      if (!cursor || !radky.length) break;
+    }
+    return { celkem, pocet };
   }
 
   async fundingInterval(symbol) {

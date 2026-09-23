@@ -849,6 +849,17 @@ třicetisekundový poll neptal znovu. Na kartě není jen číslo, ale i **směr
 platby**: kladná sazba znamená, že long platí shortovi, a ze samotného
 „+0,01 %" to nikdo nepozná.
 
+⚠ **Ukazuje se částka za jedno stržení i za den.** První verze měla jen denní
+součet a uživatel z toho usoudil, že se platí jednou za 24 h — přitom se u
+většiny párů platí **po osmi hodinách**, tedy třikrát denně. Interval se
+vypisuje z reálné hodnoty (`8 h`, `4 h`, `1 h`), ne natvrdo.
+
+**Zaplacený funding za dobu držení** se sčítá z `transaction-log`, typ
+`SETTLEMENT`. Pole `funding` je **záporné, když se platí**. Okno začíná
+`createdTime` pozice, jde se nejvýš tři stránky po 50 (to pokryje i měsíc
+držení). ⚠ Potřebuje oprávnění Wallet stejně jako přehled účtu, takže má
+vlastní `try` — bez něj se ukáže zbytek fundingu a jen chybí součet.
+
 ### ✅ 8) Pohodlí
 
 - Řazení a filtrování pozic (PnL, velikost, blízkost likvidace).
@@ -864,6 +875,30 @@ tentýž klíč otočí směr, jako v každé tabulce. Volba se ukládá do tele
 ⚠ **Prázdný výsledek filtru není totéž co „žádné pozice"** — data jsou, jen je
 schoval filtr. Proto `showFilterEmpty()` s vlastním textem, ne stejná hláška
 jako u prázdného účtu.
+
+#### Proužek úrovní v kartě pozice
+
+Samostatný seznam otevřených příkazů pod pozicemi se neosvědčil — uživatel ho
+označil za zbytečný. Nahradil ho **proužek přímo v kartě**, stupnice jako na
+starém rádiu: uprostřed vstup, vlevo strana ztráty (SL), vpravo strana zisku
+(TP), po délce jezdí svítící ukazatel aktuální ceny. Smysl: bez otevírání
+grafu je vidět, kolik mám kde nastavených příkazů a jak blízko k nim cena je.
+Úroveň pro celou pozici je silnější čára než dílčí příkaz. Pod proužkem stojí
+vzdálenost k nejbližšímu SL a TP v procentech a velikost pozice (hodnota
+v USDT a podíl na equity).
+
+⚠ **Každá strana má vlastní měřítko.** Společné vypadalo logicky, ale TP bývá
+dvacet procent daleko a SL dvě — vzdálený TP pak stlačil oba stop-lossy na
+jednu čáru u středu a nebylo poznat, jak blízko k nim cena je. Teď levá půlka
+pokrývá vstup → nejzazší SL, pravá vstup → nejzazší TP.
+
+⚠ **Likvidace se do měřítka nepočítá** — bývá desítky procent daleko a
+stlačila by SL i TP k sobě. Zůstává v mřížce karty jako číslo.
+
+⚠ U shortu se osa **zrcadlí**, aby „vlevo = ztráta" platilo vždycky.
+
+Seznam pod pozicemi zůstal jen pro příkazy na **párech bez otevřené pozice** —
+ty by se jinak neměly kde ukázat, proužek bez pozice nemá kam kreslit.
 
 **Varování před likvidací** obarví celou kartu, ne jen jedno číslo: v rychlém
 pohledu na seznam se přebarvená hodnota snadno přehlédne. Hranice je

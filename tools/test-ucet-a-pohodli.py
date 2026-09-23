@@ -102,6 +102,10 @@ print('funding u longu (JUP): ', fundingLong or '(chybí)')
 print('funding u shortu (ETH):', fundingShort or '(chybí)')
 if 'Funding' not in (fundingLong or '') or 'USDT/day' not in (fundingLong or ''):
     chyby.append('funding na kartě chybí')
+# ⚠ Musí být vidět částka za jedno stržení i za den. Samotná denní částka
+# působila, jako by se funding platil jednou za 24 h — platí se po 8 h.
+if 'USDT/8 h' not in (fundingLong or ''):
+    chyby.append('u fundingu chybí částka za jedno stržení (8 h)')
 # Kladná sazba: long platí shortovi. Směr musí být na kartě vidět, ze
 # samotného „+0,01 %" ho nikdo nepozná.
 if 'you pay' not in (fundingLong or ''):
@@ -109,12 +113,37 @@ if 'you pay' not in (fundingLong or ''):
 if 'you receive' not in (fundingShort or ''):
     chyby.append('u shortu s kladnou sazbou má stát „you receive"')
 
-# ---- otevřené příkazy ----
+# ---- příkazy: v kartě proužek, v seznamu jen páry bez pozice ----
+# Mock vrací dva příkazy na JUPUSDT, kde pozice je — ty patří do proužku
+# v kartě, ne do seznamu pod ním.
 prikazu = ev("document.querySelectorAll('.order-row').length")
-druh = ev("(document.querySelector('.order-kind')||{}).textContent")
-print('otevřených příkazů:', prikazu, '| první popis:', druh)
-if prikazu != 2:
-    chyby.append(f'čekaly se 2 otevřené příkazy, je jich {prikazu}')
+print('příkazů v seznamu „bez pozice":', prikazu, '(má být 0 — oba jsou na páru s pozicí)')
+if prikazu != 0:
+    chyby.append(f'seznam má ukazovat jen příkazy bez pozice, je jich {prikazu}')
+
+znacky = json.loads(ev("""(() => {
+  const karta = [...document.querySelectorAll('.position')]
+    .find((k) => k.querySelector('.pos-symbol').textContent === 'JUPUSDT');
+  const t = karta && karta.querySelectorAll('.ladder-track .tick');
+  return JSON.stringify(t ? [...t].map((e) => e.className) : []); })()""") or '[]')
+print('značky na proužku JUP:', znacky)
+# vstup + SL celé pozice + TP celé pozice + podmíněný TP z příkazu
+if 'tick entry' not in znacky:
+    chyby.append('na proužku chybí vstup')
+if not any(z.startswith('tick sl') for z in znacky):
+    chyby.append('na proužku chybí stop loss')
+if not any(z.startswith('tick tp') for z in znacky):
+    chyby.append('na proužku chybí take profit')
+
+# Ukazatel ceny musí být vpravo od vstupu — pozice je v zisku.
+nyni = ev("""(() => {
+  const karta = [...document.querySelectorAll('.position')]
+    .find((k) => k.querySelector('.pos-symbol').textContent === 'JUPUSDT');
+  const e = karta && karta.querySelector('.ladder-now');
+  return e ? parseFloat(e.style.left) : null; })()""")
+print('ukazatel ceny na proužku:', nyni, '% (u ziskové pozice > 50)')
+if not nyni or nyni <= 50:
+    chyby.append(f'ukazatel ceny má být vpravo od vstupu, je na {nyni} %')
 
 # ---- checkpoint 8: řazení ----
 print()

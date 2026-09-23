@@ -113,34 +113,68 @@ function returnPercent(p) {
   return null;
 }
 
+/** „480" → „8 h", „60" → „1 h", „30" → „30 min". */
+function intervalPopis(minut) {
+  const m = Number(minut) || 480;
+  return m % 60 === 0 ? `${m / 60} h` : `${m} min`;
+}
+
 /**
- * Funding na kartě: sazba, čas do stržení a kolik to dělá za den.
+ * Funding na kartě.
+ *
+ * Ukazuje se sazba, částka **za jedno stržení i za den**, kolik už pozice
+ * na fundingu stála celkem, a kdy se strhne příště.
+ *
+ * ⚠ Za jedno stržení a za den nejsou totéž: Bybit u většiny párů strhává
+ * po osmi hodinách, tedy třikrát denně. Dřív tu stála jen denní částka
+ * a působilo to, jako by se platilo jednou za den.
  *
  * Znaménko se počítá podle směru pozice — kladná sazba znamená, že long
  * platí shortu. Proto se neukazuje jen číslo, ale i to, na kterou stranu
  * peníze tečou; ze samotného „0,01 %" to nikdo nepozná.
  */
-function fundingRow(p) {
+function fundingRow(p, hide) {
   const f = p.funding;
   if (!f || !Number.isFinite(f.rate)) return null;
 
   const isLong = p.side !== 'Sell';
   // Long platí při kladné sazbě, short při záporné.
   const platiUzivatel = isLong ? f.rate > 0 : f.rate < 0;
-  const zaDen = Math.abs(p.value * f.rate) * (1440 / (f.minut || 480));
+  const zaInterval = Math.abs(p.value * f.rate);
+  const zaDen = zaInterval * (1440 / (f.minut || 480));
 
   const radek = document.createElement('div');
   radek.className = 'pos-funding';
 
   const popis = document.createElement('span');
   popis.textContent = `${t('funding.label')} ${formatPercent(f.rate * 100, 4)}`;
+  radek.append(popis);
 
   const castka = document.createElement('span');
   castka.className = `hodnota ${platiUzivatel ? 'platis' : 'dostavas'}`;
-  castka.textContent = `${t(platiUzivatel ? 'funding.youPay' : 'funding.youGet')} `
-    + t('funding.perDay', { amount: formatUsd(zaDen) });
+  castka.textContent = hide
+    ? MASK
+    : `${t(platiUzivatel ? 'funding.youPay' : 'funding.youGet')} `
+      + t('funding.perInterval', {
+        amount: formatUsd(zaInterval),
+        interval: intervalPopis(f.minut),
+      })
+      + ` · ${t('funding.perDay', { amount: formatUsd(zaDen) })}`;
+  radek.append(castka);
 
-  radek.append(popis, castka);
+  // Součet za dobu držení. Chybí, když klíč nemá oprávnění Wallet —
+  // to je v pořádku, zbytek řádku dává smysl i bez něj.
+  if (f.zaplaceno && Number.isFinite(f.zaplaceno.celkem) && f.zaplaceno.pocet > 0) {
+    const celkem = f.zaplaceno.celkem;
+    const soucet = document.createElement('span');
+    // Záporné = zaplaceno, kladné = přijato.
+    soucet.className = `hodnota ${celkem < 0 ? 'platis' : 'dostavas'}`;
+    soucet.textContent = hide
+      ? MASK
+      : t(celkem < 0 ? 'funding.totalPaid' : 'funding.totalEarned',
+          { amount: formatUsd(Math.abs(celkem)) });
+    radek.append(soucet);
+  }
 
   if (f.nextAt) {
     const zbyva = f.nextAt - Date.now();
@@ -153,7 +187,115 @@ function fundingRow(p) {
   return radek;
 }
 
-function positionCard(p, hide, onSelect, liqThreshold = 10) {
+/**
+ * Proužek s úrovněmi pozice — jako stupnice na starém rádiu.
+ *
+ * Uprostřed vstup, vlevo strana ztráty (SL), vpravo strana zisku (TP),
+ * po celé délce jezdí ukazatel aktuální ceny. Smysl: bez otevírání grafu
+ * je hned vidět, kolik mám kde nastavených příkazů a jak blízko k nim cena
+ * je. U shortu se osa zrcadlí, aby „vlevo = ztráta" platilo vždycky.
+ */
+function ladderRow(zebrik, p, equity, hide) {
+  const { vstup, mark, long, znacky } = zebrik;
+
+  const smer = long ? 1 : -1;
+  /** Kladné = směrem k zisku, záporné = směrem ke ztrátě. */
+  const odstup = (cena) => smer * (cena - vstup);
+
+  /*
+   * ⚠ Každá strana má **vlastní měřítko**. Společné měřítko vypadalo
+   * logicky, ale v praxi nefungovalo: TP bývá dvacet procent daleko,
+   * SL dvě, takže vzdálený TP stlačil oba stop-lossy na jednu čáru u středu
+   * a nebylo poznat, jak blízko k nim cena je — přitom právě to má proužek
+   * ukázat. Teď levá půlka pokrývá vstup → nejzazší SL, pravá vstup →
+   * nejzazší TP, takže obě strany využijí celou šířku.
+   *
+   * Cena mezi stranami neporovnává vzdálenost, ale „jak daleko k nejbližší
+   * hranici na téhle straně" — a to je přesně otázka, na kterou se kouká.
+   */
+  const nejdal = (filtr) => {
+    const hodnoty = znacky.filter(filtr).map((z) => Math.abs(odstup(z.cena)));
+    return hodnoty.length ? Math.max(...hodnoty) : 0;
+  };
+  const zaloha = Math.max(Math.abs(odstup(mark)), Math.abs(vstup) * 0.002);
+  const doZisku = (nejdal((z) => odstup(z.cena) > 0) || zaloha) * 1.08;
+  const doZtraty = (nejdal((z) => odstup(z.cena) < 0) || zaloha) * 1.08;
+
+  const naProcenta = (cena) => {
+    const d = odstup(cena);
+    // Půlka proužku má 47 %, zbytek je rezerva na okraje, ať je čára vidět celá.
+    const podil = d >= 0
+      ? 50 + Math.min(1, d / doZisku) * 47
+      : 50 - Math.min(1, -d / doZtraty) * 47;
+    return Math.min(97, Math.max(3, podil));
+  };
+
+  const blok = document.createElement('div');
+  blok.className = 'pos-ladder';
+
+  const drah = document.createElement('div');
+  drah.className = 'ladder-track';
+
+  const znacka = (cena, tridy) => {
+    const s = document.createElement('span');
+    s.className = tridy;
+    s.style.left = `${naProcenta(cena)}%`;
+    return s;
+  };
+
+  // Nejdřív příkazy, pak vstup a cena — ty musí zůstat navrchu.
+  znacky.forEach((z) => {
+    // Celá pozice (bez podílu) je silnější čára než dílčí příkaz.
+    drah.append(znacka(z.cena, `tick ${z.druh}${z.podil === null ? ' cela' : ''}`));
+  });
+  drah.append(znacka(vstup, 'tick entry'));
+
+  const ukazatel = document.createElement('span');
+  ukazatel.className = 'ladder-now';
+  ukazatel.style.left = `${naProcenta(mark)}%`;
+  drah.append(ukazatel);
+
+  blok.append(drah);
+
+  /* pod proužkem: jak daleko je nejbližší SL a TP, a jak velká pozice je */
+  const nejblizsi = (druh) => {
+    const ceny = znacky.filter((z) => z.druh === druh).map((z) => z.cena);
+    if (!ceny.length) return null;
+    return ceny.reduce((a, b) => (Math.abs(a - mark) < Math.abs(b - mark) ? a : b));
+  };
+
+  const popisek = (druh, cena) => {
+    const s = document.createElement('span');
+    s.className = druh;
+    if (cena === null) {
+      s.textContent = `${t(`ladder.${druh}`)} —`;
+      s.classList.add('chybi');
+    } else {
+      const vzdalenost = Math.abs((cena - mark) / mark) * 100;
+      s.textContent = `${t(`ladder.${druh}`)} ${vzdalenost.toFixed(1)} %`;
+    }
+    return s;
+  };
+
+  const legenda = document.createElement('div');
+  legenda.className = 'ladder-legend';
+
+  const velikost = document.createElement('span');
+  velikost.className = 'ladder-velikost';
+  if (hide) {
+    velikost.textContent = MASK;
+  } else {
+    // Hodnota pozice a kolik z účtu zabírá — to druhé jen když equity známe.
+    const podilUctu = equity > 0 ? ` · ${Math.round((p.value / equity) * 100)} %` : '';
+    velikost.textContent = `${formatUsd(p.value)} USDT${podilUctu}`;
+  }
+
+  legenda.append(popisek('sl', nejblizsi('sl')), velikost, popisek('tp', nejblizsi('tp')));
+  blok.append(legenda);
+  return blok;
+}
+
+function positionCard(p, hide, onSelect, liqThreshold = 10, volby = {}) {
   const isLong = p.side !== 'Sell';
 
   const card = document.createElement('article');
@@ -220,14 +362,18 @@ function positionCard(p, hide, onSelect, liqThreshold = 10) {
   card.classList.toggle('blizko-likvidace', blizko);
 
   card.append(head, grid);
-  const funding = fundingRow(p);
+
+  const zebrik = volby.zebrik?.(p);
+  if (zebrik) card.append(ladderRow(zebrik, p, volby.equity, hide));
+
+  const funding = fundingRow(p, hide);
   if (funding) card.append(funding);
   return card;
 }
 
-export function renderPositions(list, hide, onSelect, liqThreshold = 10) {
+export function renderPositions(list, hide, onSelect, liqThreshold = 10, volby = {}) {
   dom.list.replaceChildren(
-    ...list.map((p) => positionCard(p, hide, onSelect, liqThreshold)),
+    ...list.map((p) => positionCard(p, hide, onSelect, liqThreshold, volby)),
   );
 
   const total = list.reduce((sum, p) => sum + p.pnl, 0);
