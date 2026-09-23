@@ -178,6 +178,23 @@ export const SCHEMATA = {
     cislo('prirustek', 2, 1, 50, 1),
     cislo('strop', 20, 1, 100, 2),
   ],
+
+  /*
+   * Volume profile. Nemá `param` u ničeho — počítá se i kreslí celý ve
+   * vlastním `draw()` v chart.js z právě viditelných svíček, knihovně se
+   * do výpočtu nemluví.
+   */
+  VPROFILE: [
+    { sekce: 'inputs' },
+    cislo('radku', 24, 6, 80),
+    { sekce: 'style' },
+    vyber('sirka', 30, [20, 30, 40, 55].map((v) => ({ hodnota: v, popisek: `${v} %` }))),
+    vyber('pruhlednost', 0.45,
+      [0.25, 0.45, 0.65, 0.85].map((v) => ({ hodnota: v, popisek: `${Math.round(v * 100)} %` }))),
+    barva('barvaProfil', '#4c9aff'),
+    prepinac('zobrazitPoc', true),
+    podle(barva('barvaPoc', '#f0b90b'), 'zobrazitPoc'),
+  ],
 };
 
 /** Jen skutečná pole, bez oddělovačů sekcí. */

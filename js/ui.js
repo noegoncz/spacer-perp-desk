@@ -35,6 +35,17 @@ const dom = {
   viewChart: el('viewChart'),
   viewWatchlist: el('viewWatchlist'),
   viewHistory: el('viewHistory'),
+  accountSummary: el('accountSummary'),
+  accEquity: el('accEquity'),
+  accAvailable: el('accAvailable'),
+  accMargin: el('accMargin'),
+  accountNote: el('accountNote'),
+  positionTools: el('positionTools'),
+  sortGroup: el('sortGroup'),
+  filterGroup: el('filterGroup'),
+  ordersBlock: el('ordersBlock'),
+  ordersList: el('ordersList'),
+  ordersNote: el('ordersNote'),
   tabs: document.querySelector('.tabs'),
   watchList: el('watchList'),
   watchNote: el('watchNote'),
@@ -53,6 +64,21 @@ function pnlClass(value) {
   if (value > 0) return 'up';
   if (value < 0) return 'down';
   return 'flat';
+}
+
+/**
+ * Skrytí prvku, který v HTML být nemusí.
+ *
+ * ⚠ Při aktualizaci umí prohlížeč krátce servírovat novou `js/ui.js` se
+ * starou `index.html` (viz `naUdalost` v app.js). Prvky přidané v novější
+ * verzi tam pak nejsou a `prvek.hidden` by spadlo na null.
+ */
+function skryj(prvek, skryty) {
+  if (prvek) prvek.hidden = skryty;
+}
+
+function nastavText(prvek, text) {
+  if (prvek) prvek.textContent = text;
 }
 
 function cell(label, value, extraClass = '') {
@@ -87,7 +113,47 @@ function returnPercent(p) {
   return null;
 }
 
-function positionCard(p, hide, onSelect) {
+/**
+ * Funding na kartě: sazba, čas do stržení a kolik to dělá za den.
+ *
+ * Znaménko se počítá podle směru pozice — kladná sazba znamená, že long
+ * platí shortu. Proto se neukazuje jen číslo, ale i to, na kterou stranu
+ * peníze tečou; ze samotného „0,01 %" to nikdo nepozná.
+ */
+function fundingRow(p) {
+  const f = p.funding;
+  if (!f || !Number.isFinite(f.rate)) return null;
+
+  const isLong = p.side !== 'Sell';
+  // Long platí při kladné sazbě, short při záporné.
+  const platiUzivatel = isLong ? f.rate > 0 : f.rate < 0;
+  const zaDen = Math.abs(p.value * f.rate) * (1440 / (f.minut || 480));
+
+  const radek = document.createElement('div');
+  radek.className = 'pos-funding';
+
+  const popis = document.createElement('span');
+  popis.textContent = `${t('funding.label')} ${formatPercent(f.rate * 100, 4)}`;
+
+  const castka = document.createElement('span');
+  castka.className = `hodnota ${platiUzivatel ? 'platis' : 'dostavas'}`;
+  castka.textContent = `${t(platiUzivatel ? 'funding.youPay' : 'funding.youGet')} `
+    + t('funding.perDay', { amount: formatUsd(zaDen) });
+
+  radek.append(popis, castka);
+
+  if (f.nextAt) {
+    const zbyva = f.nextAt - Date.now();
+    if (zbyva > 0) {
+      const kdy = document.createElement('span');
+      kdy.textContent = t('funding.next', { time: trvani(zbyva) });
+      radek.append(kdy);
+    }
+  }
+  return radek;
+}
+
+function positionCard(p, hide, onSelect, liqThreshold = 10) {
   const isLong = p.side !== 'Sell';
 
   const card = document.createElement('article');
@@ -142,19 +208,27 @@ function positionCard(p, hide, onSelect) {
 
   const distance = liquidationDistance(p);
   const liqText = p.liq ? formatPrice(p.liq) : t('position.notSet');
-  const liqClass = distance !== null && Math.abs(distance) < 10 ? 'liq near' : 'liq';
+  const blizko = distance !== null && Math.abs(distance) < liqThreshold;
+  const liqClass = blizko ? 'liq near' : 'liq';
   grid.append(cell(t('position.liquidation'), liqText, p.liq ? liqClass : ''));
 
   if (distance !== null) {
     grid.append(cell(t('position.toLiquidation'), formatPercent(distance), liqClass));
   }
 
+  // Varování se propíše na celou kartu, ne jen na jedno číslo.
+  card.classList.toggle('blizko-likvidace', blizko);
+
   card.append(head, grid);
+  const funding = fundingRow(p);
+  if (funding) card.append(funding);
   return card;
 }
 
-export function renderPositions(list, hide, onSelect) {
-  dom.list.replaceChildren(...list.map((p) => positionCard(p, hide, onSelect)));
+export function renderPositions(list, hide, onSelect, liqThreshold = 10) {
+  dom.list.replaceChildren(
+    ...list.map((p) => positionCard(p, hide, onSelect, liqThreshold)),
+  );
 
   const total = list.reduce((sum, p) => sum + p.pnl, 0);
   dom.totalPnl.textContent = hide ? MASK : `${formatSignedUsd(total)} USDT`;
@@ -173,10 +247,157 @@ export function renderPositions(list, hide, onSelect) {
 export function showPlaceholder(text, buttonLabel = null) {
   dom.list.replaceChildren();
   dom.summary.hidden = true;
+  skryj(dom.accountSummary, true);
+  skryj(dom.accountNote, true);
+  skryj(dom.positionTools, true);
+  skryj(dom.ordersBlock, true);
   dom.placeholder.hidden = false;
   dom.placeholderText.textContent = text;
   dom.placeholderBtn.hidden = !buttonLabel;
   if (buttonLabel) dom.placeholderBtn.textContent = buttonLabel;
+}
+
+/* ---------- přehled účtu (checkpoint 7) ---------- */
+
+/**
+ * Equity, volný margin a využití marginu.
+ *
+ * ⚠ Klíč jen s oprávněním na pozice tahle data nedostane. To **není chyba
+ * spojení** — pozice fungují dál, proto se ukáže jen vysvětlující řádek
+ * a přehled se schová, žádná červená lišta.
+ */
+export function renderAccount(ucet, chyba, hide) {
+  const mame = Boolean(ucet);
+  skryj(dom.accountSummary, !mame);
+  skryj(dom.accountNote, mame || !chyba);
+
+  if (!mame) {
+    if (chyba) nastavText(dom.accountNote, t('account.needsWallet'));
+    return;
+  }
+
+  nastavText(dom.accEquity, hide ? MASK : `${formatUsd(ucet.equity)} USDT`);
+  nastavText(dom.accAvailable, hide ? MASK : `${formatUsd(ucet.volny)} USDT`);
+  nastavText(dom.accMargin, Number.isFinite(ucet.vyuziti)
+    ? `${ucet.vyuziti.toFixed(1)} %`
+    : '—');
+}
+
+/* ---------- otevřené příkazy (checkpoint 7) ---------- */
+
+/** Popis příkazu: co to je a za jakých podmínek se spustí. */
+function orderKind(o) {
+  const casti = [];
+  if (o.stopType) {
+    // Bybit vrací interní názvy typu `PartialTakeProfit`; do UI patří
+    // to, co uživatel zná z grafu.
+    casti.push(o.stopType.replace(/([a-z])([A-Z])/g, '$1 $2'));
+  } else {
+    casti.push(t(o.type === 'Market' ? 'orders.market' : 'orders.limit'));
+  }
+  if (o.trigger) casti.push(t('orders.trigger', { price: formatPrice(o.trigger) }));
+  if (o.reduceOnly) casti.push(t('orders.reduceOnly'));
+  if (o.filled > 0) {
+    casti.push(t('orders.filled', { done: formatSize(o.filled), total: formatSize(o.qty) }));
+  }
+  return casti.join(' · ');
+}
+
+export function renderOrders(orders, hide, onSelect, chyba = null) {
+  const mame = orders.length > 0;
+  skryj(dom.ordersBlock, !mame && !chyba);
+  nastavText(dom.ordersNote, chyba || (mame ? '' : t('orders.none')));
+  if (!dom.ordersList) return;
+
+  dom.ordersList.replaceChildren(...orders.map((o) => {
+    const radek = document.createElement('div');
+    radek.className = `order-row ${o.side === 'Buy' ? 'buy' : 'sell'}`;
+    radek.setAttribute('role', 'button');
+    radek.tabIndex = 0;
+
+    const symbol = document.createElement('div');
+    symbol.className = 'order-symbol';
+    symbol.textContent = o.symbol;
+
+    const cena = document.createElement('div');
+    cena.className = 'order-price';
+    cena.textContent = formatPrice(o.price ?? o.trigger);
+
+    const mnozstvi = document.createElement('div');
+    mnozstvi.className = 'order-qty';
+    mnozstvi.textContent = hide ? MASK : formatSize(o.qty);
+
+    const druh = document.createElement('div');
+    druh.className = 'order-kind';
+    druh.textContent = orderKind(o);
+
+    radek.append(symbol, cena, mnozstvi, druh);
+    radek.addEventListener('click', () => onSelect?.(o));
+    radek.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        onSelect?.(o);
+      }
+    });
+    return radek;
+  }));
+}
+
+/* ---------- řazení a filtr (checkpoint 8) ---------- */
+
+/**
+ * Lišta nad seznamem. Staví se z JS, ne z HTML, aby šly popisky přeložit
+ * při změně jazyka bez sahání do markupu.
+ */
+export function renderPositionTools(stav, onSort, onFilter) {
+  skryj(dom.positionTools, !stav.viditelne);
+  if (!stav.viditelne || !dom.sortGroup || !dom.filterGroup) return;
+
+  const tlacitko = (popisek, aktivni, onClick, sufix = '') => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `list-btn ${aktivni ? 'active' : ''}`.trim();
+    btn.textContent = popisek;
+    if (sufix) {
+      const smer = document.createElement('span');
+      smer.className = 'smer';
+      smer.textContent = sufix;
+      btn.append(smer);
+    }
+    btn.addEventListener('click', onClick);
+    return btn;
+  };
+
+  dom.sortGroup.replaceChildren(
+    ...[['value', 'sort.value'], ['pnl', 'sort.pnl'], ['liq', 'sort.liquidation']]
+      .map(([klic, popisek]) => tlacitko(
+        t(popisek),
+        stav.sort === klic,
+        () => onSort(klic),
+        // Šipka jen u zvoleného klíče; u ostatních by jen mátla.
+        stav.sort === klic ? (stav.sestupne ? '↓' : '↑') : '',
+      )),
+  );
+
+  dom.filterGroup.replaceChildren(
+    ...[['all', 'filter.all'], ['long', 'filter.long'], ['short', 'filter.short']]
+      .map(([klic, popisek]) => tlacitko(
+        t(popisek),
+        stav.filter === klic,
+        () => onFilter(klic),
+      )),
+  );
+}
+
+/**
+ * Prázdný výsledek filtru. Nesmí vypadat jako „žádné pozice" — data jsou,
+ * jen je schoval filtr, a uživatel musí poznat rozdíl.
+ */
+export function showFilterEmpty(text) {
+  skryj(dom.placeholder, false);
+  nastavText(dom.placeholderText, text);
+  skryj(dom.placeholderBtn, true);
+  skryj(dom.retryBtn, true);
 }
 
 /** Ukáže, co klient právě dělá. Bez dat se to jinak hádá naslepo. */

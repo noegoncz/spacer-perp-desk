@@ -244,6 +244,51 @@ export const cs = {
   'indicator.BOLL': 'Bollinger',
   'indicator.SAR': 'Parabolic SAR',
 
+  /* ---------- přehled účtu (checkpoint 7) ---------- */
+  'account.equity': 'Equity',
+  'account.available': 'Volné',
+  'account.marginUsed': 'Využitý margin',
+  'account.unavailable': 'Přehled účtu potřebuje u klíče oprávnění Wallet.',
+  'account.needsWallet': 'Přidej klíči na Bybitu oprávnění Wallet (čtení), ať je vidět equity a margin.',
+
+  'funding.label': 'Funding',
+  'funding.next': 'za {time}',
+  'funding.perDay': '{amount} USDT/den',
+  'funding.youPay': 'platíš',
+  'funding.youGet': 'dostáváš',
+
+  'orders.title': 'Otevřené příkazy',
+  'orders.none': 'Žádné otevřené příkazy.',
+  'orders.limit': 'Limit',
+  'orders.market': 'Market',
+  'orders.trigger': 'spouštěč {price}',
+  'orders.reduceOnly': 'jen zavírá',
+  'orders.filled': 'plněno {done} z {total}',
+  'orders.failed': 'Otevřené příkazy se nepodařilo načíst.',
+
+  /* ---------- řazení, filtr, varování (checkpoint 8) ---------- */
+  'sort.label': 'Řadit',
+  'sort.value': 'Velikost',
+  'sort.pnl': 'PnL',
+  'sort.liquidation': 'Do likvidace',
+  'filter.all': 'Vše',
+  'filter.long': 'Long',
+  'filter.short': 'Short',
+  'positions.noneMatch': 'Filtru neodpovídá žádná pozice.',
+  'settings.liqThreshold': 'Varovat při likvidaci od',
+  'settings.liqThresholdHint': 'Karta zčervená, když se cena přiblíží likvidaci na tuhle vzdálenost.',
+  'settings.sltpAlerts': 'Upozornit při zásahu SL/TP',
+  'sltp.stopLossHit': '{symbol}: zasažen stop loss na {price}',
+  'sltp.takeProfitHit': '{symbol}: zasažen take profit na {price}',
+
+  'indicator.VPROFILE': 'Volume profile',
+  'indicatorDesc.VPROFILE': 'Kde se obchodoval objem, podle ceny',
+  'indSet.radku': 'Počet pásem',
+  'indSet.sirka': 'Šířka',
+  'indSet.barvaProfil': 'Barva sloupců',
+  'indSet.zobrazitPoc': 'Zobrazit nejsilnější pásmo',
+  'indSet.barvaPoc': 'Barva pásma',
+
   /* ---------- nastavení ---------- */
   'settings.title': 'Připojení k Bybitu',
   'settings.hint':

@@ -421,6 +421,116 @@ main {
   font-variant-numeric: tabular-nums;
 }
 
+/* Přehled účtu má menší čísla než PnL — je to kontext, ne hlavní sdělení. */
+.account-summary { margin-top: -2px; }
+.account-summary .summary-value { font-size: 1.02rem; }
+
+.account-note {
+  margin: -4px 0 12px;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  color: var(--text-dim);
+}
+
+/* ---------- řazení a filtr seznamu ---------- */
+
+.list-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin-bottom: 10px;
+}
+
+.list-tools-group { display: flex; gap: 4px; }
+
+.list-btn {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.list-btn:active { background: var(--surface-2); }
+.list-btn.active { border-color: var(--accent); color: var(--accent); }
+
+/* Šipka směru řazení se ukazuje jen u zvoleného klíče. */
+.list-btn .smer { margin-left: 4px; opacity: 0.85; }
+
+/* ---------- otevřené příkazy ---------- */
+
+.orders-block { margin-top: 22px; }
+
+.orders-title {
+  margin: 0 0 8px;
+  font-size: 0.72rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-dim);
+}
+
+.orders-list { display: flex; flex-direction: column; gap: 6px; }
+
+.order-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 9px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.order-row:active { background: var(--surface-2); }
+
+/* Barevný proužek vlevo drží stejný význam jako u karet pozic. */
+.order-row.buy  { border-left: 3px solid var(--long); }
+.order-row.sell { border-left: 3px solid var(--short); }
+
+.order-symbol { font-weight: 600; font-size: 0.88rem; }
+.order-kind {
+  grid-column: 1 / -1;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+.order-price { text-align: right; font-size: 0.88rem; font-variant-numeric: tabular-nums; }
+.order-qty { font-size: 0.72rem; color: var(--text-dim); text-align: right; }
+
+/* ---------- nastavení: práh a přepínač ---------- */
+
+.threshold-row { display: flex; align-items: center; gap: 8px; }
+
+.threshold-input {
+  width: 90px;
+  min-height: var(--tap);
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 0.92rem;
+  -moz-appearance: textfield;
+}
+.threshold-input::-webkit-outer-spin-button,
+.threshold-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+.threshold-unit { color: var(--text-dim); font-size: 0.92rem; }
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: var(--tap);
+  margin-top: 14px;
+  font-size: 0.92rem;
+}
+
 /* ---------- karta pozice ---------- */
 
 .positions { display: flex; flex-direction: column; gap: 10px; }
@@ -503,6 +613,33 @@ main {
 
 .value.liq { color: var(--warn); }
 .value.liq.near { color: var(--short); font-weight: 650; }
+
+/*
+ * Blízká likvidace obarví celou kartu, ne jen jedno číslo — při rychlém
+ * pohledu na seznam se přebarvená hodnota snadno přehlédne. Hranici si
+ * uživatel nastavuje v nastavení (výchozí 10 %).
+ */
+.position.blizko-likvidace {
+  border-color: rgba(234, 57, 67, 0.55);
+  background: linear-gradient(180deg, rgba(234, 57, 67, 0.09), transparent 60%);
+}
+.position.blizko-likvidace.long,
+.position.blizko-likvidace.short { border-left-color: var(--short); }
+
+/* Funding na kartě je doplněk, ne hlavní číslo. */
+.pos-funding {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+.pos-funding .hodnota { font-variant-numeric: tabular-nums; }
+.pos-funding .platis { color: var(--short); }
+.pos-funding .dostavas { color: var(--long); }
 .value.sl { color: var(--warn); }
 .value.tp { color: var(--long); }
 .value.dim { color: var(--text-dim); }

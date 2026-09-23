@@ -126,6 +126,49 @@ export function saveOnlyFavourites(value) {
   write('perpdesk.onlyFavourites', value ? '1' : '0');
 }
 
+/**
+ * Řazení a filtr seznamu pozic (checkpoint 8). Drží se v telefonu, ať si to
+ * uživatel nemusí přenastavovat při každém otevření.
+ */
+export function loadPositionSort() {
+  const ulozene = read('perpdesk.posSort');
+  return ulozene || 'value';
+}
+
+export function savePositionSort(klic) {
+  write('perpdesk.posSort', klic);
+}
+
+export function loadPositionFilter() {
+  return read('perpdesk.posFilter') || 'all';
+}
+
+export function savePositionFilter(klic) {
+  write('perpdesk.posFilter', klic);
+}
+
+/**
+ * Od kolika procent do likvidace se karta zbarví do červena. Výchozích 10 %
+ * odpovídá tomu, co měla karta napevno předtím.
+ */
+export function loadLiqThreshold() {
+  const n = Number(read('perpdesk.liqThreshold'));
+  return Number.isFinite(n) && n > 0 ? n : 10;
+}
+
+export function saveLiqThreshold(procenta) {
+  write('perpdesk.liqThreshold', String(procenta));
+}
+
+/** Upozornění při zásahu SL nebo TP — zvuk, vibrace a pruh v UI. */
+export function loadSltpAlerts() {
+  return read('perpdesk.sltpAlerts') !== '0';
+}
+
+export function saveSltpAlerts(value) {
+  write('perpdesk.sltpAlerts', value ? '1' : '0');
+}
+
 /** Jazyk aplikace. Výchozí je angličtina, ne nastavení prohlížeče. */
 export function loadLanguage() {
   return read('perpdesk.language') || 'en';

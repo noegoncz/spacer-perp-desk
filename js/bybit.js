@@ -145,6 +145,23 @@ function positionKey(p) {
   return `${p.symbol}#${p.positionIdx ?? 0}`;
 }
 
+/** Příkaz v jednotném tvaru — stejný pro čáry v grafu i pro seznam příkazů. */
+function normalizeOrder(o) {
+  return {
+    id: o.orderId,
+    symbol: o.symbol,
+    side: o.side,
+    type: o.orderType,
+    stopType: o.stopOrderType || '',
+    price: optionalNum(o.price),
+    trigger: optionalNum(o.triggerPrice),
+    qty: num(o.qty),
+    filled: num(o.cumExecQty),
+    reduceOnly: Boolean(o.reduceOnly),
+    createdAt: Number(o.createdTime) || 0,
+  };
+}
+
 /** PnL přepočítaný lokálně, když přijde nová mark cena z ticker streamu. */
 function recalcPnl(p) {
   if (!p.entry || !p.size || !p.mark) return p.pnl;
@@ -209,6 +226,11 @@ export class BybitClient {
     this.pollTimer = null;
     this.subscribedSymbols = new Set();
     this.klineTopic = null;
+
+    /** Funding interval páru se prakticky nemění — stačí se zeptat jednou. */
+    this.fundingIntervaly = new Map();
+    /** Sazba funding se mění po hodinách; častější dotazování nemá smysl. */
+    this.fundingCache = new Map();
 
     this.status = { ws: 'idle', rest: 'idle', lastUpdate: null };
 
@@ -310,13 +332,21 @@ export class BybitClient {
       this.positions.clear();
       for (const raw of result?.list ?? []) {
         const p = normalizePosition(raw);
-        if (p.size > 0) this.positions.set(positionKey(p), p);
+        if (p.size === 0) continue;
+        // Funding se drží v cache, ne na pozici — jinak by po každém
+        // přenačtení pozic na kartě na chvíli zmizel.
+        const zaznam = this.fundingCache.get(p.symbol);
+        if (zaznam) p.funding = zaznam.funding;
+        this.positions.set(positionKey(p), p);
       }
 
       this.zapisDiag(`hotovo, pozic: ${this.positions.size}`);
       this.setStatus({ rest: 'ok', lastUpdate: Date.now() });
       this.emitPositions();
       this.syncTickerSubscriptions();
+      // Přehled účtu, funding a příkazy jdou zvlášť a bez čekání — pozice
+      // se musí ukázat hned, i kdyby tyhle dotazy selhaly nebo se vlekly.
+      this.refreshExtras();
       return true;
     } catch (err) {
       this.zapisDiag('chyba', err.message || String(err));
@@ -324,6 +354,61 @@ export class BybitClient {
       this.emitError(err.message || String(err));
       return false;
     }
+  }
+
+  /**
+   * Doplňková data o účtu. Schválně mimo `refresh()`: každá část smí selhat
+   * samostatně a ani jedna nesmí shodit seznam pozic. Proto žádné `await`
+   * na výsledek a každá větev má vlastní `catch`.
+   */
+  refreshExtras() {
+    if (!this.hasCredentials()) return;
+
+    this.getWalletBalance()
+      .then(({ ucet, chyba }) => this.handlers.onAccount?.(ucet, chyba))
+      .catch((err) => this.handlers.onAccount?.(null, err?.message || String(err)));
+
+    this.getAllOpenOrders()
+      .then((orders) => this.handlers.onOrders?.(orders, null))
+      .catch((err) => this.handlers.onOrders?.([], err?.message || String(err)));
+
+    this.refreshFunding();
+  }
+
+  /**
+   * Funding pro páry s otevřenou pozicí. Sazba se hýbe po hodinách, takže
+   * se drží deset minut v paměti — jinak by každý třicetisekundový poll
+   * poslal na burzu dva dotazy na pár zbytečně.
+   */
+  async refreshFunding() {
+    const symboly = [...new Set([...this.positions.values()].map((p) => p.symbol))];
+    const ted = Date.now();
+    let zmena = false;
+
+    await Promise.all(symboly.map(async (symbol) => {
+      const ulozene = this.fundingCache.get(symbol);
+      if (ulozene && ted - ulozene.kdy < 600000) return;
+      try {
+        const funding = await this.getFunding(symbol);
+        if (funding) {
+          this.fundingCache.set(symbol, { kdy: ted, funding });
+          zmena = true;
+        }
+      } catch {
+        /* funding je doplněk, bez něj se pozice ukazuje dál */
+      }
+    }));
+
+    // Nalepit na pozice a znovu ohlásit, ať karty dostanou čísla.
+    let pripojeno = false;
+    for (const p of this.positions.values()) {
+      const zaznam = this.fundingCache.get(p.symbol);
+      if (zaznam && p.funding !== zaznam.funding) {
+        p.funding = zaznam.funding;
+        pripojeno = true;
+      }
+    }
+    if (zmena || pripojeno) this.emitPositions();
   }
 
   /* ---------- svíčky a příkazy (checkpoint 2) ---------- */
@@ -460,16 +545,103 @@ export class BybitClient {
       symbol,
       limit: '50',
     });
-    return (result?.list ?? []).map((o) => ({
-      id: o.orderId,
-      side: o.side,
-      type: o.orderType,
-      stopType: o.stopOrderType || '',
-      price: optionalNum(o.price),
-      trigger: optionalNum(o.triggerPrice),
-      qty: num(o.qty),
-      reduceOnly: Boolean(o.reduceOnly),
-    }));
+    return (result?.list ?? []).map(normalizeOrder);
+  }
+
+  /**
+   * Všechny otevřené příkazy napříč páry — podklad pro samostatný seznam,
+   * ne jen čáry v grafu jednoho páru.
+   */
+  async getAllOpenOrders() {
+    const result = await this.signedGet('/v5/order/realtime', {
+      category: 'linear',
+      settleCoin: 'USDT',
+      limit: '50',
+    });
+    return (result?.list ?? [])
+      .map(normalizeOrder)
+      .sort((a, b) => b.createdAt - a.createdAt);
+  }
+
+  /* ---------- přehled účtu a funding (checkpoint 7) ---------- */
+
+  /**
+   * Equity, volný margin a využití marginu.
+   *
+   * ⚠ Klíč jen s právem na pozice tohle nevrátí — Bybit odpoví 10005.
+   * Volající to **nesmí brát jako chybu spojení**: pozice fungují dál, jen
+   * se přehled nezobrazí. Proto se chyba vrací jako hodnota, ne výjimka.
+   *
+   * ⚠ Typ účtu se zkouší oběma směry. `UNIFIED` je dnešní výchozí, starší
+   * účty jsou `CONTRACT` a mají čísla jinde — v `coin[]` místo v součtech.
+   */
+  async getWalletBalance() {
+    let posledniChyba = null;
+
+    for (const accountType of ['UNIFIED', 'CONTRACT']) {
+      try {
+        const result = await this.signedGet('/v5/account/wallet-balance', { accountType });
+        const ucet = result?.list?.[0];
+        if (!ucet) continue;
+
+        const usdt = (ucet.coin ?? []).find((c) => c.coin === 'USDT') ?? {};
+        const equity = num(ucet.totalEquity) || num(usdt.equity);
+        if (!equity) continue;
+
+        const volny = num(ucet.totalAvailableBalance) || num(usdt.availableToWithdraw);
+        // accountIMRate je podíl 0–1; u CONTRACT účtů chybí, tam se dopočítá.
+        const podil = Number(ucet.accountIMRate);
+        const pouzity = num(ucet.totalInitialMargin) || num(usdt.totalPositionIM);
+        const vyuziti = Number.isFinite(podil) && podil > 0
+          ? podil * 100
+          : (equity > 0 ? (pouzity / equity) * 100 : null);
+
+        return {
+          ucet: { equity, volny, vyuziti, pouzity, typ: accountType },
+          chyba: null,
+        };
+      } catch (err) {
+        posledniChyba = err?.message || String(err);
+      }
+    }
+    return { ucet: null, chyba: posledniChyba || t('account.unavailable') };
+  }
+
+  /**
+   * Funding páru: sazba za jedno stržení a kdy se strhne příště.
+   *
+   * Interval se u Bybitu liší pár od páru (osm hodin je jen nejčastější),
+   * a v tickeru není — musí se doptat `instruments-info`. Mění se prakticky
+   * nikdy, takže se pamatuje do konce běhu.
+   */
+  async getFunding(symbol) {
+    const [ticker, minut] = await Promise.all([
+      this.publicGet('/v5/market/tickers', { category: 'linear', symbol }),
+      this.fundingInterval(symbol),
+    ]);
+    const row = ticker?.list?.[0];
+    if (!row) return null;
+    return {
+      rate: Number(row.fundingRate) || 0,
+      nextAt: Number(row.nextFundingTime) || null,
+      minut,
+    };
+  }
+
+  async fundingInterval(symbol) {
+    if (this.fundingIntervaly.has(symbol)) return this.fundingIntervaly.get(symbol);
+    let minut = 480; // osm hodin, standard u USDT perpetuálů
+    try {
+      const result = await this.publicGet('/v5/market/instruments-info', {
+        category: 'linear',
+        symbol,
+      });
+      minut = Number(result?.list?.[0]?.fundingInterval) || 480;
+    } catch {
+      /* zůstane výchozích osm hodin — lepší než nic neukázat */
+    }
+    this.fundingIntervaly.set(symbol, minut);
+    return minut;
   }
 
   /**

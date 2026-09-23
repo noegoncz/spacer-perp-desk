@@ -39,6 +39,37 @@ window.fetch = function (vstup) {
     const odpoved = ok({retCode:0, result:{list:l}});
     return iv === '60' ? new Promise((r) => setTimeout(() => r(odpoved), 700)) : odpoved;
   }
+  // Prehled uctu (checkpoint 7). window.__bezPenezenky simuluje klic bez
+  // opravneni Wallet — Bybit na nej odpovida chybou, ne prazdnym seznamem.
+  if (u.includes('/v5/account/wallet-balance')) {
+    if (window.__bezPenezenky) return ok({retCode:10005, retMsg:'Permission denied'});
+    return ok({retCode:0, result:{list:[{
+      totalEquity:'1250.50', totalAvailableBalance:'1130.20',
+      totalInitialMargin:'120.30', accountIMRate:'0.0962',
+      coin:[{coin:'USDT', equity:'1250.50', availableToWithdraw:'1130.20'}],
+    }]}});
+  }
+  // Funding: sazba i cas dalsiho strzeni.
+  if (u.includes('/v5/market/tickers')) {
+    return ok({retCode:0, result:{list:[{
+      symbol:'JUPUSDT', lastPrice:'0.30580', price24hPcnt:'0.0123',
+      turnover24h:'1234567', fundingRate:'0.0001',
+      nextFundingTime:String(Date.now() + 3600e3),
+    }]}});
+  }
+  if (u.includes('/v5/market/instruments-info')) {
+    return ok({retCode:0, result:{list:[{symbol:'JUPUSDT', fundingInterval:480}]}});
+  }
+  // Otevrene prikazy — jak pro graf (symbol=), tak pro seznam (settleCoin=).
+  if (u.includes('/v5/order/realtime')) {
+    return ok({retCode:0, result:{list:[
+      {orderId:'o1', symbol:'JUPUSDT', side:'Buy', orderType:'Limit', price:'0.2850',
+       qty:'500', cumExecQty:'0', reduceOnly:false, createdTime:String(Date.now()-3600e3)},
+      {orderId:'o2', symbol:'JUPUSDT', side:'Sell', orderType:'Market', stopOrderType:'PartialTakeProfit',
+       triggerPrice:'0.3400', qty:'1000', cumExecQty:'250', reduceOnly:true,
+       createdTime:String(Date.now()-7200e3)},
+    ]}});
+  }
   return ok({retCode:0, result:{list:[]}});
 };
 

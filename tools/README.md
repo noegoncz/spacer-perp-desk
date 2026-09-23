@@ -49,6 +49,7 @@ jen nová stránka ve staré kartě.
 | `test-alarmy.py` | cenový alarm: zadání křížem, hladina v grafu, zaznění při protnutí, opakování |
 | `test-alarm-z-kresby.py` | zvonek u kresby z ní udělá alarm (trendová → čára, vodorovná → hladina, svislá → čas) |
 | `test-preloseni-foldu.py` | stav appky (pár, interval, zoom) i mřížka karty pozice přežijí přeložení Foldu |
+| `test-ucet-a-pohodli.py` | přehled účtu, funding, seznam příkazů, řazení/filtr pozic, práh likvidace, volume profile |
 
 ⚠ Dotykovým bodům u gest dvěma prsty dávej výslovné `id`, jinak se pohyb
 zbylého prstu tváří jako třetí prst a test hlásí odskok, který v aplikaci není.
@@ -59,6 +60,11 @@ občas ztratil a test hlásil chybu, která v aplikaci není.
 
 ⚠ Kdo zapisuje alarmy přímo do `localStorage`, musí stránku přenačíst —
 `js/alarmy.js` čte úložiště jen jednou za běh.
+
+⚠ **Zapnuté indikátory přežívají v `localStorage` mezi běhy.** Test, který
+indikátor zapíná klepnutím, ho při druhém spuštění naopak vypne a ohlásí
+chybu, která v aplikaci není — proto na začátku `localStorage.removeItem(
+'perpdesk.indicators')`.
 
 ⚠ Testovací data musí mít **nezávislé** open a close. Když je `close = open + konstanta`,
 dávají všechny zdroje ceny stejné RSI a volba zdroje vypadá, že nefunguje.

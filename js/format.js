@@ -53,12 +53,16 @@ export function formatSignedUsd(value) {
   return `${sign}${formatUsd(Math.abs(value))}`;
 }
 
-export function formatPercent(value) {
+/**
+ * Procenta se znaménkem. `desetin` je kvůli fundingu — jeho sazby jsou
+ * setiny procenta, na dvě místa by z 0,005 % zbyla nula.
+ */
+export function formatPercent(value, desetin = 2) {
   if (!Number.isFinite(value)) return '—';
   const sign = value > 0 ? '+' : value < 0 ? '−' : '';
   return `${sign}${Math.abs(value).toLocaleString(getLocale(), {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: desetin,
+    maximumFractionDigits: desetin,
   })} %`;
 }
 

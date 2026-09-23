@@ -248,6 +248,51 @@ export const en = {
   'indicator.BOLL': 'Bollinger bands',
   'indicator.SAR': 'Parabolic SAR',
 
+  /* ---------- account overview (checkpoint 7) ---------- */
+  'account.equity': 'Equity',
+  'account.available': 'Available',
+  'account.marginUsed': 'Margin used',
+  'account.unavailable': 'Account overview needs the Wallet permission on your API key.',
+  'account.needsWallet': 'Add the Wallet (read) permission on Bybit to see equity and margin.',
+
+  'funding.label': 'Funding',
+  'funding.next': 'in {time}',
+  'funding.perDay': '{amount} USDT/day',
+  'funding.youPay': 'you pay',
+  'funding.youGet': 'you receive',
+
+  'orders.title': 'Open orders',
+  'orders.none': 'No open orders.',
+  'orders.limit': 'Limit',
+  'orders.market': 'Market',
+  'orders.trigger': 'trigger {price}',
+  'orders.reduceOnly': 'reduce only',
+  'orders.filled': '{done} of {total} filled',
+  'orders.failed': 'Could not load open orders.',
+
+  /* ---------- sorting, filtering, warnings (checkpoint 8) ---------- */
+  'sort.label': 'Sort',
+  'sort.value': 'Size',
+  'sort.pnl': 'PnL',
+  'sort.liquidation': 'To liquidation',
+  'filter.all': 'All',
+  'filter.long': 'Long',
+  'filter.short': 'Short',
+  'positions.noneMatch': 'No position matches the filter.',
+  'settings.liqThreshold': 'Liquidation warning at',
+  'settings.liqThresholdHint': 'The card turns red when the price gets this close to liquidation.',
+  'settings.sltpAlerts': 'Alert on SL/TP hit',
+  'sltp.stopLossHit': '{symbol}: stop loss hit at {price}',
+  'sltp.takeProfitHit': '{symbol}: take profit hit at {price}',
+
+  'indicator.VPROFILE': 'Volume profile',
+  'indicatorDesc.VPROFILE': 'Where the volume traded, by price',
+  'indSet.radku': 'Rows',
+  'indSet.sirka': 'Width',
+  'indSet.barvaProfil': 'Bar colour',
+  'indSet.zobrazitPoc': 'Show point of control',
+  'indSet.barvaPoc': 'POC colour',
+
   /* ---------- settings ---------- */
   'settings.title': 'Bybit connection',
   'settings.hint':

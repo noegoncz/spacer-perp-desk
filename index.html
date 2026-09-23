@@ -81,7 +81,37 @@
       </div>
     </div>
 
+    <!-- Přehled účtu; skrytý, dokud klíč nemá oprávnění Wallet -->
+    <div class="summary account-summary" id="accountSummary" hidden>
+      <div class="summary-item">
+        <span class="summary-label" data-i18n="account.equity">Equity</span>
+        <span class="summary-value" id="accEquity">—</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label" data-i18n="account.available">Available</span>
+        <span class="summary-value" id="accAvailable">—</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label" data-i18n="account.marginUsed">Margin used</span>
+        <span class="summary-value" id="accMargin">—</span>
+      </div>
+    </div>
+    <p id="accountNote" class="account-note" hidden></p>
+
+    <!-- Řazení a filtr; ukazuje se až když je co řadit -->
+    <div class="list-tools" id="positionTools" hidden>
+      <div class="list-tools-group" id="sortGroup" role="group" data-i18n-aria="sort.label"></div>
+      <div class="list-tools-group" id="filterGroup" role="group"></div>
+    </div>
+
     <div id="positionList" class="positions"></div>
+
+    <!-- Otevřené příkazy jako samostatný seznam, ne jen čáry v grafu -->
+    <section class="orders-block" id="ordersBlock" hidden>
+      <h2 class="orders-title" data-i18n="orders.title">Open orders</h2>
+      <div id="ordersList" class="orders-list"></div>
+      <p id="ordersNote" class="watch-note"></p>
+    </section>
 
     <div id="placeholder" class="placeholder">
       <p id="placeholderText">Loading…</p>
@@ -333,6 +363,24 @@
       <hr>
 
       <button type="button" id="clearBtn" class="danger-btn" data-i18n="settings.clear">Delete keys from this phone</button>
+
+      <hr>
+
+      <label for="liqThreshold" data-i18n="settings.liqThreshold">Liquidation warning at</label>
+      <div class="threshold-row">
+        <input type="number" id="liqThreshold" class="threshold-input" min="1" max="90"
+               step="1" inputmode="numeric" value="10">
+        <span class="threshold-unit">%</span>
+      </div>
+      <p class="hint" data-i18n="settings.liqThresholdHint">
+        The card turns red when the price gets this close to liquidation.
+      </p>
+
+      <div class="switch-row">
+        <span data-i18n="settings.sltpAlerts">Alert on SL/TP hit</span>
+        <button type="button" id="sltpAlertsBtn" class="nastaveni-prepinac"
+                aria-pressed="true" data-i18n-aria="settings.sltpAlerts"></button>
+      </div>
 
       <hr>
 

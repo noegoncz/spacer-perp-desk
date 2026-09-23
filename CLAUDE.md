@@ -824,19 +824,72 @@ hodinový obchod je denní svíčka k ničemu a na dvouměsíční zase minutov�
 Kline se načítá s parametrem `end`, jinak by Bybit vrátil nejnovější svíčky
 místo těch z doby obchodu.
 
-### 7) Rozšířená data o účtu
+### ✅ 7) Rozšířená data o účtu
 
 - Přehled účtu: equity, volný margin, využití marginu (`/v5/account/wallet-balance`).
 - Funding: příští sazba a čas do stržení, náklad na pozici za den.
 - Otevřené příkazy jako samostatný seznam, nejen čáry v grafu.
 
-### 8) Pohodlí
+⚠ **Klíč jen s právem na pozice přehled účtu nedostane** — Bybit odpoví 10005.
+Není to chyba spojení a nesmí se tak chovat: pozice jedou dál, přehled se
+schová a pod ním se objeví věta, že klíči chybí oprávnění Wallet. Proto
+`getWalletBalance()` vrací chybu **jako hodnotu**, ne výjimkou. Typ účtu se
+zkouší v pořadí `UNIFIED` → `CONTRACT`; starší účty mají čísla v `coin[]`
+místo v součtech.
+
+⚠ **Doplňková data jdou mimo `refresh()`** (`refreshExtras()`), bez `await`
+a s vlastním `catch` u každé části. Kdyby visela v hlavní cestě, jeden pomalý
+nebo zakázaný dotaz by zdržel nebo shodil seznam pozic — a ten je to hlavní,
+co má appka ukázat.
+
+**Funding** má u každého páru vlastní interval (osm hodin je jen nejčastější)
+a v tickeru není — musí se doptat `instruments-info`. Mění se prakticky nikdy,
+takže se pamatuje do konce běhu; sazba se drží deset minut, aby se každý
+třicetisekundový poll neptal znovu. Na kartě není jen číslo, ale i **směr
+platby**: kladná sazba znamená, že long platí shortovi, a ze samotného
+„+0,01 %" to nikdo nepozná.
+
+### ✅ 8) Pohodlí
 
 - Řazení a filtrování pozic (PnL, velikost, blízkost likvidace).
 - Barevné varování na kartě při přiblížení k likvidaci, s volitelnou hranicí.
 - Vibrace nebo zvuk při zásahu SL/TP.
 - Volume profile jako vlastní indikátor (viz checkpoint 3).
 - Alarm při protnutí nakreslené čáry cenou.
+
+Řazení podle likvidace jde podle **vzdálenosti** k ní, ne podle ceny — zajímá,
+jak blízko to má. Pozice bez likvidační ceny padá na konec. Druhé klepnutí na
+tentýž klíč otočí směr, jako v každé tabulce. Volba se ukládá do telefonu.
+
+⚠ **Prázdný výsledek filtru není totéž co „žádné pozice"** — data jsou, jen je
+schoval filtr. Proto `showFilterEmpty()` s vlastním textem, ne stejná hláška
+jako u prázdného účtu.
+
+**Varování před likvidací** obarví celou kartu, ne jen jedno číslo: v rychlém
+pohledu na seznam se přebarvená hodnota snadno přehlédne. Hranice je
+v nastavení (výchozích 10 % odpovídá tomu, co měla karta napevno dřív).
+
+⚠ **Zásah SL/TP se pozná z protnutí mark ceny, ne ze zmizení pozice.** Pozice
+zmizí i při ručním zavření a to zvonit nemá. Stejný princip jako u cenových
+alarmů: porovnává se s minulou cenou, takže první tick po startu nespustí nic.
+Zavřené pozice se z paměti uklízejí, ať tam neleží navždy.
+
+#### Volume profile
+
+⚠ **Je to odhad, ne pravda.** Poctivý profil potřebuje jednotlivé obchody
+a na ty Bybit endpoint nemá, takže se objem každé svíčky rovnoměrně rozprostře
+mezi její minimum a maximum. Dělá to tak většina retailových nástrojů, ale
+přesné to není — uživatel o tom ví.
+
+Kreslí se stejnou technikou jako objem: registrovaný indikátor s **prázdným
+`figures`**, aby nemluvil do měřítka cenové osy, a sloupce si vykreslíme sami
+v `draw()`. `calc()` musí vrátit řadu dlouhou jako data (byť prázdných
+objektů) — jinak knihovna indikátor považuje za prázdný a `draw()` vůbec
+nezavolá. Rozpětí i měřítko se bere **jen z právě viditelných svíček**, profil
+má popisovat to, na co se uživatel dívá. Nejsilnější pásmo se volitelně
+obarví zvlášť.
+
+Test obojího: `tools/test-ucet-a-pohodli.py`.
 
 ### 9) Bezpečnost
 
@@ -952,7 +1005,7 @@ Pořadí, jak se na to má chodit. Odškrtnuté jsou hotové.
     (hodiny, ne vteřiny) a je experimentální.
   - ⚠ Uživatel používá **Brave**; u varianty (b) nejdřív ověřit push přímo
     na jeho telefonu.
-- [ ] **Volume profile** jako vlastní indikátor (odhad ze svíček, viz checkpoint 3).
+- [x] **Volume profile** jako vlastní indikátor (v0.15.0) — odhad ze svíček, popsáno u checkpointu 8.
 
 ### Checkpointy
 
@@ -962,8 +1015,8 @@ Pořadí, jak se na to má chodit. Odškrtnuté jsou hotové.
 4. ✅ Angličtina jako základ
 5. ✅ Layout pro Fold — stav při přeložení telefonu
 6. ✅ Záložky Pozice / Trhy / Historie
-7. ⏳ Rozšířená data o účtu (equity, margin, funding, příkazy)
-8. ⏳ Pohodlí (řazení, varování před likvidací, vibrace)
+7. ✅ Rozšířená data o účtu (equity, margin, funding, příkazy)
+8. ✅ Pohodlí (řazení, varování před likvidací, vibrace)
 9. ⏳ **Bezpečnost — otisk prstu (WebAuthn PRF) + šifrovaný secret + testnet.
    Musí být hotové před 11.**
 10. ⏳ APK přes Capacitor + notifikace

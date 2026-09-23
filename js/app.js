@@ -10,7 +10,7 @@ import {
   popisekPole, popisekSekce, omez,
 } from './indikatory.js';
 import { t, setLanguage, applyStaticTexts, JAZYKY, getLocale } from './i18n.js';
-import { priceDecimals, formatPrice, formatPercent } from './format.js';
+import { priceDecimals, formatPrice, formatPercent, liquidationDistance } from './format.js';
 import * as alarmy from './alarmy.js';
 import * as store from './store.js';
 import * as ui from './ui.js';
@@ -41,6 +41,21 @@ function prepniTridu(id, trida, zapnuto) {
 
 let hideAmounts = store.loadHideAmounts();
 let lastPositions = [];
+
+/* ---------- data o účtu a příkazech (checkpoint 7) ---------- */
+
+let ucetStav = { ucet: null, chyba: null };
+let otevrenePrikazy = [];
+
+/* ---------- řazení, filtr a varování (checkpoint 8) ---------- */
+
+let razeni = store.loadPositionSort();
+let razeniSestupne = true;
+let filtrPozic = store.loadPositionFilter();
+let prahLikvidace = store.loadLiqThreshold();
+let sltpUpozorneni = store.loadSltpAlerts();
+/** Poslední mark cena pozice — z ní se pozná protnutí SL/TP. */
+const sltpPosledni = new Map();
 
 /* ---------- stav grafu ---------- */
 
@@ -79,7 +94,7 @@ let poslednicCena = null;  // poslední cena z grafu — předvyplní hladinu al
 const client = new BybitClient({
   onPositions(list) {
     lastPositions = list;
-    ui.renderPositions(list, hideAmounts, openChart);
+    vykresliPozice();
     syncOpenChart(list);
     /*
      * Alarmy na párech s otevřenou pozicí se hlídají i se zavřeným grafem —
@@ -90,6 +105,15 @@ const client = new BybitClient({
     for (const p of list) {
       if (p.symbol !== chartSymbol) zkontrolujHladiny(p.symbol, p.mark);
     }
+    zkontrolujSltp(list);
+  },
+  onAccount(ucet, chyba) {
+    ucetStav = { ucet, chyba };
+    ui.renderAccount(ucet, chyba, hideAmounts);
+  },
+  onOrders(orders, chyba) {
+    otevrenePrikazy = orders;
+    ui.renderOrders(orders, hideAmounts, otevriPrikaz, chyba ? t('orders.failed') : null);
   },
   onKline(bar) {
     if (!chart || !chartSymbol) return;
@@ -114,6 +138,122 @@ const client = new BybitClient({
     }
   },
 });
+
+/* ---------- seznam pozic: řazení a filtr ---------- */
+
+/**
+ * Klíče řazení. `liq` řadí podle **vzdálenosti** k likvidaci, ne podle
+ * ceny — zajímá, jak blízko to má, ne jaké číslo to je. Pozice bez
+ * likvidační ceny jde vždy na konec, ať nezabírá místo nahoře.
+ */
+const KLICE_RAZENI = {
+  value: (p) => Math.abs(p.value),
+  pnl: (p) => p.pnl,
+  liq: (p) => {
+    const d = liquidationDistance(p);
+    return d === null ? -Infinity : -Math.abs(d);
+  },
+};
+
+function serazenePozice() {
+  const filtrovane = lastPositions.filter((p) => {
+    if (filtrPozic === 'long') return p.side !== 'Sell';
+    if (filtrPozic === 'short') return p.side === 'Sell';
+    return true;
+  });
+
+  const klic = KLICE_RAZENI[razeni] || KLICE_RAZENI.value;
+  return [...filtrovane].sort((a, b) => {
+    const rozdil = klic(a) - klic(b);
+    return razeniSestupne ? -rozdil : rozdil;
+  });
+}
+
+/** Překreslí seznam pozic i lištu nad ním podle aktuálního řazení a filtru. */
+function vykresliPozice() {
+  const seznam = serazenePozice();
+  ui.renderPositions(seznam, hideAmounts, openChart, prahLikvidace);
+  ui.renderPositionTools(
+    {
+      viditelne: lastPositions.length > 0,
+      sort: razeni,
+      sestupne: razeniSestupne,
+      filter: filtrPozic,
+    },
+    prepniRazeni,
+    prepniFiltr,
+  );
+  // Prázdný výsledek filtru není totéž co „žádné pozice" — musí být poznat,
+  // že data jsou, jen je schoval filtr.
+  if (lastPositions.length > 0 && seznam.length === 0) {
+    ui.showFilterEmpty(t('positions.noneMatch'));
+  }
+}
+
+/** Druhé klepnutí na stejný klíč otočí směr, jako v každé tabulce. */
+function prepniRazeni(klic) {
+  if (klic === razeni) razeniSestupne = !razeniSestupne;
+  else {
+    razeni = klic;
+    razeniSestupne = true;
+    store.savePositionSort(klic);
+  }
+  vykresliPozice();
+}
+
+function prepniFiltr(klic) {
+  filtrPozic = klic;
+  store.savePositionFilter(klic);
+  vykresliPozice();
+}
+
+/* ---------- upozornění při zásahu SL/TP (checkpoint 8) ---------- */
+
+/**
+ * Zásah stop lossu nebo take profitu.
+ *
+ * Pozná se z protnutí mark ceny, ne ze zmizení pozice — pozice zmizí i při
+ * ručním zavření a to zvonit nemá. Stejná logika jako u cenových alarmů:
+ * porovnává se s minulou cenou, takže první tick po startu nic nespustí.
+ */
+function zkontrolujSltp(list) {
+  if (!sltpUpozorneni) return;
+
+  const zive = new Set();
+  for (const p of list) {
+    const klic = `${p.symbol}#${p.positionIdx ?? 0}`;
+    zive.add(klic);
+    const predchozi = sltpPosledni.get(klic);
+    sltpPosledni.set(klic, p.mark);
+    if (!Number.isFinite(predchozi) || !Number.isFinite(p.mark)) continue;
+
+    const protnuto = (uroven) => Number.isFinite(uroven) && uroven > 0
+      && (predchozi < uroven) !== (p.mark < uroven);
+
+    if (protnuto(p.stopLoss)) {
+      ohlasZasah('sltp.stopLossHit', p.symbol, p.stopLoss);
+    } else if (protnuto(p.takeProfit)) {
+      ohlasZasah('sltp.takeProfitHit', p.symbol, p.takeProfit);
+    }
+  }
+  // Zavřené pozice ať v paměti nezůstávají viset.
+  for (const klic of [...sltpPosledni.keys()]) {
+    if (!zive.has(klic)) sltpPosledni.delete(klic);
+  }
+}
+
+function ohlasZasah(klic, symbol, cena) {
+  const text = t(klic, { symbol, price: formatPrice(cena) });
+  ozviSe({ zvuk: true, vibrace: true, notifikace: true, symbol, id: `sltp-${symbol}` }, text);
+  ui.showNotice(text);
+}
+
+/** Klepnutí na příkaz v seznamu otevře graf toho páru. */
+function otevriPrikaz(order) {
+  const pozice = lastPositions.find((p) => p.symbol === order.symbol) || null;
+  prohlizenyObchod = null;
+  return otevriGraf(order.symbol, pozice, null);
+}
 
 /**
  * Diagnostika se ukazuje jen dokud se data nepodařilo načíst. Rozhoduje
@@ -228,7 +368,10 @@ function wireEvents() {
     hideAmounts = !hideAmounts;
     store.saveHideAmounts(hideAmounts);
     el('hideBtn').classList.toggle('active', hideAmounts);
-    ui.renderPositions(lastPositions, hideAmounts, openChart);
+    vykresliPozice();
+    // Skrývání částek platí i pro přehled účtu a příkazy, ne jen pro karty.
+    ui.renderAccount(ucetStav.ucet, ucetStav.chyba, hideAmounts);
+    ui.renderOrders(otevrenePrikazy, hideAmounts, otevriPrikaz);
     if (obchody.length) ui.renderHistory(obchody, hideAmounts, otevriProhlidku);
     if (chartSymbol) {
       ui.renderChartHeader(chartSymbol, chartPosition, hideAmounts, chartTrh);
@@ -315,6 +458,22 @@ function wireEvents() {
   naUdalost('testBtn', 'click', testCredentials);
   naUdalost('clearBtn', 'click', clearCredentials);
 
+  // Práh varování před likvidací (checkpoint 8). Ukládá se hned při změně,
+  // ať se na to nemusí mačkat zvlášť uložit.
+  naUdalost('liqThreshold', 'change', (e) => {
+    const hodnota = Math.min(90, Math.max(1, Math.round(Number(e.target.value) || 10)));
+    e.target.value = String(hodnota);
+    prahLikvidace = hodnota;
+    store.saveLiqThreshold(hodnota);
+    vykresliPozice();
+  });
+
+  naUdalost('sltpAlertsBtn', 'click', () => {
+    sltpUpozorneni = !sltpUpozorneni;
+    store.saveSltpAlerts(sltpUpozorneni);
+    vykresliPrepinacSltp();
+  });
+
   // Android uspaná WS spojení tiše zabíjí — po návratu do popředí se ověří stav.
   document.addEventListener('visibilitychange', () => {
     const visible = document.visibilityState === 'visible';
@@ -342,7 +501,10 @@ function postavVyberJazyka() {
     store.saveLanguage(select.value);
     setLanguage(select.value);
     applyStaticTexts();
-    ui.renderPositions(lastPositions, hideAmounts, openChart);
+    vykresliPozice();
+    // Přehled účtu i příkazy mají vlastní popisky, překreslit je taky.
+    ui.renderAccount(ucetStav.ucet, ucetStav.chyba, hideAmounts);
+    ui.renderOrders(otevrenePrikazy, hideAmounts, otevriPrikaz);
     ui.renderStatus(client.status);
     if (trhy.length) vykresliTrhy();
     if (chart) {
@@ -356,11 +518,22 @@ function postavVyberJazyka() {
   });
 }
 
+/** Přepínač upozornění na SL/TP vypadá stejně jako přepínače u indikátorů. */
+function vykresliPrepinacSltp() {
+  const btn = el('sltpAlertsBtn');
+  if (!btn) return;
+  btn.classList.toggle('on', sltpUpozorneni);
+  btn.setAttribute('aria-pressed', String(sltpUpozorneni));
+}
+
 function openSettings() {
   const { apiKey, apiSecret } = store.loadCredentials();
   el('apiKey').value = apiKey;
   el('apiSecret').value = apiSecret;
   el('apiSecret').type = 'password';
+  const prah = el('liqThreshold');
+  if (prah) prah.value = String(prahLikvidace);
+  vykresliPrepinacSltp();
   ui.clearSettingsMessage();
   ui.showView('settings');
 }

@@ -99,6 +99,8 @@ export const INDIKATORY = [
   { id: 'EMA', vlastniPanel: false },
   { id: 'BOLL', vlastniPanel: false },
   { id: 'SAR', vlastniPanel: false },
+  // Profil se kreslí do hlavního panelu, přes svíčky.
+  { id: 'VPROFILE', vlastniPanel: false },
 ];
 
 export const nazevIndikatoru = (id) => t(`indicator.${id}`);
@@ -114,6 +116,7 @@ export const IKONY_INDIKATORU = {
   EMA: '<path d="M3 17c4-4 6 1 9-5s6 1 9-4"/><circle cx="21" cy="8" r="1.6"/>',
   BOLL: '<path d="M3 13c4-5 8 1 12-4s2-1 6-2"/><path d="M3 7c4-5 8 1 12-4" opacity=".45"/><path d="M3 19c4-5 8 1 12-4" opacity=".45"/>',
   SAR: '<path d="M3 16c4-6 8 2 12-5"/><circle cx="6" cy="19" r="1.3"/><circle cx="11" cy="17" r="1.3"/><circle cx="16" cy="8" r="1.3"/><circle cx="21" cy="6" r="1.3"/>',
+  VPROFILE: '<path d="M3 5h11M3 9h6M3 13h14M3 17h8M3 21h4"/>',
 };
 
 const HLAVNI_PANEL = 'candle_pane';
@@ -499,6 +502,103 @@ function registrovatObjem() {
 }
 
 /**
+ * Volume profile — kde se objem obchodoval, podle ceny.
+ *
+ * ⚠ **Je to odhad, ne pravda.** Poctivý profil potřebuje jednotlivé obchody,
+ * a na ty Bybit endpoint nemá. Ze svíček (OHLCV) jde jen rozprostřít objem
+ * každé svíčky rovnoměrně mezi její minimum a maximum. Dělá to tak většina
+ * retailových nástrojů, ale přesné to není a uživatel o tom ví (CLAUDE.md,
+ * checkpoint 3).
+ *
+ * Kreslí se stejnou technikou jako objem: prázdné `figures`, takže indikátor
+ * nemluví do měřítka cenové osy a sloupce si vykreslíme sami.
+ */
+function registrovatVolumeProfile() {
+  K().registerIndicator({
+    name: 'VPROFILE',
+    shortName: 'VP',
+    series: 'normal',
+    calcParams: [],
+    figures: [],
+    createTooltipDataSource: () => {
+      const n = nactiNastaveni('VPROFILE');
+      return { calcParamsText: ` ${n.radku}` };
+    },
+    // Výpočet nic nevrací: profil závisí na tom, co je právě vidět, takže
+    // se celý počítá až v draw(). Řada musí mít délku dat, jinak knihovna
+    // indikátor považuje za prázdný a draw() vůbec nezavolá.
+    calc: (data) => data.map(() => ({})),
+    draw: ({ ctx, chart, bounding }) => {
+      const n = nactiNastaveni('VPROFILE');
+      const rozsah = chart.getVisibleRange();
+      const data = chart.getDataList();
+      if (!rozsah || !data.length) return true;
+
+      const od = Math.max(0, rozsah.from);
+      const doKonce = Math.min(data.length, rozsah.to);
+      if (doKonce <= od) return true;
+
+      // Cenové rozpětí bere jen viditelné svíčky — profil má popisovat to,
+      // na co se uživatel dívá, ne celou historii.
+      let min = Infinity;
+      let max = -Infinity;
+      for (let i = od; i < doKonce; i += 1) {
+        if (data[i].low < min) min = data[i].low;
+        if (data[i].high > max) max = data[i].high;
+      }
+      if (!Number.isFinite(min) || !Number.isFinite(max) || max <= min) return true;
+
+      const radku = Math.max(6, Math.round(Number(n.radku) || 24));
+      const pasma = new Array(radku).fill(0);
+      const vyskaPasma = (max - min) / radku;
+
+      for (let i = od; i < doKonce; i += 1) {
+        const k = data[i];
+        const objem = Number(k.volume) || 0;
+        if (objem <= 0) continue;
+        // Svíčka bez rozpětí (low === high) spadne celá do jednoho pásma.
+        const prvni = Math.min(radku - 1, Math.max(0, Math.floor((k.low - min) / vyskaPasma)));
+        const posledni = Math.min(radku - 1, Math.max(0, Math.floor((k.high - min) / vyskaPasma)));
+        const pocet = posledni - prvni + 1;
+        const dil = objem / pocet;
+        for (let j = prvni; j <= posledni; j += 1) pasma[j] += dil;
+      }
+
+      const nejvic = Math.max(...pasma);
+      if (nejvic <= 0) return true;
+
+      const naY = (cena) => {
+        const bod = chart.convertToPixel({ value: cena }, { paneId: HLAVNI_PANEL });
+        const v = Array.isArray(bod) ? bod[0] : bod;
+        return v?.y;
+      };
+
+      const maxSirka = bounding.width * (Number(n.sirka) || 30) / 100;
+      const nejsilnejsi = pasma.indexOf(nejvic);
+
+      ctx.save();
+      ctx.globalAlpha = Number(n.pruhlednost) || 0.45;
+      for (let j = 0; j < radku; j += 1) {
+        if (pasma[j] <= 0) continue;
+        const yHorni = naY(min + (j + 1) * vyskaPasma);
+        const yDolni = naY(min + j * vyskaPasma);
+        if (!Number.isFinite(yHorni) || !Number.isFinite(yDolni)) continue;
+
+        // Mezera mezi sloupci, ať profil nevypadá jako jedna plocha.
+        const vyska = Math.max(1, Math.abs(yDolni - yHorni) - 1);
+        const sirka = maxSirka * (pasma[j] / nejvic);
+        ctx.fillStyle = (n.zobrazitPoc && j === nejsilnejsi) ? n.barvaPoc : n.barvaProfil;
+        // Od levého okraje doprava: vpravo jsou nejnovější svíčky a cenová
+        // osa, tam profil překážet nemá.
+        ctx.fillRect(0, Math.min(yHorni, yDolni), sirka, vyska);
+      }
+      ctx.restore();
+      return true; // výchozí kreslení knihovny přeskočit
+    },
+  });
+}
+
+/**
  * RSI po vzoru TradingView: jedna křivka, volitelný klouzavý průměr a
  * pásma překoupenosti s výplní. Vestavěné RSI kreslí tři křivky bez pásem
  * a nedá se u něj zvolit zdroj ceny.
@@ -687,6 +787,7 @@ export function createPriceChart(container, layer, handlers = {}) {
   registrovatCaryAlarmu();
   registrovatZnackuPlneni();
   registrovatObjem();
+  registrovatVolumeProfile();
   registrovatRsi();
 
   const chart = K().init(container, { styles: styly() });
