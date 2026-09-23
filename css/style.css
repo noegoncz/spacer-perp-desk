@@ -592,17 +592,6 @@ main {
 .down { color: var(--short); }
 .flat { color: var(--text-dim); }
 
-.pos-grid {
-  display: grid;
-  /* Dvě buňky: likvidace a vzdálenost k ní. Vstup a mark cena se
-     přestěhovaly nad proužek k čarám, které je znázorňují. */
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px 10px;
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 1px solid var(--border);
-}
-
 .pos-cell { min-width: 0; }
 
 .pos-cell .label {
@@ -638,7 +627,11 @@ main {
 
 /* ---------- proužek úrovní v kartě pozice ---------- */
 
-.pos-ladder { margin-top: 10px; }
+.pos-ladder {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
 
 /* Podklad nese i význam stran: vlevo ztráta, vpravo zisk. Barvy jsou
    schválně sotva znatelné, hlavní sdělení nesou čáry nad nimi. */
@@ -710,6 +703,8 @@ main {
 .ladder-legend .tp { color: var(--long); }
 .ladder-legend .chibi,
 .ladder-legend .chybi { color: var(--text-dim); opacity: 0.7; }
+/* Vstup stojí mezi SL a TP — pevná úroveň jako ony, jen fialová. */
+.ladder-legend .cena-vstup { color: #a78bfa; }
 
 /* Druhý řádek: co úroveň znamená v penězích. Sedí přesně pod procenty. */
 .ladder-castky {
@@ -725,9 +720,9 @@ main {
 .ladder-castky .tp { color: rgba(22, 199, 132, 0.75); }
 
 /*
- * Ceny nad proužkem. Vstup stojí napevno nad fialovou čarou uprostřed,
- * mark cena jezdí nad svým ukazatelem — číslo pak patří k čáře, ke které
- * se vztahuje, místo aby leželo o dva řádky výš v tabulce.
+ * Nad proužkem se hýbe jediná věc: aktuální cena nad svým ukazatelem.
+ * Vstup je napevno uprostřed, jeho cena proto stojí dole v legendě —
+ * dvě čísla nahoře se u čerstvě otevřené pozice psala přes sebe.
  */
 .ladder-ceny {
   position: relative;
@@ -742,10 +737,13 @@ main {
   top: 0;
   transform: translateX(-50%);
 }
-.ladder-ceny .cena-vstup { color: #a78bfa; }
 .ladder-ceny .cena-mark { color: var(--text); font-weight: 600; }
 .ladder-ceny .cena-mark.plus  { color: var(--long); }
 .ladder-ceny .cena-mark.minus { color: var(--short); }
+
+/* Likvidace v patičce: popisek i hodnota na jednom řádku, ať se šetří místo. */
+.pos-funding .liq { color: var(--warn); }
+.pos-funding .liq.near { color: var(--short); font-weight: 650; }
 
 /* Funding na kartě je doplněk, ne hlavní číslo. */
 .pos-funding {
@@ -1597,24 +1595,17 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
 
 /* Úzký cover displej Foldu — ať se karta nerozsype. */
 @media (max-width: 380px) {
-  .pos-grid { grid-template-columns: repeat(2, 1fr); }
   main { padding-left: 12px; padding-right: 12px; }
 }
 
 /*
- * Rozevřený Fold — víc místa na šířku. Karta pozice má 4 nebo 5 buněk
- * (velikost, vstup, mark, likvidace, a `to liquidation`, jen když jde
- * spočítat). Napevno 3 sloupce nechávaly poslední řádek nevyvážený —
- * u 5 buněk osamocené dvě s obří mezerou navíc. Pět sloupců se u 5 buněk
- * (běžný případ) vyplní přesně beze zbytku.
+ * Rozevřený Fold — víc místa na šířku. Dřív tu karta pozice dostávala pět
+ * sloupců mřížky s hodnotami; od v0.16.3 žádnou mřížku nemá (velikost je
+ * v hlavičce, ceny u proužku, likvidace v patičce), takže široký displej
+ * nepotřebuje nic zvláštního a pravidlo zmizelo.
  *
- * ⚠ Podmínka jde na šířku i poměr stran, ne na konkrétní zařízení — telefon
- * na šířku by při pouhé kontrole šířky spadl do stejného pravidla, přitom
- * mu širší karta nemusí sednout stejně dobře. Fold rozevřený je málem
- * čtvercový (~0.8), proto min-aspect-ratio 3/4.
+ * ⚠ Kdyby se sem něco vracelo: podmínka musí jít na šířku **i** poměr
+ * stran, ne na konkrétní zařízení — telefon na šířku by při pouhé kontrole
+ * šířky spadl do stejného pravidla. Fold rozevřený je málem čtvercový
+ * (~0.8), proto `min-aspect-ratio: 3/4`.
  */
-@media (min-width: 480px) and (min-aspect-ratio: 3/4) {
-  /* Mřížka má jen dvě buňky, pět sloupců by z nich udělalo dva proužky
-     u levého okraje a zbytek prázdno. */
-  .pos-grid { grid-template-columns: repeat(2, 1fr); }
-}

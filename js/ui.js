@@ -120,10 +120,10 @@ function intervalPopis(minut) {
 }
 
 /**
- * Funding na kartě.
+ * Patička karty: likvidace a funding na jednom řádku drobným písmem.
  *
- * Ukazuje se sazba, částka **za jedno stržení i za den**, kolik už pozice
- * na fundingu stála celkem, a kdy se strhne příště.
+ * Z fundingu se ukazuje sazba, částka **za jedno stržení i za den**, kolik
+ * už pozice na fundingu stála celkem, a kdy se strhne příště.
  *
  * ⚠ Za jedno stržení a za den nejsou totéž: Bybit u většiny párů strhává
  * po osmi hodinách, tedy třikrát denně. Dřív tu stála jen denní částka
@@ -133,18 +133,30 @@ function intervalPopis(minut) {
  * platí shortu. Proto se neukazuje jen číslo, ale i to, na kterou stranu
  * peníze tečou; ze samotného „0,01 %" to nikdo nepozná.
  */
-function fundingRow(p, hide) {
+function patickaRow(p, hide, blizko) {
+  const radek = document.createElement('div');
+  radek.className = 'pos-funding';
+
+  /*
+   * Likvidace je tady, a ne v mřížce nad proužkem: je to číslo, na které se
+   * kouká jednou za čas, ne při každém pohledu na kartu. Popisek a hodnota
+   * stojí na jednom řádku — vlastní buňka s popiskem nad hodnotou zabírala
+   * dvakrát tolik místa než řádek, který stejně musel být.
+   */
+  const liq = document.createElement('span');
+  liq.className = `hodnota liq${blizko ? ' near' : ''}`;
+  liq.textContent = `${t('position.liquidation')} `
+    + (p.liq ? formatPrice(p.liq) : t('position.notSet'));
+  radek.append(liq);
+
   const f = p.funding;
-  if (!f || !Number.isFinite(f.rate)) return null;
+  if (!f || !Number.isFinite(f.rate)) return radek;
 
   const isLong = p.side !== 'Sell';
   // Long platí při kladné sazbě, short při záporné.
   const platiUzivatel = isLong ? f.rate > 0 : f.rate < 0;
   const zaInterval = Math.abs(p.value * f.rate);
   const zaDen = zaInterval * (1440 / (f.minut || 480));
-
-  const radek = document.createElement('div');
-  radek.className = 'pos-funding';
 
   const popis = document.createElement('span');
   popis.textContent = `${t('funding.label')} ${formatPercent(f.rate * 100, 4)}`;
@@ -242,39 +254,24 @@ function ladderRow(zebrik, p, hide) {
   blok.className = 'pos-ladder';
 
   /*
-   * Ceny nad proužkem. Vstup stojí napevno uprostřed nad fialovou čarou,
-   * mark cena jezdí nad svým ukazatelem — číslo se tím váže k čáře, ke
-   * které patří, a proužek přestane být jen ozdoba pod tabulkou hodnot.
+   * Nad proužkem se hýbe **jediná** věc: aktuální cena nad svým ukazatelem.
+   * Vstup je napevno uprostřed, takže jeho cenu netřeba vozit s sebou —
+   * stojí dole v legendě vedle SL a TP. Dvě čísla nahoře se navíc u čerstvě
+   * otevřené pozice psala přes sebe.
    */
+  const markProcenta = naProcenta(mark);
+
   const ceny = document.createElement('div');
   ceny.className = 'ladder-ceny';
 
-  const cenovka = (cena, trida, procenta, posun) => {
-    const s = document.createElement('span');
-    s.className = trida;
-    s.textContent = formatPrice(cena);
-    s.style.left = `${procenta}%`;
-    // U kraje by popisek vytekl mimo kartu, tak se přisaje k okraji.
-    if (procenta < 12) s.style.transform = 'translateX(0)';
-    else if (procenta > 88) s.style.transform = 'translateX(-100%)';
-    else if (posun) s.style.transform = posun;
-    return s;
-  };
-
-  const markProcenta = naProcenta(mark);
-  /*
-   * ⚠ Cena hned vedle vstupu je běžný stav (čerstvě otevřená pozice) a obě
-   * čísla se pak přes sebe napíšou do nečitelné změti. Když jsou blízko,
-   * rozestoupí se: každé na svou stranu od svojí čáry.
-   */
-  const blizko = Math.abs(markProcenta - 50) < 16;
-  const markVpravo = markProcenta >= 50;
-  ceny.append(
-    cenovka(vstup, 'cena-vstup', 50,
-      blizko ? (markVpravo ? 'translateX(-100%)' : 'translateX(0)') : ''),
-    cenovka(mark, `cena-mark ${odstup(mark) >= 0 ? 'plus' : 'minus'}`, markProcenta,
-      blizko ? (markVpravo ? 'translateX(0)' : 'translateX(-100%)') : ''),
-  );
+  const cenovka = document.createElement('span');
+  cenovka.className = `cena-mark ${odstup(mark) >= 0 ? 'plus' : 'minus'}`;
+  cenovka.textContent = formatPrice(mark);
+  cenovka.style.left = `${markProcenta}%`;
+  // U kraje by popisek vytekl mimo kartu, tak se přisaje k okraji.
+  if (markProcenta < 12) cenovka.style.transform = 'translateX(0)';
+  else if (markProcenta > 88) cenovka.style.transform = 'translateX(-100%)';
+  ceny.append(cenovka);
   blok.append(ceny);
 
   const drah = document.createElement('div');
@@ -323,7 +320,14 @@ function ladderRow(zebrik, p, hide) {
 
   const legenda = document.createElement('div');
   legenda.className = 'ladder-legend';
-  legenda.append(popisek('sl', nejblizsi('sl')), popisek('tp', nejblizsi('tp')));
+
+  // Vstup patří mezi SL a TP: všechno tři jsou pevné úrovně na proužku,
+  // na rozdíl od ceny, která jezdí.
+  const cenaVstupu = document.createElement('span');
+  cenaVstupu.className = 'cena-vstup';
+  cenaVstupu.textContent = `${t('position.entry')} ${formatPrice(vstup)}`;
+
+  legenda.append(popisek('sl', nejblizsi('sl')), cenaVstupu, popisek('tp', nejblizsi('tp')));
   blok.append(legenda);
 
   /*
@@ -419,39 +423,21 @@ function positionCard(p, hide, onSelect, liqThreshold = 10, volby = {}) {
 
   /* detaily */
   /*
-   * V mřížce zbyla jen likvidace. Vstup a mark cena stojí nad proužkem
-   * u čar, které je znázorňují, velikost je v hlavičce.
-   *
-   * ⚠ Obě políčka se ukazují **vždycky**, i když likvidační cena není.
-   * Prázdné místo po chybějícím sloupci vypadalo jako chyba vykreslení,
-   * a hlavně: „likvidace není" je sama o sobě informace.
+   * Mřížka s hodnotami je pryč. Vstup, mark cena i úrovně se čtou z proužku,
+   * velikost je v hlavičce a likvidace v patičce u fundingu — mřížka nad
+   * proužkem je jen opakovala o dva řádky výš.
    */
-  const grid = document.createElement('div');
-  grid.className = 'pos-grid';
-
   const distance = liquidationDistance(p);
-  const liqText = p.liq ? formatPrice(p.liq) : t('position.notSet');
   const blizko = distance !== null && Math.abs(distance) < liqThreshold;
-  const liqClass = blizko ? 'liq near' : 'liq';
-  grid.append(
-    cell(t('position.liquidation'), liqText, p.liq ? liqClass : ''),
-    cell(
-      t('position.toLiquidation'),
-      distance === null ? t('position.notSet') : formatPercent(distance),
-      distance === null ? '' : liqClass,
-    ),
-  );
-
   // Varování se propíše na celou kartu, ne jen na jedno číslo.
   card.classList.toggle('blizko-likvidace', blizko);
 
-  card.append(head, grid);
+  card.append(head);
 
   const zebrik = volby.zebrik?.(p);
   if (zebrik) card.append(ladderRow(zebrik, p, hide));
 
-  const funding = fundingRow(p, hide);
-  if (funding) card.append(funding);
+  card.append(patickaRow(p, hide, blizko));
   return card;
 }
 

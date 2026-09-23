@@ -625,10 +625,10 @@ svíček za stejnou cenu, což je správně.
 **i** poměr stran, ať telefon na šířku nespadne do stejného pravidla jen
 proto, že je taky široký.
 
-Od v0.16.2 má mřížka **jen dvě buňky** (likvidace a vzdálenost k ní), zbytek
-se přestěhoval do hlavičky a nad proužek, takže jsou dva sloupce na obou
-displejích. Pravidlo pro Fold zůstalo jen jako místo, kam sáhnout, kdyby
-buněk zase přibylo. Test kontroluje, že sloupců je tolik co buněk.
+Od v0.16.3 karta **žádnou mřížku nemá** — všechno se čte z proužku,
+z hlavičky a z patičky — takže široký displej nepotřebuje nic zvláštního
+a pravidlo zmizelo. Test místo sloupců měří, že z karty nic nevytéká ven,
+a to na obou rozměrech.
 
 Test: `tools/test-preloseni-foldu.py` — simuluje přeložení změnou rozměrů
 okna bez reloadu (`Emulation.setDeviceMetricsOverride`), ověří že pár,
@@ -970,28 +970,30 @@ stlačila by SL i TP k sobě. Zůstává v mřížce karty jako číslo.
 ne čárkovaná jako v grafu. Je to **průměrná** cena ze všech nákupů, ne jeden
 konkrétní vstup; plná čára to od dílčích příkazů odlišuje na první pohled.
 
-##### Rozvržení karty (v0.16.2)
+##### Rozvržení karty (v0.16.3)
 
-Čísla se přestěhovala k čarám, ke kterým patří — mřížka nad proužkem
-opakovala hodnoty, které proužek sám znázorňuje, jen o dva řádky výš:
+**Mřížka s hodnotami je pryč.** Opakovala o dva řádky výš přesně to, co
+proužek sám znázorňuje. Všechno se čte tam, kde to leží:
 
 | co | kde |
 |---|---|
 | velikost v coinu, hodnota v USDT, podíl na equity | řádek pod názvem páru |
-| likvidace a vzdálenost k ní | mřížka (dvě buňky, **obě vždycky**) |
-| vstupní cena | napevno uprostřed **nad fialovou čarou** |
-| mark cena | **nad svým ukazatelem**, jezdí s ním |
-| vzdálenost k nejbližšímu SL a TP v % | první řádek pod proužkem |
+| aktuální cena | **nad svým ukazatelem**, jezdí s ním |
+| vzdálenost k nejbližšímu SL a TP v % + **cena vstupu** mezi nimi | první řádek pod proužkem |
 | co ten SL a TP znamenají v penězích | druhý řádek pod proužkem |
+| likvidační cena | patička u fundingu, popisek i hodnota na jednom řádku |
 
-⚠ **Mark cena a vstup se musí umět rozestoupit.** U čerstvě otevřené pozice
-leží skoro na sobě a obě čísla se napíšou přes sebe do nečitelné změti. Když
-je odstup pod 16 % šířky, každé se odsune na svou stranu od své čáry; u kraje
-proužku se popisek přisaje k okraji, aby nevytekl z karty.
+⚠ **Nad proužkem smí stát jediné číslo.** Vstup i mark cena tam chvíli byly
+obě (v0.16.2) a u čerstvě otevřené pozice se napsaly přes sebe — cena leží
+skoro na vstupu. Vstup je navíc napevno uprostřed, takže se jeho cena nemá
+proč vozit nahoře; patří dolů mezi SL a TP, což jsou stejně tak pevné úrovně.
 
-⚠ **Obě políčka likvidace zůstávají i bez likvidační ceny** (napíše se
-`none`). Prázdné místo po vynechaném sloupci vypadalo jako chyba vykreslení,
-a „likvidace není" je sama o sobě informace.
+**Vzdálenost k likvidaci se neukazuje.** U pozice s pákou 10× je to skoro
+vždycky desítky procent, tedy číslo bez informace. Řazení „to liquidation"
+v liště nad seznamem zůstává — to je funkce, ne údaj na kartě.
+
+Likvidace zůstává i bez likvidační ceny (napíše se `none`) — „likvidace není"
+je sama o sobě informace.
 
 Seznam pod pozicemi zůstal jen pro příkazy na **párech bez otevřené pozice** —
 ty by se jinak neměly kde ukázat, proužek bez pozice nemá kam kreslit.

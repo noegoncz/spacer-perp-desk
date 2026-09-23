@@ -7,9 +7,9 @@ Ověřuje se na dvou úrovních:
   1. Stav grafu (pár, interval, zoom/scroll) je stejný před i po změně
      rozměrů okna — Android při přeložení stránku nereloaduje, jen mění
      rozměry, takže tohle je čistě otázka, jestli si to JS pamatuje.
-  2. Karta pozice (`pos-grid`) má na obou displejích tolik sloupců, kolik
-     má buněk — od v0.16.2 jsou v mřížce jen likvidace a vzdálenost k ní,
-     zbytek se přestěhoval do hlavičky a nad proužek.
+  2. Karta pozice se vejde do šířky displeje a nic z ní nevyteče. Mřížku
+     s hodnotami už nemá (v0.16.3) — všechno se čte z proužku, z hlavičky
+     a z patičky, takže se nemá co rozsypat do nevyváženého řádku.
 
 Rozměry podle Samsung Galaxy Z Fold 5: zavřený cover ~344×882,
 rozevřený hlavní displej ~673×841 (málem čtvercový).
@@ -41,11 +41,22 @@ def ev(v):
 
 chyby = []
 
-# ---- karta pozice na zavřeném displeji: 2 sloupce ----
-sloupcu_cover = ev("getComputedStyle(document.querySelector('.pos-grid')).gridTemplateColumns.split(' ').length")
-print('sloupců karty pozice na zavřeném displeji:', sloupcu_cover, '(má být 2)')
-if sloupcu_cover != 2:
-    chyby.append('pos-grid na cover nemá 2 sloupce')
+# ---- karta pozice na zavřeném displeji: nic nevyteče ----
+def vyteklo():
+    return ev("""(() => {
+      const k = document.querySelector('.position');
+      const r = k.getBoundingClientRect();
+      return [...k.querySelectorAll('*')].filter((e) => {
+        const b = e.getBoundingClientRect();
+        return b.width > 0 && (b.right > r.right + 1 || b.left < r.left - 1);
+      }).map((e) => e.className).join(' | ');
+    })()""")
+
+
+ven_cover = vyteklo()
+print('vyteklo z karty na zavřeném displeji:', ven_cover or '(nic)')
+if ven_cover:
+    chyby.append(f'z karty na cover vytéká: {ven_cover}')
 
 # ---- otevřít graf, nastavit stav, který se snadno resetuje ----
 ev("document.querySelector('.position').click()")
@@ -80,15 +91,13 @@ for klic in ('symbol', 'interval', 'chartVisible'):
 if abs(pred['bar'] - po['bar']) > 0.5:
     chyby.append(f'zoom (bar) se resetoval: {pred["bar"]} -> {po["bar"]}')
 
-# ---- karta pozice po rozevření: sloupců tolik, kolik je buněk ----
+# ---- karta pozice po rozevření ----
 ev("history.back()")
 time.sleep(1)
-bunek = ev("document.querySelectorAll('.pos-grid .pos-cell').length")
-sloupcu_open = ev("getComputedStyle(document.querySelector('.pos-grid')).gridTemplateColumns.split(' ').length")
-print('buněk / sloupců karty pozice na rozevřeném displeji:', bunek, '/', sloupcu_open)
-# Prázdné místo po chybějícím sloupci vypadá jako chyba vykreslení.
-if bunek != sloupcu_open:
-    chyby.append(f'pos-grid má {bunek} buněk, ale {sloupcu_open} sloupců')
+ven_open = vyteklo()
+print('vyteklo z karty na rozevřeném displeji:', ven_open or '(nic)')
+if ven_open:
+    chyby.append(f'z karty na rozevřeném displeji vytéká: {ven_open}')
 
 konzole = ev('(window.__chyby||[]).join(" | ")') or ''
 if konzole:

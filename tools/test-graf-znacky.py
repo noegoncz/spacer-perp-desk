@@ -5,9 +5,10 @@ Značení pozice v grafu a v kartě (v0.16.2).
 Ověřuje, co si uživatel vyžádal:
   * v grafu **není** čára vstupu — místo ní jsou malé trojúhelníky plnění
     (světle zelené nákupy, oranžové prodeje; barvy svíček by splynuly),
-  * karta: velikost v hlavičce, v mřížce jen likvidace a vzdálenost k ní,
-    vstupní cena nad fialovou čarou, mark cena nad svým ukazatelem
-    a pod proužkem částky, které SL a TP znamenají v penězích,
+  * karta: velikost v hlavičce, mřížka s hodnotami pryč, nad proužkem se
+    hýbe jen aktuální cena, vstup stojí pod proužkem mezi SL a TP,
+    likvidace v patičce u fundingu a pod proužkem částky, které SL a TP
+    znamenají v penězích,
   * aktuální cenu kreslí vlastní linka PNLLINE se ziskem v USDT i procentech,
     barevná podle zisku, a vestavěná linka poslední ceny je vypnutá,
   * SL i TP (celé i částečné) mají dlouhé přerušované čáry,
@@ -69,41 +70,44 @@ for kus in ('2,547 JUP', '778.87 USDT'):
     if kus not in velikost:
         chyby.append(f'v hlavičce chybí {kus}')
 
-# ---- mřížka: jen likvidace a vzdálenost k ní, obojí vždycky ----
-mrizka = json.loads(ev("""JSON.stringify([...document.querySelectorAll('.pos-grid .pos-cell')]
-  .map((c) => c.querySelector('.label').textContent))""") or '[]')
-print('buňky mřížky:', mrizka)
-if mrizka != ['Liquidation', 'To liquidation']:
-    chyby.append(f'mřížka má obsahovat jen likvidaci a vzdálenost k ní: {mrizka}')
+# ---- mřížka s hodnotami je pryč, všechno se čte u proužku ----
+mrizka = ev("document.querySelectorAll('.position .pos-grid').length")
+print('mřížek v kartě:', mrizka, '(má být 0)')
+if mrizka:
+    chyby.append('karta má pořád mřížku s hodnotami')
 
-# ---- ceny nad proužkem ----
+# ---- nad proužkem se hýbe jediná věc: aktuální cena ----
 ceny = json.loads(ev("""(() => {
-  const v = document.querySelector('.ladder-ceny .cena-vstup');
+  const nahore = [...document.querySelectorAll('.ladder-ceny span')];
   const m = document.querySelector('.ladder-ceny .cena-mark');
   const u = document.querySelector('.ladder-now');
-  return JSON.stringify({ vstup: v && v.textContent, vstupLeft: v && v.style.left,
-    mark: m && m.textContent, markLeft: m && m.style.left,
-    ukazatel: u && u.style.left }); })()""") or '{}')
-print('ceny nad proužkem:', ceny)
-if ceny.get('vstup') != '0.30135' or ceny.get('vstupLeft') != '50%':
-    chyby.append('vstupní cena nestojí napevno uprostřed nad fialovou čarou')
+  return JSON.stringify({ pocet: nahore.length, mark: m && m.textContent,
+    markLeft: m && m.style.left, ukazatel: u && u.style.left }); })()""") or '{}')
+print('nad proužkem:', ceny)
+if ceny.get('pocet') != 1:
+    chyby.append(f"nad proužkem má stát jediná cena, je jich {ceny.get('pocet')}")
 if ceny.get('mark') != '0.30580':
     chyby.append('nad proužkem chybí mark cena')
 # Mark cena musí jezdit se svým ukazatelem, jinak by ukazovala jinam než čára.
 if ceny.get('markLeft') != ceny.get('ukazatel'):
     chyby.append(f"mark cena {ceny.get('markLeft')} nesedí na ukazatel {ceny.get('ukazatel')}")
 
-# ⚠ U čerstvě otevřené pozice leží mark cena hned vedle vstupu a obě čísla
-# se přes sebe napíšou do nečitelné změti. Musí se rozestoupit.
-prekryv = json.loads(ev("""(() => {
-  const a = document.querySelector('.cena-vstup').getBoundingClientRect();
-  const b = document.querySelector('.cena-mark').getBoundingClientRect();
-  return JSON.stringify({ vstup: [Math.round(a.left), Math.round(a.right)],
-                          mark: [Math.round(b.left), Math.round(b.right)],
-                          prekryv: a.right > b.left && b.right > a.left }); })()""") or '{}')
-print('popisky cen:', prekryv)
-if prekryv.get('prekryv'):
-    chyby.append('vstupní a mark cena se překrývají')
+# ---- vstup patří pod proužek, mezi SL a TP ----
+legenda = json.loads(ev("""JSON.stringify([...document.querySelectorAll('.ladder-legend span')]
+  .map((e) => [e.className, e.textContent]))""") or '[]')
+print('legenda pod proužkem:', legenda)
+if len(legenda) != 3 or legenda[1][0] != 'cena-vstup':
+    chyby.append(f'vstup nestojí mezi SL a TP: {legenda}')
+elif '0.30135' not in legenda[1][1]:
+    chyby.append(f'v legendě chybí cena vstupu: {legenda[1][1]}')
+
+# ---- likvidace v patičce u fundingu ----
+paticka = ev("(document.querySelector('.pos-funding .liq') || {}).textContent || ''")
+print('likvidace v patičce:', paticka or '(chybí)')
+if 'Liquidation' not in paticka or '0.07233' not in paticka:
+    chyby.append('likvidace není v patičce na jednom řádku s popiskem')
+if 'To liquidation' in ev("document.querySelector('.position').textContent"):
+    chyby.append('vzdálenost k likvidaci se má už neukazovat')
 
 # ---- druhý řádek pod proužkem: kolik to dělá v penězích ----
 castky = json.loads(ev("""JSON.stringify([...document.querySelectorAll('.ladder-castky span')]
