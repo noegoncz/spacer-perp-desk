@@ -278,11 +278,10 @@ U SL, TP a likvidace nese barva informaci, tam se vyplatí.
 
 | čára | čárkování | barva |
 |---|---|---|
-| vstup | `7-3-2-3` čerchovaná | fialová `#a78bfa` |
 | likvidace | `12-5` dlouhá | červená |
-| SL / TP celé pozice | `6-4` | oranžová / zelená |
-| částečné TP a SL | `3-3` krátká | oranžová / zelená |
+| SL / TP, celé i částečné | `14-6` dlouhá | oranžová / zelená |
 | limitky | `1-4` tečkovaná | šedá |
+| aktuální cena (PNLLINE) | `4-4` | zelená / červená podle zisku |
 
 **Kresby uživatele** mají naopak výchozí barvu **bílou** (první v paletě),
 aby nepřebíjely svíčky. Ostatní barvy zůstávají na výběr.
@@ -290,9 +289,50 @@ aby nepřebíjely svíčky. Ostatní barvy zůstávají na výběr.
 Popisky jsou u pravého okraje vedle cenové osy, **bez podkladu a rámečku**;
 barevný blok za textem jen ujídal pohled na svíčky.
 
-Popisky jsou schválně krátké: `Vstup`, `SL`, `TP`
-pro celou pozici a `TP1 (29 %)`, `SL1 (16 %)` pro částečné. Číslují se podle
-toho, v jakém pořadí je cena zasáhne — nejblíž vstupu je první.
+Popisky jsou schválně krátké: `SL`, `TP` pro celou pozici a `TP1 (29 %)`,
+`SL1 (16 %)` pro částečné. Číslují se podle toho, v jakém pořadí je cena
+zasáhne — nejblíž vstupu je první.
+
+#### Vstup: trojúhelníky plnění místo čáry (v0.16.1)
+
+**Čára vstupu se v grafu nekreslí.** Průměrná cena je v panelu nad grafem
+a v proužku karty; v grafu ji nahradily **malé trojúhelníky v místech, kde
+se doopravdy obchodovalo** — zelené nahoru u nákupů, červené dolů u prodejů.
+Jedna čára průměru neřekne, že se přikupovalo třikrát; trojúhelníky ano.
+Data jdou z `/v5/execution/list` za posledních sedm dní (od otevření pozice,
+pokud je mladší).
+
+Značky pro otevřenou pozici jsou **malé a bez popisku** (`maly: true`);
+velká varianta s cenou zůstává pro prohlížení uzavřeného obchodu z historie.
+
+⚠ **Trojúhelník musí být obtažený barvou pozadí.** Zelený nákup padne často
+přesně na zelenou svíčku a bez obrysu splyne — na zkušebním snímku byly ze
+tří značek vidět dvě.
+
+#### Aktuální cena se ziskem — indikátor `PNLLINE`
+
+Vestavěná linka poslední ceny je **vypnutá** (`candle.priceMark.last.line`)
+a nahrazuje ji vlastní: barevná podle toho, jestli je pozice nad průměrným
+vstupem, s textem `+26.50 USDT | +2.50 %` u pravého okraje.
+
+Linka **nejde přes celou šířku** — začíná u poslední svíčky a pokračuje
+doprava. Přes celý graf jen překážela svíčkám.
+
+⚠ Je to **indikátor, ne overlay.** Overlay by musel dostávat novou cenu při
+každém ticku zvlášť; `draw()` indikátoru běží při každém překreslení sám
+a poslední cenu si vezme z dat, takže linka drží krok s živou svíčkou bez
+jediného volání navíc.
+
+⚠ **`PNLLINE` se nesmí zapsat mezi indikátory uživatele.** `aktivniIndikatory`
+se ukládá do telefonu jako jeho výběr; kdyby v něm linka byla, obnovila by se
+i na páru bez pozice, kde nemá co počítat. Drží se ve vlastním příznaku.
+
+⚠ Text je **bez podkladu, ale obtažený barvou pozadí** (trojí `fillText` se
+`shadowBlur`). Bez toho z „−3,44" na snímku zbylo „−,44" — číslici spolkla
+svíčka pod ní.
+
+Zisk se počítá z **poslední ceny v grafu**, ne z mark ceny v kartě. Musí
+sedět s tím, kde linka leží; mark a poslední cena se liší o zlomky procenta.
 
 Pod grafem je panel s údaji o pozici (velikost, hodnota, margin, vstup, mark,
 ROE, SL, TP, likvidace). Nahradil legendu čar — ta jen opakovala hodnoty,
@@ -860,6 +900,17 @@ vypisuje z reálné hodnoty (`8 h`, `4 h`, `1 h`), ne natvrdo.
 držení). ⚠ Potřebuje oprávnění Wallet stejně jako přehled účtu, takže má
 vlastní `try` — bez něj se ukáže zbytek fundingu a jen chybí součet.
 
+⚠ **Bybit dlouhé okno `startTime`–`endTime` odmítá**, takže se ptá dvakrát:
+nejdřív od otevření pozice, a když to neprojde, znovu bez `startTime` (vrátí
+posledních pár dní). Radši součet za kratší dobu než žádný. Proti mocku to
+fungovalo, na telefonu součet nikdy nedorazil — a chyba se navíc polykala
+v prázdném `catch`, takže nebylo poznat proč. Teď jde do diagnostické stopy.
+
+⚠ **Popisek pak nesmí tvrdit „celkem".** Když prošlo až druhé kolo, nese
+výsledek `odOtevreni: false` a v kartě stojí `paid 0.37 USDT in 2 d` místo
+`paid so far`. Číslo, které se tváří na celou dobu držení a není, je horší
+než žádné.
+
 ### ✅ 8) Pohodlí
 
 - Řazení a filtrování pozic (PnL, velikost, blízkost likvidace).
@@ -896,6 +947,10 @@ pokrývá vstup → nejzazší SL, pravá vstup → nejzazší TP.
 stlačila by SL i TP k sobě. Zůstává v mřížce karty jako číslo.
 
 ⚠ U shortu se osa **zrcadlí**, aby „vlevo = ztráta" platilo vždycky.
+
+**Vstup uprostřed je plná fialová, silnější než ostatní značky** — a schválně
+ne čárkovaná jako v grafu. Je to **průměrná** cena ze všech nákupů, ne jeden
+konkrétní vstup; plná čára to od dílčích příkazů odlišuje na první pohled.
 
 Seznam pod pozicemi zůstal jen pro příkazy na **párech bez otevřené pozice** —
 ty by se jinak neměly kde ukázat, proužek bez pozice nemá kam kreslit.

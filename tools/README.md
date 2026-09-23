@@ -50,6 +50,14 @@ jen nová stránka ve staré kartě.
 | `test-alarm-z-kresby.py` | zvonek u kresby z ní udělá alarm (trendová → čára, vodorovná → hladina, svislá → čas) |
 | `test-preloseni-foldu.py` | stav appky (pár, interval, zoom) i mřížka karty pozice přežijí přeložení Foldu |
 | `test-ucet-a-pohodli.py` | přehled účtu, funding, seznam příkazů, řazení/filtr pozic, práh likvidace, volume profile |
+| `test-graf-znacky.py` | trojúhelníky plnění místo čáry vstupu, linka aktuální ceny se ziskem, dlouhé čárkování SL/TP, plný vstup v proužku, součet fundingu i při odmítnutém okně |
+
+⚠ Barvu na plátně neměř natvrdo. Linka zisku je červená, když je poslední
+svíčka pod vstupem — a v mocku je. Hledání zelené nahlásí chybu, která není;
+test si barvu odvozuje ze znaménka zisku. (Stálo to jeden falešný poplach.)
+
+⚠ Počet barevných pixelů sám o sobě nic nedokazuje — zelené i červené jsou
+i svíčky. Měří se **rozdíl** proti plátnu s vypnutou linkou.
 
 ⚠ Dotykovým bodům u gest dvěma prsty dávej výslovné `id`, jinak se pohyb
 zbylého prstu tváří jako třetí prst a test hlásí odskok, který v aplikaci není.

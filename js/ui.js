@@ -169,10 +169,18 @@ function fundingRow(p, hide) {
     const soucet = document.createElement('span');
     // Záporné = zaplaceno, kladné = přijato.
     soucet.className = `hodnota ${celkem < 0 ? 'platis' : 'dostavas'}`;
+    // ⚠ „Celkem" jen když se opravdu počítalo od otevření pozice. Když Bybit
+    // dlouhé okno odmítl, napíše se za kolik dní součet je — jinak by číslo
+    // tvrdilo něco, co není pravda.
+    const dnu = f.zaplaceno.odKdy
+      ? Math.max(1, Math.round((Date.now() - f.zaplaceno.odKdy) / 86400000))
+      : 1;
+    const klic = f.zaplaceno.odOtevreni
+      ? (celkem < 0 ? 'funding.totalPaid' : 'funding.totalEarned')
+      : (celkem < 0 ? 'funding.paidRecent' : 'funding.earnedRecent');
     soucet.textContent = hide
       ? MASK
-      : t(celkem < 0 ? 'funding.totalPaid' : 'funding.totalEarned',
-          { amount: formatUsd(Math.abs(celkem)) });
+      : t(klic, { amount: formatUsd(Math.abs(celkem)), days: dnu });
     radek.append(soucet);
   }
 

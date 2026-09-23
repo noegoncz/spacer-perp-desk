@@ -257,6 +257,8 @@ export const cs = {
   'funding.perDay': '{amount} USDT/den',
   'funding.totalPaid': 'zaplaceno celkem {amount} USDT',
   'funding.totalEarned': 'získáno celkem {amount} USDT',
+  'funding.paidRecent': 'zaplaceno {amount} USDT za {days} d',
+  'funding.earnedRecent': 'získáno {amount} USDT za {days} d',
   'funding.youPay': 'platíš',
   'funding.youGet': 'dostáváš',
 

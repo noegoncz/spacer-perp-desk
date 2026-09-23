@@ -261,6 +261,8 @@ export const en = {
   'funding.perDay': '{amount} USDT/day',
   'funding.totalPaid': 'paid so far {amount} USDT',
   'funding.totalEarned': 'earned so far {amount} USDT',
+  'funding.paidRecent': 'paid {amount} USDT in {days} d',
+  'funding.earnedRecent': 'earned {amount} USDT in {days} d',
   'funding.youPay': 'you pay',
   'funding.youGet': 'you receive',
 

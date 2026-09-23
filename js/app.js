@@ -73,10 +73,11 @@ const BARVA_CARY = {
 };
 
 const CARKOVANI = {
-  vstup: [7, 3, 2, 3],   // čerchovaná — referenční úroveň, odliší se na první pohled
   likvidace: [12, 5],    // nejdelší mezery, nejvzdálenější a nejvážnější úroveň
-  uroven: [6, 4],        // SL a TP celé pozice
-  castecna: [3, 3],      // částečné TP a SL
+  // SL a TP mají dlouhé čárkování, celé i částečné stejně — rozlišuje je
+  // barva a popisek (TP vs. TP1 (29 %)), ne délka čárky.
+  uroven: [14, 6],
+  castecna: [14, 6],
   prikaz: [1, 4],        // limitky, nejjemnější
 };
 
@@ -278,6 +279,56 @@ function ohlasZasah(klic, symbol, cena) {
   const text = t(klic, { symbol, price: formatPrice(cena) });
   ozviSe({ zvuk: true, vibrace: true, notifikace: true, symbol, id: `sltp-${symbol}` }, text);
   ui.showNotice(text);
+}
+
+/**
+ * Trojúhelníky v místech, kde se do pozice doopravdy vstupovalo (a kde se
+ * z ní vystupovalo). Nahradily čáru průměrného vstupu — z jedné čáry není
+ * poznat, jestli se nakupovalo jednou, nebo pětkrát na různých cenách.
+ *
+ * ⚠ Bybit dovolí zeptat se na plnění jen za krátké okno, proto se u dlouho
+ * držené pozice ukážou jen plnění z posledních dnů. Průměrný vstup zůstává
+ * jako číslo v panelu i v proužku karty, takže se nic neztrácí.
+ */
+const OKNO_PLNENI = 7 * 86400e3;
+
+async function znackyPlneni(position) {
+  if (!position || !client.hasCredentials()) return;
+  const symbol = position.symbol;
+  const od = Math.max(position.openedAt || 0, Date.now() - OKNO_PLNENI);
+
+  try {
+    const plneni = await client.getExecutions(symbol, od, Date.now());
+    // Uživatel mezitím mohl přepnout na jiný pár.
+    if (chartSymbol !== symbol || prohlizenyObchod) return;
+
+    const long = position.side !== 'Sell';
+    chart.setTradeMarks(plneni.map((f) => {
+      // U longu je vstup nákup, u shortu prodej.
+      const vstup = f.buy === long;
+      return {
+        time: f.time,
+        price: f.price,
+        vstup,
+        maly: true,
+        color: vstup ? BARVA_CARY.tp : BARVA_CARY.likvidace,
+      };
+    }));
+  } catch {
+    /* značky jsou doplněk — bez nich graf funguje dál */
+  }
+}
+
+/** Linka aktuální ceny se ziskem; bez pozice se nekreslí. */
+function nastavLinkuPnl() {
+  if (!chart) return;
+  chart.setPnlInfo(chartPosition && chartPosition.entry
+    ? {
+      vstup: chartPosition.entry,
+      size: chartPosition.size,
+      long: chartPosition.side !== 'Sell',
+    }
+    : null);
 }
 
 /**
@@ -737,7 +788,12 @@ async function otevriGraf(symbol, position, trh) {
   client.setKlineSubscription(symbol, chartInterval);
   chart.restoreDrawings(store.loadDrawings(symbol));
   vykresliAlarmy();
-  if (!prohlizenyObchod) chart.clearTradeMarks();
+  nastavLinkuPnl();
+  if (!prohlizenyObchod) {
+    chart.clearTradeMarks();
+    // Trojúhelníky nakoupeno/prodáno nahradily čáru průměrného vstupu.
+    znackyPlneni(position);
+  }
   chart.setTicking(true);
 
   await refreshChartOrders();
@@ -2083,9 +2139,12 @@ function buildChartLines(position, orders) {
                          title: t('line.limit'), dash: CARKOVANI.prikaz }));
   }
 
-  lines.push({ price: position.entry, color: BARVA_CARY.vstup,
-               title: t('line.entry'), dash: CARKOVANI.vstup });
-
+  /*
+   * ⚠ Čára vstupu se v grafu **nekreslí**. Průměrný vstup je jen číslo
+   * odvozené z několika nákupů; uživatele zajímá, kde se doopravdy
+   * nakupovalo, a to ukazují trojúhelníky plnění (`znackyPlneni()`).
+   * Průměr zůstává v proužku v kartě a v panelu pod hlavičkou grafu.
+   */
   if (position.liq) {
     lines.push({ price: position.liq, color: BARVA_CARY.likvidace,
                  title: t('line.liquidation'), dash: CARKOVANI.likvidace });
@@ -2184,6 +2243,9 @@ function syncOpenChart(list) {
   if (!fresh) {
     // Pozice byla zavřená — graf nechat otevřený, jen bez čar pozice.
     chartOrders = [];
+    chartPosition = null;
+    // A bez linky zisku; nemá se z čeho počítat.
+    nastavLinkuPnl();
     return;
   }
 
@@ -2192,6 +2254,8 @@ function syncOpenChart(list) {
   // Panel se překresluje pokaždé — mark, PnL i ROE se mění s každým tickem.
   ui.renderChartInfo(fresh, hideAmounts);
   applyChartLines();
+  // Průměrný vstup se mění při přikoupení, linka ho musí sledovat.
+  nastavLinkuPnl();
 }
 
 /* ---------- service worker a hláška o nové verzi ---------- */

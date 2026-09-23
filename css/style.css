@@ -663,13 +663,16 @@ main {
 /* Úroveň pro celou pozici je vyšší a silnější než dílčí příkaz. */
 .ladder-track .tick.cela { top: 2px; bottom: 2px; width: 3px; margin-left: -1.5px; }
 
-/* Vstup je vždy uprostřed a čerchovaný, stejně jako v grafu. */
+/* Vstup je vždy uprostřed: plná silnější fialová. Je to **průměrná** cena
+   ze všech nákupů, ne jeden konkrétní vstup — proto plná čára, ne čárkovaná
+   jako jednotlivé příkazy. */
 .ladder-track .tick.entry {
   top: 0;
   bottom: 0;
-  width: 2px;
-  background: repeating-linear-gradient(
-    180deg, #a78bfa 0 4px, transparent 4px 7px);
+  width: 4px;
+  margin-left: -2px;
+  border-radius: 2px;
+  background: #a78bfa;
 }
 
 /* Aktuální cena — jediná věc na proužku, která se hýbe, proto svítí. */

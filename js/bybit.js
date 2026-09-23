@@ -403,8 +403,10 @@ export class BybitClient {
         const pozice = [...this.positions.values()].find((p) => p.symbol === symbol);
         try {
           zaplaceno = await this.getFundingPaid(symbol, pozice?.openedAt);
-        } catch {
-          /* bez oprávnění Wallet se součet prostě neukáže */
+        } catch (err) {
+          // ⚠ Nepolykat potichu. Když součet chybí, musí jít zjistit proč —
+          // jinak se hádá, jestli chybí oprávnění, nebo je chyba v kódu.
+          this.zapisDiag('funding součet', err?.message || String(err));
         }
 
         this.fundingCache.set(symbol, { kdy: ted, funding: { ...funding, zaplaceno } });
@@ -656,9 +658,35 @@ export class BybitClient {
    * to musí umět přežít — bez součtu se pozice ukazuje dál.
    */
   async getFundingPaid(symbol, odKdy) {
+    /*
+     * ⚠ Bybit omezuje okno `startTime`–`endTime` u transakčního deníku.
+     * Když se pošle začátek starý měsíc, odpoví chybou a součet nikdy
+     * nedorazí — přesně to se stalo: na telefonu chyběl, přitom proti
+     * mocku fungoval. Proto dvě kola: nejdřív s oknem od otevření pozice,
+     * a když to Bybit odmítne, znovu bez `startTime` (vrátí posledních
+     * pár dní). Radši součet za kratší dobu než žádný.
+     */
+    const pokusy = odKdy ? [{ startTime: String(Math.floor(odKdy)) }, {}] : [{}];
+    let posledniChyba = null;
+
+    for (const okno of pokusy) {
+      try {
+        const soucet = await this.stahniFunding(symbol, okno);
+        // Celá doba držení jen tehdy, když prošlo okno od otevření pozice.
+        // Jinak jde o posledních pár dní a UI to musí napsat jinak.
+        return { ...soucet, odOtevreni: Boolean(okno.startTime) };
+      } catch (err) {
+        posledniChyba = err;
+      }
+    }
+    throw posledniChyba;
+  }
+
+  async stahniFunding(symbol, okno) {
     let celkem = 0;
     let pocet = 0;
     let cursor = '';
+    let odKdy = null;
 
     // Tři stránky po 50 pokryjí i pozici drženou měsíc (3 stržení denně).
     // Dál se ptát nemá cenu, součet by stejně nikdo nečetl do haléře.
@@ -669,7 +697,7 @@ export class BybitClient {
         currency: 'USDT',
         type: 'SETTLEMENT',
         limit: '50',
-        ...(odKdy ? { startTime: String(Math.floor(odKdy)) } : {}),
+        ...okno,
         ...(cursor ? { cursor } : {}),
       });
 
@@ -680,13 +708,17 @@ export class BybitClient {
         if (Number.isFinite(castka) && castka !== 0) {
           celkem += castka;
           pocet += 1;
+          const kdy = Number(r.transactionTime);
+          if (Number.isFinite(kdy) && (odKdy === null || kdy < odKdy)) odKdy = kdy;
         }
       }
 
       cursor = result?.nextPageCursor || '';
       if (!cursor || !radky.length) break;
     }
-    return { celkem, pocet };
+    // `odKdy` říká, od kdy se doopravdy počítalo — UI pak nelže, že jde
+    // o součet za celou dobu držení, když Bybit dal jen posledních pár dní.
+    return { celkem, pocet, odKdy };
   }
 
   async fundingInterval(symbol) {

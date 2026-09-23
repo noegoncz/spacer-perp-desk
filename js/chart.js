@@ -359,6 +359,11 @@ function registrovatCaryAlarmu() {
 /**
  * Značka jednoho plnění: trojúhelník ve směru obchodu a cena u něj.
  * Sedí na konkrétní svíčce, protože zná přesný čas plnění.
+ *
+ * `maly: true` je podoba pro **otevřenou pozici** — jen drobný trojúhelník
+ * bez popisku. Vstupů bývá víc a u živého obchodu jde o to vidět, *kde*
+ * se nakupovalo; cenu si uživatel přečte z osy. Velká varianta s popiskem
+ * zůstává pro prohlížení uzavřeného obchodu z historie.
  */
 function registrovatZnackuPlneni() {
   K().registerOverlay({
@@ -371,31 +376,46 @@ function registrovatZnackuPlneni() {
       const d = overlay.extendData || {};
       const { x, y } = coordinates[0];
       const smer = d.vstup ? 1 : -1;
-      const zaklad = y + smer * 13;
-      return [
-        {
-          type: 'polygon',
-          attrs: {
-            coordinates: [
-              { x, y: y + smer * 3 },
-              { x: x - 6, y: zaklad },
-              { x: x + 6, y: zaklad },
-            ],
-          },
-          styles: { style: 'fill', color: d.color },
+      const sirka = d.maly ? 4 : 6;
+      const vyska = d.maly ? 9 : 13;
+      const zaklad = y + smer * vyska;
+
+      const figury = [{
+        type: 'polygon',
+        attrs: {
+          coordinates: [
+            { x, y: y + smer * 3 },
+            { x: x - sirka, y: zaklad },
+            { x: x + sirka, y: zaklad },
+          ],
         },
-        {
+        /*
+         * ⚠ Obtažení barvou pozadí není ozdoba. Zelený trojúhelník nákupu
+         * padne často přesně na zelenou svíčku a bez obrysu splyne — na
+         * zkušebním snímku byla ze tří značek vidět jen dvě.
+         */
+        styles: {
+          style: 'stroke_fill',
+          color: d.color,
+          borderColor: BARVY.pozadi,
+          borderSize: 1,
+        },
+      }];
+
+      if (!d.maly && d.title) {
+        figury.push({
           type: 'text',
           attrs: {
             x,
             y: zaklad + (d.vstup ? 2 : -2),
-            text: d.title || '',
+            text: d.title,
             align: 'center',
             baseline: d.vstup ? 'top' : 'bottom',
           },
           styles: { color: d.color, size: 10, family: 'sans-serif' },
-        },
-      ];
+        });
+      }
+      return figury;
     },
   });
 }
@@ -599,6 +619,95 @@ function registrovatVolumeProfile() {
 }
 
 /**
+ * Údaje o otevřené pozici pro linku aktuální ceny. Nastavuje je app.js
+ * přes `setPnlInfo()`; `null` = graf bez pozice, linka se nekreslí.
+ */
+let pnlInfo = null;
+
+/**
+ * Linka aktuální ceny se ziskem či ztrátou.
+ *
+ * ⚠ Kreslí se jako **indikátor, ne overlay**. Overlay by musel dostávat
+ * novou cenu při každém ticku zvlášť; indikátorův `draw()` běží při každém
+ * překreslení sám a poslední cenu si vezme z dat, takže linka drží krok
+ * s živou svíčkou bez jediného volání navíc.
+ *
+ * Linka schválně **nejde přes celou šířku** — začíná u poslední svíčky
+ * a pokračuje k pravému okraji. Přes celý graf jen překážela svíčkám.
+ */
+function registrovatLinkuPnl() {
+  K().registerIndicator({
+    name: 'PNLLINE',
+    shortName: '',
+    series: 'normal',
+    calcParams: [],
+    figures: [],
+    // Bez vlastního zdroje by knihovna do legendy psala „PNLLINE" —
+    // tahle linka ale žádnou legendu nepotřebuje.
+    createTooltipDataSource: () => ({ name: '', calcParamsText: '', legends: [] }),
+    calc: (data) => data.map(() => ({})),
+    draw: ({ ctx, chart, bounding }) => {
+      if (!pnlInfo) return true;
+
+      const data = chart.getDataList();
+      const posledni = data[data.length - 1];
+      if (!posledni) return true;
+
+      const cena = Number(posledni.close);
+      if (!Number.isFinite(cena)) return true;
+
+      const bod = chart.convertToPixel(
+        { dataIndex: data.length - 1, value: cena },
+        { paneId: HLAVNI_PANEL },
+      );
+      const v = Array.isArray(bod) ? bod[0] : bod;
+      if (!v || !Number.isFinite(v.y)) return true;
+
+      // Zisk se počítá z průměrného vstupu, ne z ceny jedné objednávky.
+      const { vstup, size, long } = pnlInfo;
+      const smer = long ? 1 : -1;
+      const zisk = (cena - vstup) * size * smer;
+      const procenta = vstup ? ((cena - vstup) / vstup) * 100 * smer : 0;
+      const barva = zisk >= 0 ? BARVY.rust : BARVY.pokles;
+
+      const zacatek = Math.max(0, Math.min(bounding.width - 1, v.x));
+      const y = Math.round(v.y) + 0.5; // půlpixel: tenká čára pak není rozmazaná
+
+      ctx.save();
+      ctx.strokeStyle = barva;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(zacatek, y);
+      ctx.lineTo(bounding.width, y);
+      ctx.stroke();
+
+      ctx.setLineDash([]);
+      ctx.fillStyle = barva;
+      ctx.font = '11px sans-serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'bottom';
+      /*
+       * Podklad ani rámeček text nemá (stejně jako popisky čar pozice —
+       * blok za textem jen ujídá pohled na svíčky). Aby přesto šel přečíst
+       * i přes svíčku, obtáhne se barvou pozadí. Měřeno: bez toho z „−3,44"
+       * zbylo na snímku „−,44", číslici spolkla svíčka pod ní.
+       */
+      ctx.shadowColor = BARVY.pozadi;
+      ctx.shadowBlur = 4;
+      const znamenko = zisk >= 0 ? '+' : '−';
+      const popis = `${znamenko}${Math.abs(zisk).toFixed(2)} USDT | `
+        + `${znamenko}${Math.abs(procenta).toFixed(2)} %`;
+      // Třikrát přes sebe: jeden průchod dá závoj příliš slabý na to,
+      // aby tmavé pozadí přebilo svíčku.
+      for (let i = 0; i < 3; i += 1) ctx.fillText(popis, bounding.width - 6, y - 3);
+      ctx.restore();
+      return true;
+    },
+  });
+}
+
+/**
  * RSI po vzoru TradingView: jedna křivka, volitelný klouzavý průměr a
  * pásma překoupenosti s výplní. Vestavěné RSI kreslí tři křivky bez pásem
  * a nedá se u něj zvolit zdroj ceny.
@@ -788,6 +897,7 @@ export function createPriceChart(container, layer, handlers = {}) {
   registrovatZnackuPlneni();
   registrovatObjem();
   registrovatVolumeProfile();
+  registrovatLinkuPnl();
   registrovatRsi();
 
   const chart = K().init(container, { styles: styly() });
@@ -894,6 +1004,7 @@ export function createPriceChart(container, layer, handlers = {}) {
   let posledniStyl = { ...VYCHOZI_STYL };
   let dodatekKresby = null;
   let vyberBodu = null; // křížem se zrovna vybírá hladina alarmu, ne kresba
+  let linkaPnlZapnuta = false;
   // Co je v grafu nakresleno — při změně intervalu se to na chvíli sundá
   // a vrátí až s novými svíčkami, aby nic nepřeskakovalo zvlášť.
   let posledniCary = [];
@@ -1409,6 +1520,35 @@ export function createPriceChart(container, layer, handlers = {}) {
       if (!prepinaSeInterval) vykresliCary(lines);
     },
 
+    /**
+     * Údaje pro linku aktuální ceny se ziskem. `null` linku sundá a vrátí
+     * vestavěnou značku poslední ceny (graf bez pozice ji potřebuje).
+     */
+    setPnlInfo(info) {
+      pnlInfo = info;
+
+      /*
+       * ⚠ Stav linky se drží zvlášť, **ne v `aktivniIndikatory`**. Ta sada
+       * se ukládá do telefonu jako výběr uživatele; kdyby v ní PNLLINE
+       * skončil, příště by se obnovil jako obyčejný indikátor a objevil
+       * se i v nabídce, kde nemá co dělat.
+       */
+      if (info && !linkaPnlZapnuta) {
+        chart.createIndicator({ name: 'PNLLINE', paneId: HLAVNI_PANEL });
+        linkaPnlZapnuta = true;
+      } else if (!info && linkaPnlZapnuta) {
+        chart.removeIndicator({ name: 'PNLLINE' });
+        linkaPnlZapnuta = false;
+      }
+
+      // Vestavěná čára poslední ceny jde přes celou šířku. S vlastní linkou
+      // by se kreslily dvě přes sebe, takže se u pozice schová; popisek
+      // ceny na ose i odpočet do konce svíčky zůstávají.
+      chart.setStyles({
+        candle: { priceMark: { last: { line: { show: !info } } } },
+      });
+    },
+
     /* ---------- hladiny alarmů ---------- */
 
     setAlarmLines(seznam) {
@@ -1426,7 +1566,7 @@ export function createPriceChart(container, layer, handlers = {}) {
           groupId: SKUPINA_ZNACKY,
           points: [{ timestamp: z.time, value: z.price }],
           lock: true,
-          extendData: { vstup: z.vstup, color: z.color, title: z.title },
+          extendData: { vstup: z.vstup, color: z.color, title: z.title, maly: z.maly },
         });
       });
     },
