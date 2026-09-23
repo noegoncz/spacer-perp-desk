@@ -659,27 +659,65 @@ export class BybitClient {
    */
   async getFundingPaid(symbol, odKdy) {
     /*
-     * ⚠ Bybit omezuje okno `startTime`–`endTime` u transakčního deníku.
-     * Když se pošle začátek starý měsíc, odpoví chybou a součet nikdy
-     * nedorazí — přesně to se stalo: na telefonu chyběl, přitom proti
-     * mocku fungoval. Proto dvě kola: nejdřív s oknem od otevření pozice,
-     * a když to Bybit odmítne, znovu bez `startTime` (vrátí posledních
-     * pár dní). Radši součet za kratší dobu než žádný.
+     * ⚠ Deník neumí filtrovat na `symbol`, jen na `baseCoin`. Bez něj se
+     * do stránek po 50 řádcích vejde při více pozicích sotva den — právě
+     * proto stálo na telefonu „paid 0.00 USDT in 1 d" i u pozice držené
+     * několik dní. Kdyby Bybit `baseCoin` u páru neplnil, jde druhé kolo
+     * bez něj a řádky se odfiltrují podle symbolu jako dřív.
      */
-    const pokusy = odKdy ? [{ startTime: String(Math.floor(odKdy)) }, {}] : [{}];
-    let posledniChyba = null;
+    const baseCoin = symbol.endsWith('USDT') ? symbol.slice(0, -4) : '';
+    if (baseCoin) {
+      const s = await this.sectiFunding(symbol, odKdy, baseCoin);
+      if (s.pocet > 0) return s;
+    }
+    return this.sectiFunding(symbol, odKdy, '');
+  }
 
-    for (const okno of pokusy) {
+  /**
+   * Sečte funding po **sedmidenních oknech** od otevření pozice.
+   *
+   * ⚠ Bybit vyžaduje `startTime` a `endTime` **společně** a okno smí být
+   * nejvýš sedm dní. Samotný `startTime` (jak to dělala první verze) dotaz
+   * shodí, takže součet nikdy nedorazil. Proti mocku to přitom vycházelo —
+   * mock odpoví na cokoli.
+   */
+  async sectiFunding(symbol, odKdy, baseCoin) {
+    const OKNO = 7 * 86400000;
+    const MAX_OKEN = 8; // ~dva měsíce; dál už by se jen zdržovalo
+    const ted = Date.now();
+
+    const chtenyZacatek = Number.isFinite(odKdy) && odKdy > 0 ? odKdy : ted - OKNO;
+    const zacatek = Math.max(chtenyZacatek, ted - MAX_OKEN * OKNO);
+
+    let celkem = 0;
+    let pocet = 0;
+    let odKdyReal = null;
+    // Celá doba držení jen tehdy, když víme, kdy se pozice otevřela, žádné
+    // okno neselhalo a nemuselo se to ořezávat stropem.
+    let cele = Number.isFinite(odKdy) && odKdy > 0 && zacatek <= chtenyZacatek;
+
+    for (let od = zacatek; od < ted; od += OKNO) {
+      const doKdy = Math.min(od + OKNO, ted);
       try {
-        const soucet = await this.stahniFunding(symbol, okno);
-        // Celá doba držení jen tehdy, když prošlo okno od otevření pozice.
-        // Jinak jde o posledních pár dní a UI to musí napsat jinak.
-        return { ...soucet, odOtevreni: Boolean(okno.startTime) };
+        const kus = await this.stahniFunding(symbol, {
+          startTime: String(Math.floor(od)),
+          endTime: String(Math.ceil(doKdy)),
+          ...(baseCoin ? { baseCoin } : {}),
+        });
+        celkem += kus.celkem;
+        pocet += kus.pocet;
+        if (kus.odKdy !== null && (odKdyReal === null || kus.odKdy < odKdyReal)) {
+          odKdyReal = kus.odKdy;
+        }
       } catch (err) {
-        posledniChyba = err;
+        // Jedno vypadlé okno nesmí shodit celý součet — jen se pak
+        // v kartě nesmí tvrdit, že jde o celou dobu držení.
+        cele = false;
+        this.zapisDiag('funding okno', err?.message || String(err));
       }
     }
-    throw posledniChyba;
+
+    return { celkem, pocet, odKdy: odKdyReal ?? zacatek, odOtevreni: cele };
   }
 
   async stahniFunding(symbol, okno) {
@@ -688,8 +726,7 @@ export class BybitClient {
     let cursor = '';
     let odKdy = null;
 
-    // Tři stránky po 50 pokryjí i pozici drženou měsíc (3 stržení denně).
-    // Dál se ptát nemá cenu, součet by stejně nikdo nečetl do haléře.
+    // Tři stránky po 50 pokryjí sedmidenní okno i při třech strženích denně.
     for (let stranka = 0; stranka < 3; stranka += 1) {
       const result = await this.signedGet('/v5/account/transaction-log', {
         accountType: this.typUctu || 'UNIFIED',

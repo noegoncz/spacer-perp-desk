@@ -72,6 +72,17 @@ const BARVA_CARY = {
   prikaz: '#8b9bb0',
 };
 
+/*
+ * Barvy trojúhelníků plnění. ⚠ Schválně **jiné než barvy svíček**
+ * (`#16c784` / `#ea3943`): značka v barvě svíčky, na které leží, prostě
+ * není vidět — a leží na ní skoro vždycky, protože se obchodovalo právě
+ * tam. Nákup je proto světlejší zelená, prodej jde do oranžova.
+ */
+const BARVA_PLNENI = {
+  nakup: '#7dffb8',
+  prodej: '#ff9f43',
+};
+
 const CARKOVANI = {
   likvidace: [12, 5],    // nejdelší mezery, nejvzdálenější a nejvážnější úroveň
   // SL a TP mají dlouhé čárkování, celé i částečné stejně — rozlišuje je
@@ -311,7 +322,7 @@ async function znackyPlneni(position) {
         price: f.price,
         vstup,
         maly: true,
-        color: vstup ? BARVA_CARY.tp : BARVA_CARY.likvidace,
+        color: vstup ? BARVA_PLNENI.nakup : BARVA_PLNENI.prodej,
       };
     }));
   } catch {

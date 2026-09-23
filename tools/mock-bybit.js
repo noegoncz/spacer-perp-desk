@@ -86,18 +86,36 @@ window.fetch = function (vstup) {
     ]}});
   }
   // Transakcni denik — z nej se scita zaplaceny funding.
-  // window.__uzkeOknoFundingu napodobuje Bybit, ktery dlouhe okno odmita:
-  // s parametrem startTime vrati chybu, bez nej posledni dny.
+  //
+  // Napodobuje omezeni skutecneho Bybitu, protoze prave na nich to
+  // na telefonu padalo, zatimco vsemu povolny mock hlasil, ze je vse v poradku:
+  //  * startTime a endTime musi prijit SPOLU,
+  //  * okno smi byt nejvys 7 dni,
+  //  * bez casu se vrati jen poslednich 24 h,
+  //  * denik neumi filtrovat na symbol, jen na baseCoin, a strankuje po 50.
   if (u.includes('/v5/account/transaction-log')) {
-    if (window.__uzkeOknoFundingu && u.includes('startTime='))
-      return ok({retCode:10001, retMsg:'startTime is out of range'});
-    const zacatek = window.__uzkeOknoFundingu ? Date.now() - 2*86400e3 : OTEVRENO;
+    const q = new URL(u, location.origin).searchParams;
+    const od = Number(q.get('startTime')) || 0;
+    const doKdy = Number(q.get('endTime')) || 0;
+    if ((od && !doKdy) || (doKdy && !od))
+      return ok({retCode:10001, retMsg:'startTime and endTime must be passed together'});
+    if (od && doKdy - od > 7*86400e3 + 1000)
+      return ok({retCode:10001, retMsg:'the max query range is 7 days'});
+
+    const zacatek = Math.max(od || Date.now() - 86400e3, OTEVRENO);
+    const konec = Math.min(doKdy || Date.now(), Date.now());
     const l = [];
-    for (let t = zacatek; t < Date.now(); t += 8*3600e3) {
+    for (let t = Math.ceil(zacatek / (8*3600e3)) * 8*3600e3; t < konec; t += 8*3600e3) {
+      // Sud a lich: do deniku pada i jiny par, aby bylo poznat, ze se
+      // radky filtruji. Bez baseCoin je jich dvakrat tolik.
       l.push({symbol:'JUPUSDT', type:'SETTLEMENT', currency:'USDT',
               funding:'-0.0620', transactionTime:String(Math.round(t))});
+      if (q.get('baseCoin') !== 'JUP') {
+        l.push({symbol:'ETHUSDT', type:'SETTLEMENT', currency:'USDT',
+                funding:'-9.9900', transactionTime:String(Math.round(t))});
+      }
     }
-    return ok({retCode:0, result:{list:l, nextPageCursor:''}});
+    return ok({retCode:0, result:{list:l.slice(0, 50), nextPageCursor:''}});
   }
   return ok({retCode:0, result:{list:[]}});
 };

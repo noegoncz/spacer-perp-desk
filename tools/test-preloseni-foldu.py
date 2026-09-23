@@ -7,9 +7,9 @@ Ověřuje se na dvou úrovních:
   1. Stav grafu (pár, interval, zoom/scroll) je stejný před i po změně
      rozměrů okna — Android při přeložení stránku nereloaduje, jen mění
      rozměry, takže tohle je čistě otázka, jestli si to JS pamatuje.
-  2. Karta pozice (`pos-grid`) se na širokém rozevřeném displeji nerozsype
-     do nevyváženého posledního řádku — proto `@media (min-width: 480px)
-     and (min-aspect-ratio: 3/4)` v css/style.css přidává pátý sloupec.
+  2. Karta pozice (`pos-grid`) má na obou displejích tolik sloupců, kolik
+     má buněk — od v0.16.2 jsou v mřížce jen likvidace a vzdálenost k ní,
+     zbytek se přestěhoval do hlavičky a nad proužek.
 
 Rozměry podle Samsung Galaxy Z Fold 5: zavřený cover ~344×882,
 rozevřený hlavní displej ~673×841 (málem čtvercový).
@@ -80,14 +80,15 @@ for klic in ('symbol', 'interval', 'chartVisible'):
 if abs(pred['bar'] - po['bar']) > 0.5:
     chyby.append(f'zoom (bar) se resetoval: {pred["bar"]} -> {po["bar"]}')
 
-# ---- karta pozice po rozevření: 5 sloupců, beze zbytku ----
+# ---- karta pozice po rozevření: sloupců tolik, kolik je buněk ----
 ev("history.back()")
 time.sleep(1)
 bunek = ev("document.querySelectorAll('.pos-grid .pos-cell').length")
 sloupcu_open = ev("getComputedStyle(document.querySelector('.pos-grid')).gridTemplateColumns.split(' ').length")
 print('buněk / sloupců karty pozice na rozevřeném displeji:', bunek, '/', sloupcu_open)
-if bunek == 5 and sloupcu_open != 5:
-    chyby.append(f'pos-grid na rozevřeném displeji nemá 5 sloupců pro 5 buněk (má {sloupcu_open})')
+# Prázdné místo po chybějícím sloupci vypadá jako chyba vykreslení.
+if bunek != sloupcu_open:
+    chyby.append(f'pos-grid má {bunek} buněk, ale {sloupcu_open} sloupců')
 
 konzole = ev('(window.__chyby||[]).join(" | ")') or ''
 if konzole:

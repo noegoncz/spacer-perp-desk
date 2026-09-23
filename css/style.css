@@ -554,6 +554,14 @@ main {
 
 .pos-symbol { font-size: 1.05rem; font-weight: 650; }
 
+/* Velikost pozice patří k názvu páru, ne mezi ceny v mřížce. */
+.pos-size {
+  margin-top: 3px;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
 .badge {
   display: inline-block;
   margin-left: 8px;
@@ -586,7 +594,9 @@ main {
 
 .pos-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* Dvě buňky: likvidace a vzdálenost k ní. Vstup a mark cena se
+     přestěhovaly nad proužek k čarám, které je znázorňují. */
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px 10px;
   margin-top: 12px;
   padding-top: 10px;
@@ -700,7 +710,42 @@ main {
 .ladder-legend .tp { color: var(--long); }
 .ladder-legend .chibi,
 .ladder-legend .chybi { color: var(--text-dim); opacity: 0.7; }
-.ladder-velikost { color: var(--text-dim); }
+
+/* Druhý řádek: co úroveň znamená v penězích. Sedí přesně pod procenty. */
+.ladder-castky {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+.ladder-castky .sl { color: rgba(240, 185, 11, 0.75); }
+.ladder-castky .tp { color: rgba(22, 199, 132, 0.75); }
+
+/*
+ * Ceny nad proužkem. Vstup stojí napevno nad fialovou čarou uprostřed,
+ * mark cena jezdí nad svým ukazatelem — číslo pak patří k čáře, ke které
+ * se vztahuje, místo aby leželo o dva řádky výš v tabulce.
+ */
+.ladder-ceny {
+  position: relative;
+  height: 15px;
+  margin-bottom: 2px;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ladder-ceny span {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+}
+.ladder-ceny .cena-vstup { color: #a78bfa; }
+.ladder-ceny .cena-mark { color: var(--text); font-weight: 600; }
+.ladder-ceny .cena-mark.plus  { color: var(--long); }
+.ladder-ceny .cena-mark.minus { color: var(--short); }
 
 /* Funding na kartě je doplněk, ne hlavní číslo. */
 .pos-funding {
@@ -1569,5 +1614,7 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
  * čtvercový (~0.8), proto min-aspect-ratio 3/4.
  */
 @media (min-width: 480px) and (min-aspect-ratio: 3/4) {
-  .pos-grid { grid-template-columns: repeat(5, 1fr); }
+  /* Mřížka má jen dvě buňky, pět sloupců by z nich udělalo dva proužky
+     u levého okraje a zbytek prázdno. */
+  .pos-grid { grid-template-columns: repeat(2, 1fr); }
 }

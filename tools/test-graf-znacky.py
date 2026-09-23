@@ -1,16 +1,21 @@
 # -*- coding: utf-8 -*-
 """
-Značení pozice v grafu a v proužku (v0.16.1).
+Značení pozice v grafu a v kartě (v0.16.2).
 
 Ověřuje, co si uživatel vyžádal:
   * v grafu **není** čára vstupu — místo ní jsou malé trojúhelníky plnění
-    (zelené nákupy, červené prodeje),
+    (světle zelené nákupy, oranžové prodeje; barvy svíček by splynuly),
+  * karta: velikost v hlavičce, v mřížce jen likvidace a vzdálenost k ní,
+    vstupní cena nad fialovou čarou, mark cena nad svým ukazatelem
+    a pod proužkem částky, které SL a TP znamenají v penězích,
   * aktuální cenu kreslí vlastní linka PNLLINE se ziskem v USDT i procentech,
     barevná podle zisku, a vestavěná linka poslední ceny je vypnutá,
   * SL i TP (celé i částečné) mají dlouhé přerušované čáry,
   * v proužku karty je vstup plná silnější fialová (je to **průměrná** cena),
-  * součet zaplaceného fundingu je na kartě vidět, a když Bybit dlouhé okno
-    odmítne, popisek netvrdí „celkem", ale za kolik dní součet je.
+  * součet zaplaceného fundingu je na kartě vidět za **celou dobu držení**
+    (mock napodobuje skutečná omezení deníku: časy jen v páru, okno max
+    7 dní, filtr jen na baseCoin), a když čas otevření pozice neznáme,
+    popisek netvrdí „celkem", ale za kolik dní součet je.
 
 Spuštění: python tools/test-graf-znacky.py http://localhost:8080
 """
@@ -57,12 +62,68 @@ if styl.get('pozadi') != 'none':
 if styl.get('barva') != 'rgb(167, 139, 250)':
     chyby.append(f"vstup v proužku nemá fialovou: {styl.get('barva')}")
 
+# ---- hlavička: velikost v coinu i v USDT ----
+velikost = ev("(document.querySelector('.pos-size') || {}).textContent || ''")
+print('velikost v hlavičce:', velikost or '(chybí)')
+for kus in ('2,547 JUP', '778.87 USDT'):
+    if kus not in velikost:
+        chyby.append(f'v hlavičce chybí {kus}')
+
+# ---- mřížka: jen likvidace a vzdálenost k ní, obojí vždycky ----
+mrizka = json.loads(ev("""JSON.stringify([...document.querySelectorAll('.pos-grid .pos-cell')]
+  .map((c) => c.querySelector('.label').textContent))""") or '[]')
+print('buňky mřížky:', mrizka)
+if mrizka != ['Liquidation', 'To liquidation']:
+    chyby.append(f'mřížka má obsahovat jen likvidaci a vzdálenost k ní: {mrizka}')
+
+# ---- ceny nad proužkem ----
+ceny = json.loads(ev("""(() => {
+  const v = document.querySelector('.ladder-ceny .cena-vstup');
+  const m = document.querySelector('.ladder-ceny .cena-mark');
+  const u = document.querySelector('.ladder-now');
+  return JSON.stringify({ vstup: v && v.textContent, vstupLeft: v && v.style.left,
+    mark: m && m.textContent, markLeft: m && m.style.left,
+    ukazatel: u && u.style.left }); })()""") or '{}')
+print('ceny nad proužkem:', ceny)
+if ceny.get('vstup') != '0.30135' or ceny.get('vstupLeft') != '50%':
+    chyby.append('vstupní cena nestojí napevno uprostřed nad fialovou čarou')
+if ceny.get('mark') != '0.30580':
+    chyby.append('nad proužkem chybí mark cena')
+# Mark cena musí jezdit se svým ukazatelem, jinak by ukazovala jinam než čára.
+if ceny.get('markLeft') != ceny.get('ukazatel'):
+    chyby.append(f"mark cena {ceny.get('markLeft')} nesedí na ukazatel {ceny.get('ukazatel')}")
+
+# ⚠ U čerstvě otevřené pozice leží mark cena hned vedle vstupu a obě čísla
+# se přes sebe napíšou do nečitelné změti. Musí se rozestoupit.
+prekryv = json.loads(ev("""(() => {
+  const a = document.querySelector('.cena-vstup').getBoundingClientRect();
+  const b = document.querySelector('.cena-mark').getBoundingClientRect();
+  return JSON.stringify({ vstup: [Math.round(a.left), Math.round(a.right)],
+                          mark: [Math.round(b.left), Math.round(b.right)],
+                          prekryv: a.right > b.left && b.right > a.left }); })()""") or '{}')
+print('popisky cen:', prekryv)
+if prekryv.get('prekryv'):
+    chyby.append('vstupní a mark cena se překrývají')
+
+# ---- druhý řádek pod proužkem: kolik to dělá v penězích ----
+castky = json.loads(ev("""JSON.stringify([...document.querySelectorAll('.ladder-castky span')]
+  .map((e) => e.textContent))""") or '[]')
+print('částky k SL a TP:', [c.replace('−', '-') for c in castky])
+# Bere se **nejbližší** úroveň na každé straně, stejně jako u procent
+# o řádek výš: SL 0.295 = ztráta, částečný TP 0.340 = zisk.
+if len(castky) != 2:
+    chyby.append(f'pod proužkem mají být dvě částky, jsou {len(castky)}')
+elif not (castky[0].startswith('−') and 'USDT' in castky[0]
+          and castky[1].startswith('+') and 'USDT' in castky[1]):
+    chyby.append(f'částky k SL a TP nesedí: {castky}')
+
 # ---- funding: součet za celou dobu držení ----
 funding = ev("""(() => { const f = document.querySelector('.pos-funding');
   return f ? f.textContent : ''; })()""")
 print('funding na kartě:', funding or '(chybí)')
-if 'paid so far' not in (funding or ''):
-    chyby.append('na kartě chybí součet zaplaceného fundingu')
+# Pozice je otevřená tři dny, tedy devět stržení po 0,062 USDT.
+if 'paid so far 0.56 USDT' not in (funding or ''):
+    chyby.append('součet fundingu za celou dobu držení nesedí')
 
 # ---- graf ----
 print()
@@ -102,8 +163,12 @@ if any(z['popis'] for z in znacky):
 zelene = {z['barva'] for z in znacky if z['vstup']}
 cervene = {z['barva'] for z in znacky if not z['vstup']}
 print('barvy — vstupy:', zelene, ' výstupy:', cervene)
-if zelene != {'#16c784'} or cervene != {'#ea3943'}:
-    chyby.append('vstupy mají být zelené a výstupy červené')
+# ⚠ Schválně **jiné barvy než svíčky** (#16c784 / #ea3943) — značka
+# v barvě svíčky, na které leží, není vidět.
+if zelene != {'#7dffb8'} or cervene != {'#ff9f43'}:
+    chyby.append('nákupy mají mít světlou zelenou a prodeje oranžovou')
+if zelene & {'#16c784'} or cervene & {'#ea3943'}:
+    chyby.append('značky mají barvu svíček, ve kterých splynou')
 
 # ---- linka aktuální ceny ----
 linka = ev("window.__graf.getIndicators({ name: 'PNLLINE' }).length")
@@ -173,20 +238,36 @@ print('chyby v konzoli:', konzole or '(žádné)')
 if konzole:
     chyby.append(f'chyby v konzoli: {konzole}')
 
-# ---- druhý běh: Bybit odmítne dlouhé okno fundingu ----
+# ---- druhý běh: pozice bez známého času otevření ----
+# Pak se dá sečíst jen posledních sedm dní a popisek to musí přiznat.
 print()
-print('=== funding s odmítnutým oknem ===')
-p.prikaz('Page.addScriptToEvaluateOnNewDocument',
-         source='window.__uzkeOknoFundingu = true;')
+print('=== funding u pozice bez createdTime ===')
+p.prikaz('Page.addScriptToEvaluateOnNewDocument', source="""
+(() => {
+  const puvodni = window.fetch;
+  window.fetch = function (vstup) {
+    const u = String(vstup && vstup.url ? vstup.url : vstup);
+    if (u.includes('/v5/position/list')) {
+      return puvodni(vstup).then(async (r) => {
+        const d = await r.json();
+        d.result.list.forEach((x) => { delete x.createdTime; });
+        return new Response(JSON.stringify(d),
+          { status: 200, headers: { 'Content-Type': 'application/json' } });
+      });
+    }
+    return puvodni(vstup);
+  };
+})();
+""")
 p.prikaz('Page.navigate', url=sys.argv[1])
 time.sleep(6)
 kratky = ev("""(() => { const f = document.querySelector('.pos-funding');
   return f ? f.textContent : ''; })()""")
 print('funding na kartě:', kratky or '(chybí)')
 if 'paid' not in (kratky or ''):
-    chyby.append('součet fundingu zmizel, když Bybit odmítl dlouhé okno')
+    chyby.append('součet fundingu zmizel, když není známý čas otevření pozice')
 elif 'so far' in (kratky or ''):
-    chyby.append('popisek tvrdí „celkem", přestože jde jen o pár dní')
+    chyby.append('popisek tvrdí „celkem", přestože se počítalo jen posledních pár dní')
 
 print()
 if chyby:

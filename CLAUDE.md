@@ -305,9 +305,11 @@ pokud je mladší).
 Značky pro otevřenou pozici jsou **malé a bez popisku** (`maly: true`);
 velká varianta s cenou zůstává pro prohlížení uzavřeného obchodu z historie.
 
-⚠ **Trojúhelník musí být obtažený barvou pozadí.** Zelený nákup padne často
-přesně na zelenou svíčku a bez obrysu splyne — na zkušebním snímku byly ze
-tří značek vidět dvě.
+⚠ **Značka nesmí mít barvu svíčky.** Leží skoro vždycky na svíčce, ve které
+se obchodovalo, takže `#16c784` na zelené a `#ea3943` na červené prostě
+zmizí. Nákup je proto **světlá zelená `#7dffb8`**, prodej jde **do oranžova
+`#ff9f43`** (`BARVA_PLNENI` v app.js). K tomu obrys barvou pozadí — bez něj
+byly na zkušebním snímku ze tří značek vidět dvě.
 
 #### Aktuální cena se ziskem — indikátor `PNLLINE`
 
@@ -617,13 +619,16 @@ sám od sebe nemění — jen se při širším plátně přirozeně zobrazí v�
 svíček za stejnou cenu, což je správně.
 
 ⚠ **Jediné, co reálně chybělo:** karta pozice (`.pos-grid`) měla napevno
-3 sloupce. U pěti buněk (velikost, vstup, mark, likvidace, `to liquidation`)
-to na širokém rozevřeném displeji nechávalo poslední řádek nevyvážený —
-dvě osamocené hodnoty s obří mezerou místo nich. Doplněno v `css/style.css`
-o `@media (min-width: 480px) and (min-aspect-ratio: 3/4) { .pos-grid {
-grid-template-columns: repeat(5, 1fr); } }` — podmínka jde na šířku **i**
-poměr stran (ne jen šířku), ať telefon na šířku nespadne do stejného
-pravidla jen proto, že je taky široký.
+3 sloupce, takže na širokém rozevřeném displeji zbyl nevyvážený poslední
+řádek — dvě osamocené hodnoty s obří mezerou. Řešil to `@media (min-width:
+480px) and (min-aspect-ratio: 3/4)` s pěti sloupci; podmínka jde na šířku
+**i** poměr stran, ať telefon na šířku nespadne do stejného pravidla jen
+proto, že je taky široký.
+
+Od v0.16.2 má mřížka **jen dvě buňky** (likvidace a vzdálenost k ní), zbytek
+se přestěhoval do hlavičky a nad proužek, takže jsou dva sloupce na obou
+displejích. Pravidlo pro Fold zůstalo jen jako místo, kam sáhnout, kdyby
+buněk zase přibylo. Test kontroluje, že sloupců je tolik co buněk.
 
 Test: `tools/test-preloseni-foldu.py` — simuluje přeložení změnou rozměrů
 okna bez reloadu (`Emulation.setDeviceMetricsOverride`), ověří že pár,
@@ -900,16 +905,29 @@ vypisuje z reálné hodnoty (`8 h`, `4 h`, `1 h`), ne natvrdo.
 držení). ⚠ Potřebuje oprávnění Wallet stejně jako přehled účtu, takže má
 vlastní `try` — bez něj se ukáže zbytek fundingu a jen chybí součet.
 
-⚠ **Bybit dlouhé okno `startTime`–`endTime` odmítá**, takže se ptá dvakrát:
-nejdřív od otevření pozice, a když to neprojde, znovu bez `startTime` (vrátí
-posledních pár dní). Radši součet za kratší dobu než žádný. Proti mocku to
-fungovalo, na telefonu součet nikdy nedorazil — a chyba se navíc polykala
-v prázdném `catch`, takže nebylo poznat proč. Teď jde do diagnostické stopy.
+⚠ **Deník má tři omezení a na každém z nich to spadlo** (v0.16.0–0.16.2,
+nakonec opraveno v `sectiFunding()`):
 
-⚠ **Popisek pak nesmí tvrdit „celkem".** Když prošlo až druhé kolo, nese
-výsledek `odOtevreni: false` a v kartě stojí `paid 0.37 USDT in 2 d` místo
-`paid so far`. Číslo, které se tváří na celou dobu držení a není, je horší
-než žádné.
+1. `startTime` a `endTime` musí přijít **spolu**. Samotný začátek dotaz shodí.
+2. Okno smí být nejvýš **sedm dní**, takže se chodí po sedmidenních oknech
+   od otevření pozice (strop osm oken, tedy zhruba dva měsíce).
+3. Deník **neumí filtrovat na `symbol`**, jen na `baseCoin`. Bez něj se do
+   stránek po 50 řádcích vejde při více pozicích sotva den — proto stálo na
+   telefonu `paid 0.00 USDT in 1 d` i u pozice držené několik dní. Když by
+   Bybit `baseCoin` u páru neplnil, jde druhé kolo bez něj a řádky se
+   odfiltrují podle symbolu jako dřív.
+
+Jedno vypadlé okno nesmí shodit celý součet — zapíše se do diagnostické stopy
+a pokračuje se dál.
+
+⚠ **Popisek pak nesmí tvrdit „celkem".** Když se nepokrylo od otevření pozice
+(neznámý `createdTime`, strop nebo vypadlé okno), nese výsledek
+`odOtevreni: false` a v kartě stojí `paid 0.37 USDT in 2 d` místo `paid so far`.
+Číslo, které se tváří na celou dobu držení a není, je horší než žádné.
+
+⚠ **Mock musí tahle omezení napodobit.** Dokud odpovídal na cokoli, hlásil
+test zelenou, zatímco na telefonu součet nedorazil ani jednou — přesně ten
+případ, proti kterému je `tools/test-spojeni-burza.py`.
 
 ### ✅ 8) Pohodlí
 
@@ -951,6 +969,29 @@ stlačila by SL i TP k sobě. Zůstává v mřížce karty jako číslo.
 **Vstup uprostřed je plná fialová, silnější než ostatní značky** — a schválně
 ne čárkovaná jako v grafu. Je to **průměrná** cena ze všech nákupů, ne jeden
 konkrétní vstup; plná čára to od dílčích příkazů odlišuje na první pohled.
+
+##### Rozvržení karty (v0.16.2)
+
+Čísla se přestěhovala k čarám, ke kterým patří — mřížka nad proužkem
+opakovala hodnoty, které proužek sám znázorňuje, jen o dva řádky výš:
+
+| co | kde |
+|---|---|
+| velikost v coinu, hodnota v USDT, podíl na equity | řádek pod názvem páru |
+| likvidace a vzdálenost k ní | mřížka (dvě buňky, **obě vždycky**) |
+| vstupní cena | napevno uprostřed **nad fialovou čarou** |
+| mark cena | **nad svým ukazatelem**, jezdí s ním |
+| vzdálenost k nejbližšímu SL a TP v % | první řádek pod proužkem |
+| co ten SL a TP znamenají v penězích | druhý řádek pod proužkem |
+
+⚠ **Mark cena a vstup se musí umět rozestoupit.** U čerstvě otevřené pozice
+leží skoro na sobě a obě čísla se napíšou přes sebe do nečitelné změti. Když
+je odstup pod 16 % šířky, každé se odsune na svou stranu od své čáry; u kraje
+proužku se popisek přisaje k okraji, aby nevytekl z karty.
+
+⚠ **Obě políčka likvidace zůstávají i bez likvidační ceny** (napíše se
+`none`). Prázdné místo po vynechaném sloupci vypadalo jako chyba vykreslení,
+a „likvidace není" je sama o sobě informace.
 
 Seznam pod pozicemi zůstal jen pro příkazy na **párech bez otevřené pozice** —
 ty by se jinak neměly kde ukázat, proužek bez pozice nemá kam kreslit.
