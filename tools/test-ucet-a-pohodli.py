@@ -100,12 +100,14 @@ fundingLong = funding_karty('JUPUSDT')
 fundingShort = funding_karty('ETHUSDT')
 print('funding u longu (JUP): ', fundingLong or '(chybí)')
 print('funding u shortu (ETH):', fundingShort or '(chybí)')
-if 'Funding' not in (fundingLong or '') or 'USDT/day' not in (fundingLong or ''):
+if 'Funding' not in (fundingLong or ''):
     chyby.append('funding na kartě chybí')
-# ⚠ Musí být vidět částka za jedno stržení i za den. Samotná denní částka
-# působila, jako by se funding platil jednou za 24 h — platí se po 8 h.
-if 'USDT/8 h' not in (fundingLong or ''):
-    chyby.append('u fundingu chybí částka za jedno stržení (8 h)')
+# ⚠ Musí být vidět interval i denní částka. Samotná denní částka působila,
+# jako by se funding platil jednou za 24 h — platí se po 8 h.
+if '(8 h · ' not in (fundingLong or ''):
+    chyby.append('u fundingu chybí interval stržení (8 h)')
+if 'USDT/day' not in (fundingLong or ''):
+    chyby.append('u fundingu chybí denní částka')
 # Kladná sazba: long platí shortovi. Směr musí být na kartě vidět, ze
 # samotného „+0,01 %" ho nikdo nepozná.
 if 'you pay' not in (fundingLong or ''):

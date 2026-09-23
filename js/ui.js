@@ -120,10 +120,9 @@ function intervalPopis(minut) {
 }
 
 /**
- * Patička karty: likvidace a funding na jednom řádku drobným písmem.
- *
- * Z fundingu se ukazuje sazba, částka **za jedno stržení i za den**, kolik
- * už pozice na fundingu stála celkem, a kdy se strhne příště.
+ * Patička karty drobným písmem, v tomhle pořadí:
+ * sazba → nejbližší stržení a jeho částka (a kolik to dělá za den) →
+ * součet za dobu držení → likvidační cena.
  *
  * ⚠ Za jedno stržení a za den nejsou totéž: Bybit u většiny párů strhává
  * po osmi hodinách, tedy třikrát denně. Dřív tu stála jen denní částka
@@ -137,11 +136,65 @@ function patickaRow(p, hide, blizko) {
   const radek = document.createElement('div');
   radek.className = 'pos-funding';
 
+  const f = p.funding;
+  if (f && Number.isFinite(f.rate)) {
+    const isLong = p.side !== 'Sell';
+    // Long platí při kladné sazbě, short při záporné.
+    const platiUzivatel = isLong ? f.rate > 0 : f.rate < 0;
+    const zaInterval = Math.abs(p.value * f.rate);
+    const zaDen = zaInterval * (1440 / (f.minut || 480));
+
+    const popis = document.createElement('span');
+    popis.textContent = `${t('funding.label')} ${formatPercent(f.rate * 100, 4)}`;
+    radek.append(popis);
+
+    /*
+     * Nejdřív nejbližší stržení: „za 4 h 47 m dostaneš 0,10 USDT". Odpočet
+     * a částka patří k sobě — dvě samostatné informace na opačných koncích
+     * řádku si musel uživatel spojovat sám. Denní částka zůstává drobně
+     * v závorce, jinak není poznat, kolik to dělá za den.
+     */
+    const zbyva = f.nextAt ? f.nextAt - Date.now() : 0;
+    const castka = document.createElement('span');
+    castka.className = `hodnota ${platiUzivatel ? 'platis' : 'dostavas'}`;
+    castka.textContent = hide
+      ? MASK
+      : (zbyva > 0 ? `${t('funding.next', { time: trvani(zbyva) })} ` : '')
+        + `${t(platiUzivatel ? 'funding.youPay' : 'funding.youGet')} `
+        + `${formatUsd(zaInterval)} USDT`
+        // V závorce, jak často se to strhává a kolik to dělá za den.
+        // ⚠ Interval musí být vidět: bez něj vypadá částka jako denní,
+        // přitom u většiny párů se platí třikrát denně (a u některých šestkrát).
+        + ` (${intervalPopis(f.minut)} · ${t('funding.perDay', { amount: formatUsd(zaDen) })})`;
+    radek.append(castka);
+
+    // Součet za dobu držení. Chybí, když klíč nemá oprávnění Wallet —
+    // to je v pořádku, zbytek řádku dává smysl i bez něj.
+    if (f.zaplaceno && Number.isFinite(f.zaplaceno.celkem) && f.zaplaceno.pocet > 0) {
+      const celkem = f.zaplaceno.celkem;
+      const soucet = document.createElement('span');
+      // Záporné = zaplaceno, kladné = přijato.
+      soucet.className = `hodnota ${celkem < 0 ? 'platis' : 'dostavas'}`;
+      // ⚠ „Celkem" jen když se opravdu počítalo od otevření pozice. Jinak
+      // se napíše, za kolik dní součet je — číslo, které se tváří na celou
+      // dobu držení a není, je horší než žádné.
+      const dnu = f.zaplaceno.odKdy
+        ? Math.max(1, Math.round((Date.now() - f.zaplaceno.odKdy) / 86400000))
+        : 1;
+      const klic = f.zaplaceno.odOtevreni
+        ? (celkem < 0 ? 'funding.totalPaid' : 'funding.totalEarned')
+        : (celkem < 0 ? 'funding.paidRecent' : 'funding.earnedRecent');
+      soucet.textContent = hide
+        ? MASK
+        : t(klic, { amount: formatUsd(Math.abs(celkem)), days: dnu });
+      radek.append(soucet);
+    }
+  }
+
   /*
-   * Likvidace je tady, a ne v mřížce nad proužkem: je to číslo, na které se
-   * kouká jednou za čas, ne při každém pohledu na kartu. Popisek a hodnota
-   * stojí na jednom řádku — vlastní buňka s popiskem nad hodnotou zabírala
-   * dvakrát tolik místa než řádek, který stejně musel být.
+   * Likvidace stojí **až na konci**: je to číslo, na které se kouká jednou
+   * za čas, ne při každém pohledu na kartu. Popisek a hodnota jsou na jednom
+   * řádku — buňka s popiskem nad hodnotou zabírala dvakrát tolik místa.
    */
   const liq = document.createElement('span');
   liq.className = `hodnota liq${blizko ? ' near' : ''}`;
@@ -149,61 +202,6 @@ function patickaRow(p, hide, blizko) {
     + (p.liq ? formatPrice(p.liq) : t('position.notSet'));
   radek.append(liq);
 
-  const f = p.funding;
-  if (!f || !Number.isFinite(f.rate)) return radek;
-
-  const isLong = p.side !== 'Sell';
-  // Long platí při kladné sazbě, short při záporné.
-  const platiUzivatel = isLong ? f.rate > 0 : f.rate < 0;
-  const zaInterval = Math.abs(p.value * f.rate);
-  const zaDen = zaInterval * (1440 / (f.minut || 480));
-
-  const popis = document.createElement('span');
-  popis.textContent = `${t('funding.label')} ${formatPercent(f.rate * 100, 4)}`;
-  radek.append(popis);
-
-  const castka = document.createElement('span');
-  castka.className = `hodnota ${platiUzivatel ? 'platis' : 'dostavas'}`;
-  castka.textContent = hide
-    ? MASK
-    : `${t(platiUzivatel ? 'funding.youPay' : 'funding.youGet')} `
-      + t('funding.perInterval', {
-        amount: formatUsd(zaInterval),
-        interval: intervalPopis(f.minut),
-      })
-      + ` · ${t('funding.perDay', { amount: formatUsd(zaDen) })}`;
-  radek.append(castka);
-
-  // Součet za dobu držení. Chybí, když klíč nemá oprávnění Wallet —
-  // to je v pořádku, zbytek řádku dává smysl i bez něj.
-  if (f.zaplaceno && Number.isFinite(f.zaplaceno.celkem) && f.zaplaceno.pocet > 0) {
-    const celkem = f.zaplaceno.celkem;
-    const soucet = document.createElement('span');
-    // Záporné = zaplaceno, kladné = přijato.
-    soucet.className = `hodnota ${celkem < 0 ? 'platis' : 'dostavas'}`;
-    // ⚠ „Celkem" jen když se opravdu počítalo od otevření pozice. Když Bybit
-    // dlouhé okno odmítl, napíše se za kolik dní součet je — jinak by číslo
-    // tvrdilo něco, co není pravda.
-    const dnu = f.zaplaceno.odKdy
-      ? Math.max(1, Math.round((Date.now() - f.zaplaceno.odKdy) / 86400000))
-      : 1;
-    const klic = f.zaplaceno.odOtevreni
-      ? (celkem < 0 ? 'funding.totalPaid' : 'funding.totalEarned')
-      : (celkem < 0 ? 'funding.paidRecent' : 'funding.earnedRecent');
-    soucet.textContent = hide
-      ? MASK
-      : t(klic, { amount: formatUsd(Math.abs(celkem)), days: dnu });
-    radek.append(soucet);
-  }
-
-  if (f.nextAt) {
-    const zbyva = f.nextAt - Date.now();
-    if (zbyva > 0) {
-      const kdy = document.createElement('span');
-      kdy.textContent = t('funding.next', { time: trvani(zbyva) });
-      radek.append(kdy);
-    }
-  }
   return radek;
 }
 
@@ -291,8 +289,10 @@ function ladderRow(zebrik, p, hide) {
   });
   drah.append(znacka(vstup, 'tick entry'));
 
+  // Ukazatel má stejnou barvu jako číslo nad ním: zelená nad vstupem,
+  // červená pod ním. Bílá čára o zisku neřekla nic.
   const ukazatel = document.createElement('span');
-  ukazatel.className = 'ladder-now';
+  ukazatel.className = `ladder-now ${odstup(mark) >= 0 ? 'plus' : 'minus'}`;
   ukazatel.style.left = `${markProcenta}%`;
   drah.append(ukazatel);
 
@@ -385,39 +385,30 @@ function positionCard(p, hide, onSelect, liqThreshold = 10, volby = {}) {
   badge.textContent = t(isLong ? 'position.long' : 'position.short');
   if (p.leverage) badge.textContent += ` ${formatSize(p.leverage)}×`;
 
-  const nadpis = document.createElement('div');
-  nadpis.className = 'pos-title';
-  nadpis.append(symbol, badge);
-
   /*
-   * Velikost patří k názvu páru, ne do mřížky s cenami: je to vlastnost
-   * pozice, ne úroveň na ose. V mřížce navíc zabírala sloupec, který teď
-   * dostaly údaje o likvidaci.
+   * Velikost stojí drobným písmem v závorce hned za pákou. Vlastní řádek
+   * pod názvem páru nesla jen chvíli (v0.16.2) — pro tři pozice na displeji
+   * je každý ušetřený řádek znát víc než zarovnání.
    */
-  const velikost = document.createElement('div');
+  const velikost = document.createElement('span');
   velikost.className = 'pos-size';
   if (hide) {
-    velikost.textContent = MASK;
+    velikost.textContent = `(${MASK})`;
   } else {
     const coin = p.symbol.endsWith('USDT') ? p.symbol.slice(0, -4) : '';
-    const podilUctu = volby.equity > 0
-      ? ` · ${Math.round((p.value / volby.equity) * 100)} %` : '';
-    velikost.textContent = `${formatSize(p.size)}${coin ? ` ${coin}` : ''}`
-      + ` · ${formatUsd(p.value)} USDT${podilUctu}`;
+    velikost.textContent = `(${formatSize(p.size)}${coin ? ` ${coin}` : ''}`
+      + ` · ${formatUsd(p.value)} USDT)`;
   }
 
-  left.append(nadpis, velikost);
+  left.append(symbol, badge, velikost);
 
+  /*
+   * PnL bez ROE. Procento vedle částky bylo jen jinak vyjádřené totéž
+   * a stálo celý řádek na každé kartě.
+   */
   const pnl = document.createElement('div');
   pnl.className = `pos-pnl ${pnlClass(p.pnl)}`;
   pnl.textContent = hide ? MASK : `${formatSignedUsd(p.pnl)} USDT`;
-
-  const ret = returnPercent(p);
-  if (ret) {
-    const small = document.createElement('small');
-    small.textContent = `${formatPercent(ret.value)} ${ret.label}`;
-    pnl.append(small);
-  }
 
   head.append(left, pnl);
 

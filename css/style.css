@@ -554,10 +554,11 @@ main {
 
 .pos-symbol { font-size: 1.05rem; font-weight: 650; }
 
-/* Velikost pozice patří k názvu páru, ne mezi ceny v mřížce. */
+/* Velikost drobně v závorce za pákou — ušetří celý řádek. */
 .pos-size {
-  margin-top: 3px;
+  margin-left: 7px;
   font-size: 0.72rem;
+  font-weight: 400;
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
 }
@@ -678,7 +679,9 @@ main {
   background: #a78bfa;
 }
 
-/* Aktuální cena — jediná věc na proužku, která se hýbe, proto svítí. */
+/* Aktuální cena — jediná věc na proužku, která se hýbe, proto svítí.
+   Barvu má podle zisku, stejně jako číslo nad ní; bílá čára o tom, jestli
+   jsem nad vstupem nebo pod ním, neřekla nic. */
 .ladder-now {
   position: absolute;
   top: -1px;
@@ -689,6 +692,8 @@ main {
   background: var(--text);
   box-shadow: 0 0 7px rgba(230, 237, 245, 0.85);
 }
+.ladder-now.plus  { background: var(--long);  box-shadow: 0 0 7px rgba(22, 199, 132, 0.95); }
+.ladder-now.minus { background: var(--short); box-shadow: 0 0 7px rgba(234, 57, 67, 0.95); }
 
 .ladder-legend {
   display: flex;
@@ -747,8 +752,10 @@ main {
 
 /* Funding na kartě je doplněk, ne hlavní číslo. */
 .pos-funding {
-  margin-top: 8px;
-  padding-top: 8px;
+  /* Dělicí čára zůstává, mezera kolem ní je menší — na kartu se pak vejdou
+     tři pozice na displej místo dvou. */
+  margin-top: 5px;
+  padding-top: 5px;
   border-top: 1px solid var(--border);
   display: flex;
   flex-wrap: wrap;

@@ -63,12 +63,27 @@ if styl.get('pozadi') != 'none':
 if styl.get('barva') != 'rgb(167, 139, 250)':
     chyby.append(f"vstup v proužku nemá fialovou: {styl.get('barva')}")
 
-# ---- hlavička: velikost v coinu i v USDT ----
+# ---- hlavička: velikost v závorce za pákou, ROE pryč ----
 velikost = ev("(document.querySelector('.pos-size') || {}).textContent || ''")
 print('velikost v hlavičce:', velikost or '(chybí)')
 for kus in ('2,547 JUP', '778.87 USDT'):
     if kus not in velikost:
         chyby.append(f'v hlavičce chybí {kus}')
+if not velikost.startswith('(') or not velikost.endswith(')'):
+    chyby.append('velikost nestojí v závorce')
+# Velikost patří na první řádek k páku, ne na vlastní řádek pod něj.
+radek = ev("""(() => {
+  const s = document.querySelector('.pos-symbol').getBoundingClientRect();
+  const v = document.querySelector('.pos-size').getBoundingClientRect();
+  return Math.abs(s.top - v.top) < 10; })()""")
+print('velikost na stejném řádku jako pár:', radek)
+if not radek:
+    chyby.append('velikost není na prvním řádku vedle páru')
+
+roe = ev("(document.querySelector('.pos-pnl small') || {}).textContent || ''")
+print('ROE na kartě:', roe or '(žádné, správně)')
+if roe:
+    chyby.append(f'ROE se má už neukazovat: {roe}')
 
 # ---- mřížka s hodnotami je pryč, všechno se čte u proužku ----
 mrizka = ev("document.querySelectorAll('.position .pos-grid').length")
@@ -84,6 +99,11 @@ ceny = json.loads(ev("""(() => {
   return JSON.stringify({ pocet: nahore.length, mark: m && m.textContent,
     markLeft: m && m.style.left, ukazatel: u && u.style.left }); })()""") or '{}')
 print('nad proužkem:', ceny)
+# Ukazatel ceny nese barvu zisku, ne bílou.
+tridaUkazatele = ev("document.querySelector('.ladder-now').className")
+print('třída ukazatele ceny:', tridaUkazatele)
+if 'plus' not in tridaUkazatele:
+    chyby.append(f'ukazatel ceny nemá barvu zisku: {tridaUkazatele}')
 if ceny.get('pocet') != 1:
     chyby.append(f"nad proužkem má stát jediná cena, je jich {ceny.get('pocet')}")
 if ceny.get('mark') != '0.30580':
@@ -121,13 +141,30 @@ elif not (castky[0].startswith('−') and 'USDT' in castky[0]
           and castky[1].startswith('+') and 'USDT' in castky[1]):
     chyby.append(f'částky k SL a TP nesedí: {castky}')
 
-# ---- funding: součet za celou dobu držení ----
-funding = ev("""(() => { const f = document.querySelector('.pos-funding');
-  return f ? f.textContent : ''; })()""")
-print('funding na kartě:', funding or '(chybí)')
-# Pozice je otevřená tři dny, tedy devět stržení po 0,062 USDT.
-if 'paid so far 0.56 USDT' not in (funding or ''):
-    chyby.append('součet fundingu za celou dobu držení nesedí')
+# ---- funding: pořadí údajů a součet od skutečného otevření ----
+casti = json.loads(ev("""JSON.stringify(
+  [...document.querySelectorAll('.pos-funding span')].map((e) => e.textContent))""") or '[]')
+print('patička po částech:', casti)
+# Pořadí: sazba → nejbližší stržení s částkou → součet → likvidace.
+if len(casti) != 4:
+    chyby.append(f'patička má mít čtyři části, má {len(casti)}')
+else:
+    if not casti[0].startswith('Funding'):
+        chyby.append(f'sazba nestojí první: {casti[0]}')
+    if not casti[1].startswith('in ') or 'you pay' not in casti[1]:
+        chyby.append(f'nejbližší stržení nestojí druhé i s částkou: {casti[1]}')
+    if '(8 h · ' not in casti[1]:
+        chyby.append(f'u částky chybí interval stržení: {casti[1]}')
+    if not casti[3].startswith('Liquidation'):
+        chyby.append(f'likvidace nestojí až na konci: {casti[3]}')
+
+# ⚠ Tohle je ta chyba z telefonu: `createdTime` pozice je v mocku 49 dní
+# starý (u Bybitu je to první pozice na páru v historii, ne ta současná),
+# ale pozici otevřel nákup před 40 hodinami. Sčítat se smí jen odtud —
+# tedy pět stržení po 0,062 USDT, ne padesát dní cizího fundingu.
+print('součet fundingu:', casti[2] if len(casti) > 2 else '(chybí)')
+if len(casti) > 2 and 'paid so far 0.31 USDT' not in casti[2]:
+    chyby.append(f'součet fundingu nesedí na skutečné otevření pozice: {casti[2]}')
 
 # ---- graf ----
 print()
@@ -242,36 +279,21 @@ print('chyby v konzoli:', konzole or '(žádné)')
 if konzole:
     chyby.append(f'chyby v konzoli: {konzole}')
 
-# ---- druhý běh: pozice bez známého času otevření ----
-# Pak se dá sečíst jen posledních sedm dní a popisek to musí přiznat.
+# ---- druhý běh: klíč bez práva na plnění ----
+# Bez plnění se čas otevření nedá dopočítat. Funding se pak sečte jen za
+# posledních sedm dní a popisek to musí přiznat, ne tvrdit „celkem".
 print()
-print('=== funding u pozice bez createdTime ===')
-p.prikaz('Page.addScriptToEvaluateOnNewDocument', source="""
-(() => {
-  const puvodni = window.fetch;
-  window.fetch = function (vstup) {
-    const u = String(vstup && vstup.url ? vstup.url : vstup);
-    if (u.includes('/v5/position/list')) {
-      return puvodni(vstup).then(async (r) => {
-        const d = await r.json();
-        d.result.list.forEach((x) => { delete x.createdTime; });
-        return new Response(JSON.stringify(d),
-          { status: 200, headers: { 'Content-Type': 'application/json' } });
-      });
-    }
-    return puvodni(vstup);
-  };
-})();
-""")
+print('=== funding bez práva na plnění ===')
+p.prikaz('Page.addScriptToEvaluateOnNewDocument', source='window.__bezPlneni = true;')
 p.prikaz('Page.navigate', url=sys.argv[1])
-time.sleep(6)
+time.sleep(7)
 kratky = ev("""(() => { const f = document.querySelector('.pos-funding');
   return f ? f.textContent : ''; })()""")
 print('funding na kartě:', kratky or '(chybí)')
 if 'paid' not in (kratky or ''):
-    chyby.append('součet fundingu zmizel, když není známý čas otevření pozice')
+    chyby.append('součet fundingu zmizel, když nejdou načíst plnění')
 elif 'so far' in (kratky or ''):
-    chyby.append('popisek tvrdí „celkem", přestože se počítalo jen posledních pár dní')
+    chyby.append('popisek tvrdí „celkem", přestože čas otevření není známý')
 
 print()
 if chyby:

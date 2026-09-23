@@ -900,9 +900,23 @@ většiny párů platí **po osmi hodinách**, tedy třikrát denně. Interval s
 vypisuje z reálné hodnoty (`8 h`, `4 h`, `1 h`), ne natvrdo.
 
 **Zaplacený funding za dobu držení** se sčítá z `transaction-log`, typ
-`SETTLEMENT`. Pole `funding` je **záporné, když se platí**. Okno začíná
-`createdTime` pozice, jde se nejvýš tři stránky po 50 (to pokryje i měsíc
-držení). ⚠ Potřebuje oprávnění Wallet stejně jako přehled účtu, takže má
+`SETTLEMENT`. Pole `funding` je **záporné, když se platí**.
+
+⚠ **`createdTime` z `position/list` není čas otevření pozice** — je to čas,
+kdy na tom páru vznikla pozice **poprvé v historii**. Uživateli to u páru
+obchodovaného před sedmi týdny napsalo `paid 0.91 USDT in 49 d`, přestože
+pozici držel dvacet minut; v součtu byl funding dávno zavřených obchodů.
+Čas otevření proto dopočítává `otevreniPozice()` **z plnění**: jde se od teď
+dozadu a odečítá se, čím se pozice měnila; jakmile velikost padne na nulu,
+stojíme na plnění, které ji otevřelo. Když se to do osmi týdnů nepovede
+(nebo klíč na plnění nemá právo), vrací `null` a sčítá se posledních sedm
+dní — karta to pak přizná místo aby si vymýšlela. Výsledek se drží v paměti,
+dokud pozice žije; přikoupení ani částečné zavření čas otevření nemění.
+
+Stejný čas používají i **trojúhelníky plnění v grafu**, jinak by ukazovaly
+obchody z předchozí, dávno zavřené pozice.
+
+Jde se nejvýš tři stránky po 50 na okno. ⚠ Potřebuje oprávnění Wallet stejně jako přehled účtu, takže má
 vlastní `try` — bez něj se ukáže zbytek fundingu a jen chybí součet.
 
 ⚠ **Deník má tři omezení a na každém z nich to spadlo** (v0.16.0–0.16.2,
@@ -970,18 +984,31 @@ stlačila by SL i TP k sobě. Zůstává v mřížce karty jako číslo.
 ne čárkovaná jako v grafu. Je to **průměrná** cena ze všech nákupů, ne jeden
 konkrétní vstup; plná čára to od dílčích příkazů odlišuje na první pohled.
 
-##### Rozvržení karty (v0.16.3)
+##### Rozvržení karty (v0.16.4)
 
 **Mřížka s hodnotami je pryč.** Opakovala o dva řádky výš přesně to, co
-proužek sám znázorňuje. Všechno se čte tam, kde to leží:
+proužek sám znázorňuje. Cíl je vejít tři pozice na displej, takže se nikde
+neplýtvá řádkem:
 
 | co | kde |
 |---|---|
-| velikost v coinu, hodnota v USDT, podíl na equity | řádek pod názvem páru |
+| velikost v coinu a v USDT | drobně **v závorce za pákou**, na prvním řádku |
 | aktuální cena | **nad svým ukazatelem**, jezdí s ním |
 | vzdálenost k nejbližšímu SL a TP v % + **cena vstupu** mezi nimi | první řádek pod proužkem |
 | co ten SL a TP znamenají v penězích | druhý řádek pod proužkem |
-| likvidační cena | patička u fundingu, popisek i hodnota na jednom řádku |
+| funding a likvidační cena | patička, pořadí níž |
+
+**ROE se neukazuje.** Procento vedle PnL bylo jen jinak vyjádřené totéž
+a stálo celý řádek na každé kartě.
+
+**Ukazatel aktuální ceny má barvu zisku** (zelený nad vstupem, červený pod
+ním), stejnou jako číslo nad ním. Bílá čára o tom, jestli jsem ve ztrátě,
+neřekla nic.
+
+Patička jde v pořadí **sazba → nejbližší stržení a jeho částka (v závorce
+interval a denní částka) → součet za dobu držení → likvidace**. Odpočet
+a částka patří k sobě: „za 4 h 47 m zaplatíš 0,10 USDT" se čte samo, kdežto
+dvě čísla na opačných koncích řádku si musel uživatel spojovat sám.
 
 ⚠ **Nad proužkem smí stát jediné číslo.** Vstup i mark cena tam chvíli byly
 obě (v0.16.2) a u čerstvě otevřené pozice se napsaly přes sebe — cena leží

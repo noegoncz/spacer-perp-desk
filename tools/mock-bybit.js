@@ -13,7 +13,11 @@ localStorage.setItem('perpdesk.apiKey','FAKEKEY1234567890ab');
 localStorage.setItem('perpdesk.apiSecret','FAKESECRET1234567890abcdef');
 window.WebSocket = function(){this.readyState=0;this.send=()=>{};this.close=()=>{};};
 window.WebSocket.OPEN = 1;
-const OTEVRENO = Date.now() - 3 * 86400e3;
+// ⚠ `createdTime` je u Bybitu čas, kdy na páru vznikla pozice POPRVÉ
+// v historii — schválně dávno, aby bylo poznat, že se podle něj čas
+// otevření brát nesmí. Současnou pozici otevřelo nejstarší plnění níž
+// (40 h zpátky), a jen odtud se smí sčítat funding.
+const OTEVRENO = Date.now() - 49 * 86400e3;
 const pozice = { symbol:'JUPUSDT', side:'Buy', size:'2547', avgPrice:'0.30135',
   markPrice:'0.30580', unrealisedPnl:'11.34', liqPrice:'0.07233', leverage:'10',
   positionValue:'778.87', stopLoss:'0.295', takeProfit:'0.365', positionIdx:0,
@@ -76,14 +80,21 @@ window.fetch = function (vstup) {
   // Dve koupe (vstup do longu) a jeden castecny prodej (vystup).
   if (u.includes('/v5/execution/list')) {
     if (window.__bezPlneni) return ok({retCode:10005, retMsg:'Permission denied'});
-    return ok({retCode:0, result:{list:[
+    // 1500 + 1300 - 253 = 2547, tedy přesne velikost pozice. Z toho se
+    // pozpatku dopocita, ze pozici otevrel nakup pred 40 hodinami.
+    const vse = [
       {symbol:'JUPUSDT', side:'Buy', execType:'Trade', execPrice:'0.2990',
        execQty:'1500', execTime:String(Date.now() - 40*3600e3)},
       {symbol:'JUPUSDT', side:'Buy', execType:'Trade', execPrice:'0.3050',
        execQty:'1300', execTime:String(Date.now() - 20*3600e3)},
       {symbol:'JUPUSDT', side:'Sell', execType:'Trade', execPrice:'0.3100',
        execQty:'253', execTime:String(Date.now() - 8*3600e3)},
-    ]}});
+    ];
+    const q = new URL(u, location.origin).searchParams;
+    const od = Number(q.get('startTime')) || 0;
+    const doKdy = Number(q.get('endTime')) || Date.now();
+    return ok({retCode:0, result:{list: vse.filter((e) =>
+      Number(e.execTime) >= od && Number(e.execTime) <= doKdy)}});
   }
   // Transakcni denik — z nej se scita zaplaceny funding.
   //

@@ -306,7 +306,13 @@ const OKNO_PLNENI = 7 * 86400e3;
 async function znackyPlneni(position) {
   if (!position || !client.hasCredentials()) return;
   const symbol = position.symbol;
-  const od = Math.max(position.openedAt || 0, Date.now() - OKNO_PLNENI);
+  /*
+   * ⚠ `openedAt` (createdTime) je čas, kdy na páru vznikla pozice **poprvé
+   * v historii**, ne ta současná. Značky by tak zahrnovaly plnění dávno
+   * zavřených obchodů. Skutečné otevření dopočítá klient z plnění.
+   */
+  const otevreno = await client.otevreniPozice(position).catch(() => null);
+  const od = Math.max(otevreno || 0, Date.now() - OKNO_PLNENI);
 
   try {
     const plneni = await client.getExecutions(symbol, od, Date.now());

@@ -236,6 +236,12 @@ export class BybitClient {
     this.fundingIntervaly = new Map();
     /** Sazba funding se mění po hodinách; častější dotazování nemá smysl. */
     this.fundingCache = new Map();
+    /**
+     * Čas otevření současné pozice, dopočítaný z plnění. Drží se, dokud
+     * pozice žije — přikoupení ani částečné zavření ho nemění. Maže se,
+     * až když pozice zmizí, aby si ho ta příští nezdědila.
+     */
+    this.otevreniCache = new Map();
 
     this.status = { ws: 'idle', rest: 'idle', lastUpdate: null };
 
@@ -402,7 +408,8 @@ export class BybitClient {
         let zaplaceno = null;
         const pozice = [...this.positions.values()].find((p) => p.symbol === symbol);
         try {
-          zaplaceno = await this.getFundingPaid(symbol, pozice?.openedAt);
+          const otevreno = await this.otevreniPozice(pozice);
+          zaplaceno = await this.getFundingPaid(symbol, otevreno);
         } catch (err) {
           // ⚠ Nepolykat potichu. Když součet chybí, musí jít zjistit proč —
           // jinak se hádá, jestli chybí oprávnění, nebo je chyba v kódu.
@@ -426,6 +433,60 @@ export class BybitClient {
       }
     }
     if (zmena || pripojeno) this.emitPositions();
+  }
+
+  /**
+   * Kdy se **současná** pozice otevřela.
+   *
+   * ⚠ `createdTime` z `position/list` na to není — je to čas, kdy na tom páru
+   * vznikla pozice **poprvé v historii**, ne ta dnešní. Uživateli to u páru
+   * obchodovaného před sedmi týdny napsalo „paid 0.91 USDT in 49 d", přestože
+   * pozici držel dvacet minut; v součtu byl funding dávno zavřených obchodů.
+   *
+   * Čas otevření se proto dopočítá z plnění: jde se od teď dozadu a odečítá
+   * se, čím se pozice měnila. Ve chvíli, kdy velikost padne na nulu, stojíme
+   * na plnění, které pozici otevřelo. Když se to do osmi týdnů nepodaří
+   * dohledat, vrací se `null` — pak se sčítá posledních sedm dní a karta to
+   * přizná, místo aby si vymýšlela.
+   */
+  async otevreniPozice(pozice) {
+    if (!pozice || !(pozice.size > 0)) return null;
+
+    const ulozene = this.otevreniCache.get(pozice.symbol);
+    // Přepočítává se, až když pozice zmizí — částečné zavření ani přikoupení
+    // čas otevření nemění.
+    if (ulozene !== undefined) return ulozene;
+
+    const OKNO = 7 * 86400000;
+    const long = pozice.side !== 'Sell';
+    // Zaokrouhlení velikostí: nulu nehledat na desetinu přesně.
+    const epsilon = Math.abs(pozice.size) * 1e-6;
+
+    let zbyva = pozice.size;
+    let konec = Date.now();
+    let cas = null;
+
+    try {
+      for (let okno = 0; okno < 8 && zbyva > epsilon; okno += 1) {
+        const od = konec - OKNO;
+        const plneni = await this.getExecutions(pozice.symbol, od, konec);
+        for (let i = plneni.length - 1; i >= 0 && zbyva > epsilon; i -= 1) {
+          // Plnění ve směru pozice ji zvětšovalo, opačné zmenšovalo.
+          zbyva -= (plneni[i].buy === long ? 1 : -1) * plneni[i].qty;
+          cas = plneni[i].time;
+        }
+        konec = od;
+      }
+    } catch (err) {
+      // Klíč bez práva na plnění: čas otevření se nedozvíme, ale funding
+      // se pořád dá sečíst za posledních pár dní — jen to karta přizná.
+      this.zapisDiag('otevření pozice', err?.message || String(err));
+      return null;
+    }
+
+    const vysledek = zbyva <= epsilon ? cas : null;
+    this.otevreniCache.set(pozice.symbol, vysledek);
+    return vysledek;
   }
 
   /* ---------- svíčky a příkazy (checkpoint 2) ---------- */
@@ -971,6 +1032,9 @@ export class BybitClient {
         this.positions.set(key, p);
       } else {
         this.positions.delete(key);
+        // Příští pozice na tomhle páru se otevře jindy.
+        this.otevreniCache.delete(p.symbol);
+        this.fundingCache.delete(p.symbol);
       }
       changed = true;
     }
