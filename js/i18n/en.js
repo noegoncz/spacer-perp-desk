@@ -250,8 +250,8 @@ export const en = {
 
   /* ---------- account overview (checkpoint 7) ---------- */
   'account.equity': 'Equity',
-  'account.available': 'Available',
-  'account.marginUsed': 'Margin used',
+  'account.available': 'Free',
+  'account.marginUsed': 'Margin',
   'account.unavailable': 'Account overview needs the Wallet permission on your API key.',
   'account.needsWallet': 'Add the Wallet (read) permission on Bybit to see equity and margin.',
 

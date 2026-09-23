@@ -484,8 +484,13 @@ export function renderAccount(ucet, chyba, hide) {
     return;
   }
 
-  nastavText(dom.accEquity, hide ? MASK : `${formatUsd(ucet.equity)} USDT`);
-  nastavText(dom.accAvailable, hide ? MASK : `${formatUsd(ucet.volny)} USDT`);
+  /*
+   * Bez „USDT" u každého čísla — účet je v USDT celý, opakovat to třikrát
+   * na jednom řádku znamená, že se ten řádek zalomí na dva a celý smysl
+   * úspory místa je pryč. U PnL nahoře jednotka zůstává, tam je řádek sám.
+   */
+  nastavText(dom.accEquity, hide ? MASK : formatUsd(ucet.equity));
+  nastavText(dom.accAvailable, hide ? MASK : formatUsd(ucet.volny));
   nastavText(dom.accMargin, Number.isFinite(ucet.vyuziti)
     ? `${ucet.vyuziti.toFixed(1)} %`
     : '—');

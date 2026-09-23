@@ -43,10 +43,10 @@
         </g>
       </svg>
       <h1>PerpyX</h1>
-    </div>
-    <div class="status" id="status">
-      <span class="dot" id="statusDot"></span>
-      <span id="statusText">Not connected</span>
+      <div class="status" id="status">
+        <span class="dot" id="statusDot"></span>
+        <span id="statusText">Not connected</span>
+      </div>
     </div>
   </div>
   <div class="topbar-actions">
@@ -59,17 +59,23 @@
 <div id="errorBar" class="error-bar" hidden></div>
 
 <main>
+  <!-- Šipky mezi záložkami napovídají, že se mezi obrazovkami dá přejíždět
+       prstem. Jsou dekorace (aria-hidden) — přepíná se klepnutím na záložku. -->
   <nav class="tabs" role="tablist">
     <button type="button" class="tab active" data-tab="positions" role="tab"
             data-i18n="tabs.positions">Positions</button>
+    <span class="tab-swipe" aria-hidden="true">‹ ›</span>
     <button type="button" class="tab" data-tab="watchlist" role="tab"
             data-i18n="tabs.watchlist">Markets</button>
+    <span class="tab-swipe" aria-hidden="true">‹ ›</span>
     <button type="button" class="tab" data-tab="history" role="tab"
             data-i18n="tabs.history">History</button>
   </nav>
 
   <!-- ===== Pozice ===== -->
   <section id="viewPositions">
+    <!-- Jeden řádek, popisek vedle hodnoty. Dvě kartičky pod sebou braly
+         na výšku tolik místa, že na displej zbyly dvě pozice. -->
     <div class="summary" id="summary" hidden>
       <div class="summary-item">
         <span class="summary-label" data-i18n="positions.unrealisedPnl">Unrealised PnL</span>
@@ -88,11 +94,11 @@
         <span class="summary-value" id="accEquity">—</span>
       </div>
       <div class="summary-item">
-        <span class="summary-label" data-i18n="account.available">Available</span>
+        <span class="summary-label" data-i18n="account.available">Free</span>
         <span class="summary-value" id="accAvailable">—</span>
       </div>
       <div class="summary-item">
-        <span class="summary-label" data-i18n="account.marginUsed">Margin used</span>
+        <span class="summary-label" data-i18n="account.marginUsed">Margin</span>
         <span class="summary-value" id="accMargin">—</span>
       </div>
     </div>

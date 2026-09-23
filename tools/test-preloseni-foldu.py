@@ -58,6 +58,31 @@ print('vyteklo z karty na zavřeném displeji:', ven_cover or '(nic)')
 if ven_cover:
     chyby.append(f'z karty na cover vytéká: {ven_cover}')
 
+# ⚠ Horní část musí být na zavřeném displeji každá na jednom řádku. Jakmile
+# se zalomí, je úspora místa pryč — a přehled účtu se na 344 px vejde jen tak
+# tak. Hlavička se navíc nesmí zvětšovat podle délky hlášky o stavu, jinak
+# při každé změně spojení poskočí celá stránka.
+def radku(selektor):
+    return ev("""(() => {
+      const i = [...document.querySelectorAll('%s .summary-item')];
+      return new Set(i.map((e) => Math.round(e.getBoundingClientRect().top))).size;
+    })()""" % selektor)
+
+
+for jmeno, sel in (('přehled pozic', '#summary'), ('přehled účtu', '#accountSummary')):
+    r = radku(sel)
+    print(f'{jmeno}: {r} řádek')
+    if r != 1:
+        chyby.append(f'{jmeno} se zalomil na {r} řádky')
+
+vysky = []
+for hlaska in ('Live', 'Connecting…', 'Not connected'):
+    ev(f"document.getElementById('statusText').textContent = {hlaska!r}")
+    vysky.append(ev("Math.round(document.querySelector('.topbar').getBoundingClientRect().height)"))
+print('výška hlavičky podle hlášky o stavu:', vysky)
+if len(set(vysky)) != 1:
+    chyby.append(f'hlavička mění výšku podle hlášky o stavu: {vysky}')
+
 # ---- otevřít graf, nastavit stav, který se snadno resetuje ----
 ev("document.querySelector('.position').click()")
 time.sleep(3)

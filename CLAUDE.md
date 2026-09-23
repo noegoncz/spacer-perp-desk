@@ -918,6 +918,17 @@ obchody z předchozí, dávno zavřené pozice.
 
 Jde se nejvýš tři stránky po 50 na okno.
 
+⚠ **Místo v cache se zamluví dřív, než se začne čekat na odpověď.**
+Dotahování běží každých třicet vteřin, kdežto dopočet času otevření i součtu
+může trvat dýl. Bez zámluvy se rozjel druhý, třetí a čtvrtý běh na tomtéž
+páru, dotazy se znásobily a burza je začala odmítat kvůli limitu — pak zmizel
+i součet, který předtím chodil. Ze stejného důvodu se v `otevreniCache` drží
+**rozdělaná práce (slib), ne hotová hodnota**: ptá se odtud funding i graf.
+
+⚠ **Neúspěšný dopočet otevření se nezapamatuje.** Klíč bez práva na plnění
+a vyčerpaný limit dotazů vypadají stejně, jenže limit za chvíli povolí — a
+uložené `null` by u té pozice nechalo nepřesný součet až do jejího zavření.
+
 ⚠ **Součet se dopočítává, nepočítá znovu.** Pozici jde držet měsíce a projít
 celou její historii po sedmidenních oknech při každém desetiminutovém
 obnovení by znamenalo desítky dotazů pořád dokola. Drží se proto mezivýsledek
@@ -969,6 +980,30 @@ tentýž klíč otočí směr, jako v každé tabulce. Volba se ukládá do tele
 ⚠ **Prázdný výsledek filtru není totéž co „žádné pozice"** — data jsou, jen je
 schoval filtr. Proto `showFilterEmpty()` s vlastním textem, ne stejná hláška
 jako u prázdného účtu.
+
+#### Horní část obrazovky (v0.16.6)
+
+Značka je větší (1,28 rem) a **stav spojení stojí vedle ní**, ne pod ní —
+kvůli jednomu slovu se nevyplatí celý řádek.
+
+⚠ **Řádek se značkou se nikdy nezalamuje** (`flex-wrap: nowrap`, text stavu
+se ořízne). Delší hláška („Connecting…") by jinak stav shodila na druhý
+řádek, hlavička by povyskočila a stránka by při každé změně spojení
+poskočila s ní. Test měří, že výška hlavičky je pro všechny hlášky stejná.
+
+⚠ **Ikonová tlačítka v hlavičce jsou užší (38 px), než jsou vysoká.**
+Dotyková plocha 44 px se drží na výšku; tři tlačítka po 44 px do šířky ale
+na zavřeném displeji Foldu ukousla tolik, že se vedle značky nevešel stav.
+
+**Přehledy jsou jeden řádek na blok**, popisek vedle hodnoty. Kartičky
+s popiskem nad hodnotou zabíraly tolik, že ze čtyř pozic byly na displeji
+vidět dvě. U přehledu účtu se proto nepíše „USDT" u každého čísla (účet je
+v USDT celý) a popisky jsou krátké (`Free`, `Margin`) — jinak se na 344 px
+řádek zalomí a úspora je pryč. Test hlídá, že oba přehledy mají jeden řádek.
+
+**Mezi záložkami jsou šipky `‹ ›`** jako nápověda, že se dá přejíždět
+prstem. Gesto samo o sobě není nijak vidět a uživatel se o něm nemá jak
+dozvědět. Jsou to dekorace (`aria-hidden`), přepíná se klepnutím.
 
 #### Proužek úrovní v kartě pozice
 

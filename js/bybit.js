@@ -405,6 +405,14 @@ export class BybitClient {
     await Promise.all(symboly.map(async (symbol) => {
       const ulozene = this.fundingCache.get(symbol);
       if (ulozene && ted - ulozene.kdy < 600000) return;
+      /*
+       * ⚠ Místo v cache se zamluví **hned**, ještě před prvním `await`.
+       * Dotahování běží každých třicet vteřin a dopočet času otevření
+       * i součtu fundingu může trvat dýl — bez zámluvy se rozjede druhý,
+       * třetí a čtvrtý běh na tomtéž páru, dotazy se znásobí a burza začne
+       * odmítat kvůli limitu. Pak zmizí i to, co předtím fungovalo.
+       */
+      this.fundingCache.set(symbol, { kdy: ted, funding: ulozene?.funding || null });
       try {
         const funding = await this.getFunding(symbol);
         if (!funding) return;
@@ -414,7 +422,9 @@ export class BybitClient {
         let zaplaceno = null;
         const pozice = [...this.positions.values()].find((p) => p.symbol === symbol);
         try {
-          const otevreno = await this.otevreniPozice(pozice);
+          // Když se čas otevření nedohledá, funding se sečte za posledních
+          // sedm dní — to je pořád lepší než neukázat nic.
+          const otevreno = await this.otevreniPozice(pozice).catch(() => null);
           zaplaceno = await this.getFundingPaid(symbol, otevreno);
         } catch (err) {
           // ⚠ Nepolykat potichu. Když součet chybí, musí jít zjistit proč —
@@ -425,7 +435,9 @@ export class BybitClient {
         this.fundingCache.set(symbol, { kdy: ted, funding: { ...funding, zaplaceno } });
         zmena = true;
       } catch {
-        /* funding je doplněk, bez něj se pozice ukazuje dál */
+        // Zámluvu zrušit, ať se to zkusí znovu při dalším kole a ne až
+        // za deset minut.
+        this.fundingCache.delete(symbol);
       }
     }));
 
@@ -461,7 +473,20 @@ export class BybitClient {
     const ulozene = this.otevreniCache.get(pozice.symbol);
     // Přepočítává se, až když pozice zmizí — částečné zavření ani přikoupení
     // čas otevření nemění.
+    //
+    // ⚠ Ukládá se **rozdělaná práce, ne hotová hodnota**. Ptá se odsud jak
+    // funding, tak graf; bez sdílení by oba spustili vlastní procházení
+    // plnění naráz a dotazy se zdvojily.
     if (ulozene !== undefined) return ulozene;
+
+    const prace = this.dohledejOtevreni(pozice);
+    this.otevreniCache.set(pozice.symbol, prace);
+    // Neúspěch se nemá zapamatovat jako platná odpověď.
+    prace.catch(() => this.otevreniCache.delete(pozice.symbol));
+    return prace;
+  }
+
+  async dohledejOtevreni(pozice) {
 
     const OKNO = 7 * 86400000;
     const long = pozice.side !== 'Sell';
@@ -473,9 +498,18 @@ export class BybitClient {
     let cas = null;
 
     try {
-      // Rok po týdnech. Stejně jako u součtu to není limit na dobu držení,
-    // ale pojistka proti nekonečné smyčce — a počítá se jednou za pozici.
-    for (let okno = 0; okno < 52 && zbyva > epsilon; okno += 1) {
+      /*
+       * Rok po týdnech. Stejně jako u součtu to není limit na dobu držení,
+       * ale pojistka proti nekonečné smyčce — a počítá se jednou za pozici.
+       *
+       * `createdTime` je poctivá spodní mez: dřív, než na páru vznikla první
+       * pozice v historii, žádné plnění být nemůže. U páru obchodovaného
+       * poprvé před týdnem se tak projde jedno okno místo dvaapadesáti.
+       */
+      const nejdal = Number(pozice.openedAt) || 0;
+
+      for (let okno = 0; okno < 52 && zbyva > epsilon; okno += 1) {
+        if (nejdal && konec <= nejdal) break;
         const od = konec - OKNO;
         const plneni = await this.getExecutions(pozice.symbol, od, konec);
         for (let i = plneni.length - 1; i >= 0 && zbyva > epsilon; i -= 1) {
@@ -486,15 +520,18 @@ export class BybitClient {
         konec = od;
       }
     } catch (err) {
-      // Klíč bez práva na plnění: čas otevření se nedozvíme, ale funding
-      // se pořád dá sečíst za posledních pár dní — jen to karta přizná.
+      /*
+       * ⚠ Chyba se **nezapamatuje**. Klíč bez práva na plnění i vyčerpaný
+       * limit dotazů vypadají stejně, jenže limit za chvíli povolí — a kdyby
+       * se `null` uložilo natrvalo, zůstal by u té pozice nepřesný součet
+       * až do jejího zavření. Slib se proto zahodí (viz `otevreniPozice`)
+       * a příští kolo to zkusí znovu.
+       */
       this.zapisDiag('otevření pozice', err?.message || String(err));
-      return null;
+      throw err;
     }
 
-    const vysledek = zbyva <= epsilon ? cas : null;
-    this.otevreniCache.set(pozice.symbol, vysledek);
-    return vysledek;
+    return zbyva <= epsilon ? cas : null;
   }
 
   /* ---------- svíčky a příkazy (checkpoint 2) ---------- */

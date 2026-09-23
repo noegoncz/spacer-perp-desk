@@ -247,7 +247,7 @@ export const cs = {
   /* ---------- přehled účtu (checkpoint 7) ---------- */
   'account.equity': 'Equity',
   'account.available': 'Volné',
-  'account.marginUsed': 'Využitý margin',
+  'account.marginUsed': 'Margin',
   'account.unavailable': 'Přehled účtu potřebuje u klíče oprávnění Wallet.',
   'account.needsWallet': 'Přidej klíči na Bybitu oprávnění Wallet (čtení), ať je vidět equity a margin.',
 

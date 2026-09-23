@@ -71,24 +71,45 @@ main {
   border-bottom: 1px solid var(--border);
 }
 
-.topbar-brand { display: flex; align-items: center; gap: 7px; }
+/* Značka a stav na jednom řádku. Stav pod nadpisem přidával celý řádek
+   kvůli jednomu slovu, které se stejně čte jen koutkem oka. */
+/* Levá část se musí umět zúžit, jinak by se `min-width: auto` flex položky
+   postavilo proti ořezu textu stavu. */
+.topbar-left { min-width: 0; }
 
-.brand-mark { width: 19px; height: 19px; flex: none; display: block; }
+.topbar-brand {
+  display: flex;
+  align-items: baseline;
+  /* ⚠ Nikdy se nezalamuje. Delší hláška („Connecting…") by jinak shodila
+     stav na druhý řádek, hlavička by povyskočila a při každé změně stavu
+     by celá stránka poskočila s ní. Radši se text ořízne. */
+  flex-wrap: nowrap;
+  min-width: 0;
+  gap: 9px;
+}
+
+.brand-mark { width: 24px; height: 24px; flex: none; display: block; align-self: center; }
 
 .topbar h1 {
   margin: 0;
-  font-size: 1.05rem;
-  font-weight: 650;
+  font-size: 1.28rem;
+  font-weight: 700;
   letter-spacing: 0.2px;
+  white-space: nowrap;
 }
 
 .status {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
   font-size: 0.75rem;
   color: var(--text-dim);
-  margin-top: 2px;
+}
+.status span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dot {
@@ -104,10 +125,13 @@ main {
 
 @keyframes pulse { 50% { opacity: 0.25; } }
 
-.topbar-actions { display: flex; gap: 4px; }
+.topbar-actions { display: flex; gap: 2px; flex: none; }
 
+/* ⚠ Šířka je menší než výška. Dotyková plocha 44 px se musí dodržet na
+   výšku, ale tři tlačítka po 44 px do šířky na zavřeném displeji Foldu
+   ukousla tolik, že se vedle značky nevešel stav a lámal se na další řádek. */
 .icon-btn {
-  min-width: var(--tap);
+  min-width: 38px;
   min-height: var(--tap);
   border: none;
   background: transparent;
@@ -195,6 +219,18 @@ main {
   cursor: pointer;
 }
 .tab.active { background: var(--surface-2); color: var(--text); }
+
+/* Nápověda, že se mezi obrazovkami dá přejíždět prstem. Bez ní to uživatel
+   nemá jak zjistit — gesto nikde vidět není. */
+.tab-swipe {
+  align-self: center;
+  padding: 0 1px;
+  font-size: 0.72rem;
+  letter-spacing: -1px;
+  color: var(--text-dim);
+  opacity: 0.55;
+  user-select: none;
+}
 
 /* ---------- seznam trhů ---------- */
 
@@ -391,39 +427,55 @@ main {
 
 /* ---------- souhrn ---------- */
 
+/*
+ * Přehled je **jeden řádek na blok**, popisek vedle hodnoty. Kartičky
+ * s popiskem nad hodnotou braly na výšku tolik, že na displej zbyly dvě
+ * pozice ze čtyř — a přitom jde o čísla, na která se jen mrkne.
+ */
 .summary {
   display: flex;
-  gap: 10px;
-  margin-bottom: 12px;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 2px 16px;
+  margin-bottom: 8px;
+  padding: 7px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
 }
 
 .summary-item {
-  flex: 1;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 10px 14px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
 }
 
 .summary-label {
-  display: block;
-  font-size: 0.7rem;
+  font-size: 0.66rem;
   text-transform: uppercase;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.5px;
   color: var(--text-dim);
+  white-space: nowrap;
 }
 
 .summary-value {
-  display: block;
-  margin-top: 3px;
-  font-size: 1.25rem;
+  font-size: 1.02rem;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-/* Přehled účtu má menší čísla než PnL — je to kontext, ne hlavní sdělení. */
-.account-summary { margin-top: -2px; }
-.account-summary .summary-value { font-size: 1.02rem; }
+/*
+ * Přehled účtu je kontext, ne hlavní sdělení — o stupínek drobnější.
+ * ⚠ Tři údaje se na zavřený displej Foldu (344 px) vejdou jen tak tak,
+ * proto menší mezery i písmo a kratší popisky. Jakmile se to zalomí na dva
+ * řádky, je celá úspora místa pryč.
+ */
+.account-summary { margin-top: -4px; gap: 2px 9px; }
+.account-summary .summary-label { font-size: 0.62rem; letter-spacing: 0.2px; }
+.account-summary .summary-value { font-size: 0.86rem; font-weight: 600; }
 
 .account-note {
   margin: -4px 0 12px;
