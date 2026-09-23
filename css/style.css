@@ -606,9 +606,24 @@ main {
 
 .pos-symbol { font-size: 1.05rem; font-weight: 650; }
 
+/* ⚠ Levá část hlavičky se láme **mezi** údaji, ne uvnitř nich. Bez toho
+   se na zavřeném displeji Foldu rozpadlo „(2 547 JUP · 778.87 USDT)"
+   doprostřed a druhý řádek začínal osamoceným „USDT)". */
+.pos-head > div:first-child {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 7px;
+  /* ⚠ Musí si vzít zbylé místo. Bez `flex: 1` se flexbox zúžil na nejužší
+     možný obsah a každý údaj skončil na vlastním řádku — čtyři řádky tam,
+     kde mají být nejvýš dva. */
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 /* Velikost drobně v závorce za pákou — ušetří celý řádek. */
 .pos-size {
-  margin-left: 7px;
+  white-space: nowrap;
   font-size: 0.72rem;
   font-weight: 400;
   color: var(--text-dim);
@@ -617,7 +632,6 @@ main {
 
 .badge {
   display: inline-block;
-  margin-left: 8px;
   padding: 2px 7px;
   border-radius: 6px;
   font-size: 0.68rem;
@@ -798,11 +812,17 @@ main {
 .ladder-ceny .cena-mark.plus  { color: var(--long); }
 .ladder-ceny .cena-mark.minus { color: var(--short); }
 
-/* Likvidace v patičce: popisek i hodnota na jednom řádku, ať se šetří místo.
-   Vždycky u pravého okraje — je to jediný údaj, který se hledá očima, ne
-   čte odleva, a na pevném místě ho oko najde bez hledání. */
-.pos-funding .liq { color: var(--warn); margin-left: auto; }
-.pos-funding .liq.near { color: var(--short); font-weight: 650; }
+/* Likvidace je v hlavičce hned za hodnotou pozice: obojí říká, co se děje
+   s penězi, a oko to najde na jednom místě. V patičce mezi čtyřmi údaji
+   zapadla. */
+.pos-liq {
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--warn);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.pos-liq.near { color: var(--short); font-weight: 650; }
 
 /* Funding na kartě je doplněk, ne hlavní číslo. */
 .pos-funding {

@@ -122,7 +122,7 @@ function intervalPopis(minut) {
 /**
  * Patička karty drobným písmem, v tomhle pořadí:
  * sazba → nejbližší stržení a jeho částka (a kolik to dělá za den) →
- * součet za dobu držení → likvidační cena.
+ * součet za dobu držení. Je v ní jen funding, nic jiného.
  *
  * ⚠ Za jedno stržení a za den nejsou totéž: Bybit u většiny párů strhává
  * po osmi hodinách, tedy třikrát denně. Dřív tu stála jen denní částka
@@ -132,7 +132,7 @@ function intervalPopis(minut) {
  * platí shortu. Proto se neukazuje jen číslo, ale i to, na kterou stranu
  * peníze tečou; ze samotného „0,01 %" to nikdo nepozná.
  */
-function patickaRow(p, hide, blizko) {
+function patickaRow(p, hide) {
   const radek = document.createElement('div');
   radek.className = 'pos-funding';
 
@@ -184,6 +184,12 @@ function patickaRow(p, hide, blizko) {
        * nejstaršího započítaného stržení, takže nelže ani v jednom případě.
        */
       const doba = f.zaplaceno.odKdy ? Date.now() - f.zaplaceno.odKdy : 0;
+      /*
+       * Slovo „total" tam patří: bez něj šlo číslo splést s částkou za jedno
+       * stržení o kousek vlevo. Směr se řídí **znaménkem součtu**, ne
+       * aktuální sazbou — sazba se v čase přehazuje, takže pozice, která
+       * teď dostává, mohla celkově zaplatit.
+       */
       soucet.textContent = hide
         ? MASK
         : t(celkem < 0 ? 'funding.paidFor' : 'funding.earnedFor',
@@ -191,17 +197,6 @@ function patickaRow(p, hide, blizko) {
       radek.append(soucet);
     }
   }
-
-  /*
-   * Likvidace stojí **až na konci**: je to číslo, na které se kouká jednou
-   * za čas, ne při každém pohledu na kartu. Popisek a hodnota jsou na jednom
-   * řádku — buňka s popiskem nad hodnotou zabírala dvakrát tolik místa.
-   */
-  const liq = document.createElement('span');
-  liq.className = `hodnota liq${blizko ? ' near' : ''}`;
-  liq.textContent = `${t('position.liquidation')} `
-    + (p.liq ? formatPrice(p.liq) : t('position.notSet'));
-  radek.append(liq);
 
   return radek;
 }
@@ -372,7 +367,12 @@ function positionCard(p, hide, onSelect, liqThreshold = 10, volby = {}) {
     }
   });
 
-  /* hlavička: pár + směr + PnL */
+  // Blízkost likvidace se počítá dřív — barví se podle ní hodnota
+  // v hlavičce i celá karta.
+  const distance = liquidationDistance(p);
+  const blizko = distance !== null && Math.abs(distance) < liqThreshold;
+
+  /* hlavička: pár + směr + hodnota + likvidace, vpravo PnL */
   const head = document.createElement('div');
   head.className = 'pos-head';
 
@@ -401,7 +401,19 @@ function positionCard(p, hide, onSelect, liqThreshold = 10, volby = {}) {
       + ` · ${formatUsd(p.value)} USDT)`;
   }
 
-  left.append(symbol, badge, velikost);
+  /*
+   * Likvidace patří k hodnotě pozice, ne do patičky k fundingu: obojí říká,
+   * co se s penězi děje, a oko je pak najde na jednom místě. V patičce
+   * navíc při čtyřech údajích za sebou zapadla.
+   */
+  const likvidace = document.createElement('span');
+  likvidace.className = `pos-liq${blizko ? ' near' : ''}`;
+  // ⚠ Krátký popisek: vedle ceny je jasné, o co jde, a plné „Liquidation"
+  // na zavřeném displeji Foldu shodilo hlavičku na tři řádky.
+  likvidace.textContent = `${t('position.liqShort')} `
+    + (p.liq ? formatPrice(p.liq) : t('position.notSet'));
+
+  left.append(symbol, badge, velikost, likvidace);
 
   /*
    * PnL bez ROE. Procento vedle částky bylo jen jinak vyjádřené totéž
@@ -413,14 +425,11 @@ function positionCard(p, hide, onSelect, liqThreshold = 10, volby = {}) {
 
   head.append(left, pnl);
 
-  /* detaily */
   /*
    * Mřížka s hodnotami je pryč. Vstup, mark cena i úrovně se čtou z proužku,
-   * velikost je v hlavičce a likvidace v patičce u fundingu — mřížka nad
-   * proužkem je jen opakovala o dva řádky výš.
+   * velikost a likvidace jsou v hlavičce — mřížka je jen opakovala o dva
+   * řádky výš.
    */
-  const distance = liquidationDistance(p);
-  const blizko = distance !== null && Math.abs(distance) < liqThreshold;
   // Varování se propíše na celou kartu, ne jen na jedno číslo.
   card.classList.toggle('blizko-likvidace', blizko);
 
@@ -429,7 +438,7 @@ function positionCard(p, hide, onSelect, liqThreshold = 10, volby = {}) {
   const zebrik = volby.zebrik?.(p);
   if (zebrik) card.append(ladderRow(zebrik, p, hide));
 
-  card.append(patickaRow(p, hide, blizko));
+  card.append(patickaRow(p, hide));
   return card;
 }
 

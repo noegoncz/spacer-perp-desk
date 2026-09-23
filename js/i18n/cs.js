@@ -73,6 +73,7 @@ export const cs = {
   'position.value': 'Hodnota',
   'position.margin': 'Margin',
   'position.liquidation': 'Likvidace',
+  'position.liqShort': 'Likv.',
   'position.toLiquidation': 'Do likvidace',
   'position.stopLossFull': 'SL celé pozice',
   'position.takeProfitFull': 'TP celé pozice',
@@ -256,8 +257,8 @@ export const cs = {
   'funding.perInterval': '{amount} USDT/{interval}',
   'funding.perDay': '{amount} USDT/den',
   'funding.every': 'každých {interval}',
-  'funding.paidFor': 'zaplaceno {amount} USDT za {time}',
-  'funding.earnedFor': 'získáno {amount} USDT za {time}',
+  'funding.paidFor': 'celkem zaplaceno {amount} USDT za {time}',
+  'funding.earnedFor': 'celkem získáno {amount} USDT za {time}',
   'funding.youPay': 'platíš',
   'funding.youGet': 'dostáváš',
 

@@ -121,11 +121,22 @@ if len(legenda) != 3 or legenda[1][0] != 'cena-vstup':
 elif '0.30135' not in legenda[1][1]:
     chyby.append(f'v legendě chybí cena vstupu: {legenda[1][1]}')
 
-# ---- likvidace v patičce u fundingu ----
-paticka = ev("(document.querySelector('.pos-funding .liq') || {}).textContent || ''")
-print('likvidace v patičce:', paticka or '(chybí)')
-if 'Liquidation' not in paticka or '0.07233' not in paticka:
-    chyby.append('likvidace není v patičce na jednom řádku s popiskem')
+# ---- likvidace v hlavičce hned za hodnotou pozice ----
+likvidace = ev("(document.querySelector('.pos-liq') || {}).textContent || ''")
+print('likvidace v hlavičce:', likvidace or '(chybí)')
+# ⚠ Popisek je krátký („Liq"). Plné „Liquidation" shodilo hlavičku na
+# zavřeném displeji Foldu na tři řádky; vedle ceny je i tak jasné, o co jde.
+if 'Liq ' not in likvidace or '0.07233' not in likvidace:
+    chyby.append(f'likvidace není v hlavičce i s popiskem: {likvidace!r}')
+vedleHodnoty = ev("""(() => {
+  const v = document.querySelector('.pos-size');
+  const l = document.querySelector('.pos-liq');
+  return v && l && l.previousElementSibling === v; })()""")
+print('stojí hned za hodnotou pozice:', vedleHodnoty)
+if not vedleHodnoty:
+    chyby.append('likvidace nestojí hned za hodnotou pozice')
+if ev("document.querySelector('.pos-funding').textContent").find('Liquidation') >= 0:
+    chyby.append('likvidace zůstala i v patičce')
 if 'To liquidation' in ev("document.querySelector('.position').textContent"):
     chyby.append('vzdálenost k likvidaci se má už neukazovat')
 
@@ -145,9 +156,9 @@ elif not (castky[0].startswith('−') and 'USDT' in castky[0]
 casti = json.loads(ev("""JSON.stringify(
   [...document.querySelectorAll('.pos-funding span')].map((e) => e.textContent))""") or '[]')
 print('patička po částech:', casti)
-# Pořadí: sazba → nejbližší stržení s částkou → součet → likvidace.
-if len(casti) != 4:
-    chyby.append(f'patička má mít čtyři části, má {len(casti)}')
+# Pořadí: sazba → nejbližší stržení s částkou → součet. Nic jiného.
+if len(casti) != 3:
+    chyby.append(f'patička má mít tři části, má {len(casti)}')
 else:
     if not casti[0].startswith('Funding'):
         chyby.append(f'sazba nestojí první: {casti[0]}')
@@ -157,8 +168,6 @@ else:
     # jako cokoli — každý pár má přitom interval vlastní.
     if 'every 8 h' not in casti[1]:
         chyby.append(f'u částky chybí interval stržení slovem: {casti[1]}')
-    if not casti[3].startswith('Liquidation'):
-        chyby.append(f'likvidace nestojí až na konci: {casti[3]}')
 
 # ⚠ Tohle je ta chyba z telefonu: `createdTime` pozice je v mocku 49 dní
 # starý (u Bybitu je to první pozice na páru v historii, ne ta současná),
@@ -169,17 +178,10 @@ print('součet fundingu:', casti[2] if len(casti) > 2 else '(chybí)')
 # Doba se počítá od nejstaršího **započítaného stržení**, ne od otevření:
 # pozici otevřel nákup před 40 h, první stržení padlo na nejbližší osmou
 # hodinu po něm, takže vyjde něco přes den a půl.
-if len(casti) > 2 and not casti[2].startswith('paid 0.31 USDT in 1 d '):
+# ⚠ U součtu musí stát „total", jinak jde splést s částkou za jedno stržení
+# o kousek vlevo. Směr („paid"/„received") se řídí znaménkem součtu.
+if len(casti) > 2 and not casti[2].startswith('total paid 0.31 USDT in 1 d '):
     chyby.append(f'součet fundingu nesedí na skutečné otevření pozice: {casti[2]}')
-
-# Likvidace musí stát u pravého okraje, ne hned za předchozím údajem.
-uPrava = ev("""(() => {
-  const r = document.querySelector('.pos-funding').getBoundingClientRect();
-  const l = document.querySelector('.pos-funding .liq').getBoundingClientRect();
-  return Math.round(r.right - l.right); })()""")
-print('likvidace od pravého okraje:', uPrava, 'px')
-if uPrava > 3:
-    chyby.append(f'likvidace není zarovnaná doprava ({uPrava} px od okraje)')
 
 # ---- graf ----
 print()
@@ -305,7 +307,7 @@ time.sleep(7)
 kratky = ev("""(() => { const f = document.querySelector('.pos-funding');
   return f ? f.textContent : ''; })()""")
 print('funding na kartě:', kratky or '(chybí)')
-if 'paid' not in (kratky or ''):
+if 'total paid' not in (kratky or ''):
     chyby.append('součet fundingu zmizel, když nejdou načíst plnění')
 # Bez plnění se smí sečíst jen posledních sedm dní a přesně to musí být
 # u součtu napsáno — ne 49 dní podle createdTime.

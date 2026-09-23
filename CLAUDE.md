@@ -1039,10 +1039,27 @@ neplýtvá řádkem:
 | co | kde |
 |---|---|
 | velikost v coinu a v USDT | drobně **v závorce za pákou**, na prvním řádku |
+| likvidační cena | **hned za hodnotou pozice** v hlavičce |
 | aktuální cena | **nad svým ukazatelem**, jezdí s ním |
 | vzdálenost k nejbližšímu SL a TP v % + **cena vstupu** mezi nimi | první řádek pod proužkem |
 | co ten SL a TP znamenají v penězích | druhý řádek pod proužkem |
-| funding a likvidační cena | patička, pořadí níž |
+| funding | patička, pořadí níž |
+
+Likvidace patří k hodnotě pozice, ne do patičky k fundingu: obojí říká, co
+se děje s penězi, a oko to najde na jednom místě. V patičce mezi čtyřmi
+údaji zapadla. Popisek je krátký (`Liq`) — vedle ceny je jasné, o co jde,
+a plné „Liquidation" shodilo hlavičku na zavřeném displeji Foldu na tři
+řádky.
+
+⚠ **Levá část hlavičky je flexbox s `flex: 1` a lomí se mezi údaji.** Bez
+`flex: 1` se zúžila na nejužší možný obsah a každý údaj skončil na vlastním
+řádku; bez `white-space: nowrap` na údajích se zase „(2 547 JUP · 778.87
+USDT)" rozpadlo doprostřed a druhý řádek začínal osamoceným „USDT)".
+
+Měřeno: proti v0.16.6 je karta na rozevřeném Foldu o 18 px nižší, na 416 px
+o 5 px nižší, a na nejužších 344 px o 10 px **vyšší** — tam se hlavička lomí
+na tři řádky. Za to, že na obou displejích, které se používají, je karta
+kratší, to stojí.
 
 **ROE se neukazuje.** Procento vedle PnL bylo jen jinak vyjádřené totéž
 a stálo celý řádek na každé kartě.
@@ -1052,20 +1069,20 @@ ním), stejnou jako číslo nad ním. Bílá čára o tom, jestli jsem ve ztrát
 neřekla nic.
 
 Patička jde v pořadí **sazba → nejbližší stržení a jeho částka (v závorce
-interval a denní částka) → součet za dobu držení → likvidace**. Odpočet
+interval a denní částka) → součet za dobu držení**. Odpočet
 a částka patří k sobě: „za 4 h 47 m zaplatíš 0,10 USDT" se čte samo, kdežto
 dvě čísla na opačných koncích řádku si musel uživatel spojovat sám.
-
-⚠ **Likvidace je zarovnaná k pravému okraji** (`margin-left: auto`). Je to
-jediný údaj v patičce, který se hledá očima místo čtení odleva, a na pevném
-místě ho oko najde bez hledání.
 
 ⚠ **Interval fundingu musí být vypsaný slovem** — `every 8 h`, ne jen `8 h`.
 Každý pár ho má vlastní (osm hodin je jen nejčastější, jsou i čtyři a jedna)
 a holé „8 h" v závorce vypadalo jako cokoli.
 
-⚠ **U součtu stojí vždycky doba, za kterou je** — `paid 0.31 USDT in 1 d 11 h`,
-nikdy „celkem". Rozdíl mezi „celkem" a „za posledních pár dní" musel uživatel
+⚠ **U součtu stojí `total` a vždycky doba, za kterou je** —
+`total paid 0.31 USDT in 1 d 11 h`. Bez slova „total" šlo číslo splést
+s částkou za jedno stržení o kousek vlevo; bez doby zase nebylo poznat, co
+přesně se sečetlo. Směr (`paid` / `received`) se řídí **znaménkem součtu**,
+ne aktuální sazbou — sazba se v čase přehazuje, takže pozice, která teď
+dostává, mohla celkově zaplatit. Rozdíl mezi „celkem" a „za posledních pár dní" musel uživatel
 hlídat sám a u pozice držené den je to stejně totéž číslo. Doba se počítá od
 **nejstaršího započítaného stržení**, takže neslibuje víc, než se stáhlo.
 

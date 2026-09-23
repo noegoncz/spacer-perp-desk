@@ -77,6 +77,7 @@ export const en = {
   'position.value': 'Value',
   'position.margin': 'Margin',
   'position.liquidation': 'Liquidation',
+  'position.liqShort': 'Liq',
   'position.toLiquidation': 'To liquidation',
   'position.stopLossFull': 'Stop loss (full)',
   'position.takeProfitFull': 'Take profit (full)',
@@ -260,8 +261,8 @@ export const en = {
   'funding.perInterval': '{amount} USDT/{interval}',
   'funding.perDay': '{amount} USDT/day',
   'funding.every': 'every {interval}',
-  'funding.paidFor': 'paid {amount} USDT in {time}',
-  'funding.earnedFor': 'earned {amount} USDT in {time}',
+  'funding.paidFor': 'total paid {amount} USDT in {time}',
+  'funding.earnedFor': 'total received {amount} USDT in {time}',
   'funding.youPay': 'you pay',
   'funding.youGet': 'you receive',
 
