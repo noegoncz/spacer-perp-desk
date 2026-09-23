@@ -255,10 +255,9 @@ export const cs = {
   'funding.next': 'za {time}',
   'funding.perInterval': '{amount} USDT/{interval}',
   'funding.perDay': '{amount} USDT/den',
-  'funding.totalPaid': 'zaplaceno celkem {amount} USDT',
-  'funding.totalEarned': 'získáno celkem {amount} USDT',
-  'funding.paidRecent': 'zaplaceno {amount} USDT za {days} d',
-  'funding.earnedRecent': 'získáno {amount} USDT za {days} d',
+  'funding.every': 'každých {interval}',
+  'funding.paidFor': 'zaplaceno {amount} USDT za {time}',
+  'funding.earnedFor': 'získáno {amount} USDT za {time}',
   'funding.youPay': 'platíš',
   'funding.youGet': 'dostáváš',
 

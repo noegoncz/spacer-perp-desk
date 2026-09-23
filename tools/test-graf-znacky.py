@@ -153,8 +153,10 @@ else:
         chyby.append(f'sazba nestojí první: {casti[0]}')
     if not casti[1].startswith('in ') or 'you pay' not in casti[1]:
         chyby.append(f'nejbližší stržení nestojí druhé i s částkou: {casti[1]}')
-    if '(8 h · ' not in casti[1]:
-        chyby.append(f'u částky chybí interval stržení: {casti[1]}')
+    # ⚠ Interval musí být vypsaný slovem. Samotné „8 h" v závorce vypadalo
+    # jako cokoli — každý pár má přitom interval vlastní.
+    if 'every 8 h' not in casti[1]:
+        chyby.append(f'u částky chybí interval stržení slovem: {casti[1]}')
     if not casti[3].startswith('Liquidation'):
         chyby.append(f'likvidace nestojí až na konci: {casti[3]}')
 
@@ -163,8 +165,21 @@ else:
 # ale pozici otevřel nákup před 40 hodinami. Sčítat se smí jen odtud —
 # tedy pět stržení po 0,062 USDT, ne padesát dní cizího fundingu.
 print('součet fundingu:', casti[2] if len(casti) > 2 else '(chybí)')
-if len(casti) > 2 and 'paid so far 0.31 USDT' not in casti[2]:
+# U součtu stojí vždycky přesná doba, za kterou je — nikdy „celkem".
+# Doba se počítá od nejstaršího **započítaného stržení**, ne od otevření:
+# pozici otevřel nákup před 40 h, první stržení padlo na nejbližší osmou
+# hodinu po něm, takže vyjde něco přes den a půl.
+if len(casti) > 2 and not casti[2].startswith('paid 0.31 USDT in 1 d '):
     chyby.append(f'součet fundingu nesedí na skutečné otevření pozice: {casti[2]}')
+
+# Likvidace musí stát u pravého okraje, ne hned za předchozím údajem.
+uPrava = ev("""(() => {
+  const r = document.querySelector('.pos-funding').getBoundingClientRect();
+  const l = document.querySelector('.pos-funding .liq').getBoundingClientRect();
+  return Math.round(r.right - l.right); })()""")
+print('likvidace od pravého okraje:', uPrava, 'px')
+if uPrava > 3:
+    chyby.append(f'likvidace není zarovnaná doprava ({uPrava} px od okraje)')
 
 # ---- graf ----
 print()
@@ -292,8 +307,10 @@ kratky = ev("""(() => { const f = document.querySelector('.pos-funding');
 print('funding na kartě:', kratky or '(chybí)')
 if 'paid' not in (kratky or ''):
     chyby.append('součet fundingu zmizel, když nejdou načíst plnění')
-elif 'so far' in (kratky or ''):
-    chyby.append('popisek tvrdí „celkem", přestože čas otevření není známý')
+# Bez plnění se smí sečíst jen posledních sedm dní a přesně to musí být
+# u součtu napsáno — ne 49 dní podle createdTime.
+elif ' in 6 d' not in kratky and ' in 7 d' not in kratky:
+    chyby.append(f'součet nemá napsanou dobu posledních sedmi dní: {kratky}')
 
 print()
 if chyby:

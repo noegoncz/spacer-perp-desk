@@ -916,7 +916,18 @@ dokud pozice žije; přikoupení ani částečné zavření čas otevření nem�
 Stejný čas používají i **trojúhelníky plnění v grafu**, jinak by ukazovaly
 obchody z předchozí, dávno zavřené pozice.
 
-Jde se nejvýš tři stránky po 50 na okno. ⚠ Potřebuje oprávnění Wallet stejně jako přehled účtu, takže má
+Jde se nejvýš tři stránky po 50 na okno.
+
+⚠ **Součet se dopočítává, nepočítá znovu.** Pozici jde držet měsíce a projít
+celou její historii po sedmidenních oknech při každém desetiminutovém
+obnovení by znamenalo desítky dotazů pořád dokola. Drží se proto mezivýsledek
+(`fundingSoucty`) a přidává se jen to, co přibylo od minule; drahý je jen
+první průchod. Maže se spolu s pozicí.
+
+⚠ **Strop 52 oken (rok) není limit na dobu držení**, ale pojistka proti
+nekonečné smyčce, kdyby čas otevření vyšel nesmyslně — třeba z rozjetých
+hodin v telefonu. Díky dopočítávání se těch 52 dotazů udělá jednou za pozici.
+(Dřív to bylo osm oken, tedy dva měsíce, a to už limit na dobu držení byl.) ⚠ Potřebuje oprávnění Wallet stejně jako přehled účtu, takže má
 vlastní `try` — bez něj se ukáže zbytek fundingu a jen chybí součet.
 
 ⚠ **Deník má tři omezení a na každém z nich to spadlo** (v0.16.0–0.16.2,
@@ -1009,6 +1020,19 @@ Patička jde v pořadí **sazba → nejbližší stržení a jeho částka (v z�
 interval a denní částka) → součet za dobu držení → likvidace**. Odpočet
 a částka patří k sobě: „za 4 h 47 m zaplatíš 0,10 USDT" se čte samo, kdežto
 dvě čísla na opačných koncích řádku si musel uživatel spojovat sám.
+
+⚠ **Likvidace je zarovnaná k pravému okraji** (`margin-left: auto`). Je to
+jediný údaj v patičce, který se hledá očima místo čtení odleva, a na pevném
+místě ho oko najde bez hledání.
+
+⚠ **Interval fundingu musí být vypsaný slovem** — `every 8 h`, ne jen `8 h`.
+Každý pár ho má vlastní (osm hodin je jen nejčastější, jsou i čtyři a jedna)
+a holé „8 h" v závorce vypadalo jako cokoli.
+
+⚠ **U součtu stojí vždycky doba, za kterou je** — `paid 0.31 USDT in 1 d 11 h`,
+nikdy „celkem". Rozdíl mezi „celkem" a „za posledních pár dní" musel uživatel
+hlídat sám a u pozice držené den je to stejně totéž číslo. Doba se počítá od
+**nejstaršího započítaného stržení**, takže neslibuje víc, než se stáhlo.
 
 ⚠ **Nad proužkem smí stát jediné číslo.** Vstup i mark cena tam chvíli byly
 obě (v0.16.2) a u čerstvě otevřené pozice se napsaly přes sebe — cena leží

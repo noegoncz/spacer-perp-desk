@@ -242,6 +242,12 @@ export class BybitClient {
      * až když pozice zmizí, aby si ho ta příští nezdědila.
      */
     this.otevreniCache = new Map();
+    /**
+     * Dopočítávaný součet zaplaceného fundingu na pár. Bez něj by se při
+     * každém obnovení procházela celá historie pozice po sedmidenních
+     * oknech. Maže se spolu s pozicí.
+     */
+    this.fundingSoucty = new Map();
 
     this.status = { ws: 'idle', rest: 'idle', lastUpdate: null };
 
@@ -467,7 +473,9 @@ export class BybitClient {
     let cas = null;
 
     try {
-      for (let okno = 0; okno < 8 && zbyva > epsilon; okno += 1) {
+      // Rok po týdnech. Stejně jako u součtu to není limit na dobu držení,
+    // ale pojistka proti nekonečné smyčce — a počítá se jednou za pozici.
+    for (let okno = 0; okno < 52 && zbyva > epsilon; okno += 1) {
         const od = konec - OKNO;
         const plneni = await this.getExecutions(pozice.symbol, od, konec);
         for (let i = plneni.length - 1; i >= 0 && zbyva > epsilon; i -= 1) {
@@ -719,33 +727,67 @@ export class BybitClient {
    * to musí umět přežít — bez součtu se pozice ukazuje dál.
    */
   async getFundingPaid(symbol, odKdy) {
+    const ted = Date.now();
+    /*
+     * Součet se **dopočítává**, nepočítá znovu. Pozici jde držet měsíce
+     * a projít celou její historii po sedmidenních oknech při každém
+     * desetiminutovém obnovení by znamenalo desítky dotazů pořád dokola.
+     * Takhle je drahý jen první průchod; pak se přidává posledních pár
+     * minut. Záznam se maže, až když pozice zmizí.
+     */
+    const ulozeny = this.fundingSoucty.get(symbol);
+    const odkud = ulozeny ? ulozeny.doKdy : odKdy;
+    const pridavek = await this.sectiZDeniku(symbol, odkud, ted, !ulozeny);
+
+    const soucet = {
+      celkem: (ulozeny?.celkem || 0) + pridavek.celkem,
+      pocet: (ulozeny?.pocet || 0) + pridavek.pocet,
+      // Od kdy se doopravdy počítalo — UI z toho píše, za jak dlouhou dobu
+      // součet je, takže nesmí tvrdit víc, než se stáhlo.
+      odKdy: ulozeny?.odKdy ?? pridavek.odKdy,
+      doKdy: ted,
+    };
+    this.fundingSoucty.set(symbol, soucet);
+    return soucet;
+  }
+
+  async sectiZDeniku(symbol, odKdy, doKdy, prvniPruchod) {
     /*
      * ⚠ Deník neumí filtrovat na `symbol`, jen na `baseCoin`. Bez něj se
      * do stránek po 50 řádcích vejde při více pozicích sotva den — právě
      * proto stálo na telefonu „paid 0.00 USDT in 1 d" i u pozice držené
      * několik dní. Kdyby Bybit `baseCoin` u páru neplnil, jde druhé kolo
      * bez něj a řádky se odfiltrují podle symbolu jako dřív.
+     *
+     * ⚠ Druhé kolo jen při prvním průchodu. Později je nula stržení běžný
+     * stav (za posledních deset minut se nic nestrhlo) a opakovaný dotaz
+     * by jen zdvojnásobil provoz.
      */
     const baseCoin = symbol.endsWith('USDT') ? symbol.slice(0, -4) : '';
     if (baseCoin) {
-      const s = await this.sectiFunding(symbol, odKdy, baseCoin);
-      if (s.pocet > 0) return s;
+      const s = await this.sectiFunding(symbol, odKdy, doKdy, baseCoin);
+      if (s.pocet > 0 || !prvniPruchod) return s;
     }
-    return this.sectiFunding(symbol, odKdy, '');
+    return this.sectiFunding(symbol, odKdy, doKdy, '');
   }
 
   /**
-   * Sečte funding po **sedmidenních oknech** od otevření pozice.
+   * Sečte funding po **sedmidenních oknech** mezi dvěma časy.
    *
    * ⚠ Bybit vyžaduje `startTime` a `endTime` **společně** a okno smí být
    * nejvýš sedm dní. Samotný `startTime` (jak to dělala první verze) dotaz
    * shodí, takže součet nikdy nedorazil. Proti mocku to přitom vycházelo —
    * mock odpoví na cokoli.
    */
-  async sectiFunding(symbol, odKdy, baseCoin) {
+  async sectiFunding(symbol, odKdy, ted, baseCoin) {
     const OKNO = 7 * 86400000;
-    const MAX_OKEN = 8; // ~dva měsíce; dál už by se jen zdržovalo
-    const ted = Date.now();
+    /*
+     * Strop není „takhle dlouho smíš držet pozici", ale pojistka proti
+     * nekonečné smyčce, kdyby čas otevření vyšel nesmyslně (třeba z rozjetých
+     * hodin v telefonu). Rok po sedmidenních oknech je 52 dotazů, a ty se
+     * díky dopočítávání výš udělají jednou za pozici, ne při každém obnovení.
+     */
+    const MAX_OKEN = 52;
 
     const chtenyZacatek = Number.isFinite(odKdy) && odKdy > 0 ? odKdy : ted - OKNO;
     const zacatek = Math.max(chtenyZacatek, ted - MAX_OKEN * OKNO);
@@ -753,9 +795,6 @@ export class BybitClient {
     let celkem = 0;
     let pocet = 0;
     let odKdyReal = null;
-    // Celá doba držení jen tehdy, když víme, kdy se pozice otevřela, žádné
-    // okno neselhalo a nemuselo se to ořezávat stropem.
-    let cele = Number.isFinite(odKdy) && odKdy > 0 && zacatek <= chtenyZacatek;
 
     for (let od = zacatek; od < ted; od += OKNO) {
       const doKdy = Math.min(od + OKNO, ted);
@@ -771,14 +810,13 @@ export class BybitClient {
           odKdyReal = kus.odKdy;
         }
       } catch (err) {
-        // Jedno vypadlé okno nesmí shodit celý součet — jen se pak
-        // v kartě nesmí tvrdit, že jde o celou dobu držení.
-        cele = false;
+        // Jedno vypadlé okno nesmí shodit celý součet. Chybějící stržení se
+        // na čísle projeví, proto to jde aspoň do diagnostické stopy.
         this.zapisDiag('funding okno', err?.message || String(err));
       }
     }
 
-    return { celkem, pocet, odKdy: odKdyReal ?? zacatek, odOtevreni: cele };
+    return { celkem, pocet, odKdy: odKdyReal ?? zacatek };
   }
 
   async stahniFunding(symbol, okno) {
@@ -1032,9 +1070,11 @@ export class BybitClient {
         this.positions.set(key, p);
       } else {
         this.positions.delete(key);
-        // Příští pozice na tomhle páru se otevře jindy.
+        // Příští pozice na tomhle páru se otevře jindy a funding se jí
+        // počítá od začátku.
         this.otevreniCache.delete(p.symbol);
         this.fundingCache.delete(p.symbol);
+        this.fundingSoucty.delete(p.symbol);
       }
       changed = true;
     }

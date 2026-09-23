@@ -104,8 +104,8 @@ if 'Funding' not in (fundingLong or ''):
     chyby.append('funding na kartě chybí')
 # ⚠ Musí být vidět interval i denní částka. Samotná denní částka působila,
 # jako by se funding platil jednou za 24 h — platí se po 8 h.
-if '(8 h · ' not in (fundingLong or ''):
-    chyby.append('u fundingu chybí interval stržení (8 h)')
+if 'every 8 h' not in (fundingLong or ''):
+    chyby.append('u fundingu chybí interval stržení (every 8 h)')
 if 'USDT/day' not in (fundingLong or ''):
     chyby.append('u fundingu chybí denní částka')
 # Kladná sazba: long platí shortovi. Směr musí být na kartě vidět, ze

@@ -163,9 +163,11 @@ function patickaRow(p, hide, blizko) {
         + `${t(platiUzivatel ? 'funding.youPay' : 'funding.youGet')} `
         + `${formatUsd(zaInterval)} USDT`
         // V závorce, jak často se to strhává a kolik to dělá za den.
-        // ⚠ Interval musí být vidět: bez něj vypadá částka jako denní,
-        // přitom u většiny párů se platí třikrát denně (a u některých šestkrát).
-        + ` (${intervalPopis(f.minut)} · ${t('funding.perDay', { amount: formatUsd(zaDen) })})`;
+        // ⚠ Interval musí být vidět a musí být poznat, že jde o interval:
+        // samotné „8 h" vypadalo jako cokoli. Každý pár ho má vlastní —
+        // u většiny osm hodin, u některých čtyři nebo jednu.
+        + ` (${t('funding.every', { interval: intervalPopis(f.minut) })}`
+        + ` · ${t('funding.perDay', { amount: formatUsd(zaDen) })})`;
     radek.append(castka);
 
     // Součet za dobu držení. Chybí, když klíč nemá oprávnění Wallet —
@@ -175,18 +177,17 @@ function patickaRow(p, hide, blizko) {
       const soucet = document.createElement('span');
       // Záporné = zaplaceno, kladné = přijato.
       soucet.className = `hodnota ${celkem < 0 ? 'platis' : 'dostavas'}`;
-      // ⚠ „Celkem" jen když se opravdu počítalo od otevření pozice. Jinak
-      // se napíše, za kolik dní součet je — číslo, které se tváří na celou
-      // dobu držení a není, je horší než žádné.
-      const dnu = f.zaplaceno.odKdy
-        ? Math.max(1, Math.round((Date.now() - f.zaplaceno.odKdy) / 86400000))
-        : 1;
-      const klic = f.zaplaceno.odOtevreni
-        ? (celkem < 0 ? 'funding.totalPaid' : 'funding.totalEarned')
-        : (celkem < 0 ? 'funding.paidRecent' : 'funding.earnedRecent');
+      /*
+       * ⚠ Vždycky **za jak dlouho** ten součet je, nikdy „celkem". Rozdíl
+       * mezi „celkem" a „za posledních pár dní" musel uživatel hlídat sám,
+       * a u pozice držené den je to stejně totéž číslo. Doba se bere od
+       * nejstaršího započítaného stržení, takže nelže ani v jednom případě.
+       */
+      const doba = f.zaplaceno.odKdy ? Date.now() - f.zaplaceno.odKdy : 0;
       soucet.textContent = hide
         ? MASK
-        : t(klic, { amount: formatUsd(Math.abs(celkem)), days: dnu });
+        : t(celkem < 0 ? 'funding.paidFor' : 'funding.earnedFor',
+            { amount: formatUsd(Math.abs(celkem)), time: trvani(doba) });
       radek.append(soucet);
     }
   }

@@ -259,10 +259,9 @@ export const en = {
   'funding.next': 'in {time}',
   'funding.perInterval': '{amount} USDT/{interval}',
   'funding.perDay': '{amount} USDT/day',
-  'funding.totalPaid': 'paid so far {amount} USDT',
-  'funding.totalEarned': 'earned so far {amount} USDT',
-  'funding.paidRecent': 'paid {amount} USDT in {days} d',
-  'funding.earnedRecent': 'earned {amount} USDT in {days} d',
+  'funding.every': 'every {interval}',
+  'funding.paidFor': 'paid {amount} USDT in {time}',
+  'funding.earnedFor': 'earned {amount} USDT in {time}',
   'funding.youPay': 'you pay',
   'funding.youGet': 'you receive',
 
