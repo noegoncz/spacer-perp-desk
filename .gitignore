@@ -19,3 +19,11 @@ __pycache__/
 *.pyc
 # snimky obrazovky z testu (ukladaji se do temp, tohle je pojistka)
 /*.png
+
+# Obal pro Android: projekt android/ se generuje v GitHub Actions
+# (`cap add android`), do repa se nedává. Podpisový klíč už vůbec ne.
+apk/android/
+apk/package-lock.json
+*.keystore
+*.jks
+*.p12

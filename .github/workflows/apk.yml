@@ -1,0 +1,94 @@
+name: Sestavení APK
+
+# APK se staví jen tady, v GitHub Actions. Na vývojovém počítači není Node,
+# Java ani Android SDK a webová aplikace sama žádný build krok nemá — npm se
+# používá výhradně pro obal Capacitoru ve složce apk/.
+#
+# Obal načítá aplikaci z GitHub Pages (server.url v apk/capacitor.config.json),
+# takže změny v HTML/JS/CSS se do APK dostanou samy, stejně jako do PWA.
+# Nové APK je potřeba jen při změně obalu nebo nativní části — proto se
+# sestavuje jen při změně ve složce apk/ nebo ručně.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'apk/**'
+      - '.github/workflows/apk.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apk
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Stáhnout repozitář
+        uses: actions/checkout@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Nainstalovat Capacitor
+        working-directory: apk
+        run: npm install --no-audit --no-fund @capacitor/core@latest @capacitor/cli@latest @capacitor/android@latest
+
+      # Projekt android/ se generuje pokaždé znovu a v repu není. Až přibude
+      # nativní kód (služba na popředí pro alarmy), půjde do repa a tenhle
+      # krok se změní.
+      - name: Vygenerovat projekt pro Android
+        working-directory: apk
+        run: npx cap add android
+
+      # Ikona appky místo výchozí ikony Capacitoru. Adaptivní ikona
+      # (mipmap-anydpi-v26) se maže, jinak by přebila naše PNG.
+      - name: Ikona PerpyX
+        run: |
+          res=apk/android/app/src/main/res
+          rm -rf "$res/mipmap-anydpi-v26"
+          for d in "$res"/mipmap-*; do
+            cp icons/icon-512.png "$d/ic_launcher.png"
+            cp icons/icon-512.png "$d/ic_launcher_round.png"
+          done
+
+      # Zatím ladicí sestavení. ⚠ Je podepsané klíčem, který si runner pokaždé
+      # vyrobí nový, takže novější APK nejde nainstalovat přes starší —
+      # nejdřív odinstalovat. Pevný podpisový klíč přijde s první verzí,
+      # která se bude aktualizovat.
+      - name: Sestavit APK
+        working-directory: apk/android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Připravit soubor
+        run: cp apk/android/app/build/outputs/apk/debug/app-debug.apk PerpyX.apk
+
+      - name: Uložit jako artefakt
+        uses: actions/upload-artifact@v4
+        with:
+          name: PerpyX-apk
+          path: PerpyX.apk
+
+      # Vydání s pevnou adresou, aby šlo APK stáhnout přímo v telefonu bez
+      # přihlašování a rozbalování zipu (artefakty Actions obojí vyžadují).
+      - name: Zveřejnit jako vydání apk-latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete apk-latest --yes --cleanup-tag || true
+          gh release create apk-latest PerpyX.apk \
+            --target "$GITHUB_SHA" \
+            --prerelease \
+            --title "PerpyX APK (${GITHUB_SHA::7})" \
+            --notes "Testovací sestavení obalu pro Android. Aplikace se načítá z GitHub Pages."

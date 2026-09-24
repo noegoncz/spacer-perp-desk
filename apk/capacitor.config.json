@@ -1,0 +1,12 @@
+{
+  "appId": "io.github.noegoncz.perpyx",
+  "appName": "PerpyX",
+  "webDir": "www",
+  "server": {
+    "url": "https://noegoncz.github.io/spacer-perp-desk/",
+    "androidScheme": "https"
+  },
+  "android": {
+    "backgroundColor": "#0b0f14"
+  }
+}

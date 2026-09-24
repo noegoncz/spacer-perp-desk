@@ -1,0 +1,6 @@
+{
+  "name": "perpyx-apk",
+  "private": true,
+  "description": "Obal PerpyX pro Android (Capacitor). Sestavuje se jen v GitHub Actions, webová aplikace sama žádný build krok nemá.",
+  "scripts": {}
+}
