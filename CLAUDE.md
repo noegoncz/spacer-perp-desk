@@ -86,6 +86,7 @@ Statická PWA, **bez build kroku**. Žádné npm, žádný bundler. Soubory se s
 tak, jak leží v repu. ES moduly, vanilla JS.
 
 ```
+apk/                    # obal pro Android (Capacitor); staví se jen v GitHub Actions
 index.html              # jediná stránka, všechny obrazovky (pozice / graf / nastavení)
 manifest.webmanifest
 sw.js                   # service worker, cache + detekce nové verze
@@ -106,6 +107,7 @@ js/app.js               # orchestrace, lifecycle, update service workeru
 vendor/                 # KLineChart + licence, stažené v repu (ne CDN)
 tools/                  # testy přes DevTools Protocol, bez API klíčů (viz tools/README.md)
 .github/workflows/deploy.yml
+.github/workflows/apk.yml   # sestavení APK, vydání apk-latest
 ```
 
 ### `js/bybit.js` je izolovaný záměrně
@@ -1159,8 +1161,46 @@ a ochrana soukromí, ne pojistka proti ztrátě peněz. Nejsilnější varianta
 ### 10) APK přes Capacitor + notifikace
 
 Zabalit do APK, aby aplikace mohla běžet na pozadí a posílat notifikace
-(blížící se likvidace, zasažení SL/TP, výrazná změna PnL). Tady se vymění
-transport v `js/bybit.js` za nativní HTTP/WebSocket plugin.
+(blížící se likvidace, zasažení SL/TP, výrazná změna PnL).
+
+**Proč to alarmům pomůže:** PWA je stránka v prohlížeči a se zhasnutým
+displejem ji Android uspí — kód neběží, spojení s burzou spadne, alarm nemá
+co spustit. Aplikace pro Android může spustit **službu na popředí**
+(foreground service) s trvalou notifikací („PerpyX hlídá 3 alarmy"), kterou
+systém nechá běžet i se zhasnutým displejem — jako navigaci nebo přehrávač.
+Ta drží vlastní spojení s burzou, kontroluje hladiny a při protnutí pošle
+systémovou notifikaci se zvukem a vibrací.
+
+#### Rozhodnuto (2026-09-24)
+
+- **Vývoj zůstává v HTML verzi** a testuje se jako dosud (prohlížeč + telefon
+  přes GitHub Pages). APK se staví jen občas.
+- **APK se staví v GitHub Actions** (`.github/workflows/apk.yml`), ne na
+  počítači — není tam Node, Java ani Android SDK a instalace by byla velká.
+  Sestavuje se při změně ve složce `apk/` nebo ručně. Výsledek jde do vydání
+  **`apk-latest`** s pevnou adresou, aby šlo APK stáhnout přímo v telefonu:
+  https://github.com/noegoncz/spacer-perp-desk/releases/download/apk-latest/PerpyX.apk
+- **Obal načítá aplikaci z GitHub Pages** (`server.url` v
+  `apk/capacitor.config.json`), nevozí si ji v sobě. Změny webu se tak do APK
+  dostanou samy, stejně jako do PWA; nové APK je potřeba jen při změně obalu
+  nebo nativní části.
+- ⚠ **npm je jen pro obal ve složce `apk/`**, a to jen v Actions. Webová
+  aplikace dál žádný build krok nemá.
+- Projekt `apk/android/` se zatím generuje při každém sestavení (`cap add
+  android`) a v repu není. Až přibude nativní kód, půjde do repa.
+
+⚠ **APK má vlastní úložiště**, oddělené od prohlížeče. API klíč, kresby
+a alarmy z PWA v Brave se do něj samy nepřenesou — v APK se klíč zadává
+znovu.
+
+⚠ **Zatím ladicí podpis**, který si runner pokaždé vyrobí nový. Novější APK
+proto nejde nainstalovat přes starší — nejdřív odinstalovat, a tím se smaže
+i úložiště (klíč, kresby, alarmy). Než se APK začne používat naostro, musí
+přijít **pevný podpisový klíč** v tajemstvích GitHubu a jeho záloha mimo repo.
+
+**Další kroky:** (1) ověřit na telefonu, že se APK nainstaluje a aplikace
+v něm funguje, (2) pevný podpisový klíč, (3) služba na popředí s hlídáním
+alarmů, (4) výjimka z optimalizace baterie u Samsungu.
 
 ### Mimo plán: zadávání příkazů
 
