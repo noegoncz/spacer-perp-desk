@@ -1198,9 +1198,46 @@ proto nejde nainstalovat přes starší — nejdřív odinstalovat, a tím se sm
 i úložiště (klíč, kresby, alarmy). Než se APK začne používat naostro, musí
 přijít **pevný podpisový klíč** v tajemstvích GitHubu a jeho záloha mimo repo.
 
-**Další kroky:** (1) ověřit na telefonu, že se APK nainstaluje a aplikace
-v něm funguje, (2) pevný podpisový klíč, (3) služba na popředí s hlídáním
-alarmů, (4) výjimka z optimalizace baterie u Samsungu.
+#### Ověřeno na telefonu (2026-09-24, první APK)
+
+Instaluje se, aplikace v něm běží celá (pozice, graf, kresby, funding) a alarm
+**zazní i s aplikací na pozadí**. Sestavilo se s **Capacitorem 8** (verze se
+bere `@latest`).
+
+⚠ **Okraje systémových lišt.** Capacitor 8 kreslí aplikaci pod stavovou
+i navigační lištu (edge-to-edge) a okraje předává jako CSS proměnné
+`--safe-area-inset-*` (plugin `SystemBars`, `insetsHandling: css` — jen když
+má stránka `viewport-fit=cover`, což má). Android WebView přitom
+z `env(safe-area-inset-*)` vrací nulu. V prvním APK proto obsah zalezl pod
+lišty: **na timeframy nešlo klepnout**, překryl je panel aplikací Foldu,
+a hlavička se tlačila pod stavovou lištu. Opraveno v CSS: proměnné
+`--okraj-nahore/-dole/-vlevo/-vpravo` berou větší z `env()` a z proměnné
+Capacitoru, a **v CSS se nikde nepoužívá `env()` napřímo**. Pozor na prvky
+s `position: fixed` (graf, vysouvací nabídky) — okraje z `body` se jich
+netýkají, musí si je vzít samy. Test: `tools/test-okraje-apk.py`, na starém
+CSS padá.
+
+⚠ **Systémové notifikace v APK nefungují** a z webu fungovat nebudou:
+Android WebView nepodporuje Notifications API ani `showNotification` service
+workeru. Musí jít přes nativní plugin (`@capacitor/local-notifications`)
+a na Androidu 13+ i s povolením `POST_NOTIFICATIONS`. Zvuk a vibrace chodí,
+protože je dělá WebAudio a `navigator.vibrate` přímo ve stránce.
+
+**Při příštím sestavení APK přidat** (ne dřív — každé sestavení s ladicím
+podpisem znamená odinstalovat a znovu zadat klíč): `plugins.SystemBars.style:
+"DARK"` v `apk/capacitor.config.json`, aby ikony ve stavové liště byly světlé
+na tmavém pozadí (teď jsou tmavé a skoro nejsou vidět).
+
+**Je to samostatná aplikace?** Napůl. APK je nativní obal s vlastní ikonou
+a vlastním úložištěm, ale kód rozhraní si stahuje z GitHub Pages — bez
+internetu nenaběhne poprvé (pak ji podrží service worker v cache). Pro
+aplikaci, která stejně bez internetu nemá z burzy žádná data, to nevadí,
+a díky tomu se změny webu do APK dostanou samy. Skutečně „aplikační" budou
+až nativní části: notifikace a služba na popředí.
+
+**Další kroky:** (1) pevný podpisový klíč, aby šlo aktualizovat bez
+odinstalování, (2) nativní notifikace, (3) služba na popředí s hlídáním
+alarmů při zhasnutém displeji, (4) výjimka z optimalizace baterie u Samsungu.
 
 ### Mimo plán: zadávání příkazů
 

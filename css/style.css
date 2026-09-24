@@ -17,6 +17,21 @@
   --alarm: #22d3ee;
   --radius: 14px;
   --tap: 44px;
+
+  /*
+   * Okraje systémových lišt (stavová lišta nahoře, navigační lišta a panel
+   * aplikací Foldu dole). ⚠ Bere se **větší ze dvou zdrojů**:
+   *  - `env(safe-area-inset-*)` — prohlížeč; v PWA v Brave/Chrome stačí,
+   *  - `--safe-area-inset-*` — dosadí je obal Capacitoru v APK. Starší
+   *    Android WebView vrací z `env()` nulu, přestože aplikace kreslí pod
+   *    lišty, a obsah pak zalezl pod ně: v prvním APK nešlo klepnout na
+   *    timeframy, protože je překryl panel aplikací Foldu.
+   * Všude v CSS se proto používají tyhle proměnné, nikdy `env()` napřímo.
+   */
+  --okraj-nahore: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
+  --okraj-dole: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px));
+  --okraj-vlevo: max(env(safe-area-inset-left, 0px), var(--safe-area-inset-left, 0px));
+  --okraj-vpravo: max(env(safe-area-inset-right, 0px), var(--safe-area-inset-right, 0px));
 }
 
 * { box-sizing: border-box; }
@@ -43,8 +58,8 @@ body {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  padding: env(safe-area-inset-top) env(safe-area-inset-right)
-           env(safe-area-inset-bottom) env(safe-area-inset-left);
+  padding: var(--okraj-nahore) var(--okraj-vpravo)
+           var(--okraj-dole) var(--okraj-vlevo);
 }
 
 main {
@@ -961,7 +976,8 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  /* Okraj pod systémovou lištou drží už body — tady by se počítal dvakrát. */
+  padding: 10px 16px;
   border-top: 1px solid var(--border);
   font-size: 0.72rem;
   color: var(--text-dim);
@@ -979,8 +995,11 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
   display: flex;
   flex-direction: column;
   background: var(--bg);
-  padding: env(safe-area-inset-top) env(safe-area-inset-right)
-           0 env(safe-area-inset-left);
+  /* ⚠ Okraj i dole. Graf je `position: fixed`, takže okraje z body se ho
+     netýkají; bez spodního okraje zalezly timeframy pod navigační lištu
+     a panel aplikací Foldu a nešlo na ně klepnout. */
+  padding: var(--okraj-nahore) var(--okraj-vpravo)
+           var(--okraj-dole) var(--okraj-vlevo);
 }
 
 .chart-head {
@@ -1348,7 +1367,7 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
 .chart-info .label { font-size: 0.62rem; }
 
 .chart-error {
-  padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+  padding: 10px 12px;
   background: rgba(234, 57, 67, 0.15);
   color: #ffb3b8;
   font-size: 0.85rem;
@@ -1370,7 +1389,7 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 12px 14px calc(14px + env(safe-area-inset-bottom));
+  padding: 12px 14px calc(14px + var(--okraj-dole));
   background: var(--surface);
   border-top: 1px solid var(--border);
   border-radius: var(--radius) var(--radius) 0 0;
