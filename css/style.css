@@ -1049,6 +1049,33 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
 }
 .intervals::-webkit-scrollbar { display: none; }
 
+/* Zpět na přehled vpravo dole, na palec pravé ruky. Větší než timeframy,
+   aby se trefilo bez míření, a barevně odlišené, aby se nepletlo
+   s přepínáním intervalu. */
+.chart-back-big {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 46px;
+  padding: 0;
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  background: rgba(76, 154, 255, 0.16);
+  color: var(--accent);
+  cursor: pointer;
+}
+.chart-back-big:active { background: rgba(76, 154, 255, 0.32); }
+.chart-back-big svg {
+  width: 26px;
+  height: 26px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .interval-btn {
   min-height: 36px;
   padding: 0 14px;

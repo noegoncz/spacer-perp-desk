@@ -191,6 +191,46 @@ function registrovatCaruPozice() {
         },
       ];
     },
+    /*
+     * Cenovka na cenové ose v barvě čáry — stejně jako u aktuální ceny.
+     * Z popisku „SL" u okraje grafu nebylo poznat, na jaké ceně ta úroveň
+     * leží; číst to z mřížky osy je u blízkých úrovní hádání.
+     *
+     * Limitky ji nemají (`bezCenovky`): u přikupování je jich klidně pět
+     * a osa by se zaplnila štítky.
+     */
+    createYAxisFigures: ({ chart, overlay, coordinates }) => {
+      const d = overlay.extendData || {};
+      const cena = overlay.points?.[0]?.value;
+      if (d.bezCenovky || !Number.isFinite(cena)) return [];
+      const presnost = chart.getSymbol()?.pricePrecision ?? 2;
+      return [{
+        type: 'text',
+        attrs: {
+          x: 0,
+          y: coordinates[0].y,
+          text: cena.toLocaleString('en-US', {
+            minimumFractionDigits: presnost,
+            maximumFractionDigits: presnost,
+          }),
+          align: 'left',
+          baseline: 'middle',
+        },
+        styles: {
+          // Na světlém podkladu (oranžový SL) tmavé písmo, jinak bílé.
+          color: svetlaBarva(d.color) ? BARVY.pozadi : '#ffffff',
+          size: 11,
+          family: 'sans-serif',
+          backgroundColor: d.color,
+          borderRadius: 2,
+          borderSize: 0,
+          paddingLeft: 3,
+          paddingRight: 3,
+          paddingTop: 2,
+          paddingBottom: 2,
+        },
+      }];
+    },
   });
 }
 
@@ -874,6 +914,16 @@ export const PRUHLEDNOSTI = [1, 0.6, 0.3];
 
 export const VYCHOZI_STYL = { color: BARVY_KRESEB[0], width: 1, opacity: 1 };
 
+/** Je barva natolik světlá, že na ní bílé písmo zanikne? */
+function svetlaBarva(hex) {
+  const n = parseInt(String(hex || '').slice(1), 16);
+  if (!Number.isFinite(n)) return false;
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6;
+}
+
 function rgba(hex, alpha) {
   const n = parseInt(hex.slice(1), 16);
   return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
@@ -914,7 +964,7 @@ export function createPriceChart(container, layer, handlers = {}) {
         groupId: SKUPINA_POZICE,
         points: [{ value: l.price }],
         lock: true,
-        extendData: { color: l.color, title: l.title, dash: l.dash },
+        extendData: { color: l.color, title: l.title, dash: l.dash, bezCenovky: l.bezCenovky },
       }),
     );
     umistiVrstvu();

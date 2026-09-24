@@ -526,6 +526,9 @@ function wireEvents() {
 
   // Zpět z grafu vede přes historii, ať funguje i hardwarové tlačítko zpět.
   naUdalost('chartBackBtn', 'click', () => history.back());
+  // Totéž velké dole vpravo, na palec pravé ruky. Šipka nahoře vlevo je
+  // při držení telefonu v pravé ruce z dosahu.
+  naUdalost('chartBackBtnDole', 'click', () => history.back());
   window.addEventListener('popstate', () => {
     if (chartSymbol) closeChart();
   });
@@ -2152,7 +2155,7 @@ function buildChartLines(position, orders) {
     return orders
       .map((o) => o.trigger ?? o.price)
       .filter(Boolean)
-      .map((price) => ({ price, color: BARVA_CARY.prikaz,
+      .map((price) => ({ price, color: BARVA_CARY.prikaz, bezCenovky: true,
                          title: t('line.limit'), dash: CARKOVANI.prikaz }));
   }
 
@@ -2228,7 +2231,9 @@ function buildChartLines(position, orders) {
   });
 
   limitky.forEach((o) => {
-    lines.push({ price: o.price, color: BARVA_CARY.prikaz,
+    // Limitky bez cenovky na ose — u přikupování jich bývá víc a osa by se
+    // zaplnila štítky. SL, TP a likvidace ji mají.
+    lines.push({ price: o.price, color: BARVA_CARY.prikaz, bezCenovky: true,
                  title: t('line.limit'), dash: CARKOVANI.prikaz });
   });
 

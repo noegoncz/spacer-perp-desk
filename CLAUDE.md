@@ -295,6 +295,15 @@ Popisky jsou schválně krátké: `SL`, `TP` pro celou pozici a `TP1 (29 %)`,
 `SL1 (16 %)` pro částečné. Číslují se podle toho, v jakém pořadí je cena
 zasáhne — nejblíž vstupu je první.
 
+**Cenovky na cenové ose (v0.16.9).** SL, TP (celé i částečné) a likvidace
+mají na ose štítek s cenou ve své barvě, stejně jako aktuální cena. Z popisku
+„SL" u okraje grafu nebylo poznat, na jaké ceně úroveň leží. Kreslí je
+`createYAxisFigures` overlaye `positionLine`; písmo je tmavé na světlém
+podkladu (oranžový SL), jinak bílé (`svetlaBarva()`). **Limitky cenovku
+nemají** (`bezCenovky`) — u přikupování jich bývá víc a osa by se zaplnila.
+Čára mimo viditelnou část grafu štítek nemá, není kam ho dát.
+Test: `tools/test-graf-osa-a-zpet.py`, na starém kódu padá.
+
 #### Vstup: trojúhelníky plnění místo čáry (v0.16.1)
 
 **Čára vstupu se v grafu nekreslí.** Průměrná cena je v panelu nad grafem
@@ -700,6 +709,13 @@ rozevřeném Foldu se vejdou bez posouvání, na zavřeném displeji se lišta
 posouvá do strany.
 
 Výchozí interval je **4h**.
+
+**Velké tlačítko zpět vpravo dole** (v0.16.9), na konci lišty timeframů,
+mimo jejich posuvnou oblast. Uživatel drží telefon v pravé ruce a šipka
+nahoře vlevo je z dosahu palce. Je větší než timeframy (56×46 px)
+a modře orámované, aby se nepletlo s přepínáním intervalu. ⚠ Nesmí mít
+třídu `interval-btn` — ta tlačítka se berou jako přepnutí timeframu (stalo
+se s tlačítkem středu, viz níž).
 
 ⚠ **Pomocná tlačítka lišty (magnet, indikátory, koš, celá obrazovka)
 jsou v napevno ukotvené části vpravo**, mimo posuvnou oblast s nástroji.

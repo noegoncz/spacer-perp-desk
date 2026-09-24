@@ -255,6 +255,13 @@
         <button type="button" class="interval-btn" data-interval="W" data-i18n="interval.1w">1W</button>
         <button type="button" class="interval-btn" data-interval="M" data-i18n="interval.1M">1M</button>
       </div>
+      <!-- Zpět na přehled, velké a vpravo dole — na palec pravé ruky. Mimo
+           posuvnou oblast timeframů, aby bylo vidět vždycky. ⚠ Nesmí mít třídu
+           interval-btn: ta tlačítka se berou jako přepnutí timeframu. -->
+      <button type="button" id="chartBackBtnDole" class="chart-back-big"
+              data-i18n-aria="action.back" data-i18n-title="action.back">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg>
+      </button>
     </div>
 
     <div id="chartError" class="chart-error" hidden></div>
