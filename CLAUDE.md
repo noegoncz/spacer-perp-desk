@@ -1199,9 +1199,14 @@ Pořadí, jak se na to má chodit. Odškrtnuté jsou hotové.
 
 ### Nejbližší dodělávky (drobné)
 
-- [ ] **Zbývá ověřit na telefonu** (v0.10.7): že kresby při přepínání timeframu
-  ani neproblikávají a že se graf po otevření ukáže u posledních svíček.
-  Uživatel už potvrdil gesta, mizení kreseb na stejném timeframu i živé svíčky.
+- [x] **Ověřeno na telefonu** (2026-09-24): kresby při přepínání timeframu
+  neproblikávají, graf se otevře u posledních svíček. Dřív potvrzená gesta,
+  mizení kreseb na stejném timeframu i živé svíčky.
+- [x] **Funding ověřen na telefonu** (2026-09-24, v0.16.7): součet `total paid`
+  se ukazuje a doba u dřív obchodovaného páru je krátká (doba držení současné
+  pozice, ne desítky dní). Přesnou shodu částky s Bybitem si uživatel ověří
+  v aplikaci Bybitu.
+- [x] **Horní část obrazovky** (v0.16.6) — uživatel prozatím schválil.
 - [ ] **Zvážit kontrolu shody verzí** mezi `index.html` a `js/version.js`.
   Rozpadlá aktualizace (nová stránka + starý skript) se teď přežije, ale
   aplikace o nesouladu neví a běží dál se starým kódem, dokud se worker
