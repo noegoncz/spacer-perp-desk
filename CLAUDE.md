@@ -1149,10 +1149,12 @@ Dál: přepínač na **testnet** (`api-testnet.bybit.com`, `stream-testnet.bybit
 Ověřeno, že testnet odpovídá včetně CORS stejně jako produkce, takže jde jen
 o výměnu základní adresy v `js/bybit.js`.
 
-**Tenhle checkpoint musí být hotový dřív než checkpoint 11.** Dokud je klíč
-read-only, je čitelný secret v `localStorage` přijatelné riziko — nejhorší
-následek je, že někdo uvidí pozice. S právem obchodovat je nejhorší následek
-vybydlený účet a stejné úložiště přijatelné přestává být.
+**Naléhavost:** dokud je klíč read-only (a zápis příkazů v plánu není, viz
+níž), je čitelný secret v `localStorage` přijatelné riziko — nejhorší
+následek je, že někdo uvidí pozice. Otisk prstu je proto hlavně pohodlí
+a ochrana soukromí, ne pojistka proti ztrátě peněz. Nejsilnější varianta
+(Android Keystore) přichází s APK, takže dává smysl dělat tenhle checkpoint
+**až po checkpointu 10**.
 
 ### 10) APK přes Capacitor + notifikace
 
@@ -1160,10 +1162,15 @@ Zabalit do APK, aby aplikace mohla běžet na pozadí a posílat notifikace
 (blížící se likvidace, zasažení SL/TP, výrazná změna PnL). Tady se vymění
 transport v `js/bybit.js` za nativní HTTP/WebSocket plugin.
 
-### 11) Zadávání příkazů (jen pokud se aplikace osvědčí)
+### Mimo plán: zadávání příkazů
 
-Zatím **se nedělá** a aplikace zůstává výhradně read-only. Poznámky, ať se na
-to při návrhu nezapomíná:
+**Z plánu vypuštěno** (rozhodnutí uživatele 2026-09-24). Aplikace zůstává
+výhradně read-only; zápis je nanejvýš možná nástavba někdy v budoucnu. Pro
+případné uvedení na trh by zápis celou věc výrazně zkomplikoval (bezpečnost
+klíčů s právem obchodovat, odpovědnost za chybně odeslaný příkaz, pravidla
+obchodů s aplikacemi). **Nenavrhuj ho sám.**
+
+Poznámky níž zůstávají jen pro případ, že by se k tomu někdy vrátil:
 
 - Přidání je levné, protože veškerá komunikace je v `js/bybit.js`. Bybit V5
   podepisuje u POSTu místo query stringu **syrové tělo požadavku** — jinak
@@ -1172,7 +1179,8 @@ to při návrhu nezapomíná:
   Výměnu klíče aplikace zvládá.
 - **Pravidlo:** modul nabízí pouze čtení. Zápis přijde jako zřetelně oddělená
   část s potvrzovacím krokem, aby chyba v UI nemohla omylem odeslat příkaz.
-- Předpoklad: hotový checkpoint 9 (šifrované klíče).
+- Předpoklad: hotový checkpoint 9 (šifrované klíče) — s právem obchodovat
+  už čitelný secret v úložišti přijatelný není.
 
 #### Postup testování zápisu — tři vrstvy, ne jedna
 
@@ -1258,11 +1266,16 @@ Pořadí, jak se na to má chodit. Odškrtnuté jsou hotové.
 6. ✅ Záložky Pozice / Trhy / Historie
 7. ✅ Rozšířená data o účtu (equity, margin, funding, příkazy)
 8. ✅ Pohodlí (řazení, varování před likvidací, vibrace)
-9. ⏳ **Bezpečnost — otisk prstu (WebAuthn PRF) + šifrovaný secret + testnet.
-   Musí být hotové před 11.**
-10. ⏳ APK přes Capacitor + notifikace
-11. ⏳ Zadávání příkazů — jen pokud se aplikace osvědčí; pořadí testnet →
-    subúčet → hlavní účet, výběr nikdy
+9. ⏳ Bezpečnost — otisk prstu + šifrovaný secret + testnet. Pohodlí
+   a soukromí, ne ochrana peněz (klíč je read-only); nejlépe až po 10,
+   s Android Keystore.
+10. ⏳ **APK přes Capacitor + notifikace — další krok.** Jediná cesta k alarmům
+    se zhasnutým displejem.
+
+Zadávání příkazů je z plánu **vypuštěné** (viz „Mimo plán" výš).
+
+Připomínky ke grafu a indikátorům má uživatel další a řeší se průběžně mezi
+checkpointy — nečekají na ně.
 
 ## Start aplikace musí být neprůstřelný
 
