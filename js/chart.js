@@ -40,6 +40,12 @@ const BARVY = {
   kresba: '#4c9aff',
 };
 
+/**
+ * Zelená pro zisk u linky aktuální ceny. O kousek světlejší a studenější
+ * než rostoucí svíčka (`BARVY.rust`), aby s ní linka nesplývala.
+ */
+const BARVA_ZISKU = '#3ee6a4';
+
 /** Délka jedné svíčky v ms — pro odpočet do jejího uzavření. */
 const DELKA_OBDOBI = {
   1: 60e3, 5: 300e3, 15: 900e3, 60: 3600e3, 240: 14400e3,
@@ -153,18 +159,27 @@ function registrovatCaruPozice() {
     createPointFigures: ({ overlay, coordinates, bounding }) => {
       const d = overlay.extendData || {};
       const y = coordinates[0].y;
+      // Čára vstupu začíná u svíčky, kde se poprvé nakoupilo (bod má čas);
+      // ostatní úrovně vedou přes celou šířku. Když je začátek mimo obraz
+      // vlevo, vede čára od okraje.
+      const x0 = d.odCasu && Number.isFinite(coordinates[0].x)
+        ? Math.min(bounding.width, Math.max(0, coordinates[0].x))
+        : 0;
       return [
         {
           type: 'line',
-          attrs: { coordinates: [{ x: 0, y }, { x: bounding.width, y }] },
+          attrs: { coordinates: [{ x: x0, y }, { x: bounding.width, y }] },
           // Všechny čáry stejně tenké. Rozlišuje je barva a typ čárkování,
           // ne tloušťka — jinak graf působí jako změť různých linek.
-          styles: {
-            color: d.color,
-            size: 1,
-            style: 'dashed',
-            dashedValue: d.dash || [6, 4],
-          },
+          // Vstup je jediná plná: je to průměr, ne příkaz, který čeká.
+          styles: d.plna
+            ? { color: d.color, size: 1, style: 'solid' }
+            : {
+              color: d.color,
+              size: 1,
+              style: 'dashed',
+              dashedValue: d.dash || [6, 4],
+            },
         },
         {
           // Popisek u pravého okraje, vedle cenové osy. Bez podkladu —
@@ -708,7 +723,9 @@ function registrovatLinkuPnl() {
       const smer = long ? 1 : -1;
       const zisk = (cena - vstup) * size * smer;
       const procenta = vstup ? ((cena - vstup) / vstup) * 100 * smer : 0;
-      const barva = zisk >= 0 ? BARVY.rust : BARVY.pokles;
+      // ⚠ Zelená **jiná než u svíček** (`BARVY.rust`), jinak linka splývala
+      // s poslední rostoucí svíčkou, ze které vychází.
+      const barva = zisk >= 0 ? BARVA_ZISKU : BARVY.pokles;
 
       const zacatek = Math.max(0, Math.min(bounding.width - 1, v.x));
       const y = Math.round(v.y) + 0.5; // půlpixel: tenká čára pak není rozmazaná
@@ -716,7 +733,9 @@ function registrovatLinkuPnl() {
       ctx.save();
       ctx.strokeStyle = barva;
       ctx.lineWidth = 1;
-      ctx.setLineDash([4, 4]);
+      // Plná, ne čárkovaná — čárkování nesou úrovně příkazů (SL, TP), které
+      // teprve čekají; aktuální cena je fakt.
+      ctx.setLineDash([]);
       ctx.beginPath();
       ctx.moveTo(zacatek, y);
       ctx.lineTo(bounding.width, y);
@@ -962,9 +981,14 @@ export function createPriceChart(container, layer, handlers = {}) {
       chart.createOverlay({
         name: 'positionLine',
         groupId: SKUPINA_POZICE,
-        points: [{ value: l.price }],
+        // Čára s časem začátku (vstup) má bod i s časem, aby šla převést
+        // na pixel svíčky; ostatní jen cenu.
+        points: [l.odCasu ? { timestamp: l.odCasu, value: l.price } : { value: l.price }],
         lock: true,
-        extendData: { color: l.color, title: l.title, dash: l.dash, bezCenovky: l.bezCenovky },
+        extendData: {
+          color: l.color, title: l.title, dash: l.dash, bezCenovky: l.bezCenovky,
+          plna: l.plna, odCasu: l.odCasu,
+        },
       }),
     );
     umistiVrstvu();

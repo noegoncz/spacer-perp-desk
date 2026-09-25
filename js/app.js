@@ -770,9 +770,26 @@ const openChartSymbol = (trh) => {
   return otevriGraf(trh.symbol, null, trh);
 };
 
+/**
+ * Dopočte čas otevření pozice z plnění a překreslí čáru vstupu, aby
+ * začínala u první nákupní svíčky. Běží na pozadí — graf se kvůli tomu
+ * nezdrží, čára jen chvíli vede od levého okraje.
+ */
+function nactiOtevreni(position) {
+  if (!position || !client.hasCredentials()) return;
+  client.otevreniPozice(position)
+    .then((kdy) => {
+      if (chartPosition?.symbol !== position.symbol || !kdy) return;
+      chartOtevreno = kdy;
+      applyChartLines();
+    })
+    .catch(() => { /* čára zůstane od levého okraje, nic se nerozbije */ });
+}
+
 async function otevriGraf(symbol, position, trh) {
   chartSymbol = symbol;
   chartPosition = position;
+  chartOtevreno = null;
   chartTrh = trh;
   chartOrders = [];
   chartLineKey = '';
@@ -811,9 +828,10 @@ async function otevriGraf(symbol, position, trh) {
   nastavLinkuPnl();
   if (!prohlizenyObchod) {
     chart.clearTradeMarks();
-    // Trojúhelníky nakoupeno/prodáno nahradily čáru průměrného vstupu.
+    // Trojúhelníky v místech, kde se nakupovalo a prodávalo.
     znackyPlneni(position);
   }
+  nactiOtevreni(position);
   chart.setTicking(true);
 
   await refreshChartOrders();
@@ -1228,6 +1246,8 @@ function sledujGrafy(radky) {
 
 let obchody = [];
 let prohlizenyObchod = null;  // když se graf otevřel z historie
+/** Kdy se otevřela pozice v grafu — odsud začíná čára vstupu. */
+let chartOtevreno = null;
 
 let trhy = [];
 let oblibene = new Set(store.loadFavourites());
@@ -1425,22 +1445,45 @@ async function nactiHistorii() {
  */
 async function otevriProhlidku(obchod) {
   prohlizenyObchod = obchod;
-  chartInterval = intervalProObchod(obchod.closedAt - obchod.openedAt);
+
+  /*
+   * Nejdřív plnění **jen tohoto obchodu** — od otevření pozice po zavírací
+   * příkaz (`plneniObchodu`). Dřív se braly všechny plnění v okně kolem
+   * obchodu, takže se do grafu připletly nákupy a prodeje sousedních
+   * obchodů na stejném páru. A až z plnění je poznat, jak dlouho obchod
+   * trval — `closed-pnl` čas otevření nedává — a podle toho se volí interval.
+   */
+  let plneni = [];
+  let otevreno = null;
+  let chyba = null;
+  ui.showHistoryNote(t('history.loadingTrade'));
+  try {
+    ({ plneni, otevreno } = await client.plneniObchodu(obchod));
+  } catch (err) {
+    chyba = err;
+  }
+  ui.showHistoryNote('');
+  if (prohlizenyObchod !== obchod) return;
+
+  const od = otevreno ?? plneni[0]?.time ?? obchod.openedAt;
+  chartInterval = intervalProObchod(obchod.closedAt - od);
   await otevriGraf(obchod.symbol, null, null);
+  if (prohlizenyObchod !== obchod) return;
+
+  if (chyba) {
+    ui.showChartError(chyba.message || String(chyba));
+    return;
+  }
+
+  // Směr obchodu je nejjistější z plnění, které ho otevřelo: nákup = long.
+  // Odvozování z cen a zisku (`getClosedTrades`) je jen náhrada, když
+  // plnění nejsou.
+  const long = otevreno !== null && plneni.length ? plneni[0].buy : obchod.long;
 
   try {
-    // Okno se rozšíří na obě strany, ať jsou vidět i okolní svíčky.
-    const rezerva = Math.max(3600e3, (obchod.closedAt - obchod.openedAt) * 0.5);
-    const plneni = await client.getExecutions(
-      obchod.symbol,
-      obchod.openedAt - rezerva,
-      obchod.closedAt + rezerva,
-    );
-    if (prohlizenyObchod !== obchod) return;
-
     chart.setTradeMarks(
       plneni.map((p) => {
-        const vstup = p.buy === obchod.long;
+        const vstup = p.buy === long;
         return {
           time: p.time,
           price: p.price,
@@ -2160,11 +2203,19 @@ function buildChartLines(position, orders) {
   }
 
   /*
-   * ⚠ Čára vstupu se v grafu **nekreslí**. Průměrný vstup je jen číslo
-   * odvozené z několika nákupů; uživatele zajímá, kde se doopravdy
-   * nakupovalo, a to ukazují trojúhelníky plnění (`znackyPlneni()`).
-   * Průměr zůstává v proužku v kartě a v panelu pod hlavičkou grafu.
+   * Průměrný vstup: tenká **plná** fialová čára, stejná barva jako v proužku
+   * karty. Nezačíná u levého okraje, ale **u svíčky, kde se nakoupilo
+   * poprvé** (`chartOtevreno`) — před otevřením pozice žádný vstup nebyl.
+   * Dokud se čas otevření nedopočítá z plnění, vede od levého okraje.
+   *
+   * (Ve v0.16.1 čára zmizela úplně a nahradily ji trojúhelníky plnění; ty
+   * zůstaly, ale samotné trojúhelníky neřeknou, kde je průměr, se kterým
+   * se počítá zisk.)
    */
+  if (position.entry) {
+    lines.push({ price: position.entry, color: BARVA_CARY.vstup,
+                 title: t('line.entry'), plna: true, odCasu: chartOtevreno });
+  }
   if (position.liq) {
     lines.push({ price: position.liq, color: BARVA_CARY.likvidace,
                  title: t('line.liquidation'), dash: CARKOVANI.likvidace });
@@ -2248,7 +2299,9 @@ function applyChartLines(force = false) {
   if (!chart || !chartSymbol) return;
 
   const lines = buildChartLines(chartPosition, chartOrders);
-  const key = lines.map((l) => `${l.title}@${l.price}`).join('|');
+  // Čas začátku je v klíči taky: čára vstupu se po dopočtu otevření musí
+  // překreslit, i když se cena nezměnila.
+  const key = lines.map((l) => `${l.title}@${l.price}@${l.odCasu || ''}`).join('|');
   if (!force && key === chartLineKey) return;
 
   chartLineKey = key;

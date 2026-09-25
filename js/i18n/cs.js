@@ -41,6 +41,8 @@ export const cs = {
   'history.opened': 'Otevřeno',
   'history.closed': 'Zavřeno',
   'history.duration': 'Drženo',
+  'history.closedAt': 'zavřeno {time}',
+  'history.loadingTrade': 'Načítám obchod…',
   'history.qty': 'Velikost',
   'history.entryAvg': 'Průměrný vstup',
   'history.exitAvg': 'Průměrný výstup',

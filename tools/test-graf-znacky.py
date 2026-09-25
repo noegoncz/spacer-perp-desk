@@ -193,8 +193,34 @@ cary = json.loads(ev("""JSON.stringify(
   window.__graf.getOverlays().filter((o) => o.name === 'positionLine')
     .map((o) => ({ title: o.extendData.title, dash: o.extendData.dash })))""") or '[]')
 print('čáry pozice:', cary)
-if any('Entry' in (c['title'] or '') for c in cary):
-    chyby.append('čára vstupu se pořád kreslí, měla zmizet')
+
+# ---- čára vstupu: tenká plná fialová od první nákupní svíčky ----
+vstup = json.loads(ev("""(() => {
+  const g = window.__graf;
+  const o = g.getOverlays().find((x) => x.name === 'positionLine' && x.extendData.title === 'Entry');
+  if (!o) return 'null';
+  const b = g.convertToPixel({ timestamp: o.extendData.odCasu, value: o.points[0].value },
+                             { paneId: 'candle_pane' });
+  const bod = Array.isArray(b) ? b[0] : b;
+  return JSON.stringify({ plna: !!o.extendData.plna, barva: o.extendData.color,
+    odCasu: o.extendData.odCasu, cena: o.points[0].value, x: Math.round(bod.x),
+    hodinZpet: Math.round((Date.now() - o.extendData.odCasu) / 3600e3) });
+})()""") or 'null')
+print('čára vstupu:', vstup)
+if not vstup:
+    chyby.append('čára vstupu chybí')
+else:
+    if not vstup['plna']:
+        chyby.append('čára vstupu má být plná, ne čárkovaná')
+    if vstup['barva'] != '#a78bfa':
+        chyby.append(f"čára vstupu nemá fialovou: {vstup['barva']}")
+    if vstup['cena'] != 0.30135:
+        chyby.append(f"čára vstupu neleží na průměrném vstupu: {vstup['cena']}")
+    # Pozici otevřel nákup před 40 hodinami (viz mock) — odtud má čára vést.
+    if vstup['hodinZpet'] != 40:
+        chyby.append(f"čára vstupu nezačíná u prvního nákupu (před {vstup['hodinZpet']} h)")
+    if vstup['x'] <= 5:
+        chyby.append('čára vstupu vede od levého okraje, ne od první nákupní svíčky')
 for c in cary:
     if c['title'].startswith('SL') or c['title'].startswith('TP'):
         if c['dash'] != [14, 6]:
@@ -271,7 +297,7 @@ ev("""window.__barevne = (zelena) => {
     for (let i = 0; i < d.length; i += 4) {
       if (d[i+3] < 40) continue;
       const sedi = zelena
-        ? (d[i+1] > 140 && d[i] < 90 && d[i+2] < 150)
+        ? (d[i+1] > 140 && d[i] < 90 && d[i+2] < 190)
         : (d[i] > 180 && d[i+1] < 90 && d[i+2] < 90);
       if (sedi && (i / 4) % sirka > sirka * 0.6) vpravo += 1;
     }
@@ -290,6 +316,39 @@ print('barevné pixely vpravo — s linkou:', sLinkou,
 if pribylo < 150:
     chyby.append(f'linka zisku na plátně skoro nic nepřidala ({pribylo} px)')
 ev("window.__graf.createIndicator({ name: 'PNLLINE', paneId: 'candle_pane' })")
+time.sleep(0.6)
+
+# ---- linka aktuální ceny je plná, ne čárkovaná ----
+# V řádku linky, od poslední svíčky k okraji (bez místa pro text), musí být
+# barva skoro všude. Čárkování 4-4 by dalo zhruba polovinu.
+plnost = json.loads(ev("""(() => {
+  const g = window.__graf;
+  const data = g.getDataList();
+  const b = g.convertToPixel({ dataIndex: data.length - 1, value: data[data.length - 1].close },
+                             { paneId: 'candle_pane' });
+  const bod = Array.isArray(b) ? b[0] : b;
+  const vsechna = [...document.querySelectorAll('canvas')];
+  const sirka = Math.max(...vsechna.map((c) => c.width));
+  const platna = vsechna.filter((c) => c.width === sirka && c.height > 100);
+  const y = Math.round(bod.y) ;
+  const x0 = Math.round(bod.x) + 6, x1 = sirka - 8;
+  let barevnych = 0;
+  for (let x = x0; x < x1; x += 1) {
+    let zasah = false;
+    for (const c of platna) {
+      for (const dy of [-1, 0, 1]) {
+        const d = c.getContext('2d').getImageData(x, y + dy, 1, 1).data;
+        if (d[3] > 60 && ((d[0] > 180 && d[1] < 110) || (d[1] > 180 && d[0] < 120))) zasah = true;
+      }
+    }
+    if (zasah) barevnych += 1;
+  }
+  return JSON.stringify({ delka: x1 - x0, barevnych });
+})()""") or '{}')
+podil = plnost.get('barevnych', 0) / max(1, plnost.get('delka', 1))
+print(f"linka aktuální ceny: {plnost.get('barevnych')} z {plnost.get('delka')} px barevných ({podil:.0%})")
+if podil < 0.85:
+    chyby.append(f'linka aktuální ceny není plná ({podil:.0%} barevných pixelů)')
 
 konzole = ev('(window.__chyby||[]).join(" | ")') or ''
 print('chyby v konzoli:', konzole or '(žádné)')

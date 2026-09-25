@@ -733,8 +733,18 @@ export function renderHistory(obchody, hide, onSelect) {
 
       const kdy = document.createElement('div');
       kdy.className = 'trade-when';
-      kdy.textContent = `${datumCas(o.openedAt)} → ${datumCas(o.closedAt)}`
-        + `  ·  ${t('history.duration')} ${trvani(o.closedAt - o.openedAt)}`;
+      /*
+       * ⚠ `closed-pnl` nedává čas otevření — jeho `createdTime` je vznik
+       * záznamu, tedy skoro totéž co zavření. Rozsah „od → do" s délkou
+       * obchodu by pak ukazoval pár milisekund. Proto jen čas zavření; kdy
+       * obchod začal, se dopočítá z plnění až při jeho otevření v grafu.
+       * Kdyby Bybit čas otevření někdy začal posílat, ukáže se celý rozsah.
+       */
+      const smysluplny = o.closedAt - o.openedAt > 60000;
+      kdy.textContent = smysluplny
+        ? `${datumCas(o.openedAt)} → ${datumCas(o.closedAt)}`
+          + `  ·  ${t('history.duration')} ${trvani(o.closedAt - o.openedAt)}`
+        : t('history.closedAt', { time: datumCas(o.closedAt) });
 
       karta.append(hlava, mrizka, kdy);
       karta.addEventListener('click', () => onSelect(o));

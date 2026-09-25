@@ -45,6 +45,8 @@ export const en = {
   'history.opened': 'Opened',
   'history.closed': 'Closed',
   'history.duration': 'Held',
+  'history.closedAt': 'closed {time}',
+  'history.loadingTrade': 'Loading the trade…',
   'history.qty': 'Size',
   'history.entryAvg': 'Avg entry',
   'history.exitAvg': 'Avg exit',

@@ -280,10 +280,15 @@ U SL, TP a likvidace nese barva informaci, tam se vyplatí.
 
 | čára | čárkování | barva |
 |---|---|---|
+| vstup (průměrný) | **plná**, od první nákupní svíčky | fialová `#a78bfa` |
 | likvidace | `12-5` dlouhá | červená |
 | SL / TP, celé i částečné | `14-6` dlouhá | oranžová / zelená |
 | limitky | `1-4` tečkovaná | šedá |
-| aktuální cena (PNLLINE) | `4-4` | zelená / červená podle zisku |
+| aktuální cena (PNLLINE) | **plná**, od poslední svíčky | zelená `#3ee6a4` / červená podle zisku |
+
+Plné jsou jen dvě čáry, které ukazují **fakt** (kde jsem nakoupil, kde je
+cena teď). Čárkované jsou úrovně, které teprve čekají (SL, TP, likvidace,
+příkazy).
 
 **Kresby uživatele** mají naopak výchozí barvu **bílou** (první v paletě),
 aby nepřebíjely svíčky. Ostatní barvy zůstávají na výběr.
@@ -304,14 +309,24 @@ nemají** (`bezCenovky`) — u přikupování jich bývá víc a osa by se zapln
 Čára mimo viditelnou část grafu štítek nemá, není kam ho dát.
 Test: `tools/test-graf-osa-a-zpet.py`, na starém kódu padá.
 
-#### Vstup: trojúhelníky plnění místo čáry (v0.16.1)
+#### Vstup: čára průměru a trojúhelníky plnění
 
-**Čára vstupu se v grafu nekreslí.** Průměrná cena je v panelu nad grafem
-a v proužku karty; v grafu ji nahradily **malé trojúhelníky v místech, kde
-se doopravdy obchodovalo** — zelené nahoru u nákupů, červené dolů u prodejů.
-Jedna čára průměru neřekne, že se přikupovalo třikrát; trojúhelníky ano.
-Data jdou z `/v5/execution/list` za posledních sedm dní (od otevření pozice,
-pokud je mladší).
+**Čára průměrného vstupu** (v0.17.0) je tenká **plná fialová**, stejná barva
+jako v proužku karty, s popiskem `Entry` a cenovkou na ose. **Nezačíná
+u levého okraje, ale u svíčky, kde se poprvé nakoupilo** — před otevřením
+pozice žádný vstup nebyl. Čas otevření dopočítá `client.otevreniPozice()`
+z plnění (viz checkpoint 7); dokud nedorazí, vede čára od levého okraje
+(`nactiOtevreni()` v app.js ji pak překreslí). Bod overlaye má kvůli tomu
+i čas (`odCasu`), ostatní čáry pozice jen cenu.
+
+(Ve v0.16.1 čára zmizela a nahradily ji jen trojúhelníky. Uživatel ji chtěl
+zpátky: trojúhelníky ukážou, kde se nakupovalo, ale ne průměr, se kterým se
+počítá zisk.)
+
+Vedle ní zůstávají **malé trojúhelníky v místech, kde se doopravdy
+obchodovalo** — nahoru u nákupů, dolů u prodejů. Jedna čára průměru neřekne,
+že se přikupovalo třikrát; trojúhelníky ano. Data jdou z `/v5/execution/list`
+za posledních sedm dní (od otevření pozice, pokud je mladší).
 
 Značky pro otevřenou pozici jsou **malé a bez popisku** (`maly: true`);
 velká varianta s cenou zůstává pro prohlížení uzavřeného obchodu z historie.
@@ -327,6 +342,11 @@ byly na zkušebním snímku ze tří značek vidět dvě.
 Vestavěná linka poslední ceny je **vypnutá** (`candle.priceMark.last.line`)
 a nahrazuje ji vlastní: barevná podle toho, jestli je pozice nad průměrným
 vstupem, s textem `+26.50 USDT | +2.50 %` u pravého okraje.
+
+⚠ **Plná, ne čárkovaná, a zelená jiná než svíčky** (`BARVA_ZISKU = #3ee6a4`,
+svíčky mají `#16c784`). Linka vychází z poslední svíčky, která bývá zelená,
+a ve stejné barvě s ní splývala. Test měří plnost linky v pixelech (plná
+≥ 85 %, čárkování 4-4 dávalo 51 %).
 
 Linka **nejde přes celou šířku** — začíná u poslední svíčky a pokračuje
 doprava. Přes celý graf jen překážela svíčkám.
@@ -423,6 +443,14 @@ dat i indikátorů.
 Vrstva má v klidu `pointer-events: none`, aby šlo grafem normálně posouvat.
 Kresby se vytvářejí s `lock: true`, takže s nimi knihovna sama hýbat nedovolí
 — veškerý posun jde přes naše úchyty.
+
+**Kresby se pamatují podle páru, natrvalo, dokud je uživatel nesmaže**
+(`perpdesk.drawings.<SYMBOL>` v `localStorage`). Jsou stejné, ať se graf
+otevře z Pozic, z Trhů nebo z Historie, a přežijí zavření i otevření nové
+pozice na stejném páru. Ověřeno testem 2026-09-25 (střídání Pozice / Trhy /
+dva páry). ⚠ **Prohlížeč a APK mají každý své úložiště** — kresby
+nakreslené v Brave v APK nejsou a naopak; a odinstalování ladicího APK
+úložiště smaže.
 
 ⚠ **`restoreDrawings` musí umlčet hlášení změn.** Obnova nejdřív maže staré
 overlaye a každé smazání hlásí změnu. Bez umlčení se při otevření grafu uloží
@@ -875,6 +903,34 @@ Pro značky v grafu je klíčový `execution/list`, ne `closed-pnl` — ten dáv
 průměrný vstup a výstup, kdežto plnění mají přesné časy, takže se dají položit
 na správné svíčky. Obchod postavený z více nákupů a prodejů se tak ukáže tak,
 jak opravdu probíhal.
+
+⚠ **`closed-pnl` nedává čas otevření obchodu.** Jeho `createdTime` je vznik
+záznamu, tedy skoro totéž co zavření (v ukázce dokumentace se liší o 19 ms).
+Graf z historie se proto dřív otevíral jen kolem okamžiku zavření: karta
+ukazovala „Held 0 m", zvolil se minutový interval a **nákupy z předchozích
+dní v grafu chyběly** — byly vidět jen zavírací prodeje. Opraveno ve v0.17.0:
+
+- `client.plneniObchodu(obchod)` dopočítá plnění **jen tohoto obchodu**: od
+  zavíracího příkazu (`orderId` záznamu; když mezi plněními není, třeba
+  u likvidace, poslední plnění před zavřením) jde dozadu po sedmidenních
+  oknech, po zavření je pozice nulová, odečítá se, čím se měnila, a kde je
+  zase nula, tam obchod začal. Nic před ním ani po něm — plnění sousedních
+  obchodů na stejném páru se do grafu nepřipletou.
+- Interval se volí podle **dopočtené** délky obchodu.
+- Směr obchodu se bere z plnění, které ho otevřelo (nákup = long).
+- Karta v historii ukazuje jen **čas zavření**, dokud Bybit čas otevření
+  nedává (když rozdíl časů dává smysl, ukáže celý rozsah).
+- `getExecutions()` **stránkuje** (po 100, nejvýš 5 stránek na okno) —
+  při čilém obchodování se týden do jedné stránky nevešel.
+
+Test: `tools/test-historie-obchod.py`, na starém kódu padá. Mock
+(`/v5/position/closed-pnl`) má `createdTime` stejně jako Bybit a vedle
+prohlíženého obchodu i starší obchod a současnou pozici na stejném páru.
+
+⚠ **Číslo zisku v historii je `closedPnl` od Bybitu**, PerpyX ho nepočítá.
+Kdyby se rozcházelo s aplikací Bybitu, chyba není ve výpočtu, ale v tom,
+který záznam se ukazuje (Bybit dělá záznam na každý zavírací příkaz, takže
+pozice zavíraná po částech má záznamů víc).
 
 ⚠ **`side` v `closed-pnl` je strana zavírací objednávky, ne směr pozice** —
 dlouhá pozice se zavírá prodejem. Směr se proto odvozuje z cen a zisku:

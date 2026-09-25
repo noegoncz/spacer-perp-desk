@@ -632,22 +632,95 @@ export class BybitClient {
    * by daly jednu značku uprostřed ničeho.
    */
   async getExecutions(symbol, startTime, endTime) {
-    const result = await this.signedGet('/v5/execution/list', {
-      category: 'linear',
-      symbol,
-      startTime: String(Math.floor(startTime)),
-      endTime: String(Math.ceil(endTime)),
-      limit: '100',
-    });
-    return (result?.list ?? [])
+    /*
+     * ⚠ Stránkuje se. Bez toho se při čilém obchodování do jedné stránky
+     * (100 plnění) nevešel celý týden a dopočet otevření pozice by tiše
+     * minul plnění, která na další stránce zbyla. Pět stránek je pojistka
+     * proti nekonečné smyčce.
+     */
+    const vse = [];
+    let cursor = '';
+    for (let stranka = 0; stranka < 5; stranka += 1) {
+      const result = await this.signedGet('/v5/execution/list', {
+        category: 'linear',
+        symbol,
+        startTime: String(Math.floor(startTime)),
+        endTime: String(Math.ceil(endTime)),
+        limit: '100',
+        ...(cursor ? { cursor } : {}),
+      });
+      const radky = result?.list ?? [];
+      vse.push(...radky);
+      cursor = result?.nextPageCursor || '';
+      if (!cursor || !radky.length) break;
+    }
+    return vse
       .filter((e) => e.execType === 'Trade')
       .map((e) => ({
         buy: e.side === 'Buy',
         price: num(e.execPrice),
         qty: num(e.execQty),
         time: Number(e.execTime),
+        orderId: e.orderId,
       }))
       .sort((a, b) => a.time - b.time);
+  }
+
+  /**
+   * Plnění **jednoho** uzavřeného obchodu: od otevření pozice po zavírací
+   * příkaz, nic před ním ani po něm.
+   *
+   * ⚠ `closed-pnl` čas otevření nedává — jeho `createdTime` je vznik záznamu,
+   * tedy okamžik zavření. Graf z historie se proto dřív otevíral jen kolem
+   * zavření a nákupy z předchozích dní v něm chyběly. Otevření se dopočítá
+   * stejně jako u živé pozice (`otevreniPozice`), jen od druhého konce: po
+   * zavíracím příkazu je pozice nulová, jde se dozadu a odečítá se, čím se
+   * měnila, a kde je zase nula, tam obchod začal.
+   *
+   * Vrací `{ plneni, otevreno }`; `otevreno` je `null`, když se začátek do
+   * roku nenašel (pak `plneni` obsahují jen to, co se dohledalo).
+   */
+  async plneniObchodu(obchod) {
+    const OKNO = 7 * 86400000;
+    // Zavírací příkaz se mohl plnit ještě chvíli po vzniku záznamu.
+    let konec = obchod.closedAt + 60000;
+    let zbyva = 0;
+    let naselKonec = false;
+    const obchodu = [];
+    let otevreno = null;
+
+    // Zavírací příkaz se hledá podle jeho id. Když mezi plněními není
+    // (třeba likvidace, ta chodí jiným typem plnění), vezme se poslední
+    // plnění před zavřením — jinak by se prošlo zbytečně celých 52 oken.
+    let podleId = Boolean(obchod.id);
+
+    for (let okno = 0; okno < 52 && otevreno === null; okno += 1) {
+      const od = konec - OKNO;
+      const plneni = await this.getExecutions(obchod.symbol, od, konec);
+      if (okno === 0 && podleId && !plneni.some((f) => f.orderId === obchod.id)) {
+        podleId = false;
+      }
+      for (let i = plneni.length - 1; i >= 0; i -= 1) {
+        const f = plneni[i];
+        if (!naselKonec) {
+          // Všechno po zavíracím příkazu patří dalším obchodům.
+          const jeZaviraci = podleId ? f.orderId === obchod.id : f.time <= obchod.closedAt;
+          if (!jeZaviraci) continue;
+          naselKonec = true;
+        }
+        obchodu.push(f);
+        zbyva -= (f.buy ? 1 : -1) * f.qty;
+        // Epsilon podle velikosti obchodu, ne pevný — u levných coinů jde
+        // o statisíce kusů, u BTC o setiny.
+        if (Math.abs(zbyva) <= Math.max(1e-9, Math.abs(obchod.qty || 0) * 1e-6)) {
+          otevreno = f.time;
+          break;
+        }
+      }
+      konec = od;
+    }
+
+    return { plneni: obchodu.reverse(), otevreno };
   }
 
   /** Zavírací ceny za posledních 24 hodin — podklad pro mini-graf trendu. */

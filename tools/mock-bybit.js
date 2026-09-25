@@ -18,6 +18,9 @@ window.WebSocket.OPEN = 1;
 // otevření brát nesmí. Současnou pozici otevřelo nejstarší plnění níž
 // (40 h zpátky), a jen odtud se smí sčítat funding.
 const OTEVRENO = Date.now() - 49 * 86400e3;
+// Kotva pro starší obchody: zaokrouhlená na hodinu, aby časy plnění
+// vycházely stejně při každém dotazu (Date.now() se mezi dotazy hýbe).
+const ZACATEK = Math.floor(Date.now() / 3600e3) * 3600e3;
 const pozice = { symbol:'JUPUSDT', side:'Buy', size:'2547', avgPrice:'0.30135',
   markPrice:'0.30580', unrealisedPnl:'11.34', liqPrice:'0.07233', leverage:'10',
   positionValue:'778.87', stopLoss:'0.295', takeProfit:'0.365', positionIdx:0,
@@ -82,12 +85,29 @@ window.fetch = function (vstup) {
     if (window.__bezPlneni) return ok({retCode:10005, retMsg:'Permission denied'});
     // 1500 + 1300 - 253 = 2547, tedy přesne velikost pozice. Z toho se
     // pozpatku dopocita, ze pozici otevrel nakup pred 40 hodinami.
+    const d = 86400e3;
     const vse = [
-      {symbol:'JUPUSDT', side:'Buy', execType:'Trade', execPrice:'0.2990',
+      // Starší uzavřený obchod A — do prohlídky obchodu B se nesmí připlést.
+      {symbol:'JUPUSDT', side:'Buy', execType:'Trade', execPrice:'0.2700', orderId:'a1',
+       execQty:'1000', execTime:String(ZACATEK - 10*d)},
+      {symbol:'JUPUSDT', side:'Sell', execType:'Trade', execPrice:'0.2600', orderId:'a2',
+       execQty:'1000', execTime:String(ZACATEK - 9*d)},
+      // Uzavřený obchod B: dva nákupy a zavírací prodej ve dvou plněních.
+      {symbol:'JUPUSDT', side:'Buy', execType:'Trade', execPrice:'0.2800', orderId:'b1',
+       execQty:'800', execTime:String(ZACATEK - 5*d)},
+      {symbol:'JUPUSDT', side:'Buy', execType:'Trade', execPrice:'0.2850', orderId:'b2',
+       execQty:'200', execTime:String(ZACATEK - 4*d)},
+      {symbol:'JUPUSDT', side:'Sell', execType:'Trade', execPrice:'0.2950', orderId:'b3',
+       execQty:'600', execTime:String(ZACATEK - 3*d)},
+      {symbol:'JUPUSDT', side:'Sell', execType:'Trade', execPrice:'0.2951', orderId:'b3',
+       execQty:'400', execTime:String(ZACATEK - 3*d + 800)},
+      // Současná pozice: 1500 + 1300 - 253 = 2547, tedy přesně velikost
+      // pozice. Z toho se pozpátku dopočítá, že ji otevřel nákup před 40 h.
+      {symbol:'JUPUSDT', side:'Buy', execType:'Trade', execPrice:'0.2990', orderId:'c1',
        execQty:'1500', execTime:String(Date.now() - 40*3600e3)},
-      {symbol:'JUPUSDT', side:'Buy', execType:'Trade', execPrice:'0.3050',
+      {symbol:'JUPUSDT', side:'Buy', execType:'Trade', execPrice:'0.3050', orderId:'c2',
        execQty:'1300', execTime:String(Date.now() - 20*3600e3)},
-      {symbol:'JUPUSDT', side:'Sell', execType:'Trade', execPrice:'0.3100',
+      {symbol:'JUPUSDT', side:'Sell', execType:'Trade', execPrice:'0.3100', orderId:'c3',
        execQty:'253', execTime:String(Date.now() - 8*3600e3)},
     ];
     const q = new URL(u, location.origin).searchParams;
@@ -95,6 +115,21 @@ window.fetch = function (vstup) {
     const doKdy = Number(q.get('endTime')) || Date.now();
     return ok({retCode:0, result:{list: vse.filter((e) =>
       Number(e.execTime) >= od && Number(e.execTime) <= doKdy)}});
+  }
+  // Uzavrene obchody. ⚠ createdTime je jako u Bybitu vznik ZAZNAMU, tedy
+  // skoro totez co zavreni — cas otevreni tu neni a dopocita se z plneni.
+  if (u.includes('/v5/position/closed-pnl')) {
+    const d = 86400e3;
+    const zaznam = (id, zavreno, vstup, vystup, pnl) => ({
+      symbol:'JUPUSDT', orderId:id, side:'Sell', qty:'1000', closedSize:'1000',
+      avgEntryPrice:String(vstup), avgExitPrice:String(vystup), closedPnl:String(pnl),
+      cumEntryValue:String(vstup * 1000), leverage:'10',
+      createdTime:String(zavreno), updatedTime:String(zavreno + 19),
+    });
+    return ok({retCode:0, result:{list:[
+      zaznam('b3', ZACATEK - 3*d + 800, 0.281, 0.29504, 14.04),
+      zaznam('a2', ZACATEK - 9*d, 0.27, 0.26, -10),
+    ]}});
   }
   // Transakcni denik — z nej se scita zaplaceny funding.
   //
