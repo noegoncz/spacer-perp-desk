@@ -1343,6 +1343,16 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
   transform: translate(-50%, 100%);
 }
 
+/* Do příchodu svíček nového páru je plátno schované, jinak by na chvíli
+   ukazovalo graf předchozího páru (instance grafu se recykluje).
+   `visibility`, ne `display` — knihovna potřebuje skutečné rozměry. */
+.ceka-na-data { visibility: hidden; }
+
+/* Vybrané měření: v paletě jen koš. */
+.style-panel.jen-smazat > .style-group:not(:last-child),
+.style-panel.jen-smazat > .style-sep,
+.style-panel.jen-smazat #styleAlarmBtn { display: none; }
+
 /* Vzdálenost od vstupu vlevo od cenovky, uvnitř plochy grafu. Cenovka sama
    sedí na cenové ose a s procenty navíc by se tam nevešla. */
 .draw-badge-pct {

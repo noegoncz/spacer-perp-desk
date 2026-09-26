@@ -478,7 +478,13 @@ s šipkami a štítek s rozdílem ceny i v procentech, počtem svíček a časem
 modře nahoru, červeně dolů, jako v TradingView. Čísla se ukazují **už během
 tažení druhého bodu** (`onPreview` v `draw.js`), kvůli tomu se měří.
 ⚠ Měření **není kresba**: je ve vlastní skupině `mereni`, neukládá se,
-nové ho nahradí a zmizí košem nebo s dalším otevřením grafu. Počet svíček
+nové ho nahradí a zmizí s dalším otevřením grafu.
+
+**Klepnutím na měření se vybere** jako kresba (v0.17.3): úchyty na obou
+bodech (velikost jde upravit) a paleta **jen s košem** (`jen-smazat`) —
+barvy, tloušťka ani alarm u měření smysl nemají. Klepnutí platí v celém
+obdélníku s okrajem na prst a ve štítku nad ním / pod ním (`naMereni()`).
+Dřív na měření nešlo klepnout a nešlo ho smazat jinak než košem všech kreseb. Počet svíček
 se počítá z šířky v pixelech a šířky svíčky (body nesou jen čas a cenu).
 
 Test: `tools/test-mereni-a-cenovky.py` (skutečné dotyky), na starém kódu
@@ -610,6 +616,18 @@ konec dat) běží **po dodání dat i po změně intervalu**.
 
 Měřením ověřeno: po srovnání je vidět ~48 svíček, poslední je v pravé části
 plátna a svíčky vyplňují okolo 88 % výšky.
+
+⚠ **Do příchodu svíček nového páru je plátno schované** (v0.17.3). Kvůli
+recyklaci instance ukazoval graf po klepnutí na jiný pár **svíčky
+předchozího páru**, dokud nedorazila data ze sítě — na telefonu klidně půl
+vteřiny, a pak to přebliklo. `setSymbol()` při změně páru přidá třídu
+`ceka-na-data` (`visibility: hidden`, ne `display: none` — knihovna
+potřebuje skutečné rozměry) a loader ji po doručení dat a srovnání pohledu
+sundá. ⚠ Odkrývá **jen loader**, ne každé srovnání pohledu: srovnání běží
+i při otevření grafu se stejným obdobím, ještě nad starými svíčkami, a první
+verze opravy se proto odkryla předčasně (test to zachytil). Pojistka odkryje
+graf po 4 s i bez dat. Test: `tools/test-mereni-mazani-a-prepnuti-paru.py`
+(mock zdrží svíčky druhého páru o vteřinu).
 
 Dřív tu byl svislý posuvník vlevo s vlastním `createRange`. Zrušen — uživateli
 překážel a jeho přínos nahradilo automatické srovnání. Osu si knihovna zase

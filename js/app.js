@@ -2140,6 +2140,8 @@ function postavPaletu() {
 function zobrazPaletu(styl) {
   el('stylePanel').hidden = !styl;
   if (!styl) return;
+  // U měření jen koš: barva, tloušťka ani alarm tam smysl nemají.
+  el('stylePanel').classList.toggle('jen-smazat', Boolean(styl.mereni));
 
   const oznac = (kontejner, atribut, hodnota) => {
     el(kontejner).querySelectorAll('.style-btn').forEach((btn) => {

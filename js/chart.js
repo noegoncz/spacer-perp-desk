@@ -1236,8 +1236,35 @@ export function createPriceChart(container, layer, handlers = {}) {
    * a pohled skončil o pár svíček před koncem dat — poslední svíčka tedy
    * nebyla vidět. Dva snímky proto, že první jen zpracuje probíhající změny.
    */
-  function srovnejAzPoVykresleni() {
-    requestAnimationFrame(() => requestAnimationFrame(srovnejPohled));
+  function srovnejAzPoVykresleni(odkrytPak = false) {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      srovnejPohled();
+      // ⚠ Odkrýt jen po **doručení dat** (volá loader), ne při každém
+      // srovnání: to běží i při otevření grafu se stejným obdobím, ještě
+      // se starými svíčkami — plátno by se odkrylo dřív, než dorazí nový
+      // pár, a starý graf by blikl stejně jako dřív (test to zachytil).
+      // Odkrývá se až srovnaný pohled, jinak by blikl posunutý.
+      if (odkrytPak) odkryj();
+    }));
+  }
+
+  let aktualniTicker = null;
+  let pojistkaOdkryti = null;
+
+  /** Schová plátno do příchodu dat nového páru (viz `setSymbol`). */
+  function schovejDoDat() {
+    container.classList.add('ceka-na-data');
+    layer.classList.add('ceka-na-data');
+    // Pojistka: kdyby data z jakéhokoli důvodu nedorazila, graf se nesmí
+    // schovat natrvalo — prázdný graf je lepší než žádný.
+    clearTimeout(pojistkaOdkryti);
+    pojistkaOdkryti = setTimeout(odkryj, 4000);
+  }
+
+  function odkryj() {
+    clearTimeout(pojistkaOdkryti);
+    container.classList.remove('ceka-na-data');
+    layer.classList.remove('ceka-na-data');
   }
 
   chart.setLocale('en-US'); // knihovna češtinu nemá; ovlivňuje popisky v tooltipu
@@ -1458,6 +1485,23 @@ export function createPriceChart(container, layer, handlers = {}) {
     },
   });
 
+  /**
+   * Je klepnutí na měření? Počítá se celý obdélník s okrajem na prst
+   * a štítek nad ním (nahoru) nebo pod ním (dolů) — tam se klepe nejčastěji.
+   */
+  function naMereni(mereni, mx, my) {
+    const body = (mereni.points || []).map(toPixel);
+    if (body.length < 2 || !body.every((b) => Number.isFinite(b.x) && Number.isFinite(b.y))) return false;
+    const OKRAJ = 14;
+    const STITEK = 48;
+    const nahoru = mereni.points[1].value >= mereni.points[0].value;
+    const x1 = Math.min(body[0].x, body[1].x) - OKRAJ;
+    const x2 = Math.max(body[0].x, body[1].x) + OKRAJ;
+    const y1 = Math.min(body[0].y, body[1].y) - OKRAJ - (nahoru ? STITEK : 0);
+    const y2 = Math.max(body[0].y, body[1].y) + OKRAJ + (nahoru ? 0 : STITEK);
+    return mx >= x1 && mx <= x2 && my >= y1 && my <= y2;
+  }
+
   /** Jak daleko od čáry ještě klepnutí platí — prst je tlustší než čára. */
   const DOSAH_ALARMU = 16;
 
@@ -1523,6 +1567,19 @@ export function createPriceChart(container, layer, handlers = {}) {
         upravovanaKresba = kresby[index];
         kresleni.beginEdit(upravovanaKresba.points);
         handlers.onSelectionChanged?.(vybranyStyl());
+        return;
+      }
+
+      /*
+       * Klepnutí na měření ho vybere jako kresbu: úchyty na obou bodech
+       * (velikost jde upravit) a paleta jen s košem — barvy, tloušťka ani
+       * alarm u měření smysl nemají. Dřív nešlo měření vůbec smazat.
+       */
+      const [mereni] = chart.getOverlays({ groupId: SKUPINA_MERENI });
+      if (mereni && naMereni(mereni, mx, my)) {
+        upravovanaKresba = mereni;
+        kresleni.beginEdit(mereni.points);
+        handlers.onSelectionChanged?.({ ...vybranyStyl(), mereni: true });
         return;
       }
 
@@ -1725,7 +1782,7 @@ export function createPriceChart(container, layer, handlers = {}) {
             vykresliAlarmy(posledniAlarmy);
           }
           umistiVrstvu();
-          srovnejAzPoVykresleni();
+          srovnejAzPoVykresleni(true);
         },
         subscribeBar: ({ callback }) => {
           zivyCallback = callback;
@@ -1737,6 +1794,17 @@ export function createPriceChart(container, layer, handlers = {}) {
     },
 
     setSymbol(ticker, pricePrecision) {
+      /*
+       * ⚠ Instance grafu se mezi otevřeními recykluje, takže do příchodu
+       * svíček nového páru ukazovala **graf předchozího páru** — na telefonu
+       * klidně půl vteřiny, a pak to přeblikne. Při změně páru se proto
+       * plátno schová (`visibility`, ne `display` — rozměry musí zůstat,
+       * jinak knihovna spočítá nulovou šířku) a odkryje se až s novými daty.
+       */
+      if (ticker !== aktualniTicker) {
+        aktualniTicker = ticker;
+        schovejDoDat();
+      }
       chart.setSymbol({ ticker, pricePrecision, volumePrecision: 0 });
     },
 
