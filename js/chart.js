@@ -89,6 +89,9 @@ export const NASTROJE = [
   { id: 'parallelStraightLine', body: 3 },
   { id: 'fibonacciLine', body: 2 },
   { id: 'simpleAnnotation', body: 1 },
+  // Měření vzdálenosti dvou bodů — cena i čas. Není to kresba: neukládá se
+  // a nové měření nahradí předchozí.
+  { id: 'mereni', body: 2 },
 ];
 
 /** Název nástroje v jazyce uživatele. */
@@ -130,6 +133,7 @@ const SKUPINA_POZICE = 'pozice';
 const SKUPINA_KRESBY = 'kresby';
 const SKUPINA_ZNACKY = 'znacky';
 const SKUPINA_ALARMY = 'alarmy';
+const SKUPINA_MERENI = 'mereni';
 
 /**
  * Alarm má v grafu **vlastní vzhled**, ať se neplete s kresbami ani s čarami
@@ -218,33 +222,7 @@ function registrovatCaruPozice() {
       const d = overlay.extendData || {};
       const cena = overlay.points?.[0]?.value;
       if (d.bezCenovky || !Number.isFinite(cena)) return [];
-      const presnost = chart.getSymbol()?.pricePrecision ?? 2;
-      return [{
-        type: 'text',
-        attrs: {
-          x: 0,
-          y: coordinates[0].y,
-          text: cena.toLocaleString('en-US', {
-            minimumFractionDigits: presnost,
-            maximumFractionDigits: presnost,
-          }),
-          align: 'left',
-          baseline: 'middle',
-        },
-        styles: {
-          // Na světlém podkladu (oranžový SL) tmavé písmo, jinak bílé.
-          color: svetlaBarva(d.color) ? BARVY.pozadi : '#ffffff',
-          size: 11,
-          family: 'sans-serif',
-          backgroundColor: d.color,
-          borderRadius: 2,
-          borderSize: 0,
-          paddingLeft: 3,
-          paddingRight: 3,
-          paddingTop: 2,
-          paddingBottom: 2,
-        },
-      }];
+      return [cenovkaNaOse(chart, cena, coordinates[0].y, d.color)];
     },
   });
 }
@@ -727,7 +705,9 @@ function registrovatLinkuPnl() {
       // s poslední rostoucí svíčkou, ze které vychází.
       const barva = zisk >= 0 ? BARVA_ZISKU : BARVY.pokles;
 
-      const zacatek = Math.max(0, Math.min(bounding.width - 1, v.x));
+      // Přes celou šířku grafu (od v0.17.1). Od poslední svíčky vedla jen
+      // kraťoučká čárka vpravo a úroveň šlo přes graf sledovat špatně.
+      const zacatek = 0;
       const y = Math.round(v.y) + 0.5; // půlpixel: tenká čára pak není rozmazaná
 
       ctx.save();
@@ -762,6 +742,167 @@ function registrovatLinkuPnl() {
       for (let i = 0; i < 3; i += 1) ctx.fillText(popis, bounding.width - 6, y - 3);
       ctx.restore();
       return true;
+    },
+  });
+}
+
+/**
+ * Vodorovná čára a cenová čára (polopřímka) uživatele s **cenou na ose**,
+ * trvale, stejně jako čáry pozice. Vestavěné tvary knihovny ukazují cenu
+ * na ose jen u právě vybrané kresby, a to se na telefonu nestává — kresba
+ * se vybírá našimi úchyty, ne klepnutím knihovny. Při kreslení cenu na ose
+ * ukazuje kříž, jenže po položení bodu zmizela.
+ *
+ * Registrují se pod **stejnými názvy** jako vestavěné, takže uložené kresby
+ * se načtou beze změny. Cenovka u začátku cenové čáry vypadla — cena je na
+ * ose a dvakrát ji psát nemá smysl.
+ */
+function registrovatVodorovneKresby() {
+  const naOse = ({ chart, overlay, coordinates }) => {
+    const cena = overlay.points?.[0]?.value;
+    if (!Number.isFinite(cena) || !coordinates?.[0]) return [];
+    const d = overlay.extendData || {};
+    return [cenovkaNaOse(chart, cena, coordinates[0].y, d.color || BARVY_KRESEB[0], d.opacity ?? 1)];
+  };
+  const spolecne = {
+    totalStep: 2,
+    needDefaultPointFigure: true,
+    needDefaultXAxisFigure: true,
+    // Vestavěnou cenovku (jen u vybrané kresby) vypnout, jinak by byly dvě.
+    needDefaultYAxisFigure: false,
+    createYAxisFigures: naOse,
+  };
+  K().registerOverlay({
+    ...spolecne,
+    name: 'horizontalStraightLine',
+    createPointFigures: ({ coordinates, bounding }) => [{
+      type: 'line',
+      attrs: { coordinates: [{ x: 0, y: coordinates[0].y }, { x: bounding.width, y: coordinates[0].y }] },
+    }],
+  });
+  K().registerOverlay({
+    ...spolecne,
+    name: 'priceLine',
+    createPointFigures: ({ coordinates, bounding }) => [{
+      type: 'line',
+      attrs: { coordinates: [coordinates[0], { x: bounding.width, y: coordinates[0].y }] },
+    }],
+  });
+}
+
+/** „2 d 3 h", „5 h 12 m", „40 m" — délka měřeného úseku. */
+function trvaniKratce(ms) {
+  const minuty = Math.max(0, Math.round(ms / 60000));
+  const dny = Math.floor(minuty / 1440);
+  const hodiny = Math.floor((minuty % 1440) / 60);
+  if (dny) return hodiny ? `${dny} d ${hodiny} h` : `${dny} d`;
+  if (hodiny) return `${hodiny} h ${minuty % 60} m`;
+  return `${minuty} m`;
+}
+
+/**
+ * Měření jako v TradingView: obdélník mezi dvěma body, šipky svisle
+ * i vodorovně a štítek s rozdílem ceny (i v procentech), počtem svíček
+ * a časem. Modré nahoru, červené dolů.
+ *
+ * Svíčky se počítají z šířky v pixelech a šířky svíčky — body mají jen čas
+ * a cenu, ne pořadí svíčky.
+ */
+function registrovatMereni() {
+  K().registerOverlay({
+    name: 'mereni',
+    totalStep: 3,
+    needDefaultPointFigure: false,
+    needDefaultXAxisFigure: false,
+    needDefaultYAxisFigure: false,
+    createPointFigures: ({ chart, overlay, coordinates }) => {
+      if (coordinates.length < 2) return [];
+      const [a, b] = coordinates;
+      const [pa, pb] = overlay.points;
+      if (![a.x, a.y, b.x, b.y].every(Number.isFinite)) return [];
+      if (!Number.isFinite(pa?.value) || !Number.isFinite(pb?.value)) return [];
+
+      const nahoru = pb.value >= pa.value;
+      const barva = nahoru ? BARVY.kresba : BARVY.pokles;
+      const rozdil = pb.value - pa.value;
+      const procenta = pa.value ? (rozdil / pa.value) * 100 : 0;
+      const znamenko = rozdil >= 0 ? '+' : '−';
+
+      const mezera = chart.getBarSpace?.();
+      const sirkaSvicky = typeof mezera === 'number' ? mezera : mezera?.bar;
+      const svicek = sirkaSvicky ? Math.round(Math.abs(b.x - a.x) / sirkaSvicky) : 0;
+      const doba = Math.abs((pb.timestamp || 0) - (pa.timestamp || 0));
+
+      const x1 = Math.min(a.x, b.x);
+      const x2 = Math.max(a.x, b.x);
+      const y1 = Math.min(a.y, b.y);
+      const y2 = Math.max(a.y, b.y);
+      const sx = (x1 + x2) / 2;
+      const sy = (y1 + y2) / 2;
+      // Hrot šipky ukazuje směr: ke druhému bodu.
+      const hrot = (x, y, dx, dy) => ({
+        type: 'polygon',
+        attrs: {
+          coordinates: [
+            { x, y },
+            { x: x - dx * 6 - dy * 4, y: y - dy * 6 - dx * 4 },
+            { x: x - dx * 6 + dy * 4, y: y - dy * 6 + dx * 4 },
+          ],
+        },
+        styles: { style: 'fill', color: barva },
+      });
+      const smerY = b.y >= a.y ? 1 : -1;
+      const smerX = b.x >= a.x ? 1 : -1;
+
+      const radek1 = `${znamenko}${cenaSPresnosti(chart, Math.abs(rozdil))}`
+        + ` (${znamenko}${Math.abs(procenta).toFixed(2)} %)`;
+      const radek2 = `${t('measure.bars', { n: svicek })} · ${trvaniKratce(doba)}`;
+      // Štítek na straně, kam se měřilo — nahoru nad obdélník, dolů pod něj.
+      const VYSKA_RADKU = 20;
+      const horniRadek = nahoru ? y1 - 6 - 2 * VYSKA_RADKU : y2 + 6;
+      const styl = {
+        color: '#ffffff',
+        size: 11,
+        family: 'sans-serif',
+        backgroundColor: barva,
+        borderRadius: 3,
+        borderSize: 0,
+        paddingLeft: 5,
+        paddingRight: 5,
+        paddingTop: 3,
+        paddingBottom: 3,
+      };
+
+      return [
+        {
+          type: 'polygon',
+          attrs: { coordinates: [{ x: x1, y: y1 }, { x: x2, y: y1 }, { x: x2, y: y2 }, { x: x1, y: y2 }] },
+          styles: { style: 'fill', color: rgba(barva, 0.16) },
+          ignoreEvent: true,
+        },
+        {
+          type: 'line',
+          attrs: { coordinates: [{ x: sx, y: a.y }, { x: sx, y: b.y }] },
+          styles: { color: barva, size: 1 },
+        },
+        {
+          type: 'line',
+          attrs: { coordinates: [{ x: a.x, y: sy }, { x: b.x, y: sy }] },
+          styles: { color: barva, size: 1 },
+        },
+        hrot(sx, b.y, 0, smerY),
+        hrot(b.x, sy, smerX, 0),
+        {
+          type: 'text',
+          attrs: { x: sx, y: horniRadek, text: radek1, align: 'center', baseline: 'top' },
+          styles: styl,
+        },
+        {
+          type: 'text',
+          attrs: { x: sx, y: horniRadek + VYSKA_RADKU, text: radek2, align: 'center', baseline: 'top' },
+          styles: { ...styl, backgroundColor: rgba(barva, 0.75) },
+        },
+      ];
     },
   });
 }
@@ -933,6 +1074,39 @@ export const PRUHLEDNOSTI = [1, 0.6, 0.3];
 
 export const VYCHOZI_STYL = { color: BARVY_KRESEB[0], width: 1, opacity: 1 };
 
+/** Cena naformátovaná s přesností páru, s oddělovači tisíců jako na ose. */
+function cenaSPresnosti(chart, cena) {
+  const presnost = chart.getSymbol()?.pricePrecision ?? 2;
+  return cena.toLocaleString('en-US', {
+    minimumFractionDigits: presnost,
+    maximumFractionDigits: presnost,
+  });
+}
+
+/**
+ * Štítek s cenou na cenové ose v barvě čáry — stejně jako u aktuální ceny.
+ * Používají ho čáry pozice i vodorovné kresby uživatele.
+ */
+function cenovkaNaOse(chart, cena, y, barva, pruhlednost = 1) {
+  return {
+    type: 'text',
+    attrs: { x: 0, y, text: cenaSPresnosti(chart, cena), align: 'left', baseline: 'middle' },
+    styles: {
+      // Na světlém podkladu (oranžový SL, bílá kresba) tmavé písmo, jinak bílé.
+      color: svetlaBarva(barva) ? BARVY.pozadi : '#ffffff',
+      size: 11,
+      family: 'sans-serif',
+      backgroundColor: pruhlednost < 1 ? rgba(barva, pruhlednost) : barva,
+      borderRadius: 2,
+      borderSize: 0,
+      paddingLeft: 3,
+      paddingRight: 3,
+      paddingTop: 2,
+      paddingBottom: 2,
+    },
+  };
+}
+
 /** Je barva natolik světlá, že na ní bílé písmo zanikne? */
 function svetlaBarva(hex) {
   const n = parseInt(String(hex || '').slice(1), 16);
@@ -967,6 +1141,8 @@ export function createPriceChart(container, layer, handlers = {}) {
   registrovatObjem();
   registrovatVolumeProfile();
   registrovatLinkuPnl();
+  registrovatVodorovneKresby();
+  registrovatMereni();
   registrovatRsi();
 
   const chart = K().init(container, { styles: styly() });
@@ -1184,6 +1360,19 @@ export function createPriceChart(container, layer, handlers = {}) {
     return nej ? { x: nej.x, y: nej.y } : null;
   }
 
+  /** Nakreslí (nebo přepíše) měření; vždy jen jedno, neukládá se. */
+  function ukazMereni(body) {
+    if (body.length < 2 || !body.every((b) => Number.isFinite(b?.value))) return;
+    const [stare] = chart.getOverlays({ groupId: SKUPINA_MERENI });
+    if (stare) {
+      chart.overrideOverlay({ id: stare.id, points: body });
+    } else {
+      chart.createOverlay({ name: 'mereni', groupId: SKUPINA_MERENI, points: body, lock: true });
+    }
+  }
+
+  const zrusMereni = () => chart.removeOverlay({ groupId: SKUPINA_MERENI });
+
   const kresleni = createTouchDrawing({
     layer,
     toPixel,
@@ -1191,12 +1380,37 @@ export function createPriceChart(container, layer, handlers = {}) {
     snap: snapNaSvicku,
     formatPrice,
     formatTime: formatCas,
+    /*
+     * U ceny kříže i vzdálenost od vstupu do otevřené pozice. O úrovních
+     * se přemýšlí v procentech od vstupu — „SL o 3 % pod vstupem" —, ne
+     * v absolutní ceně. Bez pozice se nic nepřidává.
+     */
+    formatPct: (cena) => {
+      const vstup = pnlInfo?.vstup;
+      if (!vstup || !Number.isFinite(cena)) return '';
+      const p = ((cena - vstup) / vstup) * 100;
+      return `${p >= 0 ? '+' : '−'}${Math.abs(p).toFixed(2)} % ${t('measure.fromEntry')}`;
+    },
+    // Měření ukazuje čísla už během tažení druhého bodu, ne až po potvrzení —
+    // právě kvůli tomu se měří.
+    onPreview: (body) => {
+      if (rozdelanyNastroj === 'mereni') ukazMereni(body);
+    },
     onCreate: (body) => {
       // Zadávání alarmu si jen půjčuje kříž — kresba z toho nevzniká.
       if (vyberBodu) {
         const predej = vyberBodu;
         vyberBodu = null;
         predej(body[0]);
+        handlers.onDrawEnd?.();
+        return;
+      }
+      // Měření není kresba: neukládá se a zůstane, dokud ho nenahradí další
+      // měření, koš nebo zavření grafu.
+      if (rozdelanyNastroj === 'mereni') {
+        ukazMereni(body);
+        rozdelanyNastroj = null;
+        dodatekKresby = null;
         handlers.onDrawEnd?.();
         return;
       }
@@ -1231,6 +1445,8 @@ export function createPriceChart(container, layer, handlers = {}) {
       if (hotovo) ohlasZmenu();
     },
     onCancel: () => {
+      // Zrušené měření nemá po sobě nechat rozkreslený obdélník.
+      if (rozdelanyNastroj === 'mereni') zrusMereni();
       rozdelanyNastroj = null;
       vyberBodu = null;
       upravovanaKresba = null;
@@ -1658,6 +1874,8 @@ export function createPriceChart(container, layer, handlers = {}) {
     startDrawing(nastroj, dodatek = null) {
       const definice = NASTROJE.find((n) => n.id === nastroj);
       if (!definice) return;
+      // Nové měření začíná načisto, staré obdélník zmizí hned.
+      if (nastroj === 'mereni') zrusMereni();
       rozdelanyNastroj = nastroj;
       dodatekKresby = dodatek;
       upravovanaKresba = null;
@@ -1700,10 +1918,13 @@ export function createPriceChart(container, layer, handlers = {}) {
     restoreDrawings(kresby) {
       zalohaKreseb = kresby || [];
       vykresliKresby(zalohaKreseb);
+      // Nový graf (jiný pár nebo znovu otevřený) začíná bez měření.
+      zrusMereni();
     },
 
     clearDrawings() {
       chart.removeOverlay({ groupId: SKUPINA_KRESBY });
+      zrusMereni();
       upravovanaKresba = null;
       handlers.onSelectionChanged?.(null);
       // Tady je prázdný seznam správný výsledek, uživatel si o to řekl.

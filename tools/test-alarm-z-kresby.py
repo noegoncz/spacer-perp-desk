@@ -14,6 +14,8 @@ Kreslí se **skutečnými dotyky**: kříž se posouvá tažením kdekoli po plo
 a klepnutí bod potvrdí, přesně jak to dělá prst na telefonu.
 """
 import os, sys, time, json
+# Konzole Windows (cp1250) neumí „→“; výpis na tom nesmí padat.
+sys.stdout.reconfigure(errors='replace')
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from dotyk import Prohlizec
 

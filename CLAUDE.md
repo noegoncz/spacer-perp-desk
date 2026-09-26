@@ -284,7 +284,7 @@ U SL, TP a likvidace nese barva informaci, tam se vyplatí.
 | likvidace | `12-5` dlouhá | červená |
 | SL / TP, celé i částečné | `14-6` dlouhá | oranžová / zelená |
 | limitky | `1-4` tečkovaná | šedá |
-| aktuální cena (PNLLINE) | **plná**, od poslední svíčky | zelená `#3ee6a4` / červená podle zisku |
+| aktuální cena (PNLLINE) | **plná**, přes celou šířku | zelená `#3ee6a4` / červená podle zisku |
 
 Plné jsou jen dvě čáry, které ukazují **fakt** (kde jsem nakoupil, kde je
 cena teď). Čárkované jsou úrovně, které teprve čekají (SL, TP, likvidace,
@@ -348,8 +348,10 @@ svíčky mají `#16c784`). Linka vychází z poslední svíčky, která bývá z
 a ve stejné barvě s ní splývala. Test měří plnost linky v pixelech (plná
 ≥ 85 %, čárkování 4-4 dávalo 51 %).
 
-Linka **nejde přes celou šířku** — začíná u poslední svíčky a pokračuje
-doprava. Přes celý graf jen překážela svíčkám.
+Linka vede **přes celou šířku grafu** (od v0.17.1). Předtím začínala
+u poslední svíčky — to bylo zase málo: úroveň aktuální ceny šla přes graf
+sledovat špatně a uživatel ji chtěl celou. (Úplně první verze ji měla přes
+celou šířku čárkovanou a vadila; plná a v jiné zelené než svíčky už ne.)
 
 ⚠ Je to **indikátor, ne overlay.** Overlay by musel dostávat novou cenu při
 každém ticku zvlášť; `draw()` indikátoru běží při každém překreslení sám
@@ -456,6 +458,30 @@ nakreslené v Brave v APK nejsou a naopak; a odinstalování ladicího APK
 overlaye a každé smazání hlásí změnu. Bez umlčení se při otevření grafu uloží
 prázdný seznam přes uložené kresby dřív, než se stihnou obnovit — tedy tiché
 smazání práce uživatele. Řeší to příznak `tichaZmena`.
+
+#### Cenovky kreseb, procenta u kříže a měření (v0.17.1)
+
+**Vodorovná čára a cenová čára mají trvale cenu na ose** ve své barvě, jako
+čáry pozice. Vestavěné tvary knihovny ji ukazují jen u kresby vybrané
+knihovnou, a to se na telefonu nestává (vybírá se našimi úchyty). Proto jsou
+v `registrovatVodorovneKresby()` **přeregistrované pod stejnými názvy**
+(`horizontalStraightLine`, `priceLine`) — uložené kresby se načtou beze změny.
+Cenovka u začátku cenové čáry vypadla, cena je na ose.
+
+**U ceny kříže při kreslení je vzdálenost od vstupu** v procentech
+(`+1.97 % vs entry`), v samostatném štítku vlevo od cenovky (`formatPct`
+v `draw.js`). Jen když je otevřená pozice.
+
+**Nástroj Měření** (poslední v liště, ikona pravítka): dva body, obdélník
+s šipkami a štítek s rozdílem ceny i v procentech, počtem svíček a časem —
+modře nahoru, červeně dolů, jako v TradingView. Čísla se ukazují **už během
+tažení druhého bodu** (`onPreview` v `draw.js`), kvůli tomu se měří.
+⚠ Měření **není kresba**: je ve vlastní skupině `mereni`, neukládá se,
+nové ho nahradí a zmizí košem nebo s dalším otevřením grafu. Počet svíček
+se počítá z šířky v pixelech a šířky svíčky (body nesou jen čas a cenu).
+
+Test: `tools/test-mereni-a-cenovky.py` (skutečné dotyky), na starém kódu
+padá všech sedm kontrol.
 
 #### Vzhled kreseb a alarmy
 
@@ -731,7 +757,7 @@ Shora dolů: **hlavička** (zpět, pár, PnL, celá obrazovka) → **údaje o po
 Údaje o pozici jsou nahoře schválně: pod nimi zůstane graf souvislý až
 k timeframům. V celé obrazovce ustoupí, nástroje zůstávají.
 
-Kreslicí lišta ukazuje **všech 12 nástrojů** plus magnet, indikátory, koš
+Kreslicí lišta ukazuje **všech 13 nástrojů** (s měřením) plus magnet, indikátory, koš
 a celou obrazovku (ta je vždy úplně vpravo), proto jsou tlačítka 34 px. Na
 rozevřeném Foldu se vejdou bez posouvání, na zavřeném displeji se lišta
 posouvá do strany.

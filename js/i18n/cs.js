@@ -221,6 +221,9 @@ export const cs = {
   'tool.parallelStraightLine': 'Rovnoběžky',
   'tool.fibonacciLine': 'Fibonacci',
   'tool.simpleAnnotation': 'Poznámka',
+  'tool.mereni': 'Měření',
+  'measure.bars': '{n} svíček',
+  'measure.fromEntry': 'od vstupu',
 
   /* ---------- návody při kreslení ---------- */
   'draw.setPoint': 'Klepnutím urči {n}. bod z {total}',

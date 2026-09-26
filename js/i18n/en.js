@@ -225,6 +225,9 @@ export const en = {
   'tool.parallelStraightLine': 'Parallel channel',
   'tool.fibonacciLine': 'Fibonacci',
   'tool.simpleAnnotation': 'Note',
+  'tool.mereni': 'Measure',
+  'measure.bars': '{n} bars',
+  'measure.fromEntry': 'vs entry',
 
   /* ---------- drawing guidance ---------- */
   'draw.setPoint': 'Tap to set point {n} of {total}',

@@ -53,6 +53,11 @@ export function createTouchDrawing({
   snap,
   formatPrice,
   formatTime,
+  // Volitelné: text se vzdáleností od vstupu do pozice, u ceny kříže.
+  formatPct,
+  // Volitelné: body rozkreslené kresby i s křížem, při každém pohybu —
+  // měření podle nich ukazuje čísla dřív, než se druhý bod potvrdí.
+  onPreview,
   onCreate,
   onEdit,
   onCancel,
@@ -85,8 +90,12 @@ export function createTouchDrawing({
   cenovka.className = 'draw-badge draw-badge-price';
   const casovka = document.createElement('div');
   casovka.className = 'draw-badge draw-badge-time';
+  // Vzdálenost od vstupu v procentech, těsně vlevo od cenovky — o úrovních
+  // uživatel přemýšlí v procentech od vstupu, ne v absolutní ceně.
+  const procenta = document.createElement('div');
+  procenta.className = 'draw-badge draw-badge-pct';
 
-  layer.append(plocha, pruh, cenovka, casovka);
+  layer.append(plocha, pruh, cenovka, casovka, procenta);
 
   pruhZrusit.addEventListener('pointerdown', (e) => e.stopPropagation());
   pruhZrusit.addEventListener('pointerup', (e) => {
@@ -143,6 +152,7 @@ export function createTouchDrawing({
     cenovka.style.display = krizVidet ? '' : 'none';
     casovka.style.display = krizVidet ? '' : 'none';
 
+    let textProcent = '';
     if (krizVidet) {
       // Cenovka na pravém okraji, čas dole — jako na osách v TradingView.
       const bod = fromPixel(kriz.x, kriz.y);
@@ -150,7 +160,12 @@ export function createTouchDrawing({
       cenovka.style.top = `${kriz.y}px`;
       casovka.textContent = formatTime?.(bod.timestamp) ?? '';
       casovka.style.left = `${kriz.x}px`;
+      textProcent = formatPct?.(bod.value) || '';
+      procenta.textContent = textProcent;
+      procenta.style.top = `${kriz.y}px`;
     }
+    // Bez otevřené pozice není od čeho počítat — štítek zmizí úplně.
+    procenta.style.display = krizVidet && textProcent ? '' : 'none';
 
     // Prstenec ukáže, že magnet chytil cenu svíčky.
     prstenec.style.display = krizVidet && prichyceno ? '' : 'none';
@@ -177,6 +192,7 @@ export function createTouchDrawing({
       const body = [...hotoveBody, kriz].map((b) => `${b.x},${b.y}`).join(' ');
       nahled.setAttribute('points', body);
       nahled.style.display = '';
+      onPreview?.([...hotoveBody, kriz].map((b) => fromPixel(b.x, b.y)));
     } else {
       nahled.style.display = 'none';
     }
