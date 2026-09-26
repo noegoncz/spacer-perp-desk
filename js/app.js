@@ -811,7 +811,9 @@ async function otevriGraf(symbol, position, trh) {
       onIndicatorsChanged: ulozIndikatory,
       onSelectionChanged: zobrazPaletu,
       onAlarmTapped: (id) => otevriAlarm(alarmy.najdi(id)),
+      onStyleChanged: (styl) => store.saveDrawStyle(styl),
     });
+    chart.setLastStyle(store.loadDrawStyle());
     chart.setLoader(nactiSvice);
     chart.setMagnet(magnetZapnut);
     chart.restoreIndicators(store.loadIndicators(), maVlastniPanel);
@@ -1353,6 +1355,15 @@ function zapojPrejeti() {
   };
 
   hlavni.addEventListener('touchstart', (e) => {
+    /*
+     * ⚠ Nový dotyk = nové gesto. Příznak `prejeto` má potlačit jen klepnutí
+     * z **téhož** gesta, které přejelo záložku. Jenže Android po přejetí
+     * žádné klepnutí většinou nepošle, a příznak pak zůstal viset a snědl
+     * až **první skutečné klepnutí** — karta pozice problikla, ale graf se
+     * neotevřel, a teprve druhé klepnutí prošlo. Uživatel to popisoval jako
+     * „někdy to reaguje, někdy ne". Test: tools/test-klepnuti-na-kartu.py.
+     */
+    prejeto = false;
     if (chartSymbol || !el('viewSettings').hidden || e.touches.length !== 1) {
       zapomen();
       return;

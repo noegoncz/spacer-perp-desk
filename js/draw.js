@@ -58,6 +58,9 @@ export function createTouchDrawing({
   // Volitelné: body rozkreslené kresby i s křížem, při každém pohybu —
   // měření podle nich ukazuje čísla dřív, než se druhý bod potvrdí.
   onPreview,
+  // Volitelné: vzhled, jaký bude mít hotová kresba ({ color, width, opacity }).
+  // Náhled ho převezme; bez něj zůstane výchozí modrá.
+  stylNahledu,
   onCreate,
   onEdit,
   onCancel,
@@ -192,6 +195,16 @@ export function createTouchDrawing({
       const body = [...hotoveBody, kriz].map((b) => `${b.x},${b.y}`).join(' ');
       nahled.setAttribute('points', body);
       nahled.style.display = '';
+      /*
+       * ⚠ Náhled má barvu, tloušťku i průhlednost **hotové kresby**. Dřív byl
+       * vždycky modrý a teprve po potvrzení posledního bodu kresba přeskočila
+       * na naposledy použitou barvu — vypadalo to, jako by se barva měnila
+       * sama od sebe.
+       */
+      const styl = stylNahledu?.();
+      nahled.style.stroke = styl?.color || '';
+      nahled.style.strokeWidth = styl?.width ? String(Math.max(1.2, styl.width)) : '';
+      nahled.style.opacity = styl?.opacity != null ? String(styl.opacity) : '';
       onPreview?.([...hotoveBody, kriz].map((b) => fromPixel(b.x, b.y)));
     } else {
       nahled.style.display = 'none';

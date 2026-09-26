@@ -1391,6 +1391,9 @@ export function createPriceChart(container, layer, handlers = {}) {
       const p = ((cena - vstup) / vstup) * 100;
       return `${p >= 0 ? '+' : '−'}${Math.abs(p).toFixed(2)} % ${t('measure.fromEntry')}`;
     },
+    // Náhled rozkreslené čáry má vzhled, jaký bude mít hotová kresba.
+    // Měření má vlastní barvy (modrá/červená), tam zůstane výchozí.
+    stylNahledu: () => (rozdelanyNastroj && rozdelanyNastroj !== 'mereni' ? posledniStyl : null),
     // Měření ukazuje čísla už během tažení druhého bodu, ne až po potvrzení —
     // právě kvůli tomu se měří.
     onPreview: (body) => {
@@ -1966,11 +1969,17 @@ export function createPriceChart(container, layer, handlers = {}) {
       return upravovanaKresba?.id ?? null;
     },
 
+    /** Vzhled pro příští kresbu — uložený z minula, ať platí i po restartu. */
+    setLastStyle(styl) {
+      if (styl && typeof styl === 'object') posledniStyl = { ...VYCHOZI_STYL, ...styl };
+    },
+
     /** Přepíše vzhled vybrané kresby a zapamatuje si ho pro další. */
     setSelectedStyle(zmena) {
       if (!upravovanaKresba) return;
       const novy = { ...vybranyStyl(), ...zmena };
       posledniStyl = { ...novy };
+      handlers.onStyleChanged?.(posledniStyl);
       chart.overrideOverlay({
         id: upravovanaKresba.id,
         extendData: novy,

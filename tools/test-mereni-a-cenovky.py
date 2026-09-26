@@ -35,6 +35,8 @@ mock += """
       style: { color: '#f0b90b', width: 1, opacity: 1 } },
   ]));
   localStorage.removeItem('perpdesk.indicators');
+  // Naposledy použitý vzhled z minulého běhu: oranžová, tloušťka 2.
+  localStorage.setItem('perpdesk.drawStyle', JSON.stringify({ color: '#f0b90b', width: 2, opacity: 1 }));
 })();
 """
 
@@ -156,6 +158,31 @@ time.sleep(0.3)
 ev("document.querySelector('.draw-banner-cancel').dispatchEvent(new PointerEvent('pointerup', { bubbles: true }))")
 ev("document.querySelector('.tool-btn[data-tool=\"\"]').click()")
 time.sleep(0.4)
+
+# ---- 3b) náhled kresby má barvu, jakou bude mít hotová kresba ----
+# Dřív byl náhled vždycky modrý a na naposledy použitou barvu kresba
+# přeskočila až po potvrzení posledního bodu.
+ev("document.querySelector('.tool-btn[data-tool=segment]').click()")
+time.sleep(0.5)
+klepni(vrstva['x'], vrstva['y'])            # 1. bod
+tahni(vrstva['x'], vrstva['y'], vrstva['x'] + 70, vrstva['y'] - 50, pustit=False)
+nahled = json.loads(ev("""(() => { const e = document.querySelector('.draw-preview');
+  const s = getComputedStyle(e);
+  return JSON.stringify({ videt: s.display !== 'none', barva: s.stroke, sirka: s.strokeWidth }); })()""") or '{}')
+print('náhled rozkreslené úsečky:', nahled)
+if nahled.get('barva') != 'rgb(240, 185, 11)':
+    chyby.append(f"náhled kresby nemá naposledy použitou barvu: {nahled.get('barva')}")
+p.prikaz('Input.dispatchTouchEvent', type='touchEnd', touchPoints=[])
+time.sleep(0.3)
+klepni(vrstva['x'], vrstva['y'])            # 2. bod
+time.sleep(0.4)
+hotova = ev("""(() => { const k = window.__graf.getOverlays()
+  .filter((o) => o.groupId === 'kresby' && o.name === 'segment'); return k.length ? k[0].extendData.color : null; })()""")
+print('hotová úsečka má barvu:', hotova)
+if hotova != '#f0b90b':
+    chyby.append(f'hotová kresba nepřevzala naposledy použitou barvu z minula: {hotova}')
+ev("document.querySelector('.tool-btn[data-tool=\"\"]').click()")
+time.sleep(0.3)
 
 # ---- 4) měření ----
 ulozeno_pred = ev("localStorage.getItem('perpdesk.drawings.JUPUSDT')")

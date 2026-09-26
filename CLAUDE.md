@@ -472,7 +472,8 @@ Cenovka u začátku cenové čáry vypadla, cena je na ose.
 (`+1.97 % vs entry`), v samostatném štítku vlevo od cenovky (`formatPct`
 v `draw.js`). Jen když je otevřená pozice.
 
-**Nástroj Měření** (poslední v liště, ikona pravítka): dva body, obdélník
+**Nástroj Měření** (poslední v liště, ikona svislé šipky mezi dvěma
+vodorovnými čarami — první ikona pravítka byla nesrozumitelná): dva body, obdélník
 s šipkami a štítek s rozdílem ceny i v procentech, počtem svíček a časem —
 modře nahoru, červeně dolů, jako v TradingView. Čísla se ukazují **už během
 tažení druhého bodu** (`onPreview` v `draw.js`), kvůli tomu se měří.
@@ -488,7 +489,13 @@ padá všech sedm kontrol.
 Po vybrání kresby se dole objeví paleta: šest barev, tři tloušťky, tři
 průhlednosti, zvonek (alarm) a koš. Styl se drží v `extendData` overlaye,
 takže se ukládá i načítá spolu s body. Nová kresba převezme naposledy
-nastavený vzhled.
+nastavený vzhled — **i po restartu aplikace** (`perpdesk.drawStyle`,
+v0.17.2; dřív se po restartu vracela bílá).
+
+⚠ **Náhled rozkreslené čáry má vzhled hotové kresby** (`stylNahledu`
+v `draw.js`). Dřív byl vždycky modrý a na naposledy použitou barvu kresba
+přeskočila až po potvrzení posledního bodu — vypadalo to, jako by se barva
+měnila sama. Měření si nechává vlastní modrou a červenou.
 
 #### Cenové alarmy
 
@@ -733,6 +740,17 @@ Mezi záložkami jde **přejíždět prstem**. Vyžaduje se pohyb aspoň 55 px
 a vodorovně víc než dvojnásobek svislého. Po přejetí se potlačí následné
 klepnutí, jinak by se otevřel pár pod prstem. Nad otevřeným grafem
 a v nastavení se přejíždění neuplatní.
+
+⚠ **Příznak „po přejetí potlač klepnutí" se maže každým novým dotykem**
+(v0.17.2). Má zachytit jen klepnutí z **téhož** gesta, které záložku
+přepnulo. Android ale po přejetí klepnutí většinou vůbec nepošle, takže
+příznak zůstal viset a **snědl první skutečné klepnutí** — karta pozice
+problikla, graf se neotevřel, prošlo až druhé klepnutí. Uživatel to znal
+jako „někdy to reaguje, někdy ne" a hledal v tom citlivost. Reprodukováno
+testem `tools/test-klepnuti-na-kartu.py` (po přejetí 0 z 5 otevření, po
+opravě 5 z 5). Tentýž test ukázal, že **překreslování karet při každém
+ticku ceny** (13× za vteřinu) klepnutí **nevadí** — prohlížeč klepnutí
+vyhodnotí až při zvednutí prstu na prvku, který tam je.
 
 ⚠ **Musí stát na dotykových událostech, ne na ukazovátkových.** Prohlížeč si
 gesto po pár pixelech vezme na svislé scrollování (prst má vždycky nějaký

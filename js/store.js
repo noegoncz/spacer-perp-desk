@@ -63,6 +63,23 @@ export function saveDrawings(symbol, drawings) {
 }
 
 /**
+ * Naposledy použitý vzhled kresby (barva, tloušťka, průhlednost). Nová kresba
+ * ho převezme i po restartu aplikace — „poslední barva" má platit, dokud ji
+ * uživatel sám nezmění.
+ */
+export function loadDrawStyle() {
+  try {
+    return JSON.parse(read('perpdesk.drawStyle') || 'null');
+  } catch {
+    return null;
+  }
+}
+
+export function saveDrawStyle(styl) {
+  write('perpdesk.drawStyle', JSON.stringify(styl || null));
+}
+
+/**
  * Cenové alarmy. Schválně **jeden společný seznam** se symbolem u každého
  * alarmu, ne rozdělený po párech: hlídat se musí i pár, který zrovna není
  * otevřený, a přehled všech alarmů pak bude stačit načíst z jednoho místa.
