@@ -97,6 +97,15 @@ let chartSymbol = null;    // null = graf je zavřený
 let chartPosition = null;  // null = pár bez otevřené pozice
 let chartTrh = null;       // poslední cena a změna, když pozice není
 let chartInterval = '240';  // 4h je pro přehled nejpoužitelnější
+/*
+ * Timeframe, který si **uživatel zvolil sám**. ⚠ Prohlídka obchodu
+ * z Historie si interval volí podle délky obchodu (třeba 1m) a dřív ho
+ * nechávala nastavený i pro další grafy. Na minutovém grafu jsou načtené
+ * jen poslední hodiny, takže kresby nakreslené o dny dřív na 4h zmizely
+ * z obrazu — vypadalo to, že se kresby k páru nepamatují. Historie si teď
+ * interval jen půjčí a běžný graf se otevře zase na tomhle.
+ */
+let intervalUzivatele = chartInterval;
 let chartOrders = [];
 let chartLineKey = '';     // otisk čar, aby se nepřekreslovaly při každém ticku
 let ordersTimer = null;
@@ -398,6 +407,7 @@ function zebrikPozice(p, orders) {
 function otevriPrikaz(order) {
   const pozice = lastPositions.find((p) => p.symbol === order.symbol) || null;
   prohlizenyObchod = null;
+  chartInterval = intervalUzivatele;
   return otevriGraf(order.symbol, pozice, null);
 }
 
@@ -761,12 +771,14 @@ function clearCredentials() {
 /** Z karty pozice. */
 const openChart = (position) => {
   prohlizenyObchod = null;
+  chartInterval = intervalUzivatele; // ne ten, který si půjčila Historie
   return otevriGraf(position.symbol, position, null);
 };
 
 /** Ze seznamu trhů — pár, na kterém pozici mít nemusím. */
 const openChartSymbol = (trh) => {
   prohlizenyObchod = null;
+  chartInterval = intervalUzivatele;
   return otevriGraf(trh.symbol, null, trh);
 };
 
@@ -931,6 +943,8 @@ async function zmenInterval(interval) {
 
   pripraveneSvice = bars ? { interval, bars } : null;
   chartInterval = interval;
+  // Volba timeframu při prohlídce obchodu z Historie je jen pro tu prohlídku.
+  if (!prohlizenyObchod) intervalUzivatele = interval;
   chart.setInterval(interval);
   client.setKlineSubscription(chartSymbol, interval);
 }

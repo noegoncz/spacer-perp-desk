@@ -449,10 +449,23 @@ Kresby se vytvářejí s `lock: true`, takže s nimi knihovna sama hýbat nedovo
 **Kresby se pamatují podle páru, natrvalo, dokud je uživatel nesmaže**
 (`perpdesk.drawings.<SYMBOL>` v `localStorage`). Jsou stejné, ať se graf
 otevře z Pozic, z Trhů nebo z Historie, a přežijí zavření i otevření nové
-pozice na stejném páru. Ověřeno testem 2026-09-25 (střídání Pozice / Trhy /
-dva páry). ⚠ **Prohlížeč a APK mají každý své úložiště** — kresby
-nakreslené v Brave v APK nejsou a naopak; a odinstalování ladicího APK
-úložiště smaže.
+pozice na stejném páru. Ověřeno testy 2026-09-25 a 09-27: podstrčené kresby,
+kresby nakreslené prstem, zdržená síť, střídání Pozice / Trhy / dva páry.
+⚠ **Prohlížeč a APK mají každý své úložiště** — kresby nakreslené v Brave
+v APK nejsou a naopak; a odinstalování ladicího APK úložiště smaže.
+
+⚠ **Uživatel dvakrát hlásil „z Trhů kresby nejsou vidět"** a úložiště přitom
+fungovalo. Skutečná příčina (v0.17.4): **prohlídka obchodu z Historie
+přepnula timeframe** podle délky obchodu (1m, 5m…) a ten zůstal i pro další
+grafy. Na minutovém grafu je načtených jen posledních 300 svíček, tedy pár
+hodin, a kresby nakreslené o dny dřív na 4h se ocitly mimo obraz. Historie
+si teď interval jen půjčí (`intervalUzivatele` v app.js); běžný graf
+z Pozic, Trhů i ze seznamu příkazů se otevře na timeframu, který si zvolil
+uživatel. Test: `tools/test-historie-obchod.py`, na starém kódu padá.
+
+⚠ Obecně: **kresba v minulosti za začátkem načtených svíček není vidět**
+(na krátkém timeframu se načítá jen 300 svíček a dohrávání historie při
+posunu zatím neumíme). Vodorovná čára je vidět vždy, šikmé ne.
 
 ⚠ **`restoreDrawings` musí umlčet hlášení změn.** Obnova nejdřív maže staré
 overlaye a každé smazání hlásí změnu. Bez umlčení se při otevření grafu uloží

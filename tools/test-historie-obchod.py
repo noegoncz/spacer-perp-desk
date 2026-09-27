@@ -77,6 +77,21 @@ print('zvolený interval:', interval)
 if interval in ('1', '5', '15'):
     chyby.append(f'interval {interval} je na dvoudenní obchod moc jemný (délka se nedopočetla)')
 
+# ---- Historie si timeframe jen půjčí ----
+# Prohlídka obchodu zvolila interval podle délky obchodu. Běžný graf se pak
+# musí otevřít zase na timeframu, který si zvolil uživatel (výchozí 4h),
+# jinak by kresby nakreslené o dny dřív zmizely z obrazu minutového grafu.
+ev("history.back()")
+time.sleep(1.5)
+ev("document.querySelector('[data-tab=positions]').click()")
+time.sleep(1.5)
+ev("document.querySelector('.position').click()")
+time.sleep(4)
+po_historii = ev("document.querySelector('.interval-btn.active')?.dataset.interval")
+print('graf pozice otevřený po prohlídce z Historie, interval:', po_historii)
+if po_historii != '240':
+    chyby.append(f'po prohlídce z Historie zůstal její interval ({po_historii}) i pro běžný graf')
+
 konzole = ev('(window.__chyby||[]).join(" | ")') or ''
 if konzole:
     chyby.append(f'chyby v konzoli: {konzole}')
