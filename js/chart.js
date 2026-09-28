@@ -1282,6 +1282,18 @@ export function createPriceChart(container, layer, handlers = {}) {
   let dodatekKresby = null;
   let vyberBodu = null; // křížem se zrovna vybírá hladina alarmu, ne kresba
   let linkaPnlZapnuta = false;
+
+  /*
+   * ⚠ Do hlavního panelu se indikátor **přidává** (druhý argument `true`).
+   * Bez něj ho knihovna nevrství, ale **vymění**: `addIndicator` nejdřív
+   * smaže všechno, co v panelu je. Linka zisku (PNLLINE) je taky indikátor
+   * v hlavním panelu, takže po otevření grafu pozice potichu smazala objem,
+   * EMA, Bollingera… — v nabídce svítily jako zapnuté a v grafu nebyly.
+   * Vypnutí a zapnutí je vrátilo, jenže tím zase zmizela linka zisku.
+   * Test: tools/test-indikatory-vrstveni.py.
+   */
+  const pridejDoHlavnihoPanelu = (nazev) =>
+    chart.createIndicator({ name: nazev, paneId: HLAVNI_PANEL }, true);
   // Co je v grafu nakresleno — při změně intervalu se to na chvíli sundá
   // a vrátí až s novými svíčkami, aby nic nepřeskakovalo zvlášť.
   let posledniCary = [];
@@ -1603,6 +1615,29 @@ export function createPriceChart(container, layer, handlers = {}) {
    * nich neví — `overrideIndicator` je jediný spolehlivý způsob, jak ji
    * donutit indikátor znovu nakreslit.
    */
+  /*
+   * RSI má pevnou stupnici 0–100, přesto osa knihovny nechávala nad stovkou
+   * 20 % a pod nulou 10 % výšky panelu prázdných (výchozí `gap` osy Y).
+   * U nízkého panelu to byla skoro třetina místa, kde nic není. Nechá se
+   * jen pár pixelů, aby se popisky 100 a 0 vešly celé. Hodnoty ≥ 1 bere
+   * knihovna jako pixely, menší jako podíl výšky. Legenda vlevo nahoře
+   * tím zajede do plochy RSI — uživateli to tak vyhovuje.
+   */
+  function osaRsiBezOkraju() {
+    const [rsi] = chart.getIndicators({ name: 'RSI' });
+    if (!rsi) return;
+    const n = nactiNastaveni('RSI');
+    try {
+      chart.overrideYAxis({
+        paneId: rsi.paneId,
+        // Bez pevné stupnice RSI kolísá a okraj nad křivkou se hodí.
+        gap: n.pevnaStupnice ? { top: 7, bottom: 7 } : { top: 0.2, bottom: 0.1 },
+      });
+    } catch {
+      /* osa ještě není — nastaví se při dalším použití nastavení */
+    }
+  }
+
   function pouzijNastaveni(nazev) {
     const zmena = { name: nazev };
     const parametry = parametryVypoctu(nazev);
@@ -1628,6 +1663,7 @@ export function createPriceChart(container, layer, handlers = {}) {
     } catch {
       /* neznámý indikátor — nastavení prostě nemá co přepsat */
     }
+    if (nazev === 'RSI') osaRsiBezOkraju();
     pouzijVyskuPanelu(nazev);
   }
 
@@ -1895,7 +1931,8 @@ export function createPriceChart(container, layer, handlers = {}) {
        * se i v nabídce, kde nemá co dělat.
        */
       if (info && !linkaPnlZapnuta) {
-        chart.createIndicator({ name: 'PNLLINE', paneId: HLAVNI_PANEL });
+        // `true` = přidat k ostatním (viz pridejDoHlavnihoPanelu).
+        chart.createIndicator({ name: 'PNLLINE', paneId: HLAVNI_PANEL }, true);
         linkaPnlZapnuta = true;
       } else if (!info && linkaPnlZapnuta) {
         chart.removeIndicator({ name: 'PNLLINE' });
@@ -2080,7 +2117,7 @@ export function createPriceChart(container, layer, handlers = {}) {
 
       const id = vlastniPanel
         ? chart.createIndicator(nazev)
-        : chart.createIndicator({ name: nazev, paneId: HLAVNI_PANEL });
+        : pridejDoHlavnihoPanelu(nazev);
 
       if (!id) return false;
       pouzijNastaveni(nazev);
@@ -2095,7 +2132,7 @@ export function createPriceChart(container, layer, handlers = {}) {
         if (aktivniIndikatory.has(nazev)) return;
         const id = jeVlastniPanel(nazev)
           ? chart.createIndicator(nazev)
-          : chart.createIndicator({ name: nazev, paneId: HLAVNI_PANEL });
+          : pridejDoHlavnihoPanelu(nazev);
         if (!id) return;
         pouzijNastaveni(nazev);
         aktivniIndikatory.add(nazev);

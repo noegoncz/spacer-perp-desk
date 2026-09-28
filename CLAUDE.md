@@ -909,6 +909,23 @@ vysoká a pevná hodnota by jednou zabrala půlku, podruhé proužek. Uplatňuje
 přes `setPaneOptions({ id, height })` (výchozí výška panelu knihovny je 100 px)
 a přepočítává se i při změně rozměrů. Svíčkám vždy zbyde aspoň 45 % plochy.
 
+⚠ **Do hlavního panelu se indikátor přidává s `createIndicator(…, true)`**
+(`pridejDoHlavnihoPanelu()` v chart.js, v0.17.5). Bez druhého argumentu ho
+knihovna nevrství, ale **vymění** — `addIndicator` nejdřív smaže všechno,
+co v panelu je. Linka zisku (PNLLINE) je taky indikátor v hlavním panelu,
+takže po otevření grafu pozice potichu smazala objem, EMA, Bollingera…:
+v nabídce svítily jako zapnuté a v grafu nebyly. Vypnutí a zapnutí je
+vrátilo, jenže tím zase zmizela linka zisku. Test:
+`tools/test-indikatory-vrstveni.py`, na starém kódu padá v osmi bodech.
+
+**RSI nemá prázdné okraje nad 100 a pod 0.** Výchozí `gap` osy Y knihovny
+nechává nahoře 20 % a dole 10 % výšky panelu prázdných; u nízkého panelu
+to byla skoro třetina místa. `osaRsiBezOkraju()` ho přes `overrideYAxis`
+stáhne na 7 px (hodnoty ≥ 1 bere knihovna jako pixely), aby se popisky 100
+a 0 vešly celé. Jen s pevnou stupnicí — bez ní RSI kolísá a okraj se hodí.
+Legenda vlevo nahoře pak zajede do plochy RSI, uživateli to tak vyhovuje.
+Výška panelu nabízí i **10 a 15 %**.
+
 ⚠ **Objem se nedá vložit do hlavního panelu jako vestavěný `VOL`.** Má
 `series: 'volume'`, takže si vyrobí vlastní svislou osu, **přebere jí pravou
 stupnici** (místo ceny se ukazuje objem) a sloupce roztáhne přes celou výšku —

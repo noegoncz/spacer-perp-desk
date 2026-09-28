@@ -90,7 +90,8 @@ const podle = (pole, prepinacKlic) => ({ ...pole, zavisi: prepinacKlic });
 /** Výška vlastního panelu v procentech plochy grafu. */
 const vyskaPanelu = () =>
   vyber('vyskaPanelu', 25,
-    [20, 25, 30, 40].map((v) => ({ hodnota: v, popisek: `${v} %` })));
+    // 10 a 15 % na přání uživatele — u RSI stačí nízký proužek.
+    [10, 15, 20, 25, 30, 40].map((v) => ({ hodnota: v, popisek: `${v} %` })));
 
 /**
  * Schémata. Skupiny (`sekce`) jen dělí dlouhý seznam nadpisem, jako to dělá
