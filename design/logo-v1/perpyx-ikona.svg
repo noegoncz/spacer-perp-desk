@@ -1,0 +1,19 @@
+<!-- Ikona aplikace v1: tkané X na zaoblené tmavé dlaždici. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="g" x1="8" y1="8" x2="92" y2="92" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#22d3ee"/>
+      <stop offset="100%" stop-color="#7c5cff"/>
+    </linearGradient>
+  </defs>
+  <rect width="100" height="100" rx="22" fill="#0d1420"/>
+  <g transform="translate(50,50)">
+    <g transform="rotate(-45)">
+      <rect x="-32" y="-8" width="22" height="16" rx="4" fill="url(#g)"/>
+      <rect x="10" y="-8" width="22" height="16" rx="4" fill="url(#g)"/>
+    </g>
+    <g transform="rotate(45)">
+      <rect x="-32" y="-8" width="64" height="16" rx="4" fill="url(#g)"/>
+    </g>
+  </g>
+</svg>

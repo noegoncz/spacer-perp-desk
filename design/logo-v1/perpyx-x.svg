@@ -1,0 +1,21 @@
+<!-- PerpyX — „tkané X", verze 1 (2026-09-22). Reference před doladěním.
+     Stejný tvar je ikona aplikace (icons/*.png) i značka v hlavičce. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="g" x1="8" y1="8" x2="92" y2="92" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#22d3ee"/>
+      <stop offset="100%" stop-color="#7c5cff"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(50,50)">
+    <!-- „podjíždějící" pruh: dvě části s mezerou -->
+    <g transform="rotate(-45)">
+      <rect x="-32" y="-8" width="22" height="16" rx="4" fill="url(#g)"/>
+      <rect x="10" y="-8" width="22" height="16" rx="4" fill="url(#g)"/>
+    </g>
+    <!-- pruh vcelku přes mezeru -->
+    <g transform="rotate(45)">
+      <rect x="-32" y="-8" width="64" height="16" rx="4" fill="url(#g)"/>
+    </g>
+  </g>
+</svg>
