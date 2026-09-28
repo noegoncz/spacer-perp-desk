@@ -45,9 +45,11 @@ výslovně chtěl, aby to bylo **totéž**, ne dvě různé grafiky.
   srovnání v1 se sedmi variantami téhož tkaného X (čistý kanál, hloubka
   u křížení, zkosené konce, protisměrné přechody, pilulky, prémiová
   dlaždice, stoupající pruh navrchu, kombinace) je na plátně
-  https://claude.ai/artifact/8NUuFpWtN9Shghdjgr4scY. Uživatel vybírá;
-  klidně zůstane v1. Logo se řeší **před webem**, protože ho web používá
-  všude (hlavička, favicon, náhled při sdílení).
+  https://claude.ai/artifact/8NUuFpWtN9Shghdjgr4scY — dvě sady (jemné
+  doladění A–H a odvážnější směry I–P: stuhy s hranou, asymetrie, šipka,
+  vyražená ikona, prstenec „perpetual", bílé X, obrysy, sklo).
+  **Rozhodnutí: zůstává v1** (uživatel po obou sadách, 2026-09-28). Nový
+  návrh loga už nenabízet sám; kdyby se k tomu vrátil, plátno obě sady má.
 - ⚠ Font **Sora** z Google Fonts se používá **jen** ve wordmark náhledech
   (zatím žádné v repu), ne v appce samotné — appka drží zavedený
   `-apple-system, "Segoe UI", Roboto, system-ui, sans-serif` všude, ať se
