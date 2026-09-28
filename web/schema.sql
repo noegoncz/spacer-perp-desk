@@ -5,3 +5,7 @@ CREATE TABLE IF NOT EXISTS subscribers (
   created_at TEXT NOT NULL,
   consent_version TEXT NOT NULL
 );
+
+-- Zkušební přihlášky z ověřování nasazení (doména .invalid neexistuje,
+-- skutečný zájemce ji mít nemůže) se při dalším nasazení uklidí.
+DELETE FROM subscribers WHERE email LIKE '%@test.perpyx.invalid';
