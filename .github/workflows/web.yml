@@ -184,10 +184,17 @@ jobs:
             fi
             echo "$typ $jmeno: $(cf -X POST "$CF_API/zones/$zona/dns_records" --data "$telo" | jq -c '{success, errors: [.errors[]?.message]}')"
           done
-          # DMARC — doporučení poštovních služeb; jen pokud žádný není.
-          je=$(cf "$CF_API/zones/$zona/dns_records?type=TXT&name=_dmarc.$DOMENA" | jq -r '.result | length')
-          if [ "$je" = "0" ]; then
-            cf -X POST "$CF_API/zones/$zona/dns_records"               --data "{\"type\":\"TXT\",\"name\":\"_dmarc.$DOMENA\",\"content\":\"v=DMARC1; p=none;\"}" | jq -c '{success}'
+          # DMARC: nepodepsanou poštu „od perpyx.com" do karantény. Z domény
+          # posílá jen Resend (podepsaný DKIM), odpovědi jdou z Gmailu, takže
+          # se to legitimní pošty netýká — a přísnější pravidlo filtry berou
+          # jako známku, že doménu někdo hlídá. Přepíše i starší „p=none".
+          dmarc='"v=DMARC1; p=quarantine; adkim=r; aspf=r;"'
+          zaznam=$(cf "$CF_API/zones/$zona/dns_records?type=TXT&name=_dmarc.$DOMENA" | jq -c '.result[0] // empty')
+          telo=$(jq -nc --arg n "_dmarc.$DOMENA" --arg c "$dmarc" '{type:"TXT",name:$n,content:$c}')
+          if [ -z "$zaznam" ]; then
+            cf -X POST "$CF_API/zones/$zona/dns_records" --data "$telo" | jq -c '{success}'
+          elif [ "$(jq -r .content <<<"$zaznam" | tr -d '"')" != "$(tr -d '"' <<<"$dmarc")" ]; then
+            cf -X PUT "$CF_API/zones/$zona/dns_records/$(jq -r .id <<<"$zaznam")" --data "$telo" | jq -c '{success}'
           fi
           rs -X POST "https://api.resend.com/domains/$id/verify" | jq -c .
           rs "https://api.resend.com/domains/$id" | jq -r '"Doména: \(.status)", (.records[] | "  \(.type) \(.name): \(.status)")'

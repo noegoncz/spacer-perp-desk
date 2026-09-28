@@ -51,9 +51,10 @@ export function potvrzovaciMail(token) {
   const html = `<!doctype html><html><body style="margin:0;background:#f3f5f9;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0d1420">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f5f9;padding:32px 12px"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:16px;padding:36px 32px">
-<tr><td style="padding-bottom:24px"><img src="${WEB}/icon-192.png" width="40" height="40" alt="" style="vertical-align:middle;border-radius:10px"> <span style="font-size:20px;font-weight:700;vertical-align:middle;margin-left:8px">PerpyX</span></td></tr>
+<tr><td style="padding-bottom:24px;font-size:22px;font-weight:800;letter-spacing:0.2px">Perpy<span style="color:#7c5cff">X</span></td></tr>
 <tr><td style="font-size:22px;font-weight:700;padding-bottom:12px">Confirm your email</td></tr>
-<tr><td style="font-size:16px;line-height:1.6;color:#3b4656;padding-bottom:28px">Someone — hopefully you — asked to join the PerpyX beta with this address. Confirm it and we'll invite you when the next beta round opens.</td></tr>
+<tr><td style="font-size:16px;line-height:1.6;color:#3b4656;padding-bottom:16px">Someone — hopefully you — asked to join the PerpyX beta with this address. Confirm it and we'll invite you when the next beta round opens.</td></tr>
+<tr><td style="font-size:16px;line-height:1.6;color:#3b4656;padding-bottom:28px">PerpyX is a read-only Android app for monitoring Bybit perpetual positions: live PnL, stop-loss and take-profit levels, funding and price alarms. Beta testers get early access and a direct line to shape what comes next. We'll only email you about the beta and major updates.</td></tr>
 <tr><td style="padding-bottom:28px"><a href="${esc(odkaz)}" style="display:inline-block;background:#6d5cff;background-image:linear-gradient(135deg,#22d3ee,#7c5cff);color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;padding:14px 26px;border-radius:12px">Confirm my email</a></td></tr>
 <tr><td style="font-size:13px;line-height:1.6;color:#6b7788;padding-bottom:20px">Or open this link: <a href="${esc(odkaz)}" style="color:#5b4ee0;word-break:break-all">${esc(odkaz)}</a></td></tr>
 <tr><td style="font-size:14px;line-height:1.6;color:#3b4656;border-top:1px solid #e6e9ef;padding-top:20px">Didn't sign up? Just ignore this email — you won't hear from us, and the address is deleted after 30 days.</td></tr>
@@ -68,6 +69,11 @@ Someone — hopefully you — asked to join the PerpyX beta with this address.
 Confirm it and we'll invite you when the next beta round opens:
 
 ${odkaz}
+
+PerpyX is a read-only Android app for monitoring Bybit perpetual positions:
+live PnL, stop-loss and take-profit levels, funding and price alarms. Beta
+testers get early access and a direct line to shape what comes next. We'll
+only email you about the beta and major updates.
 
 Didn't sign up? Just ignore this email — you won't hear from us, and the
 address is deleted after 30 days.
