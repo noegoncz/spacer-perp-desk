@@ -196,5 +196,9 @@ jobs:
           elif [ "$(jq -r .content <<<"$zaznam" | tr -d '"')" != "$(tr -d '"' <<<"$dmarc")" ]; then
             cf -X PUT "$CF_API/zones/$zona/dns_records/$(jq -r .id <<<"$zaznam")" --data "$telo" | jq -c '{success}'
           fi
-          rs -X POST "https://api.resend.com/domains/$id/verify" | jq -c .
+          # Ověření jen u neověřené domény — nové ověření vrátí stav na
+          # „pending" a zbytečně by ho rozhodilo při každém nasazení.
+          if [ "$(rs "https://api.resend.com/domains/$id" | jq -r .status)" != "verified" ]; then
+            rs -X POST "https://api.resend.com/domains/$id/verify" | jq -c .
+          fi
           rs "https://api.resend.com/domains/$id" | jq -r '"Doména: \(.status)", (.records[] | "  \(.type) \(.name): \(.status)")'
