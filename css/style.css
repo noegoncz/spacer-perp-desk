@@ -275,9 +275,35 @@ main {
 .chip-row::-webkit-scrollbar { display: none; }
 .chip-row.wrap { flex-wrap: wrap; overflow: visible; }
 
-.watch-lists { margin-bottom: 8px; }
-.watch-cats { margin-bottom: 8px; }
-.watch-cats:empty { display: none; }
+/* Složky: v Trzích se hlavní lišta záložek plynule napojí na řadu
+   seznamů a vybraný seznam na panel s jeho kategoriemi — jako záložka
+   šanonu. Na první pohled je vidět, že seznamy patří k Markets a kategorie
+   k vybranému seznamu. */
+.tabs.s-podzalozkami {
+  margin-bottom: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.watch-lists {
+  gap: 2px;
+  padding: 5px 4px 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: none;
+  /* Okraje lišty se vytrácejí — napoví, že se dá posouvat do strany. */
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+          mask-image: linear-gradient(to right, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+  padding-left: 12px;
+  padding-right: 12px;
+}
+.watch-cats {
+  margin-bottom: 10px;
+  padding: 7px 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 11px 11px;
+}
 
 .chip {
   flex: 0 0 auto;
@@ -287,7 +313,7 @@ main {
   min-height: 30px;
   padding: 0 11px;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: 8px;
   background: var(--surface);
   color: var(--text-dim);
   font-size: 0.8rem;
@@ -299,9 +325,21 @@ main {
 .chip-count { font-size: 0.7rem; color: var(--text-dim); font-variant-numeric: tabular-nums; }
 .chip.active .chip-count { color: var(--accent); }
 
-/* Sestavy jsou hlavní volba, proto o chlup větší než kategorie. */
-.chip.list-tab { min-height: 36px; padding: 0 14px; font-size: 0.88rem; font-weight: 600; }
-.chip.list-new { padding: 0 13px; font-size: 1.1rem; font-weight: 500; }
+/* Seznamy vypadají jako hlavní záložky (hranaté, bez rámečku), jen menší;
+   vybraný má barvu panelu kategorií pod sebou a splývá s ním. */
+.chip.list-tab {
+  min-height: 36px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 8px 8px 0 0;
+  background: transparent;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+.chip.list-tab.active { background: var(--surface-2); color: var(--text); }
+.chip.list-new { color: var(--accent); font-weight: 600; }
+.watch-cats .chip { background: var(--surface); }
+.watch-cats .chip.active { background: rgba(76, 154, 255, 0.16); }
 
 .chip-refresh { padding: 0 9px; }
 .chip-refresh svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
@@ -443,9 +481,25 @@ main {
 .watch-star svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; }
 /* Zapnutý filtr i oblíbený pár vypadají stejně — plná žlutá hvězda. */
 .watch-star.on,
-.watch-star.active { color: var(--warn); }
+.watch-star.active { color: var(--accent); }
 .watch-star.on svg,
 .watch-star.active svg { fill: currentColor; }
+.watch-star svg .plus { stroke-linecap: round; }
+
+.sort-btn {
+  flex: 0 0 auto;
+  min-height: var(--tap);
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.sort-btn:active { background: var(--surface-2); }
 
 .watch-symbol { min-width: 0; font-weight: 600; font-size: 0.92rem; overflow-wrap: anywhere; }
 .watch-turnover { display: block; font-size: 0.68rem; font-weight: 400; color: var(--text-dim); }

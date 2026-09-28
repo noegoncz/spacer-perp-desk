@@ -761,6 +761,16 @@ export function showHistoryNote(text) {
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const HVEZDA = 'M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9L3.5 9.7l5.9-.8z';
+// Záložka (bookmark) místo hvězdičky: „přidat do seznamu", ne „oblíbené".
+const ZALOZKA = 'M6.5 3.5h11v17l-5.5-3.8-5.5 3.8z';
+const ZALOZKA_PLUS = 'M12 7.5v6M9 10.5h6';
+
+/** Hodnota pod názvem páru podle řazení (změna 24h má vlastní sloupec). */
+function textMetriky(trh, metrika) {
+  if (metrika === 'funding') return `${t('sort.fundingShort')} ${formatPercent(trh.funding, 4)}`;
+  if (metrika === 'oi') return `${t('sort.oiShort')} ${zkratkaObratu(trh.openInterest)}`;
+  return zkratkaObratu(trh.turnover);
+}
 
 function zkratkaObratu(hodnota) {
   if (!Number.isFinite(hodnota) || hodnota <= 0) return '';
@@ -774,10 +784,11 @@ function zkratkaObratu(hodnota) {
  *        `{ poIndexu, sbaleno, onClick }`
  */
 /**
- * Seznam trhů. `veSestave(symbol)` rozhoduje o plné hvězdičce, `popisek(symbol)`
- * je krátký text za obratem (kategorie coinu).
+ * Seznam trhů. `veSestave(symbol)` rozhoduje o plné záložce, `popisek(symbol)`
+ * je krátký text za metrikou (kategorie coinu). `metrika` je klíč řazení —
+ * pod názvem páru stojí hodnota, podle které se řadí.
  */
-export function renderWatchlist(radky, veSestave, onSelect, onToggleFav, delic = null, popisek = null) {
+export function renderWatchlist(radky, veSestave, onSelect, onToggleFav, delic = null, popisek = null, metrika = 'volume') {
   const prvky = [];
   const vytvorRadek = (trh) => {
     const radek = document.createElement('div');
@@ -790,9 +801,16 @@ export function renderWatchlist(radky, veSestave, onSelect, onToggleFav, delic =
     hvezda.setAttribute('aria-label', t('lists.addTo'));
     const svg = document.createElementNS(SVG_NS, 'svg');
     svg.setAttribute('viewBox', '0 0 24 24');
+    const vSeznamu = veSestave(trh.symbol);
     const path = document.createElementNS(SVG_NS, 'path');
-    path.setAttribute('d', HVEZDA);
+    path.setAttribute('d', ZALOZKA);
     svg.append(path);
+    if (!vSeznamu) {
+      const plus = document.createElementNS(SVG_NS, 'path');
+      plus.setAttribute('d', ZALOZKA_PLUS);
+      plus.setAttribute('class', 'plus');
+      svg.append(plus);
+    }
     hvezda.append(svg);
     hvezda.addEventListener('click', (e) => {
       e.stopPropagation(); // klepnutí na hvězdičku neotevírá graf
@@ -805,7 +823,8 @@ export function renderWatchlist(radky, veSestave, onSelect, onToggleFav, delic =
     const obrat = document.createElement('span');
     obrat.className = 'watch-turnover';
     const znacka = popisek ? popisek(trh.symbol) : '';
-    obrat.textContent = znacka ? `${zkratkaObratu(trh.turnover)} · ${znacka}` : zkratkaObratu(trh.turnover);
+    const hodnota = textMetriky(trh, metrika);
+    obrat.textContent = [hodnota, znacka].filter(Boolean).join(' · ');
     nazev.append(obrat);
 
     const cena = document.createElement('div');
@@ -1017,11 +1036,22 @@ export function renderListBar({ polozky, aktivni, onSelect, onManage, onNew }) {
     }
     return b;
   });
-  const plus = cip('+', false, onNew, 'list-tab list-new');
+  // „+ Nový" s textem — samotné plus nenapovídalo, že si seznamy jde zakládat.
+  const plus = cip(`+ ${t('lists.newShort')}`, false, onNew, 'list-tab list-new');
   plus.setAttribute('aria-label', t('lists.new'));
   plus.title = t('lists.new');
   lista.replaceChildren(...prvky, plus);
-  lista.querySelector('.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  vycentruj(lista, lista.querySelector('.active'));
+}
+
+/**
+ * Posune vodorovnou lištu tak, aby vybraná položka stála uprostřed.
+ * ⚠ Ne `scrollIntoView` — to posouvá i celou stránku svisle.
+ */
+function vycentruj(lista, prvek) {
+  if (!lista || !prvek) return;
+  const cil = prvek.offsetLeft - (lista.clientWidth - prvek.offsetWidth) / 2;
+  lista.scrollTo({ left: Math.max(0, cil), behavior: 'smooth' });
 }
 
 /**
@@ -1069,7 +1099,7 @@ export function renderCategoryRow({ maData, kategorie, aktivni, zaneprazdneno, o
   obnov.append(svg);
   prvky.push(obnov);
   radek.replaceChildren(...prvky);
-  radek.querySelector('.chip.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  vycentruj(radek, radek.querySelector('.chip.active'));
 }
 
 /**
@@ -1113,4 +1143,25 @@ export function renderPairSheet({ symbol, sestavy, onToggleList, onNewList, kate
     reset.hidden = !opraveno;
     reset.onclick = onReset;
   }
+}
+
+/** Tlačítko řazení vedle hledání a nabídka voleb. */
+export function renderSort({ klic, sestupne, volby, onSelect }) {
+  const btn = document.getElementById('sortBtn');
+  if (btn) btn.textContent = `${t(`sort.${klic}Short`)} ${sestupne ? '↓' : '↑'}`;
+  const telo = document.getElementById('sortOptions');
+  if (!telo) return;
+  telo.replaceChildren(...volby.map((k) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `sheet-check ${k === klic ? 'on' : ''}`.trim();
+    const znak = document.createElement('span');
+    znak.className = 'check-box';
+    znak.textContent = k === klic ? (sestupne ? '↓' : '↑') : '';
+    const text = document.createElement('span');
+    text.textContent = t(`sort.${k}`);
+    b.append(znak, text);
+    b.addEventListener('click', () => onSelect(k));
+    return b;
+  }));
 }

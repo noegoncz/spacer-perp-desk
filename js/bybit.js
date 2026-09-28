@@ -588,6 +588,9 @@ export class BybitClient {
         last: num(t.lastPrice),
         changePct: num(t.price24hPcnt) * 100,
         turnover: num(t.turnover24h),
+        // Pro řazení v Trzích — ze stejného dotazu, nic navíc.
+        funding: num(t.fundingRate) * 100,
+        openInterest: num(t.openInterestValue),
       }))
       .sort((a, b) => b.turnover - a.turnover);
   }

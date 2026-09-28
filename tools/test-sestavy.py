@@ -45,7 +45,7 @@ mock += """
     }
     if (u.includes('/v5/market/tickers') && !u.includes('symbol=')) {
       return Promise.resolve(new Response(JSON.stringify({ retCode: 0, result: { list: PARY.map((s, i) => ({
-        symbol: s, lastPrice: String(100 - i), price24hPcnt: '0.01', turnover24h: String(1e9 / (i + 1)) })) } }),
+        symbol: s, lastPrice: String(100 - i), price24hPcnt: String(0.05 - i * 0.01), turnover24h: String(1e9 / (i + 1)), fundingRate: '0.0001', openInterestValue: '1000000' })) } }),
         { status: 200 }));
     }
     return puvodni(vstup, volby);
@@ -113,7 +113,7 @@ time.sleep(1.5)
 print('1) první spuštění')
 l = listy()
 print('   lišta:', l)
-over(l and l[0] == 'All*' and 'Favourites' in l[1] and l[-1] == '+', 'lišta: All (aktivní), Favourites, +')
+over(l and l[0] == 'All*' and l[1] == 'My watchlist' and l[-1] == '+ New', 'lišta: All (aktivní), My watchlist, + New')
 fav = ev("JSON.parse(localStorage.getItem('perpdesk.lists')).seznamy[0].polozky")
 over(fav == ['bybit:BTCUSDT'], f'oblíbené převedené do sestavy jako burza:pár ({fav})')
 over(ev("!!document.querySelector('#watchCats .identify-btn')"), 'místo kategorií tlačítko Identify coins')
@@ -140,11 +140,39 @@ over(r == ['XYZUSDT'], f'„No category" ukazuje páry, které CoinGecko nezná 
 ev("[...document.querySelectorAll('#watchCats .chip')].find((c) => c.textContent.startsWith('All')).click()")
 time.sleep(0.4)
 
+print('3b) řazení a přepnutí seznamu')
+over(ev("document.getElementById('sortBtn').textContent") == 'Vol ↓', 'výchozí řazení podle objemu')
+klik('#sortBtn')
+time.sleep(0.3)
+ev("[...document.querySelectorAll('#sortOptions .sheet-check')].find((b) => b.textContent.includes('Change')).click()")
+time.sleep(0.3)
+klik('#sortBtn')
+time.sleep(0.3)
+ev("[...document.querySelectorAll('#sortOptions .sheet-check')].find((b) => b.textContent.includes('Change')).click()")
+time.sleep(0.3)
+over(ev("document.getElementById('sortBtn').textContent") == '24h ↑', 'druhé klepnutí otočí směr')
+r = radky()
+over(r and r[0] == 'XYZUSDT', f'řazení podle změny vzestupně ({r[:3] if r else r})')
+klik('#sortBtn'); time.sleep(0.2)
+ev("[...document.querySelectorAll('#sortOptions .sheet-check')].find((b) => b.textContent.includes('Volume')).click()")
+time.sleep(0.3)
+# filtr kategorie a hledání se při přepnutí seznamu zruší
+ev("[...document.querySelectorAll('#watchCats .chip')].find((c) => c.textContent.startsWith('Meme')).click()")
+time.sleep(0.2)
+ev("const i = document.getElementById('watchSearch'); i.value = 'PEPE'; i.dispatchEvent(new Event('input'))")
+time.sleep(0.2)
+ev("document.querySelectorAll('#watchLists .chip')[1].click()")
+time.sleep(0.3)
+ev("document.querySelectorAll('#watchLists .chip')[0].click()")
+time.sleep(0.3)
+over(len(radky() or []) == 7 and ev("document.getElementById('watchSearch').value") == '',
+     'po přepnutí seznamu je vidět všechno (bez filtru a hledání)')
+
 print('4) hvězdička a sestavy')
 klik('.watch-row[data-symbol="SOLUSDT"] .watch-star')
 time.sleep(0.3)
 over(ev("!document.getElementById('sheetPair').hidden"), 'hvězdička otevře nabídku páru')
-ev("[...document.querySelectorAll('#sheetPairLists .sheet-check')].find((b) => b.textContent.includes('Favourites')).click()")
+ev("[...document.querySelectorAll('#sheetPairLists .sheet-check')].find((b) => b.textContent.includes('My watchlist')).click()")
 time.sleep(0.3)
 klik('#sheetPairClose')
 time.sleep(0.3)
@@ -167,9 +195,9 @@ prejed(80, 340, 400)     # zpátky na Trhy (Scalp zůstává aktivní)
 over(zalozka() == 'watchlist', 'přejetím zpátky na Trhy')
 prejed(80, 340, 400)     # Scalp → Favourites
 l = listy()
-over(l and l[1] == 'Favourites*', f'přejetí doprava přepne na předchozí sestavu ({l})')
+over(l and l[1] == 'My watchlist*', f'přejetí doprava přepne na předchozí sestavu ({l})')
 r = radky()
-over(r == ['BTCUSDT', 'SOLUSDT'], f'Favourites obsahuje BTC a SOL ({r})')
+over(r == ['BTCUSDT', 'SOLUSDT'], f'My watchlist obsahuje BTC a SOL ({r})')
 prejed(80, 340, 400)     # Favourites → All
 prejed(80, 340, 400)     # před první → Pozice
 over(zalozka() == 'positions', f'před první sestavou přejetí přepne na Pozice ({zalozka()})')

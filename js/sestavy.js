@@ -63,6 +63,13 @@ function nactiSestavy() {
     };
     saveJson(KLIC_SESTAVY, stav);
   }
+  // „Favourites" ztratily zvláštní význam (každý seznam je vlastní výběr),
+  // výchozí název se proto změnil. Přejmenuje se jen nezměněný výchozí.
+  const prvni = stav.seznamy.find((x) => x.id === 'fav');
+  if (prvni && ['Favourites', 'Oblíbené'].includes(prvni.nazev)) {
+    prvni.nazev = t('lists.favourites');
+    saveJson(KLIC_SESTAVY, stav);
+  }
   return stav;
 }
 
@@ -227,4 +234,34 @@ export function zrusOpravu(symbol) {
   nactiKategorie();
   delete opravy[zkratkaCoinu(symbol)];
   saveJson(KLIC_OPRAVY, opravy);
+}
+
+/* ---------- řazení ---------- */
+
+const KLIC_RAZENI = 'perpdesk.marketSort';
+/** Klíč řazení → pole trhu z bybit.getTickers(). */
+export const RAZENI = {
+  volume: 'turnover',
+  change: 'changePct',
+  funding: 'funding',
+  oi: 'openInterest',
+};
+
+export function razeni() {
+  const r = loadJson(KLIC_RAZENI, null);
+  return r && RAZENI[r.klic] ? r : { klic: 'volume', sestupne: true };
+}
+
+/** Vybrat řazení; opětovná volba téhož otočí směr. */
+export function nastavRazeni(klic) {
+  const ted = razeni();
+  const nove = ted.klic === klic ? { klic, sestupne: !ted.sestupne } : { klic, sestupne: true };
+  saveJson(KLIC_RAZENI, nove);
+  return nove;
+}
+
+export function serad(trhy, { klic, sestupne }) {
+  const pole = RAZENI[klic];
+  const smer = sestupne ? -1 : 1;
+  return [...trhy].sort((a, b) => ((a[pole] ?? 0) - (b[pole] ?? 0)) * smer);
 }

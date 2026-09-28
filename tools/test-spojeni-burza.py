@@ -103,7 +103,16 @@ if ver.get('vzorek'):
 print('privátní stream otevřen:', v['privatni']['otevreno'],
       '' if v['privatni']['otevreno'] else '  (zavřeno kódem %s)' % v['privatni']['zavreno'])
 
+# Seznam trhů (záložka Trhy) čte z /v5/market/tickers i funding a open
+# interest pro řazení — ať nás nepřekvapí přejmenované pole.
+import json as _json, urllib.request as _ur
+_t = _json.load(_ur.urlopen(REST + '/v5/market/tickers?category=linear&symbol=' + PAR, timeout=15))
+_t = (_t.get('result') or {}).get('list') or [{}]
+chybi_trhy = [k for k in ['lastPrice', 'price24hPcnt', 'turnover24h', 'fundingRate', 'openInterestValue']
+              if k not in _t[0]]
+print('pole seznamu trhů:      ', 'všechna sedí' if not chybi_trhy else 'CHYBÍ ' + ', '.join(chybi_trhy))
+
 print()
 ok = (v['rest']['ok'] and ver['otevreno'] and svicek > 0 and tiku > 0
-      and v['privatni']['otevreno'] and ver.get('vzorek'))
+      and v['privatni']['otevreno'] and ver.get('vzorek') and not chybi_trhy)
 print('VÝSLEDEK:', 'BURZA ODPOVÍDÁ NA VŠECH ADRESÁCH' if ok else '!!! NĚKTERÁ ADRESA NEFUNGUJE')

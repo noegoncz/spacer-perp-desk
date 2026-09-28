@@ -1036,6 +1036,24 @@ aktivní sestavu → přejmenovat / smazat.
 - Kategorie pokryjí ~460 ze ~730 párů. Zbytek jsou hlavně **akcie,
   komodity a indexy**, které Bybit nabízí jako perpetuály (XAU, CL,
   SAMSUNG, TQQQ…) — ty CoinGecko nezná. Proto čip **No category**.
+- **Vzhled složek (v0.18.1, rozhodnutí uživatele):** v Trzích se hlavní
+  lišta záložek napojí na řadu seznamů (`.tabs.s-podzalozkami`), seznamy
+  jsou hranaté jako hlavní záložky, jen menší, a vybraný seznam má barvu
+  panelu s kategoriemi pod sebou — jako záložka šanonu. Vybraný seznam
+  i kategorie se posouvají doprostřed lišty (`vycentruj()` — ne
+  `scrollIntoView`, to by posunulo i stránku). Tlačítko `+ New` má text.
+- **Watchlist místo oblíbených:** u páru je **záložka s plusem** (plná
+  modrá, když je pár v nějakém seznamu), seznamy se jmenují watchlist
+  (česky „seznam"). Výchozí „Favourites" se přejmenoval na
+  „My watchlist" — uživatel: oblíbené ztratily smysl, každý seznam je
+  vlastní výběr.
+- **Přepnutí seznamu vždy ukáže všechno** — filtr kategorie i hledání se
+  zruší (uživatel: nesmí zůstat schované coiny z filtru jiného seznamu).
+- **Řazení** tlačítkem vedle hledání: objem 24h (výchozí), změna 24h,
+  funding, open interest — vše ze stejného dotazu na tickery. Opětovná
+  volba otočí směr. Pod názvem páru stojí hodnota, podle které se řadí.
+  Uživatel vybral tyto čtyři; nabídnuté a zatím nevybrané: volatilita
+  24h, tržní kapitalizace (CoinGecko), nové listingy.
 - Test: `tools/test-sestavy.py` (skutečné dotyky pro přejíždění).
 - ⚠ Magnet v grafu dřív v obsluze klepnutí sahal na tlačítko filtru
   oblíbených (zbloudilý řádek) — se zrušeným tlačítkem by spadl. Odstraněno.

@@ -331,6 +331,7 @@
         <button type="button" id="watchClearBtn" class="watch-clear" hidden
                 data-i18n-aria="watchlist.clear" data-i18n-title="watchlist.clear">✕</button>
       </div>
+      <button type="button" id="sortBtn" class="sort-btn" data-i18n-aria="sort.title" data-i18n-title="sort.title"></button>
     </div>
 
     <div class="watch-head">
@@ -355,6 +356,16 @@
       <div class="sheet-label" id="sheetPairCatsLabel"><span data-i18n="lists.categories">Categories</span>
         <button type="button" class="text-btn" id="sheetPairReset" hidden data-i18n="lists.resetCategories">Reset</button></div>
       <div class="chip-row wrap" id="sheetPairCats"></div>
+    </div>
+
+    <!-- Řazení seznamu trhů. -->
+    <div id="sheetSort" class="sheet" hidden>
+      <div class="sheet-head">
+        <span data-i18n="sort.title">Sort by</span>
+        <button type="button" class="icon-btn" id="sheetSortClose" data-i18n-aria="action.close">✕</button>
+      </div>
+      <div class="sheet-body" id="sortOptions"></div>
+      <p class="identify-hint" data-i18n="sort.hint">Tap the active option again to reverse the order.</p>
     </div>
 
     <!-- Správa jedné sestavy: přejmenování, smazání. -->

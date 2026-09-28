@@ -622,6 +622,13 @@ function wireEvents() {
   naUdalost('sheetPairClose', 'click', zavriNabidkyTrhu);
   naUdalost('sheetListClose', 'click', zavriNabidkyTrhu);
   naUdalost('listSaveBtn', 'click', ulozSestavu);
+  naUdalost('sortBtn', 'click', () => {
+    ukazPrvek('sheetPair', false);
+    ukazPrvek('sheetList', false);
+    ukazPrvek('watchBackdrop', true);
+    ukazPrvek('sheetSort', true);
+  });
+  naUdalost('sheetSortClose', 'click', zavriNabidkyTrhu);
   naUdalost('listDeleteBtn', 'click', smazSestavu);
   naUdalost('listName', 'keydown', (e) => {
     if (e.key === 'Enter') ulozSestavu();
@@ -1378,7 +1385,17 @@ function vykresliTrhy() {
   vykresliListu();
   const aktivni = sestavy.aktivni();
   const vSestave = aktivni === sestavy.VSE ? null : sestavy.paryVSestave(aktivni);
-  let seznam = vSestave ? trhy.filter((r) => vSestave.has(r.symbol)) : trhy;
+  const razeni = sestavy.razeni();
+  ui.renderSort({
+    ...razeni,
+    volby: Object.keys(sestavy.RAZENI),
+    onSelect: (klic) => {
+      sestavy.nastavRazeni(klic);
+      zavriNabidkyTrhu();
+      vykresliTrhy();
+    },
+  });
+  let seznam = sestavy.serad(vSestave ? trhy.filter((r) => vSestave.has(r.symbol)) : trhy, razeni);
 
   // Čipy kategorií ukazují jen kategorie zastoupené v aktuální sestavě,
   // s počtem párů — prázdné čipy by jen zabíraly místo.
@@ -1415,7 +1432,8 @@ function vykresliTrhy() {
   const orez = !vSestave && !filtrKategorie && !dotaz;
   const vysledek = orez ? seznam.slice(0, LIMIT_SEZNAMU) : seznam;
 
-  const radky = ui.renderWatchlist(vysledek, sestavy.jeVNejake, openChartSymbol, otevriPar, null, popisekKategorie);
+  const radky = ui.renderWatchlist(vysledek, sestavy.jeVNejake, openChartSymbol, otevriPar, null,
+    popisekKategorie, razeni.klic);
   sledujGrafy(radky);
 
   if (!trhy.length) return;
@@ -1431,6 +1449,13 @@ function vykresliTrhy() {
 }
 
 function vyberSestavu(id) {
+  if (id !== sestavy.aktivni()) {
+    filtrKategorie = null;
+    hledani = '';
+    const pole = el('watchSearch');
+    if (pole) pole.value = '';
+    ukazPrvek('watchClearBtn', false);
+  }
   sestavy.nastavAktivni(id);
   vykresliTrhy();
 }
@@ -1551,7 +1576,7 @@ function smazSestavu() {
 function zavriNabidkyTrhu() {
   rezimSestavy = null;
   otevrenyPar = null;
-  ['sheetPair', 'sheetList', 'watchBackdrop'].forEach((id) => ukazPrvek(id, false));
+  ['sheetPair', 'sheetList', 'sheetSort', 'watchBackdrop'].forEach((id) => ukazPrvek(id, false));
 }
 
 const ZALOZKY = ['positions', 'watchlist', 'history'];
@@ -1559,6 +1584,7 @@ let aktivniZalozka = 'positions';
 
 function prepniZalozku(nazev) {
   aktivniZalozka = nazev;
+  document.querySelector('.tabs')?.classList.toggle('s-podzalozkami', nazev === 'watchlist');
   ui.showView(nazev);
   dokresliSeznamJeLiZastaraly();
   if (nazev === 'watchlist') nactiTrhy();
