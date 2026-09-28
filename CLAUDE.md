@@ -89,6 +89,17 @@ commit navíc. Push jde na `origin/main`, odkud se automaticky nasazuje GitHub P
 - Podpis se počítá lokálně v zařízení přes WebCrypto. Secret neopouští telefon
   (posílá se jen odvozený HMAC podpis na Bybit).
 - Používej výhradně klíč s oprávněním **jen pro čtení**.
+- ⚠ **Aplikace to vynucuje** (v0.20.1, z auditu 2026-09-28): Test
+  i Uložit se po ověření spojení zeptají `/v5/user/query-api`. Klíč
+  s právem **výběru** (`Withdraw` v oprávněních) i klíč, který **není
+  read-only** (`readOnly` ≠ 1), se odmítne a do telefonu se neuloží.
+  Dřív uložený takový klíč aplikaci nezablokuje (uživatel by se nedostal
+  ke svým datům), ale v liště chyb trvale visí varování, dokud se klíč
+  nevymění — úspěšné načtení pozic ho nesmaže. Když se oprávnění
+  nepodaří ověřit (síť), klíč projde s upozorněním „zkontroluj si to".
+  Test: `tools/test-opravneni-klice.py` (na starém kódu padá v 6 bodech).
+  ⚠ Mock (`mock-bybit.js`) odpovídá na query-api klíčem jen pro čtení;
+  bez toho by testy s ukládáním klíče padaly.
 
 ## Architektura
 

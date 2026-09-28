@@ -159,7 +159,11 @@ const client = new BybitClient({
     ukazDiagnostiku();
     // Chybu maže až úspěšné REST načtení. Kdyby se mazala při každé nové
     // pozici, schoval by ji i pouhý tick ceny, zatímco načítání dál padá.
-    if (status.rest === 'ok') ui.clearError();
+    if (status.rest === 'ok') {
+      ui.clearError();
+      // Varování o nebezpečném klíči ale zůstává, dokud se klíč nevymění.
+      if (varovaniKlice) ui.showError(varovaniKlice);
+    }
   },
   onError(message) {
     ui.showError(message);
@@ -550,6 +554,7 @@ async function connectIfPossible() {
   ukazDiagnostiku();
   try {
     await client.start();
+    zkontrolujUlozenyKlic();
   } catch (err) {
     ui.showError(err?.message || String(err));
     ui.showPlaceholder(t('positions.failed'), t('action.openSettings'));
@@ -806,9 +811,25 @@ async function testCredentials() {
   btn.disabled = false;
   btn.textContent = t('settings.test');
   ui.showSettingsMessage(
-    result.ok ? t('settings.ok') : result.message,
+    result.ok ? t(result.overeno ? 'settings.ok' : 'settings.okUnverified') : result.message,
     result.ok,
   );
+}
+
+/**
+ * Klíč uložený z dřívějška (před kontrolou oprávnění) může umět obchodovat
+ * nebo vybírat. Aplikace kvůli tomu nepřestane fungovat — uživatel by se
+ * ke svým datům nedostal — ale jednou za spuštění důrazně upozorní.
+ */
+let varovaniKlice = null;
+
+async function zkontrolujUlozenyKlic() {
+  if (!client.hasCredentials()) return;
+  const o = await client.opravneniKlice();
+  if (o?.vyber) varovaniKlice = `⚠ ${t('settings.storedKeyWithdraw')}`;
+  else if (o && !o.jenCteni) varovaniKlice = `⚠ ${t('settings.storedKeyNotReadOnly')}`;
+  else varovaniKlice = null;
+  if (varovaniKlice) ui.showError(varovaniKlice);
 }
 
 async function saveAndConnect() {
@@ -834,6 +855,7 @@ async function saveAndConnect() {
 
   // Ukládá se až po ověření, ať se do telefonu nedostane nefunkční klíč.
   store.saveCredentials(apiKey, apiSecret);
+  varovaniKlice = null;
   client.stop();
   client.setCredentials(apiKey, apiSecret);
   ui.clearError();
@@ -847,6 +869,7 @@ function clearCredentials() {
   if (!confirm(t('settings.confirmClear'))) return;
   client.stop();
   store.clearCredentials();
+  varovaniKlice = null;
   lastPositions = [];
   el('apiKey').value = '';
   el('apiSecret').value = '';

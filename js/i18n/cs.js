@@ -399,6 +399,11 @@ export const cs = {
   'settings.cleared': 'Klíče smazány.',
   'settings.fillBoth': 'Vyplň API key i secret.',
   'settings.ok': 'Spojení funguje, klíč je platný.',
+  'settings.okUnverified': 'Spojení funguje. Oprávnění klíče se teď nepodařilo ověřit — zkontroluj, že je klíč jen pro čtení.',
+  'settings.keyWithdraw': 'Tenhle klíč umí VYBÍRAT prostředky. PerpyX ho odmítá a neuložil ho. Smaž ho na Bybitu a vytvoř nový s oprávněním „Read-Only".',
+  'settings.keyNotReadOnly': 'Tenhle klíč umí obchodovat. PerpyX přijímá jen klíče pro čtení a neuložil ho. Na Bybitu vytvoř nový klíč a zvol „Read-Only".',
+  'settings.storedKeyWithdraw': 'Uložený API klíč umí VYBÍRAT prostředky. Vyměň ho v nastavení za klíč jen pro čtení a tenhle na Bybitu smaž.',
+  'settings.storedKeyNotReadOnly': 'Uložený API klíč umí obchodovat. PerpyX stačí klíč jen pro čtení — vyměň ho prosím v nastavení.',
   'settings.language': 'Jazyk',
 
   'settings.helpTitle': 'Jak vytvořit read-only klíč na Bybitu',

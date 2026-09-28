@@ -403,6 +403,11 @@ export const en = {
   'settings.cleared': 'Keys deleted.',
   'settings.fillBoth': 'Fill in both the API key and the secret.',
   'settings.ok': 'Connection works, the key is valid.',
+  'settings.okUnverified': 'Connection works. The key permissions could not be checked right now — make sure the key is read-only.',
+  'settings.keyWithdraw': 'This key can WITHDRAW funds. PerpyX refuses it and did not save it. Delete this key on Bybit and create a new one with "Read-Only" permissions.',
+  'settings.keyNotReadOnly': 'This key can trade. PerpyX only accepts read-only keys and did not save it. On Bybit create a new key and choose "Read-Only".',
+  'settings.storedKeyWithdraw': 'Your saved API key can WITHDRAW funds. Replace it with a read-only key in Settings and delete this one on Bybit.',
+  'settings.storedKeyNotReadOnly': 'Your saved API key can trade. PerpyX only needs a read-only key — please replace it in Settings.',
   'settings.language': 'Language',
 
   'settings.helpTitle': 'How to create a read-only key on Bybit',

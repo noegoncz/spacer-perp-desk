@@ -32,6 +32,14 @@ window.fetch = function (vstup) {
   if (u.includes('/v5/market/time'))
     return ok({retCode:0, result:{timeNano:String(Date.now()*1e6)}, time:Date.now()});
   if (u.includes('/v5/position/list')) return ok({retCode:0, result:{list:[pozice]}});
+  // Oprávnění klíče. window.__klic = 'trade' | 'withdraw' simuluje nebezpečný klíč.
+  if (u.includes('/v5/user/query-api')) {
+    const k = window.__klic;
+    return ok({retCode:0, result:{readOnly: k ? 0 : 1, permissions: {
+      ContractTrade: k ? ['Order', 'Position'] : ['Position'],
+      Wallet: k === 'withdraw' ? ['AccountTransfer', 'Withdraw'] : [],
+    }}});
+  }
   if (u.includes('/v5/market/kline')) {
     const m = /interval=([^&]+)/.exec(u); const iv = m && decodeURIComponent(m[1]);
     (window.__ivl = window.__ivl || []).push(String(iv));

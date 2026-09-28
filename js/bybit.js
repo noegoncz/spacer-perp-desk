@@ -1313,7 +1313,33 @@ export class BybitClient {
     }
   }
 
-  /** Ověření klíčů na obrazovce nastavení. */
+  /**
+   * Oprávnění uloženého klíče podle Bybitu (`/v5/user/query-api`).
+   * `readOnly` je 1 u klíče jen pro čtení; výběr je mezi oprávněními
+   * peněženky (`Wallet: [..., "Withdraw"]`). Když se dotaz nepovede
+   * (síť), vrací null — „nevím", ne „v pořádku".
+   */
+  async opravneniKlice() {
+    try {
+      const r = await this.signedGet('/v5/user/query-api', {});
+      const vse = Object.values(r?.permissions || {}).flat().map(String);
+      return {
+        jenCteni: Number(r?.readOnly) === 1,
+        vyber: vse.some((x) => /withdraw/i.test(x)),
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Ověření klíčů na obrazovce nastavení.
+   *
+   * ⚠ Nestačí, že klíč umí číst pozice — to umí i klíč s právem
+   * obchodovat nebo vybírat. PerpyX přijímá **jen klíče pro čtení**
+   * (CLAUDE.md, „Bezpečnost klíčů"): klíč s právem výběru nebo obchodu
+   * se odmítne dřív, než se uloží do telefonu.
+   */
   async testCredentials(apiKey, apiSecret) {
     const prevKey = this.apiKey;
     const prevSecret = this.apiSecret;
@@ -1325,7 +1351,16 @@ export class BybitClient {
         settleCoin: 'USDT',
         limit: '1',
       });
-      return { ok: true };
+      const opravneni = await this.opravneniKlice();
+      if (opravneni?.vyber) {
+        this.setCredentials(prevKey, prevSecret);
+        return { ok: false, kod: 'withdraw', message: t('settings.keyWithdraw') };
+      }
+      if (opravneni && !opravneni.jenCteni) {
+        this.setCredentials(prevKey, prevSecret);
+        return { ok: false, kod: 'trade', message: t('settings.keyNotReadOnly') };
+      }
+      return { ok: true, overeno: Boolean(opravneni) };
     } catch (err) {
       this.setCredentials(prevKey, prevSecret);
       return { ok: false, message: err.message || String(err) };
