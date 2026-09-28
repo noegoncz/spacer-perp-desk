@@ -30,6 +30,8 @@ const SHELL = [
   './js/draw.js',
   './js/indikatory.js',
   './js/alarmy.js',
+  './js/sestavy.js',
+  './js/zaloha.js',
   './js/i18n.js',
   './js/i18n/en.js',
   './js/i18n/cs.js',

@@ -445,6 +445,21 @@
       <label for="language" data-i18n="settings.language">Language</label>
       <select id="language" class="select-field"></select>
 
+      <hr>
+
+      <!-- Záloha: seznamy, kresby, alarmy, nastavení (js/zaloha.js). Bez klíčů. -->
+      <label data-i18n="backup.title">Backup</label>
+      <p class="hint" data-i18n="backup.hint">
+        Watchlists, drawings, alarms and settings in one file — for a new phone
+        or a fresh install. API keys are never included.
+      </p>
+      <div class="button-row">
+        <button type="button" id="backupExportBtn" class="secondary-btn" data-i18n="backup.export">Save backup</button>
+        <button type="button" id="backupImportBtn" class="secondary-btn" data-i18n="backup.import">Restore</button>
+      </div>
+      <input type="file" id="backupFile" accept="application/json,.json" hidden>
+      <p id="backupMsg" class="settings-msg" hidden></p>
+
       <details class="help">
         <summary data-i18n="settings.helpTitle">How to create a read-only key on Bybit</summary>
         <ol>

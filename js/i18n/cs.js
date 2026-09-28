@@ -337,6 +337,18 @@ export const cs = {
   'indSet.barvaPoc': 'Barva pásma',
 
   /* ---------- nastavení ---------- */
+  'backup.title': 'Záloha',
+  'backup.hint': 'Seznamy, kresby, alarmy a nastavení v jednom souboru — pro nový telefon nebo novou instalaci. API klíče v záloze nikdy nejsou.',
+  'backup.export': 'Uložit zálohu',
+  'backup.import': 'Obnovit',
+  'backup.shared': 'Záloha je připravená — vyber, kam ji uložit (např. Disk nebo e-mail).',
+  'backup.downloaded': 'Záloha stažená ({name}).',
+  'backup.copied': 'Tahle verze aplikace ještě neumí ukládat soubory, záloha se proto zkopírovala do schránky. Vlož ji do poznámky nebo e-mailu sobě.',
+  'backup.failed': 'Zálohu se nepodařilo vytvořit.',
+  'backup.notBackup': 'Tohle není záloha PerpyX.',
+  'backup.newer': 'Záloha je z novější verze PerpyX. Nejdřív aplikaci aktualizuj.',
+  'backup.confirm': 'Obnovit zálohu z {date}?\n\n{lists} seznamů ({pairs} párů), {drawings} kreseb na {drawingPairs} párech, {alarms} alarmů.\n\nNahradí to současné seznamy, kresby, alarmy a nastavení. API klíče zůstanou, jak jsou.',
+  'backup.restored': 'Záloha obnovená. Načítám znovu…',
   'settings.title': 'Připojení k Bybitu',
   'settings.hint':
     'Zadej read-only API klíč. Klíč i secret se ukládají pouze do paměti tohoto '

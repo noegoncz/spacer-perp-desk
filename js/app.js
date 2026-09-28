@@ -13,6 +13,7 @@ import { t, setLanguage, applyStaticTexts, JAZYKY, getLocale } from './i18n.js';
 import { priceDecimals, formatPrice, formatPercent, liquidationDistance } from './format.js';
 import * as alarmy from './alarmy.js';
 import * as sestavy from './sestavy.js';
+import * as zaloha from './zaloha.js';
 import * as store from './store.js';
 import * as ui from './ui.js';
 
@@ -679,6 +680,9 @@ function wireEvents() {
   naUdalost('saveBtn', 'click', saveAndConnect);
   naUdalost('testBtn', 'click', testCredentials);
   naUdalost('clearBtn', 'click', clearCredentials);
+  naUdalost('backupExportBtn', 'click', ulozZalohu);
+  naUdalost('backupImportBtn', 'click', () => el('backupFile')?.click());
+  naUdalost('backupFile', 'change', obnovZalohu);
 
   // Práh varování před likvidací (checkpoint 8). Ukládá se hned při změně,
   // ať se na to nemusí mačkat zvlášť uložit.
@@ -2695,3 +2699,51 @@ function checkForUpdate() {
 }
 
 boot();
+
+/* ---------- záloha a obnova (js/zaloha.js) ---------- */
+
+function zpravaZalohy(text, ok = true) {
+  const p = el('backupMsg');
+  if (!p) return;
+  p.textContent = text;
+  p.className = `settings-msg ${ok ? 'ok' : 'fail'}`;
+  p.hidden = false;
+}
+
+async function ulozZalohu() {
+  try {
+    const cesta = await zaloha.ulozVen(zaloha.sestavZalohu());
+    if (cesta === 'sdileni') zpravaZalohy(t('backup.shared'));
+    else if (cesta === 'schranka') zpravaZalohy(t('backup.copied'));
+    else zpravaZalohy(t('backup.downloaded', { name: zaloha.nazevSouboru() }));
+  } catch (e) {
+    // Zavřené sdílení bez výběru cíle není chyba.
+    if (/cancel/i.test(String(e?.message || e))) return;
+    console.warn('zaloha', e);
+    zpravaZalohy(t('backup.failed'), false);
+  }
+}
+
+async function obnovZalohu(e) {
+  const soubor = e.target.files?.[0];
+  e.target.value = '';   // stejný soubor půjde vybrat znovu
+  if (!soubor) return;
+  let z;
+  try {
+    z = zaloha.prectiZalohu(await soubor.text());
+  } catch (chyba) {
+    zpravaZalohy(t(chyba.message === 'newer-version' ? 'backup.newer' : 'backup.notBackup'), false);
+    return;
+  }
+  const s = zaloha.souhrn(z);
+  const ok = confirm(t('backup.confirm', {
+    date: s.vytvoreno ? new Date(s.vytvoreno).toLocaleDateString(getLocale()) : '?',
+    lists: s.seznamy, pairs: s.paryVSeznamech, drawings: s.kresby,
+    drawingPairs: s.parySKresbami, alarms: s.alarmy,
+  }));
+  if (!ok) return;
+  zaloha.obnov(z);
+  zpravaZalohy(t('backup.restored'));
+  // Moduly drží data v paměti (alarmy, seznamy) — čistý start je nejjistější.
+  setTimeout(() => location.reload(), 600);
+}

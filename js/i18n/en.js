@@ -341,6 +341,18 @@ export const en = {
   'indSet.barvaPoc': 'POC colour',
 
   /* ---------- settings ---------- */
+  'backup.title': 'Backup',
+  'backup.hint': 'Watchlists, drawings, alarms and settings in one file — for a new phone or a fresh install. API keys are never included.',
+  'backup.export': 'Save backup',
+  'backup.import': 'Restore',
+  'backup.shared': 'Backup ready — choose where to save it (e.g. Drive or email).',
+  'backup.downloaded': 'Backup downloaded ({name}).',
+  'backup.copied': 'This app version cannot save files yet, so the backup was copied to the clipboard. Paste it into a note or an email to yourself.',
+  'backup.failed': 'Could not create the backup.',
+  'backup.notBackup': 'This file is not a PerpyX backup.',
+  'backup.newer': 'This backup comes from a newer PerpyX version. Update the app first.',
+  'backup.confirm': 'Restore the backup from {date}?\n\n{lists} watchlists ({pairs} pairs), {drawings} drawings on {drawingPairs} pairs, {alarms} alarms.\n\nThis replaces your current watchlists, drawings, alarms and settings. API keys stay as they are.',
+  'backup.restored': 'Backup restored. Reloading…',
   'settings.title': 'Bybit connection',
   'settings.hint':
     'Enter a read-only API key. The key and secret are stored on this phone only, '

@@ -114,6 +114,7 @@ js/draw.js              # dotykové kreslení se zaměřovacím křížem
 js/indikatory.js        # schémata nastavení indikátorů + vyhlazovací funkce (SMA/EMA/SMMA/WMA)
 js/alarmy.js            # cenové alarmy: model, vyhodnocení protnutí, ukládání
 js/sestavy.js           # sestavy coinů v Trzích + kategorie z CoinGecko (bez DOM)
+js/zaloha.js            # záloha a obnova dat do souboru (bez API klíčů)
 js/app.js               # orchestrace, lifecycle, update service workeru
 vendor/                 # KLineChart + licence, stažené v repu (ne CDN)
 tools/                  # testy přes DevTools Protocol, bez API klíčů (viz tools/README.md)
@@ -1057,6 +1058,34 @@ aktivní sestavu → přejmenovat / smazat.
 - Test: `tools/test-sestavy.py` (skutečné dotyky pro přejíždění).
 - ⚠ Magnet v grafu dřív v obsluze klepnutí sahal na tlačítko filtru
   oblíbených (zbloudilý řádek) — se zrušeným tlačítkem by spadl. Odstraněno.
+
+#### ✅ Záloha a obnova dat (v0.19.0, 2026-09-28)
+
+V nastavení **Save backup / Restore**. Soubor `perpyx-backup-RRRR-MM-DD.json`
+obsahuje všechno `perpdesk.*` z úložiště: seznamy, kresby, alarmy,
+indikátory, vzhled kreseb, opravy kategorií, nastavení.
+
+- ⚠ **API klíč a secret se do zálohy nikdy nedostanou** a obnova je ze
+  souboru ani nezapíše (podvržený soubor klíč nepřepíše). Soubor putuje
+  na Disk, do e-mailu — klíč patří jen do telefonu. Stažené kategorie
+  z CoinGecko se také nezálohují (jde je stáhnout znovu).
+- **Obnova nahrazuje celý stav** (ne doplňuje): nejdřív se ukáže souhrn
+  (kolik seznamů, kreseb, alarmů, z jakého data) a potvrzení, pak se
+  stránka přenačte — moduly drží data v paměti.
+- ⚠ **Android WebView neumí stáhnout soubor** (odkaz s `download` tam
+  nic neudělá). V APK proto jde záloha přes nativní pluginy
+  **Filesystem + Share** (`@capacitor/filesystem`, `@capacitor/share`
+  v apk.yml): soubor se zapíše do cache a nabídne ke sdílení (Disk,
+  Gmail, Soubory). Starší APK bez pluginů zkopíruje zálohu do schránky;
+  v prohlížeči klasické stažení. Nativní pluginy fungují i se
+  `server.url` (stránka z GitHub Pages) — most Capacitoru se vkládá do
+  každé stránky ve WebView (`window.Capacitor.Plugins`).
+- Načtení souboru jde přes `<input type=file>` — výběr souborů
+  WebView Capacitoru umí.
+- Test: `tools/test-zaloha.py`.
+- ⚠ Nové moduly (`sestavy.js`, `zaloha.js`) musí být i v seznamu
+  `SHELL` v `sw.js`, jinak aplikace bez sítě nenaběhne (v0.18.0 tam
+  `sestavy.js` chyběl, opraveno v0.19.0).
 
 #### ✅ Historie
 
