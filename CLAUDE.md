@@ -1457,6 +1457,41 @@ která celý zápis dělá přijatelně bezpečným.
 
 Pořadí, jak se na to má chodit. Odškrtnuté jsou hotové.
 
+### Směr dál — rozhodnutí uživatele (2026-09-28)
+
+Uživatel používá **už jen APK**; verzi v Brave nevyvíjíme ani nepoužíváme
+(je to stejný kód z GitHub Pages, jen v prohlížeči — nic nekomplikuje).
+
+1. **Pevný podpis APK** — trvalý podpisový klíč v tajemstvích GitHubu
+   + záloha u uživatele. Bez něj každé nové APK vyžaduje odinstalování,
+   a to smaže všechna data v aplikaci (klíč, kresby, alarmy, sestavy).
+2. **Trhy: kategorie a vlastní sestavy.** Tři vrstvy: všechny coiny na
+   burze → **kategorie** (AI, Privacy, Meme, L1, L2, DeFi…) jako filtry →
+   **vlastní sestavy** (typicky 20–50 coinů), mezi kterými se **přejíždí
+   prstem**; coin jde vložit do kterékoli sestavy odkudkoli.
+   Kategorie se **předvyplní z CoinGecko** tlačítkem „Identifikovat coiny"
+   — poprvé povinné, výsledek se uloží a CoinGecko se znovu volá jen
+   tlačítkem „Obnovit" (nesmí zdržovat každé otevření). Shody zkratek
+   (víc coinů pod „PEPE") → vzít největší kapitalizaci, kategorie jde
+   u coinu ručně opravit; `1000PEPE` apod. převést na základní coin.
+   ⚠ **Datový model připravit na další burzy** (Binance, MEXC…): kategorie
+   se vážou na coin (JUP), sestavy na `burza:pár` (`bybit:JUPUSDT`).
+3. **Záloha a obnova dat** do souboru (sestavy, kresby, alarmy).
+4. **RSI divergence v grafu** — **býčí i medvědí**, nejdřív vizuálně
+   a odladit detekci na skutečných grafech (pivoty vlevo/vpravo, rozpětí).
+5. **Skener divergencí nad sestavou**, zatím s otevřenou aplikací.
+6. **Server + push notifikace** (jako TradingView/TabTrader) — **zvolená
+   cesta pro alarmy se zhaslým displejem**, ne služba v telefonu.
+   Server hlídá ceny a skenuje divergence, push doručí Android přes
+   Firebase Cloud Messaging; baterie telefonu se to prakticky netýká
+   a je to použitelné i pro veřejnou verzi. **API klíče zůstávají
+   v telefonu** — server potřebuje jen veřejné ceny; na server jdou jen
+   hladiny alarmů a seznamy coinů.
+7. **Webová stránka aplikace** se sběrem e-mailů zájemců o **beta
+   testování** (uživatel ji chce mít brzy). Hosting volit tak, aby šel
+   nasazovat automaticky odsud a uživatel nemusel nic složitě nastavovat.
+8. **Další burzy** — až bude potřeba.
+
 ### Nejbližší dodělávky (drobné)
 
 - [x] **Ověřeno na telefonu** (2026-09-24): kresby při přepínání timeframu
