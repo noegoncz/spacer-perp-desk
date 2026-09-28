@@ -54,6 +54,43 @@ jobs:
         working-directory: apk
         run: npx cap add android
 
+      # ⚠ Žádná systémová záloha dat aplikace (Android Auto Backup ani
+      # přenos na nový telefon). Šablona Capacitoru má allowBackup="true"
+      # a Android by pak na Disk Google zálohoval i úložiště WebView —
+      # včetně API klíče. Slib „klíč nikdy neopustí telefon" by neplatil.
+      # Zálohu dat řeší účet PerpyX (bez klíčů). Na Androidu 12+ samotné
+      # allowBackup="false" nevypne přenos zařízení → zařízení, proto
+      # i pravidla dataExtractionRules. Když se šablona změní a náhrada
+      # se neprovede, sestavení spadne (grep na konci).
+      - name: Vypnout systémovou zálohu dat
+        run: |
+          man=apk/android/app/src/main/AndroidManifest.xml
+          grep -o 'android:allowBackup="[a-z]*"' "$man"
+          sed -i 's#android:allowBackup="true"#android:allowBackup="false" android:fullBackupContent="false" android:dataExtractionRules="@xml/data_extraction_rules"#' "$man"
+          mkdir -p apk/android/app/src/main/res/xml
+          cat > apk/android/app/src/main/res/xml/data_extraction_rules.xml <<'XML'
+          <?xml version="1.0" encoding="utf-8"?>
+          <data-extraction-rules>
+            <cloud-backup>
+              <exclude domain="root" path="." />
+              <exclude domain="file" path="." />
+              <exclude domain="database" path="." />
+              <exclude domain="sharedpref" path="." />
+              <exclude domain="external" path="." />
+            </cloud-backup>
+            <device-transfer>
+              <exclude domain="root" path="." />
+              <exclude domain="file" path="." />
+              <exclude domain="database" path="." />
+              <exclude domain="sharedpref" path="." />
+              <exclude domain="external" path="." />
+            </device-transfer>
+          </data-extraction-rules>
+          XML
+          grep -q 'android:allowBackup="false"' "$man"
+          grep -q 'dataExtractionRules' "$man"
+          grep -o 'android:allowBackup="[a-z]*"[^>]*' "$man"
+
       # Ikona appky místo výchozí ikony Capacitoru. Adaptivní ikona
       # (mipmap-anydpi-v26) se maže, jinak by přebila naše PNG.
       - name: Ikona PerpyX
