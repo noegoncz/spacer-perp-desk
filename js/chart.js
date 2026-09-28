@@ -1647,11 +1647,22 @@ export function createPriceChart(container, layer, handlers = {}) {
     const [rsi] = chart.getIndicators({ name: 'RSI' });
     if (!rsi) return;
     const n = nactiNastaveni('RSI');
+    /*
+     * ⚠ Okraj se zadává jako **podíl výšky panelu**, ne v pixelech. Pixely
+     * (hodnoty ≥ 1) knihovna přepočítává dělením výškou panelu — a když se
+     * graf při zavření schová, je výška 0: dělení nulou dalo nekonečno,
+     * rozpadl se výpočet celého rozvržení a panel se svíčkami zůstal
+     * natrvalo s nulovou výškou (v0.17.5, uživatel viděl jen RSI a prázdnou
+     * plochu). Podíl se proto počítá tady, z aktuální výšky, a přepočítává
+     * se s každou změnou výšky panelu (`pouzijVyskuPanelu`).
+     */
+    const vyska = chart.getSize(rsi.paneId, 'main')?.height || 0;
+    const podil = vyska > 40 ? Math.min(0.2, 7 / vyska) : 0.05;
     try {
       chart.overrideYAxis({
         paneId: rsi.paneId,
         // Bez pevné stupnice RSI kolísá a okraj nad křivkou se hodí.
-        gap: n.pevnaStupnice ? { top: 7, bottom: 7 } : { top: 0.2, bottom: 0.1 },
+        gap: n.pevnaStupnice ? { top: podil, bottom: podil } : { top: 0.2, bottom: 0.1 },
       });
     } catch {
       /* osa ještě není — nastaví se při dalším použití nastavení */
@@ -1683,7 +1694,6 @@ export function createPriceChart(container, layer, handlers = {}) {
     } catch {
       /* neznámý indikátor — nastavení prostě nemá co přepsat */
     }
-    if (nazev === 'RSI') osaRsiBezOkraju();
     pouzijVyskuPanelu(nazev);
   }
 
@@ -1712,6 +1722,8 @@ export function createPriceChart(container, layer, handlers = {}) {
     } catch {
       /* panel mezitím zmizel */
     }
+    // Okraj RSI je podíl výšky — s novou výškou se musí přepočítat.
+    if (nazev === 'RSI') osaRsiBezOkraju();
   }
 
   /** Po změně rozměrů se procenta musí přepočítat na nové pixely. */
@@ -1803,6 +1815,10 @@ export function createPriceChart(container, layer, handlers = {}) {
   setTimeout(oddelGestaOsy, 0);
 
   const observer = new ResizeObserver(() => {
+    // Na schovaný graf (zavřená obrazovka grafu, nulová plocha) se
+    // nepřepočítává — rozvržení do nulové výšky nemá smysl a nulová výška
+    // umí v knihovně nadělat škodu (viz osaRsiBezOkraju).
+    if (!container.clientWidth || !container.clientHeight) return;
     chart.resize();
     srovnejVyskyPanelu();
     umistiVrstvu();

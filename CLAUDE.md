@@ -921,8 +921,19 @@ vrátilo, jenže tím zase zmizela linka zisku. Test:
 **RSI nemá prázdné okraje nad 100 a pod 0.** Výchozí `gap` osy Y knihovny
 nechává nahoře 20 % a dole 10 % výšky panelu prázdných; u nízkého panelu
 to byla skoro třetina místa. `osaRsiBezOkraju()` ho přes `overrideYAxis`
-stáhne na 7 px (hodnoty ≥ 1 bere knihovna jako pixely), aby se popisky 100
-a 0 vešly celé. Jen s pevnou stupnicí — bez ní RSI kolísá a okraj se hodí.
+stáhne na ~7 px, aby se popisky 100 a 0 vešly celé. Jen s pevnou
+stupnicí — bez ní RSI kolísá a okraj se hodí.
+
+⚠ **Okraj osy se zadává jako podíl výšky (< 1), nikdy v pixelech.** Pixely
+(hodnoty ≥ 1) knihovna přepočítává **dělením výškou panelu**. Při zavření
+grafu se obrazovka schová a výška je 0 → dělení nulou → nekonečno →
+rozpadne se celé rozvržení a **panel se svíčkami zůstane natrvalo s nulovou
+výškou**. Uživatel pak při druhém otevření grafu viděl jen RSI a prázdnou
+plochu (v0.17.5, opraveno v0.17.7). Podíl se počítá z aktuální výšky panelu
+a přepočítává s každou její změnou (`pouzijVyskuPanelu`). Test:
+`tools/test-znovuotevreni-grafu.py` — otevře graf pětkrát po sobě; ostatní
+testy otevíraly graf jen jednou, proto to nechytily. ResizeObserver navíc
+schovaný graf (nulová plocha) vůbec nepřepočítává.
 Legenda vlevo nahoře pak zajede do plochy RSI, uživateli to tak vyhovuje.
 Výška panelu nabízí i **10 a 15 %**.
 

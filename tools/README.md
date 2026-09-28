@@ -53,6 +53,7 @@ jen nová stránka ve staré kartě.
 | `test-klepnuti-na-kartu.py` | klepnutí na kartu otevře graf i při živých cenách a hned po přejetí záložek; po zavření grafu čerstvá cena |
 | `test-historie-obchod.py` | prohlídka uzavřeného obchodu: jen jeho plnění, interval podle délky, Historie nemění timeframe dalších grafů |
 | `test-indikatory-vrstveni.py` | indikátory v hlavním panelu se nemažou navzájem, RSI bez prázdných okrajů |
+| `test-znovuotevreni-grafu.py` | graf otevřený pětkrát po sobě má pokaždé svíčky (okraj osy RSI v pixelech je rozbíjel) |
 | `test-mereni-a-cenovky.py` | měření, cenovky vodorovných kreseb, procenta u kříže, barva náhledu kresby |
 | `test-mereni-mazani-a-prepnuti-paru.py` | smazání měření; při přepnutí páru neprobliká graf předchozího |
 | `test-graf-osa-a-zpet.py` | cenovky SL/TP/likvidace na ose, velké tlačítko zpět |
