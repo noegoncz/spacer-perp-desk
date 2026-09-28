@@ -30,3 +30,6 @@ apk/package-lock.json
 
 # Vygenerovaný při nasazení webu (obsahuje ID databáze z Cloudflare)
 web/wrangler.toml
+
+# Generuje se při nasazení webu (web/tools/kategorie.py)
+web/public/data/

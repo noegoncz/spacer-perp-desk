@@ -113,6 +113,7 @@ js/chart.js             # obal nad knihovnou grafu (KLineChart), o Bybitu neví
 js/draw.js              # dotykové kreslení se zaměřovacím křížem
 js/indikatory.js        # schémata nastavení indikátorů + vyhlazovací funkce (SMA/EMA/SMMA/WMA)
 js/alarmy.js            # cenové alarmy: model, vyhodnocení protnutí, ukládání
+js/sestavy.js           # sestavy coinů v Trzích + kategorie z CoinGecko (bez DOM)
 js/app.js               # orchestrace, lifecycle, update service workeru
 vendor/                 # KLineChart + licence, stažené v repu (ne CDN)
 tools/                  # testy přes DevTools Protocol, bez API klíčů (viz tools/README.md)
@@ -1000,6 +1001,44 @@ Klepnutí na pár otevře graf. Proto graf nově funguje **i bez otevřené pozi
 `chartSymbol` je zdroj pravdy o tom, co se kreslí, `chartPosition` může být
 `null`. Pak se nekreslí čáry pozice, panel pod grafem ustoupí a v hlavičce je
 místo PnL změna za 24 h. Příkazy se dotahují jen s uloženými klíči.
+
+#### ✅ Sestavy a kategorie (v0.18.0, 2026-09-28)
+
+Tři vrstvy: **všechny páry** → **kategorie** (AI, L1, Meme…) jako filtr →
+**vlastní sestavy**. Nahoře v Trzích lišta sestav (`All`, `Favourites`,
+vlastní, `+`), pod ní čipy kategorií s počty párů. Hvězdička u páru
+otevře nabídku: do kterých sestav patří (zaškrtávání, nová sestava)
+a jeho kategorie (ruční oprava, „Reset" vrátí CoinGecko). Klepnutí na
+aktivní sestavu → přejmenovat / smazat.
+
+- **Přejíždění je vnořené** (rozhodnutí uživatele): v Trzích přejetí
+  přepíná sestavy, za poslední / před první pokračuje na sousední
+  záložku. Tah začatý na liště sestav, čipech nebo v nabídce si nechávají
+  ony (posouvají se do strany).
+- **Dosavadní oblíbené** (hvězdičky) se při prvním spuštění staly
+  sestavou „Favourites". Filtr „jen oblíbené" a dělič v seznamu zmizely —
+  totéž teď dělá sestava. „All" oblíbené nahoru neřadí.
+- ⚠ **Datový model je připravený na další burzy:** sestava drží
+  `burza:pár` (`bybit:JUPUSDT`), kategorie se vážou na **zkratku coinu**
+  (`JUP`). Převod páru na zkratku (`1000PEPEUSDT` → PEPE, `SHIB1000` →
+  SHIB, přejmenované `RAYDIUM` → RAY) je `zkratkaCoinu()` v sestavy.js.
+- **Kategorie jsou předpočítané** (rozhodnutí uživatele): web.yml je
+  jednou denně stáhne z CoinGecko (`web/tools/kategorie.py`, 26 vybraných
+  kategorií, u stejné zkratky vyhrává největší kapitalizace) do
+  https://perpyx.com/data/kategorie.json (CORS povolený). Telefon se
+  CoinGecka nikdy neptá. Tlačítko **Identify coins** (poprvé povinné)
+  a ikona obnovení na konci čipů stáhnou jen ten soubor; uloží se do
+  telefonu a znovu se sám nestahuje.
+- ⚠ Bez klíče pouští CoinGecko jen pár dotazů za minutu: generátor jde
+  po 13 s a na 429 čeká minutu; běh trvá desítky minut. Nepovinné
+  tajemství `COINGECKO_API_KEY` (Demo) ho zrychlí. Když CoinGecko nevyjde,
+  nasadí se včerejší soubor z webu.
+- Kategorie pokryjí ~460 ze ~730 párů. Zbytek jsou hlavně **akcie,
+  komodity a indexy**, které Bybit nabízí jako perpetuály (XAU, CL,
+  SAMSUNG, TQQQ…) — ty CoinGecko nezná. Proto čip **No category**.
+- Test: `tools/test-sestavy.py` (skutečné dotyky pro přejíždění).
+- ⚠ Magnet v grafu dřív v obsluze klepnutí sahal na tlačítko filtru
+  oblíbených (zbloudilý řádek) — se zrušeným tlačítkem by spadl. Odstraněno.
 
 #### ✅ Historie
 

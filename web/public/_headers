@@ -7,3 +7,8 @@
 
 /img/*
   Cache-Control: public, max-age=86400
+
+# Kategorie coinů čte aplikace z GitHub Pages / APK — jiný původ, proto CORS.
+/data/*
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=3600

@@ -9,6 +9,9 @@ name: Nasazení webu perpyx.com
 # založí jen tehdy, když ještě neexistují. Nic existujícího nemaže.
 on:
   workflow_dispatch:
+  # Denně ráno: čerstvé kategorie coinů z CoinGecko (web/tools/kategorie.py).
+  schedule:
+    - cron: '17 4 * * *'
   push:
     branches: [main]
     paths:
@@ -98,6 +101,20 @@ jobs:
             "$CF_API/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PROJEKT")
           if [ "$stav" != "200" ]; then
             npx -y wrangler@4 pages project create "$PROJEKT" --production-branch main
+          fi
+
+      # Kategorie coinů pro Trhy v aplikaci. Když CoinGecko neodpoví
+      # (limit, výpadek), vezme se včerejší soubor z webu — nasazení se
+      # kvůli tomu nesmí zastavit a soubor nesmí z webu zmizet.
+      - name: Kategorie coinů
+        if: env.PRESKOCIT != '1'
+        env:
+          COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
+        run: |
+          mkdir -p web/public/data
+          if ! timeout 45m python web/tools/kategorie.py; then
+            echo "::warning::CoinGecko nevyšel, beru poslední soubor z webu."
+            curl -fsS "https://$DOMENA/data/kategorie.json" -o web/public/data/kategorie.json               || echo "::warning::Ani starý soubor není — kategorie na webu chybí."
           fi
 
       # Klíč k Resendu (odesílání potvrzovacích e-mailů) dostane web jako

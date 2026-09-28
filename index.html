@@ -317,12 +317,13 @@
 
   <!-- ===== Trhy ===== -->
   <section id="viewWatchlist" hidden>
+    <!-- Sestavy: všechny páry + vlastní seznamy; přepínají se klepnutím
+         i přejetím prstem po seznamu (js/sestavy.js). -->
+    <div id="watchLists" class="watch-lists" role="tablist"></div>
+    <!-- Kategorie z CoinGecko jako filtr; dokud nejsou coiny
+         identifikované, stojí tu místo nich tlačítko. -->
+    <div id="watchCats" class="watch-cats"></div>
     <div class="watch-tools">
-      <!-- Hvězdička filtru je schválně vlevo a zarovnaná s hvězdičkami v seznamu. -->
-      <button type="button" id="onlyFavBtn" class="watch-star"
-              data-i18n-aria="watchlist.onlyFavourites" data-i18n-title="watchlist.onlyFavourites">
-        <svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9L3.5 9.7l5.9-.8z"/></svg>
-      </button>
       <div class="watch-search-wrap">
         <input type="text" id="watchSearch" class="watch-search"
                data-i18n-ph="watchlist.searchPlaceholder" placeholder="e.g. BTC"
@@ -341,6 +342,34 @@
     </div>
     <div id="watchList" class="watch-list"></div>
     <p id="watchNote" class="watch-note"></p>
+
+    <!-- Nabídka u hvězdičky: do kterých sestav pár patří a jeho kategorie. -->
+    <div id="watchBackdrop" class="sheet-backdrop" hidden></div>
+    <div id="sheetPair" class="sheet" hidden>
+      <div class="sheet-head">
+        <span id="sheetPairTitle"></span>
+        <button type="button" class="icon-btn" id="sheetPairClose" data-i18n-aria="action.close">✕</button>
+      </div>
+      <div class="sheet-label" data-i18n="lists.addTo">Add to list</div>
+      <div class="sheet-body" id="sheetPairLists"></div>
+      <div class="sheet-label" id="sheetPairCatsLabel"><span data-i18n="lists.categories">Categories</span>
+        <button type="button" class="text-btn" id="sheetPairReset" hidden data-i18n="lists.resetCategories">Reset</button></div>
+      <div class="chip-row wrap" id="sheetPairCats"></div>
+    </div>
+
+    <!-- Správa jedné sestavy: přejmenování, smazání. -->
+    <div id="sheetList" class="sheet" hidden>
+      <div class="sheet-head">
+        <span data-i18n="lists.manage">List</span>
+        <button type="button" class="icon-btn" id="sheetListClose" data-i18n-aria="action.close">✕</button>
+      </div>
+      <input type="text" id="listName" class="watch-search" maxlength="30" autocomplete="off"
+             data-i18n-ph="lists.namePlaceholder" placeholder="List name">
+      <div class="sheet-akce dvoje">
+        <button type="button" class="text-btn danger" id="listDeleteBtn" data-i18n="lists.delete">Delete list</button>
+        <button type="button" class="primary-btn" id="listSaveBtn" data-i18n="lists.save">Save</button>
+      </div>
+    </div>
   </section>
 
   <!-- ===== Historie ===== -->

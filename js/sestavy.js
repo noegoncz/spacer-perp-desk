@@ -1,0 +1,230 @@
+/**
+ * Sestavy coinů (vlastní seznamy v Trzích) a kategorie z CoinGecko.
+ *
+ * Tři vrstvy: všechny páry na burze → **kategorie** (AI, L1, Meme…) jako
+ * filtr → **vlastní sestavy**, mezi kterými se přejíždí prstem.
+ *
+ * ⚠ Datový model je připravený na další burzy:
+ *  - sestava drží položky jako `burza:pár` (`bybit:JUPUSDT`) — stejný coin
+ *    na jiné burze je jiný pár s jinou cenou a jiným fundingem,
+ *  - kategorie se vážou na **coin** (`JUP`), ne na pár — JUP je AI/DeFi
+ *    token bez ohledu na to, kde se obchoduje.
+ *
+ * Modul nesahá na DOM. Kategorie se stahují z perpyx.com (jeden
+ * předpočítaný soubor, viz web/tools/kategorie.py); CoinGecka se telefon
+ * nikdy neptá. Jde o veřejná data, ne o burzu, proto to není v bybit.js.
+ */
+import { loadJson, saveJson, loadFavourites } from './store.js';
+import { t } from './i18n.js';
+
+export const BURZA = 'bybit';
+export const VSE = 'all';                 // pseudo-sestava „všechny páry"
+export const ZDROJ_KATEGORII = 'https://perpyx.com/data/kategorie.json';
+
+const KLIC_SESTAVY = 'perpdesk.lists';
+const KLIC_KATEGORIE = 'perpdesk.coinCategories';
+const KLIC_OPRAVY = 'perpdesk.categoryOverrides';
+
+export const polozka = (symbol, burza = BURZA) => `${burza}:${symbol}`;
+
+/**
+ * Pár na burze → zkratka coinu, pod kterou ho zná CoinGecko.
+ * `1000PEPEUSDT` → PEPE, `10000SATSUSDT` → SATS, `SHIB1000USDT` → SHIB.
+ * Násobky jsou vždy mocnina desítky od 100 výš — `1INCH` zůstává `1INCH`.
+ */
+// Páry, které Bybit pojmenoval jinak, než je zkratka coinu na CoinGecku.
+const PREJMENOVANE = { RAYDIUM: 'RAY', LUNA2: 'LUNA' };
+
+export function zkratkaCoinu(symbol) {
+  let z = String(symbol).replace(/(USDT|USDC|PERP)$/, '');
+  if (PREJMENOVANE[z]) return PREJMENOVANE[z];
+  const predpona = /^(10{2,})([A-Z].*)$/.exec(z);
+  if (predpona) z = predpona[2];
+  const pripona = /^(.*[A-Z])(10{2,})$/.exec(z);
+  if (pripona) z = pripona[1];
+  return z;
+}
+
+/* ---------- sestavy ---------- */
+
+let stav = null;
+
+function nactiSestavy() {
+  if (stav) return stav;
+  stav = loadJson(KLIC_SESTAVY, null);
+  if (!stav || !Array.isArray(stav.seznamy)) {
+    // První spuštění: dosavadní oblíbené (hvězdičky) se stanou první sestavou,
+    // ať o ně uživatel nepřijde.
+    const oblibene = loadFavourites();
+    stav = {
+      verze: 1,
+      aktivni: VSE,
+      seznamy: [{ id: 'fav', nazev: t('lists.favourites'), polozky: oblibene.map((s) => polozka(s)) }],
+    };
+    saveJson(KLIC_SESTAVY, stav);
+  }
+  return stav;
+}
+
+const uloz = () => saveJson(KLIC_SESTAVY, stav);
+
+/** Sestavy v pořadí, v jakém se přejíždějí (bez „všech párů"). */
+export function seznamy() {
+  return nactiSestavy().seznamy;
+}
+
+export function aktivni() {
+  const s = nactiSestavy();
+  return s.aktivni === VSE || s.seznamy.some((x) => x.id === s.aktivni) ? s.aktivni : VSE;
+}
+
+export function nastavAktivni(id) {
+  nactiSestavy().aktivni = id;
+  uloz();
+}
+
+/** Pořadí pro přejíždění: všechny páry a pak vlastní sestavy. */
+export function poradi() {
+  return [VSE, ...seznamy().map((x) => x.id)];
+}
+
+export function najdi(id) {
+  return seznamy().find((x) => x.id === id) || null;
+}
+
+export function vytvor(nazev) {
+  const s = nactiSestavy();
+  const id = `l${Date.now().toString(36)}`;
+  s.seznamy.push({ id, nazev: nazev.trim().slice(0, 30) || t('lists.untitled'), polozky: [] });
+  uloz();
+  return id;
+}
+
+export function prejmenuj(id, nazev) {
+  const x = najdi(id);
+  if (!x || !nazev.trim()) return;
+  x.nazev = nazev.trim().slice(0, 30);
+  uloz();
+}
+
+export function smaz(id) {
+  const s = nactiSestavy();
+  s.seznamy = s.seznamy.filter((x) => x.id !== id);
+  if (s.aktivni === id) s.aktivni = VSE;
+  uloz();
+}
+
+export function obsahuje(id, symbol) {
+  return Boolean(najdi(id)?.polozky.includes(polozka(symbol)));
+}
+
+/** Je pár aspoň v jedné sestavě? (plná hvězdička v řádku) */
+export function jeVNejake(symbol) {
+  const p = polozka(symbol);
+  return seznamy().some((x) => x.polozky.includes(p));
+}
+
+export function prepni(id, symbol) {
+  const x = najdi(id);
+  if (!x) return;
+  const p = polozka(symbol);
+  if (x.polozky.includes(p)) x.polozky = x.polozky.filter((q) => q !== p);
+  else x.polozky.push(p);
+  uloz();
+}
+
+/** Páry sestavy na naší burze (položky jiných burz se zatím přeskočí). */
+export function paryVSestave(id) {
+  const x = najdi(id);
+  if (!x) return null;
+  return new Set(x.polozky
+    .filter((p) => p.startsWith(`${BURZA}:`))
+    .map((p) => p.slice(BURZA.length + 1)));
+}
+
+/* ---------- kategorie ---------- */
+
+let kategorie = null;   // { vytvoreno, stazeno, kategorie:[{id,nazev}], coiny:{ZKRATKA:[jméno,[i…]]} }
+let opravy = null;      // { ZKRATKA: [id kategorie…] } — ruční úpravy uživatele
+
+function nactiKategorie() {
+  if (!kategorie) kategorie = loadJson(KLIC_KATEGORIE, null);
+  if (!opravy) opravy = loadJson(KLIC_OPRAVY, {});
+  return kategorie;
+}
+
+/** Jsou coiny identifikované? Poprvé je to povinný krok. */
+export function maKategorie() {
+  return Boolean(nactiKategorie()?.coiny);
+}
+
+export function kdyStazeno() {
+  return nactiKategorie()?.stazeno || null;
+}
+
+/** Seznam kategorií v pořadí ze souboru: [{ id, nazev }]. */
+export function vsechnyKategorie() {
+  return nactiKategorie()?.kategorie || [];
+}
+
+/**
+ * Stáhne kategorie. `httpGet` jde podstrčit (testy, později nativní
+ * transport v APK); výchozí je fetch s časovým limitem.
+ */
+export async function stahniKategorie(httpGet = vychoziGet) {
+  const data = await httpGet(ZDROJ_KATEGORII);
+  if (!data || !Array.isArray(data.kategorie) || !data.coiny) {
+    throw new Error('Unexpected categories file');
+  }
+  kategorie = { ...data, stazeno: Date.now() };
+  saveJson(KLIC_KATEGORIE, kategorie);
+  return kategorie;
+}
+
+async function vychoziGet(url) {
+  const ctrl = new AbortController();
+  const limit = setTimeout(() => ctrl.abort(), 15000);
+  try {
+    const res = await fetch(url, { signal: ctrl.signal, cache: 'no-cache' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } finally {
+    clearTimeout(limit);
+  }
+}
+
+/** Id kategorií coinu — ruční oprava má přednost před CoinGeckem. */
+export function kategorieCoinu(symbol) {
+  const k = nactiKategorie();
+  const zkratka = zkratkaCoinu(symbol);
+  if (opravy[zkratka]) return opravy[zkratka];
+  const zaznam = k?.coiny?.[zkratka];
+  if (!zaznam) return [];
+  return zaznam[1].map((i) => k.kategorie[i]?.id).filter(Boolean);
+}
+
+export function nazevKategorie(id) {
+  return vsechnyKategorie().find((k) => k.id === id)?.nazev || id;
+}
+
+export function jeOpraveno(symbol) {
+  nactiKategorie();
+  return Boolean(opravy[zkratkaCoinu(symbol)]);
+}
+
+/** Přepne kategorii u coinu (ruční oprava). */
+export function prepniKategorii(symbol, id) {
+  const zkratka = zkratkaCoinu(symbol);
+  const ted = new Set(kategorieCoinu(symbol));
+  if (ted.has(id)) ted.delete(id);
+  else ted.add(id);
+  opravy[zkratka] = [...ted];
+  saveJson(KLIC_OPRAVY, opravy);
+}
+
+/** Zruší ruční opravu, vrátí se kategorie z CoinGecka. */
+export function zrusOpravu(symbol) {
+  nactiKategorie();
+  delete opravy[zkratkaCoinu(symbol)];
+  saveJson(KLIC_OPRAVY, opravy);
+}

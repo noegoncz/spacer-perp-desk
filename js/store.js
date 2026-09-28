@@ -203,3 +203,20 @@ export function loadHideAmounts() {
 export function saveHideAmounts(value) {
   write(KEY_HIDE, value ? '1' : '0');
 }
+
+/**
+ * Sestavy coinů v Trzích a kategorie. Ukládají se jako celek (JSON);
+ * tvar dat hlídá js/sestavy.js, tady se jen čte a zapisuje.
+ */
+export function loadJson(klic, vychozi) {
+  try {
+    const text = read(klic);
+    return text ? JSON.parse(text) : vychozi;
+  } catch {
+    return vychozi;
+  }
+}
+
+export function saveJson(klic, hodnota) {
+  write(klic, JSON.stringify(hodnota));
+}

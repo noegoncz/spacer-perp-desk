@@ -12,6 +12,7 @@ import {
 import { t, setLanguage, applyStaticTexts, JAZYKY, getLocale } from './i18n.js';
 import { priceDecimals, formatPrice, formatPercent, liquidationDistance } from './format.js';
 import * as alarmy from './alarmy.js';
+import * as sestavy from './sestavy.js';
 import * as store from './store.js';
 import * as ui from './ui.js';
 
@@ -498,7 +499,6 @@ function boot() {
   ui.renderVersion(self.APP_VERSION, self.APP_BUILD);
   prepniTridu('hideBtn', 'active', hideAmounts);
   prepniTridu('magnetBtn', 'active', magnetZapnut);
-  prepniTridu('onlyFavBtn', 'active', jenOblibene);
   wireEvents();
   zapojPrejeti();
   odemkniZvuk();
@@ -617,7 +617,15 @@ function wireEvents() {
     vykresliTrhy();
   });
 
-  naUdalost('onlyFavBtn', 'click', prepniJenOblibene);
+  // Trhy: nabídka u hvězdičky a správa sestavy.
+  naUdalost('watchBackdrop', 'click', zavriNabidkyTrhu);
+  naUdalost('sheetPairClose', 'click', zavriNabidkyTrhu);
+  naUdalost('sheetListClose', 'click', zavriNabidkyTrhu);
+  naUdalost('listSaveBtn', 'click', ulozSestavu);
+  naUdalost('listDeleteBtn', 'click', smazSestavu);
+  naUdalost('listName', 'keydown', (e) => {
+    if (e.key === 'Enter') ulozSestavu();
+  });
 
   naUdalost('indicatorBtn', 'click', () => otevriNabidku('sheetIndicators'));
   naUdalost('alarmBtn', 'click', novyAlarmKrizem);
@@ -638,7 +646,6 @@ function wireEvents() {
     magnetZapnut = !magnetZapnut;
     store.saveMagnet(magnetZapnut);
     el('magnetBtn').classList.toggle('active', magnetZapnut);
-  el('onlyFavBtn').classList.toggle('active', jenOblibene);
     chart?.setMagnet(magnetZapnut);
   });
 
@@ -1319,11 +1326,21 @@ let prohlizenyObchod = null;  // když se graf otevřel z historie
 let chartOtevreno = null;
 
 let trhy = [];
-let oblibene = new Set(store.loadFavourites());
-let jenOblibene = store.loadOnlyFavourites();
 let hledani = '';
+let filtrKategorie = null;      // id kategorie, nebo null = všechny
+// Čip pro páry, které CoinGecko nezná — hlavně akcie, komodity a indexy,
+// které Bybit nabízí jako perpetuály (XAU, CL, SAMSUNG…).
+const BEZ_KATEGORIE = '__none';
+const maKategorii = (symbol, id) => (id === BEZ_KATEGORIE
+  ? !sestavy.kategorieCoinu(symbol).length
+  : sestavy.kategorieCoinu(symbol).includes(id));
+let identifikuji = false;
+let chybaIdentifikace = false;
+let otevrenyPar = null;         // pár v nabídce u hvězdičky
+let rezimSestavy = null;        // { id } při úpravě, { novy, pridat } při zakládání
 
 async function nactiTrhy() {
+  vykresliListu();
   if (trhy.length) {
     vykresliTrhy();
     return;
@@ -1338,47 +1355,203 @@ async function nactiTrhy() {
   vykresliTrhy();
 }
 
+function vykresliListu() {
+  ui.renderListBar({
+    polozky: [
+      { id: sestavy.VSE, nazev: t('lists.all') },
+      ...sestavy.seznamy().map((x) => ({ id: x.id, nazev: x.nazev, pocet: x.polozky.length })),
+    ],
+    aktivni: sestavy.aktivni(),
+    onSelect: vyberSestavu,
+    onManage: spravujSestavu,
+    onNew: () => novaSestava(null),
+  });
+}
+
+/** Krátký popisek kategorií za obratem v řádku (nejvýš dvě). */
+function popisekKategorie(symbol) {
+  if (!sestavy.maKategorie()) return '';
+  return sestavy.kategorieCoinu(symbol).slice(0, 2).map(sestavy.nazevKategorie).join(', ');
+}
+
 function vykresliTrhy() {
+  vykresliListu();
+  const aktivni = sestavy.aktivni();
+  const vSestave = aktivni === sestavy.VSE ? null : sestavy.paryVSestave(aktivni);
+  let seznam = vSestave ? trhy.filter((r) => vSestave.has(r.symbol)) : trhy;
+
+  // Čipy kategorií ukazují jen kategorie zastoupené v aktuální sestavě,
+  // s počtem párů — prázdné čipy by jen zabíraly místo.
+  let kategorie = [];
+  if (sestavy.maKategorie()) {
+    const pocty = new Map();
+    for (const r of seznam) {
+      const k = sestavy.kategorieCoinu(r.symbol);
+      if (!k.length) pocty.set(BEZ_KATEGORIE, (pocty.get(BEZ_KATEGORIE) || 0) + 1);
+      for (const id of k) pocty.set(id, (pocty.get(id) || 0) + 1);
+    }
+    kategorie = [...sestavy.vsechnyKategorie(), { id: BEZ_KATEGORIE, nazev: t('lists.noCategory') }]
+      .filter((k) => pocty.has(k.id) || k.id === filtrKategorie)
+      .map((k) => ({ id: k.id, nazev: k.nazev, pocet: pocty.get(k.id) || 0 }));
+  }
+  ui.renderCategoryRow({
+    maData: sestavy.maKategorie(),
+    kategorie,
+    aktivni: filtrKategorie,
+    zaneprazdneno: identifikuji,
+    chyba: chybaIdentifikace,
+    onSelect: (id) => {
+      filtrKategorie = id;
+      vykresliTrhy();
+    },
+    onIdentify: identifikujCoiny,
+  });
+
   const dotaz = hledani.trim().toUpperCase();
-  let seznam = trhy;
+  if (filtrKategorie) seznam = seznam.filter((r) => maKategorii(r.symbol, filtrKategorie));
   if (dotaz) seznam = seznam.filter((r) => r.symbol.includes(dotaz));
-  if (jenOblibene) seznam = seznam.filter((r) => oblibene.has(r.symbol));
+  // Ořezává se jen celý seznam všech párů. Sestava, kategorie i hledání
+  // ukazují všechno, jinak by se hledaný pár nemusel objevit.
+  const orez = !vSestave && !filtrKategorie && !dotaz;
+  const vysledek = orez ? seznam.slice(0, LIMIT_SEZNAMU) : seznam;
 
-  // Oblíbené vždy nahoře, zbytek zůstává seřazený podle obratu.
-  const nahore = seznam.filter((r) => oblibene.has(r.symbol));
-  const zbytek = seznam.filter((r) => !oblibene.has(r.symbol));
-  // Při hledání se neořezává, jinak by se hledaný pár nemusel objevit.
-  const vysledek = [...nahore, ...(dotaz ? zbytek : zbytek.slice(0, LIMIT_SEZNAMU))];
-
-  // Dělič dává smysl jen když nějaké oblíbené jsou a neprobíhá hledání —
-  // ve výsledcích hledání by jen mátl.
-  const delic = nahore.length && !dotaz
-    ? { poIndexu: nahore.length - 1, sbaleno: jenOblibene, onClick: prepniJenOblibene }
-    : null;
-
-  const radky = ui.renderWatchlist(vysledek, oblibene, openChartSymbol, prepniOblibeny, delic);
+  const radky = ui.renderWatchlist(vysledek, sestavy.jeVNejake, openChartSymbol, otevriPar, null, popisekKategorie);
   sledujGrafy(radky);
 
+  if (!trhy.length) return;
   if (!vysledek.length) {
-    ui.showWatchNote(t(jenOblibene && !dotaz ? 'watchlist.noFavourites' : 'watchlist.empty'));
+    if (vSestave && !vSestave.size) ui.showWatchNote(t('lists.empty'));
+    else if (filtrKategorie && !dotaz) {
+      const nazev = filtrKategorie === BEZ_KATEGORIE ? t('lists.noCategory') : sestavy.nazevKategorie(filtrKategorie);
+      ui.showWatchNote(t('lists.catEmpty', { cat: nazev }));
+    } else ui.showWatchNote(t('watchlist.empty'));
   } else {
     ui.showWatchNote(t('watchlist.shown', { shown: vysledek.length, total: trhy.length }));
   }
 }
 
-/** Stejná funkce jako hvězdička filtru nahoře, jen dostupná i u seznamu. */
-function prepniJenOblibene() {
-  jenOblibene = !jenOblibene;
-  store.saveOnlyFavourites(jenOblibene);
-  el('onlyFavBtn').classList.toggle('active', jenOblibene);
+function vyberSestavu(id) {
+  sestavy.nastavAktivni(id);
   vykresliTrhy();
 }
 
-function prepniOblibeny(symbol) {
-  if (oblibene.has(symbol)) oblibene.delete(symbol);
-  else oblibene.add(symbol);
-  store.saveFavourites([...oblibene]);
+/** Stáhne kategorie coinů (poprvé povinné, pak jen tlačítkem obnovit). */
+async function identifikujCoiny() {
+  if (identifikuji) return;
+  identifikuji = true;
+  chybaIdentifikace = false;
   vykresliTrhy();
+  try {
+    await sestavy.stahniKategorie();
+  } catch (e) {
+    chybaIdentifikace = true;
+    console.warn('kategorie', e);
+  }
+  identifikuji = false;
+  vykresliTrhy();
+}
+
+/* ---- nabídka u hvězdičky ---- */
+
+function otevriPar(symbol) {
+  otevrenyPar = symbol;
+  vykresliPar();
+  ukazPrvek('sheetList', false);
+  ukazPrvek('watchBackdrop', true);
+  ukazPrvek('sheetPair', true);
+}
+
+function vykresliPar() {
+  const s = otevrenyPar;
+  if (!s) return;
+  const moje = new Set(sestavy.kategorieCoinu(s));
+  const sKategoriemi = sestavy.maKategorie();
+  ukazPrvek('sheetPairCatsLabel', sKategoriemi);
+  ukazPrvek('sheetPairCats', sKategoriemi);
+  ui.renderPairSheet({
+    symbol: s,
+    sestavy: sestavy.seznamy().map((x) => ({ id: x.id, nazev: x.nazev, zapnuto: sestavy.obsahuje(x.id, s) })),
+    onToggleList: (id) => {
+      sestavy.prepni(id, s);
+      vykresliPar();
+      vykresliTrhy();
+    },
+    onNewList: () => novaSestava(s),
+    kategorie: sKategoriemi
+      ? sestavy.vsechnyKategorie().map((k) => ({ id: k.id, nazev: k.nazev, zapnuto: moje.has(k.id) }))
+      : [],
+    onToggleCat: (id) => {
+      sestavy.prepniKategorii(s, id);
+      vykresliPar();
+      vykresliTrhy();
+    },
+    opraveno: sestavy.jeOpraveno(s),
+    onReset: () => {
+      sestavy.zrusOpravu(s);
+      vykresliPar();
+      vykresliTrhy();
+    },
+  });
+}
+
+/* ---- správa sestavy ---- */
+
+function spravujSestavu(id) {
+  const x = sestavy.najdi(id);
+  if (!x) return;  // „Vše" správu nemá
+  rezimSestavy = { id };
+  el('listName').value = x.nazev;
+  ukazPrvek('listDeleteBtn', true);
+  ukazPrvek('sheetPair', false);
+  ukazPrvek('watchBackdrop', true);
+  ukazPrvek('sheetList', true);
+}
+
+/** Nová sestava; `pridat` = pár, který se do ní rovnou vloží (z nabídky u hvězdičky). */
+function novaSestava(pridat) {
+  rezimSestavy = { novy: true, pridat };
+  el('listName').value = '';
+  ukazPrvek('listDeleteBtn', false);
+  ukazPrvek('sheetPair', false);
+  ukazPrvek('watchBackdrop', true);
+  ukazPrvek('sheetList', true);
+  el('listName').focus();
+}
+
+function ulozSestavu() {
+  if (!rezimSestavy) return;
+  const nazev = el('listName').value.trim();
+  if (rezimSestavy.novy) {
+    const id = sestavy.vytvor(nazev);
+    const par = rezimSestavy.pridat;
+    if (par) {
+      sestavy.prepni(id, par);
+      rezimSestavy = null;
+      vykresliTrhy();
+      otevriPar(par);   // zpátky do nabídky páru, ať je vidět, kam se přidal
+      return;
+    }
+    sestavy.nastavAktivni(id);
+  } else if (nazev) {
+    sestavy.prejmenuj(rezimSestavy.id, nazev);
+  }
+  zavriNabidkyTrhu();
+  vykresliTrhy();
+}
+
+function smazSestavu() {
+  const x = rezimSestavy?.id && sestavy.najdi(rezimSestavy.id);
+  if (!x) return;
+  if (!confirm(t('lists.confirmDelete', { name: x.nazev }))) return;
+  sestavy.smaz(x.id);
+  zavriNabidkyTrhu();
+  vykresliTrhy();
+}
+
+function zavriNabidkyTrhu() {
+  rezimSestavy = null;
+  otevrenyPar = null;
+  ['sheetPair', 'sheetList', 'watchBackdrop'].forEach((id) => ukazPrvek(id, false));
 }
 
 const ZALOZKY = ['positions', 'watchlist', 'history'];
@@ -1432,7 +1605,10 @@ function zapojPrejeti() {
      * „někdy to reaguje, někdy ne". Test: tools/test-klepnuti-na-kartu.py.
      */
     prejeto = false;
-    if (chartSymbol || !el('viewSettings').hidden || e.touches.length !== 1) {
+    // Vodorovně posuvné lišty (sestavy, kategorie) a otevřené nabídky
+    // si tah nechávají pro sebe.
+    if (chartSymbol || !el('viewSettings').hidden || e.touches.length !== 1
+        || e.target.closest?.('.watch-lists, .watch-cats, .chip-row, .sheet')) {
       zapomen();
       return;
     }
@@ -1461,6 +1637,18 @@ function zapojPrejeti() {
     const dy = dotyk.clientY - start.y;
     zapomen();
     if (Math.abs(dx) < POTREBA || Math.abs(dx) < Math.abs(dy) * 2) return;
+
+    // V Trzích přejetí nejdřív přepíná sestavy; až za první / poslední
+    // sestavou pokračuje na sousední záložku (jako vnořené stránky v Androidu).
+    if (aktivniZalozka === 'watchlist') {
+      const poradi = sestavy.poradi();
+      const dalsi = poradi.indexOf(sestavy.aktivni()) + (dx < 0 ? 1 : -1);
+      if (dalsi >= 0 && dalsi < poradi.length) {
+        prejeto = true;
+        vyberSestavu(poradi[dalsi]);
+        return;
+      }
+    }
 
     const kam = ZALOZKY.indexOf(aktivniZalozka) + (dx < 0 ? 1 : -1);
     if (kam < 0 || kam >= ZALOZKY.length) return;

@@ -773,7 +773,11 @@ function zkratkaObratu(hodnota) {
  * @param {object|null} delic dělicí tlačítko za oblíbenými:
  *        `{ poIndexu, sbaleno, onClick }`
  */
-export function renderWatchlist(radky, oblibene, onSelect, onToggleFav, delic = null) {
+/**
+ * Seznam trhů. `veSestave(symbol)` rozhoduje o plné hvězdičce, `popisek(symbol)`
+ * je krátký text za obratem (kategorie coinu).
+ */
+export function renderWatchlist(radky, veSestave, onSelect, onToggleFav, delic = null, popisek = null) {
   const prvky = [];
   const vytvorRadek = (trh) => {
     const radek = document.createElement('div');
@@ -782,8 +786,8 @@ export function renderWatchlist(radky, oblibene, onSelect, onToggleFav, delic = 
 
     const hvezda = document.createElement('button');
     hvezda.type = 'button';
-    hvezda.className = `watch-star ${oblibene.has(trh.symbol) ? 'on' : ''}`.trim();
-    hvezda.setAttribute('aria-label', t('watchlist.favourite'));
+    hvezda.className = `watch-star ${veSestave(trh.symbol) ? 'on' : ''}`.trim();
+    hvezda.setAttribute('aria-label', t('lists.addTo'));
     const svg = document.createElementNS(SVG_NS, 'svg');
     svg.setAttribute('viewBox', '0 0 24 24');
     const path = document.createElementNS(SVG_NS, 'path');
@@ -800,7 +804,8 @@ export function renderWatchlist(radky, oblibene, onSelect, onToggleFav, delic = 
     nazev.textContent = trh.symbol;
     const obrat = document.createElement('span');
     obrat.className = 'watch-turnover';
-    obrat.textContent = zkratkaObratu(trh.turnover);
+    const znacka = popisek ? popisek(trh.symbol) : '';
+    obrat.textContent = znacka ? `${zkratkaObratu(trh.turnover)} · ${znacka}` : zkratkaObratu(trh.turnover);
     nazev.append(obrat);
 
     const cena = document.createElement('div');
@@ -978,4 +983,134 @@ export function renderVersion(version, build) {
 
 export function showUpdateBar(show) {
   dom.updateBar.hidden = !show;
+}
+
+
+/* ---------- sestavy a kategorie v Trzích ---------- */
+
+function cip(text, aktivni, onClick, trida = '') {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = `chip ${trida} ${aktivni ? 'active' : ''}`.replace(/\s+/g, ' ').trim();
+  b.textContent = text;
+  b.addEventListener('click', onClick);
+  return b;
+}
+
+/**
+ * Lišta sestav: Vše, vlastní sestavy, „+". Klepnutí na aktivní sestavu
+ * otevře její správu (přejmenovat, smazat) — „Vše" správu nemá.
+ */
+export function renderListBar({ polozky, aktivni, onSelect, onManage, onNew }) {
+  const lista = document.getElementById('watchLists');
+  if (!lista) return;
+  const prvky = polozky.map(({ id, nazev, pocet }) => {
+    const b = cip(nazev, id === aktivni, () => (id === aktivni ? onManage(id) : onSelect(id)), 'list-tab');
+    b.setAttribute('role', 'tab');
+    b.setAttribute('aria-selected', String(id === aktivni));
+    b.dataset.id = id;
+    if (pocet != null) {
+      const n = document.createElement('span');
+      n.className = 'chip-count';
+      n.textContent = String(pocet);
+      b.append(n);
+    }
+    return b;
+  });
+  const plus = cip('+', false, onNew, 'list-tab list-new');
+  plus.setAttribute('aria-label', t('lists.new'));
+  plus.title = t('lists.new');
+  lista.replaceChildren(...prvky, plus);
+  lista.querySelector('.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+}
+
+/**
+ * Řádek kategorií. Bez identifikovaných coinů místo čipů tlačítko
+ * „Identifikovat coiny" (poprvé povinné); jinak čipy + obnovení na konci.
+ */
+export function renderCategoryRow({ maData, kategorie, aktivni, zaneprazdneno, onSelect, onIdentify, chyba }) {
+  const radek = document.getElementById('watchCats');
+  if (!radek) return;
+  if (!maData) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'identify-btn';
+    btn.disabled = Boolean(zaneprazdneno);
+    btn.textContent = zaneprazdneno ? t('lists.identifying') : t('lists.identify');
+    btn.addEventListener('click', onIdentify);
+    const popis = document.createElement('span');
+    popis.className = `identify-hint ${chyba ? 'err' : ''}`.trim();
+    popis.textContent = chyba ? t('lists.identifyFailed') : t('lists.identifyHint');
+    radek.classList.remove('chip-row');
+    radek.replaceChildren(btn, popis);
+    return;
+  }
+  radek.classList.add('chip-row');
+  const prvky = [cip(t('lists.allCategories'), !aktivni, () => onSelect(null))];
+  kategorie.forEach(({ id, nazev, pocet }) => {
+    const b = cip(nazev, id === aktivni, () => onSelect(id === aktivni ? null : id));
+    if (pocet != null) {
+      const n = document.createElement('span');
+      n.className = 'chip-count';
+      n.textContent = String(pocet);
+      b.append(n);
+    }
+    prvky.push(b);
+  });
+  const obnov = cip('', false, onIdentify, 'chip-refresh');
+  obnov.disabled = Boolean(zaneprazdneno);
+  obnov.setAttribute('aria-label', t('lists.refresh'));
+  obnov.title = t('lists.refresh');
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  const path = document.createElementNS(SVG_NS, 'path');
+  path.setAttribute('d', 'M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6');
+  svg.append(path);
+  obnov.append(svg);
+  prvky.push(obnov);
+  radek.replaceChildren(...prvky);
+  radek.querySelector('.chip.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+}
+
+/**
+ * Nabídka u hvězdičky: sestavy (zaškrtnout / odškrtnout) a kategorie
+ * coinu (ruční oprava).
+ */
+export function renderPairSheet({ symbol, sestavy, onToggleList, onNewList, kategorie, onToggleCat, opraveno, onReset }) {
+  const titulek = document.getElementById('sheetPairTitle');
+  if (titulek) titulek.textContent = symbol;
+  const telo = document.getElementById('sheetPairLists');
+  if (telo) {
+    const prvky = sestavy.map(({ id, nazev, zapnuto }) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `sheet-check ${zapnuto ? 'on' : ''}`.trim();
+      b.setAttribute('role', 'checkbox');
+      b.setAttribute('aria-checked', String(zapnuto));
+      const znak = document.createElement('span');
+      znak.className = 'check-box';
+      znak.textContent = zapnuto ? '✓' : '';
+      const text = document.createElement('span');
+      text.textContent = nazev;
+      b.append(znak, text);
+      b.addEventListener('click', () => onToggleList(id));
+      return b;
+    });
+    const nova = document.createElement('button');
+    nova.type = 'button';
+    nova.className = 'sheet-check new';
+    nova.textContent = `+ ${t('lists.new')}`;
+    nova.addEventListener('click', onNewList);
+    telo.replaceChildren(...prvky, nova);
+  }
+  const cipy = document.getElementById('sheetPairCats');
+  if (cipy) {
+    cipy.replaceChildren(...kategorie.map(({ id, nazev, zapnuto }) =>
+      cip(nazev, zapnuto, () => onToggleCat(id))));
+  }
+  const reset = document.getElementById('sheetPairReset');
+  if (reset) {
+    reset.hidden = !opraveno;
+    reset.onclick = onReset;
+  }
 }
