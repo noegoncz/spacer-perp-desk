@@ -14,6 +14,7 @@ import { priceDecimals, formatPrice, formatPercent, liquidationDistance } from '
 import * as alarmy from './alarmy.js';
 import * as sestavy from './sestavy.js';
 import * as zaloha from './zaloha.js';
+import * as ucet from './ucet.js';
 import * as store from './store.js';
 import * as ui from './ui.js';
 
@@ -501,6 +502,8 @@ function boot() {
   prepniTridu('hideBtn', 'active', hideAmounts);
   prepniTridu('magnetBtn', 'active', magnetZapnut);
   wireEvents();
+  vykresliUcet();
+  ucet.spust();
   zapojPrejeti();
   odemkniZvuk();
   hlidejCasoveAlarmy();
@@ -683,6 +686,22 @@ function wireEvents() {
   naUdalost('backupExportBtn', 'click', ulozZalohu);
   naUdalost('backupImportBtn', 'click', () => el('backupFile')?.click());
   naUdalost('backupFile', 'change', obnovZalohu);
+
+  // Účet PerpyX
+  naUdalost('accountSendBtn', 'click', posliKodUctu);
+  naUdalost('accountEmail', 'keydown', (e) => { if (e.key === 'Enter') posliKodUctu(); });
+  naUdalost('accountVerifyBtn', 'click', overKodUctu);
+  naUdalost('accountCode', 'input', (e) => {
+    // Šest číslic = rovnou přihlásit, ať se nemusí hledat tlačítko.
+    if (/^\d{6}$/.test(e.target.value.trim())) overKodUctu();
+  });
+  naUdalost('accountBackBtn', 'click', () => ukazKrokUctu('email'));
+  naUdalost('accountBackupBtn', 'click', zalohujUcetTed);
+  naUdalost('accountRestoreBtn', 'click', otevriObnovuUctu);
+  naUdalost('accountRestoreGo', 'click', obnovZUctu);
+  naUdalost('accountLogoutBtn', 'click', odhlasUcet);
+  naUdalost('accountDeleteBtn', 'click', smazUcet);
+  ucet.naZmenu(vykresliUcet);
 
   // Práh varování před likvidací (checkpoint 8). Ukládá se hned při změně,
   // ať se na to nemusí mačkat zvlášť uložit.
@@ -2746,4 +2765,187 @@ async function obnovZalohu(e) {
   zpravaZalohy(t('backup.restored'));
   // Moduly drží data v paměti (alarmy, seznamy) — čistý start je nejjistější.
   setTimeout(() => location.reload(), 600);
+}
+
+/* ---------- účet PerpyX (js/ucet.js) ---------- */
+
+let emailUctu = '';
+
+function zpravaUctu(text, ok = true) {
+  const p = el('accountMsg');
+  if (!p) return;
+  p.textContent = text || '';
+  p.className = `settings-msg ${ok ? 'ok' : 'fail'}`;
+  p.hidden = !text;
+}
+
+function ukazKrokUctu(krok) {
+  ukazPrvek('accountStepEmail', krok === 'email');
+  ukazPrvek('accountStepCode', krok === 'kod');
+  zpravaUctu('');
+  if (krok === 'kod') el('accountCode')?.focus();
+}
+
+function vykresliUcet() {
+  const prihlasen = ucet.prihlasen();
+  ukazPrvek('accountOut', !prihlasen);
+  ukazPrvek('accountIn', prihlasen);
+  if (!prihlasen) return;
+  const kdo = el('accountWho');
+  if (kdo) kdo.textContent = ucet.email();
+  const z = ucet.posledniZaloha();
+  const stav = el('accountBackupState');
+  if (!stav) return;
+  if (z.probiha) stav.textContent = t('account.backingUp');
+  else if (z.chyba) stav.textContent = t('account.backupFailed', { why: z.chyba });
+  else if (z.kdy) stav.textContent = t('account.lastBackup', { when: new Date(z.kdy).toLocaleString(getLocale()) });
+  else stav.textContent = t('account.noBackup');
+}
+
+const duvod = (e) => e?.kod || e?.message || 'offline';
+
+async function posliKodUctu() {
+  const adresa = (el('accountEmail')?.value || '').trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adresa)) {
+    zpravaUctu(t('account.invalidEmail'), false);
+    return;
+  }
+  const btn = el('accountSendBtn');
+  if (btn) btn.disabled = true;
+  try {
+    const d = await ucet.posliKod(adresa);
+    emailUctu = adresa;
+    ukazKrokUctu('kod');
+    const hint = el('accountCodeHint');
+    if (hint) hint.textContent = t(d.wait ? 'account.codeWait' : 'account.codeSent', { email: adresa });
+  } catch (e) {
+    zpravaUctu(t(e.kod === 'invalid-email' ? 'account.invalidEmail' : 'account.failed', { why: duvod(e) }), false);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+let overuji = false;
+
+async function overKodUctu() {
+  const kod = (el('accountCode')?.value || '').trim();
+  if (overuji || !/^\d{6}$/.test(kod)) return;
+  overuji = true;
+  try {
+    const me = await ucet.overKod(emailUctu, kod);
+    el('accountCode').value = '';
+    ukazKrokUctu('email');
+    await nabidniObnovuPoPrihlaseni(me);
+  } catch (e) {
+    const zprava = {
+      'wrong-code': t('account.wrongCode', { left: e.data?.left ?? '?' }),
+      'code-expired': t('account.codeExpired'),
+      'too-many-attempts': t('account.tooMany'),
+    }[e.kod] || t('account.failed', { why: duvod(e) });
+    zpravaUctu(zprava, false);
+  } finally {
+    overuji = false;
+  }
+}
+
+/**
+ * Po přihlášení: když je na účtu záloha, nabídnout obnovu. Prázdný
+ * telefon (nová instalace) dostane jen otázku „obnovit?"; telefon
+ * s vlastními daty volí, která data platí.
+ */
+async function nabidniObnovuPoPrihlaseni(me) {
+  if (!me.backup) {
+    ucet.zalohujTed().catch(() => {});
+    return;
+  }
+  let z;
+  try {
+    z = await ucet.stahniZalohu();
+  } catch {
+    return;
+  }
+  const s = zaloha.souhrn(z);
+  const parametry = {
+    date: new Date(s.vytvoreno || me.backup.created_at).toLocaleString(getLocale()),
+    lists: s.seznamy, drawings: s.kresby, alarms: s.alarmy,
+  };
+  const mistni = ucet.maMistniData();
+  const obnovit = confirm(t(mistni ? 'account.offerRestoreReplace' : 'account.offerRestore', parametry));
+  if (obnovit) {
+    zaloha.obnov(z);
+    zpravaUctu(t('backup.restored'));
+    setTimeout(() => location.reload(), 600);
+  } else if (mistni) {
+    ucet.zalohujTed().catch(() => {});
+  }
+}
+
+async function zalohujUcetTed() {
+  try {
+    await ucet.zalohujTed();
+    zpravaUctu(t('account.backedUp'));
+  } catch (e) {
+    zpravaUctu(t('account.failed', { why: duvod(e) }), false);
+  }
+}
+
+async function otevriObnovuUctu() {
+  const box = el('accountRestoreBox');
+  if (box && !box.hidden) {
+    box.hidden = true;
+    return;
+  }
+  try {
+    const verze = await ucet.verzeZaloh();
+    if (!verze.length) {
+      zpravaUctu(t('account.noVersions'), false);
+      return;
+    }
+    const vyber = el('accountVersions');
+    vyber.replaceChildren(...verze.map((v) => {
+      const o = document.createElement('option');
+      o.value = String(v.version);
+      o.textContent = new Date(v.created_at).toLocaleString(getLocale());
+      return o;
+    }));
+    ukazPrvek('accountRestoreBox', true);
+    zpravaUctu('');
+  } catch (e) {
+    zpravaUctu(t('account.failed', { why: duvod(e) }), false);
+  }
+}
+
+async function obnovZUctu() {
+  const verze = Number(el('accountVersions')?.value) || null;
+  try {
+    const z = await ucet.stahniZalohu(verze);
+    const s = zaloha.souhrn(z);
+    const ok = confirm(t('backup.confirm', {
+      date: s.vytvoreno ? new Date(s.vytvoreno).toLocaleString(getLocale()) : '?',
+      lists: s.seznamy, pairs: s.paryVSeznamech, drawings: s.kresby,
+      drawingPairs: s.parySKresbami, alarms: s.alarmy,
+    }));
+    if (!ok) return;
+    zaloha.obnov(z);
+    zpravaUctu(t('backup.restored'));
+    setTimeout(() => location.reload(), 600);
+  } catch (e) {
+    zpravaUctu(t('account.failed', { why: duvod(e) }), false);
+  }
+}
+
+async function odhlasUcet() {
+  if (!confirm(t('account.confirmSignOut'))) return;
+  await ucet.odhlas();
+  zpravaUctu('');
+}
+
+async function smazUcet() {
+  if (!confirm(t('account.confirmDelete'))) return;
+  try {
+    await ucet.smazUcet();
+    zpravaUctu(t('account.deleted'));
+  } catch (e) {
+    zpravaUctu(t('account.failed', { why: duvod(e) }), false);
+  }
 }

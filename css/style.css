@@ -1050,6 +1050,8 @@ main {
 }
 
 .card h2 { margin: 0 0 8px; font-size: 1.05rem; }
+.card + .card { margin-top: 12px; }
+.account-who { margin: 0 0 4px; overflow-wrap: anywhere; }
 
 .hint {
   margin: 0 0 16px;
@@ -1067,7 +1069,7 @@ label {
   color: var(--text-dim);
 }
 
-input[type="text"], input[type="password"] {
+input[type="text"], input[type="password"], input[type="email"] {
   width: 100%;
   min-height: var(--tap);
   margin-bottom: 14px;

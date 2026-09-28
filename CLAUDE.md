@@ -115,6 +115,7 @@ js/indikatory.js        # schémata nastavení indikátorů + vyhlazovací funkc
 js/alarmy.js            # cenové alarmy: model, vyhodnocení protnutí, ukládání
 js/sestavy.js           # sestavy coinů v Trzích + kategorie z CoinGecko (bez DOM)
 js/zaloha.js            # záloha a obnova dat do souboru (bez API klíčů)
+js/ucet.js              # účet PerpyX: přihlášení kódem, cloudová záloha, denní aktivita
 js/app.js               # orchestrace, lifecycle, update service workeru
 vendor/                 # KLineChart + licence, stažené v repu (ne CDN)
 tools/                  # testy přes DevTools Protocol, bez API klíčů (viz tools/README.md)
@@ -1086,6 +1087,57 @@ indikátory, vzhled kreseb, opravy kategorií, nastavení.
 - ⚠ Nové moduly (`sestavy.js`, `zaloha.js`) musí být i v seznamu
   `SHELL` v `sw.js`, jinak aplikace bez sítě nenaběhne (v0.18.0 tam
   `sestavy.js` chyběl, opraveno v0.19.0).
+
+#### ✅ Účet PerpyX a cloudová záloha (v0.20.0, 2026-09-28)
+
+Rozhodnutí uživatele: aplikace bude jednou placená (měsíční předplatné
+přes Google Play), takže **účet je základ** — pro zálohu, přehled
+uživatelů, měření používání a později předplatné i push alarmy. Zatím je
+**volitelný**; pro betu se přepne na povinný.
+
+- **Přihlášení kódem z e-mailu, jednou na zařízení** (bez hesla). Pak
+  drží dlouhodobá relace, kterou server posouvá, dokud se aplikace
+  používá; nepoužitá rok propadne. Šest číslic v poli přihlásí samo.
+  Účet vznikne prvním přihlášením. Otisk prstu bude **volitelný zámek
+  aplikace** (zvlášť, s nativním pluginem), ne přihlášení; passkey
+  místo kódu později.
+- **Automatická záloha**: každá změna uložených dat (`store.write`,
+  nastavení indikátorů) naplánuje zálohu za 15 s; při odchodu z aplikace
+  se rozdělaná záloha odešle hned. Server stejná data jako poslední
+  verze znovu neukládá. Verze se drží **30 dní**, poslední vždycky.
+- **Po přihlášení na novém telefonu** se nabídne obnova; když má telefon
+  vlastní data, volí se, která platí (OK = cloud, Zrušit = telefon).
+- **Denní aktivita** (jeden řádek na účet a den + verze aplikace) —
+  z toho denně / měsíčně aktivní uživatelé a retence. Nic víc.
+- ⚠ **API klíče na server nikdy** — záloha je stejná jako soubor zálohy
+  (bez klíčů a relace) a server je pro jistotu vyhodí znovu.
+- Server: Pages Functions `web/functions/api/account/*` na perpyx.com,
+  tabulky v D1 (`web/migrations/0003_ucty.sql`), tokeny i kódy jen jako
+  otisk SHA-256, 5 pokusů na kód, nový kód nejdřív po minutě, strop kódů
+  za hodinu. CORS jen pro původ aplikace (GitHub Pages, `https://localhost`
+  pro budoucí APK se zabaleným kódem, localhost pro testy).
+- ⚠ **Cloudflare odmítá výchozí User-Agent Pythonu (403)** — testy
+  posílají prohlížečový. WebView v APK má User-Agent Chromu, jeho se to
+  netýká.
+- Úklid (`web/uklid.sql`, běží při každém nasazení i denně): prošlé
+  kódy, relace nepoužité rok, zálohy starší 30 dní, testovací účty.
+  ⚠ **Zbývá:** e-mail s upozorněním před smazáním účtu neaktivního
+  12 měsíců (slíbené v zásadách) — nejpozději do září 2027.
+- Testy **proti ostrému serveru**: `tools/test-ucet-server.py`
+  (API) a `tools/test-ucet-aplikace.py` (celá aplikace, Bybit
+  podstrčený). Testovací adresy `@test.perpyx.invalid` dostanou kód
+  v odpovědi jen s tajným klíčem `AUTH_TEST_KEY` (tajemství repozitáře,
+  webu ho předá web.yml; lokální kopie není v repu — když chybí,
+  vygeneruj nový a nastav `gh secret set AUTH_TEST_KEY`).
+
+**Plán navazující na účty** (rozhodnuto 2026-09-28): uzavřená beta přes
+Google Play (nové osobní účty vývojáře potřebují před zveřejněním
+**12 testerů 14 dní** v uzavřeném testu — ověřit v Play Console),
+oddělené kanály beta / stabilní (verze pro Play budou mít kód zabalený
+v APK, ne živě z GitHub Pages), měření používání, přehled pro
+provozovatele (administrace), pak měsíční předplatné přes Google Play
+Billing. Žádné roční ani doživotní licence — uživatel chce mít volnou
+cestu projekt kdykoli ukončit.
 
 #### ✅ Historie
 

@@ -17,6 +17,7 @@
  */
 
 import { t } from './i18n.js';
+import { oznacZmenu } from './store.js';
 
 const PALETA = ['#16c784', '#ea3943', '#f0b90b', '#4c9aff', '#a78bfa', '#e6edf5', '#8b9bb0'];
 
@@ -238,6 +239,7 @@ export function ulozNastaveni(id, hodnoty) {
   } catch {
     /* plný storage — nastavení pak platí jen do zavření */
   }
+  oznacZmenu(KLIC(id));
   return plne;
 }
 
@@ -248,6 +250,7 @@ export function resetNastaveni(id) {
   } catch {
     /* nic */
   }
+  oznacZmenu(KLIC(id));
   return nactiNastaveni(id);
 }
 

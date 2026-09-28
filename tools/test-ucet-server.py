@@ -19,12 +19,14 @@ sys.stdout.reconfigure(errors='replace')
 API = (sys.argv[1] if len(sys.argv) > 1 else 'https://perpyx.com').rstrip('/') + '/api/account'
 KLIC = os.environ.get('AUTH_TEST_KEY') or (open(sys.argv[2]).read().strip() if len(sys.argv) > 2 else '')
 PUVOD = 'https://noegoncz.github.io'
+# Cloudflare odmítá výchozí User-Agent Pythonu (ochrana proti robotům) — 403.
+UA = 'Mozilla/5.0 (Linux; Android 14) PerpyX-test'
 EMAIL = f'ucet{int(time.time())}@test.perpyx.invalid'
 chyby = []
 
 
 def dotaz(metoda, cesta, telo=None, token=None, test=False, hlavicky=None):
-    h = {'Origin': PUVOD, 'Content-Type': 'application/json'}
+    h = {'Origin': PUVOD, 'Content-Type': 'application/json', 'User-Agent': UA}
     if token:
         h['Authorization'] = f'Bearer {token}'
     if test:
@@ -54,7 +56,7 @@ def prihlas():
 
 print('CORS')
 r = urllib.request.Request(API + '/me', method='OPTIONS', headers={
-    'Origin': PUVOD, 'Access-Control-Request-Method': 'GET', 'Access-Control-Request-Headers': 'authorization'})
+    'User-Agent': UA, 'Origin': PUVOD, 'Access-Control-Request-Method': 'GET', 'Access-Control-Request-Headers': 'authorization'})
 with urllib.request.urlopen(r, timeout=20) as o:
     over(o.headers.get('Access-Control-Allow-Origin') == PUVOD, 'předběžný dotaz povolí původ aplikace')
     over('Authorization' in (o.headers.get('Access-Control-Allow-Headers') or ''), '… i hlavičku Authorization')

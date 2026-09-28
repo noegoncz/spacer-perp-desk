@@ -21,6 +21,28 @@ function write(key, value) {
   } catch {
     /* plný/zakázaný storage — aplikace pak funguje jen do zavření */
   }
+  oznacZmenu(key);
+}
+
+/*
+ * Hlášení změn uložených dat — podle něj se spouští automatická cloudová
+ * záloha (js/ucet.js). Klíče, relace a technické značky zálohu nespouští.
+ */
+const BEZ_ZALOHY = new Set([KEY_API, KEY_SECRET, 'perpdesk.session', 'perpdesk.lastPing',
+  'perpdesk.coinCategories']);
+const posluchaci = new Set();
+
+export function naZmenuDat(fn) {
+  posluchaci.add(fn);
+}
+
+export function oznacZmenu(key) {
+  if (BEZ_ZALOHY.has(key)) return;
+  posluchaci.forEach((fn) => {
+    try {
+      fn(key);
+    } catch { /* posluchač nesmí shodit zápis */ }
+  });
 }
 
 export function loadCredentials() {

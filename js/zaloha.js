@@ -20,6 +20,9 @@ const NEZALOHOVAT = new Set([
   'perpdesk.apiKey',
   'perpdesk.apiSecret',
   'perpdesk.coinCategories',
+  // Přihlášení k účtu patří jen tomuto zařízení.
+  'perpdesk.session',
+  'perpdesk.lastPing',
 ]);
 
 function klice() {
