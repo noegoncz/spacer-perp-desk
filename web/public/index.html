@@ -209,7 +209,7 @@
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) throw new Error(data.error || 'Something went wrong.');
       form.reset();
-      say("You're on the list. We'll be in touch when the next beta round opens.", 'ok');
+      say('Almost done — check your inbox and click the link to confirm your email.', 'ok');
     } catch (err) {
       say(err.message || 'Something went wrong. Please try again.', 'err');
     } finally {

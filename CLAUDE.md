@@ -1620,10 +1620,28 @@ Pages se nedostane (deploy.yml kopíruje jen `css`, `js`, `icons`, `vendor`).
   do repa — uživatel ho zadává sám přes `gh secret set`.
 - `web/wrangler.toml` se generuje při nasazení (nese ID databáze) a v repu
   není.
+- **Potvrzení e-mailem (double opt-in, v2 2026-09-28):** přihláška je
+  `pending`, dokud zájemce neklikne na odkaz z e-mailu (`/confirm?t=…`),
+  pak `confirmed`; odhlášení (`/unsubscribe?t=…` i hlavička
+  `List-Unsubscribe` jedním klepnutím) → `unsubscribed`. Nepotvrzené
+  se po 30 dnech mažou (při každé přihlášce). E-maily posílá **Resend**
+  (EU, `hello@perpyx.com`, bez sledování otevření a kliknutí), klíč je
+  tajemství `RESEND_API_KEY`; workflow ho předá webu, založí odesílací
+  doménu a zapíše její DNS záznamy. ⚠ **Potvrzuje se tlačítkem na stránce
+  (POST), ne samotným otevřením odkazu** — poštovní filtry odkazy
+  v e-mailech otevírají samy a potvrdily by adresu bez člověka.
+- **Tabulky se mění migracemi** (`web/migrations/`, `wrangler d1
+  migrations apply`), ne přepisováním schématu. `web/uklid.sql` běží při
+  každém nasazení (maže zkušební přihlášky na `@test.perpyx.invalid`).
+- **Kde jsou e-maily:** Cloudflare → Storage & databases → D1 →
+  `perpyx-web` → tabulka `subscribers` (sloupec `status`).
+- Příchozí pošta: Email Routing, `privacy@perpyx.com` (a `hello@`) se
+  přeposílá na Gmail uživatele. Nastavené ručně v Cloudflare, token
+  k Email Routingu právo nemá.
 
 **Ochrana soukromí je součást návrhu, ne dodatek:** stránka nenačítá nic
 cizího (žádná písma z Google, analytika, skripty), takže nepotřebuje lištu
-s cookies. Ukládá se **jen e-mail a čas souhlasu** — žádná IP adresa ani
+s cookies. Ukládá se **jen e-mail, časy a token** — žádná IP adresa ani
 země. Duplicitní přihláška projde tiše, aby z odpovědi nešlo poznat, kdo
 na seznamu je. Proti robotům skryté pole (honeypot) a kontrola `Origin`.
 Souhlas je nezaškrtnutý checkbox s odkazem na `/privacy`.

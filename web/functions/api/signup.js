@@ -1,19 +1,22 @@
-// Přihláška do bety: uloží e-mail do databáze D1 (vazba DB).
+// Přihláška do bety s potvrzením e-mailem (double opt-in).
 //
-// Záměrně skoupé: jen e-mail a čas souhlasu, žádná IP adresa ani země.
-// Duplicitní přihlášku tiše přijme a nic neprozradí — z odpovědi nesmí
-// jít poznat, jestli už nějaký e-mail na seznamu je.
+// Uloží zájemce jako „pending" a pošle mu odkaz; na seznam patří až po
+// kliknutí (api/confirm). Ukládá se jen e-mail, časy a token — žádná IP
+// adresa ani země. Odpověď je pro nového, čekajícího i už potvrzeného
+// zájemce stejná, aby z ní nešlo poznat, kdo na seznamu je.
+
+import {
+  odpoved, ciziPuvod, novyToken, posliPostu, potvrzovaciMail, VERZE_SOUHLASU,
+} from '../../lib/spolecne.js';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const hlavicky = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
-const odpoved = (telo, status = 200) => new Response(JSON.stringify(telo), { status, headers: hlavicky });
+const DEN = 86400e3;
+// Potvrzovací e-mail znovu nejdřív po deseti minutách — opakované
+// odesílání formuláře nesmí nikoho zasypat poštou.
+const ZNOVU_ZA = 10 * 60e3;
 
 export async function onRequestPost({ request, env }) {
-  // Jen z naší stránky — cizí formulář by sem jinak mohl posílat za návštěvníka.
-  const puvod = request.headers.get('Origin');
-  if (puvod && new URL(puvod).host !== new URL(request.url).host) {
-    return odpoved({ ok: false, error: 'Forbidden.' }, 403);
-  }
+  if (ciziPuvod(request)) return odpoved({ ok: false, error: 'Forbidden.' }, 403);
 
   let data;
   try {
@@ -34,10 +37,37 @@ export async function onRequestPost({ request, env }) {
     return odpoved({ ok: false, error: 'Please tick the consent box so we can email you.' }, 400);
   }
 
+  const ted = new Date();
   try {
-    await env.DB.prepare(
-      'INSERT OR IGNORE INTO subscribers (email, created_at, consent_version) VALUES (?, ?, ?)',
-    ).bind(email, new Date().toISOString(), '2026-09-28').run();
+    // Nepotvrzené přihlášky starší 30 dní pryč (slibuje to i e-mail).
+    await env.DB.prepare("DELETE FROM subscribers WHERE status = 'pending' AND created_at < ?")
+      .bind(new Date(ted - 30 * DEN).toISOString()).run();
+
+    const radek = await env.DB.prepare('SELECT status, token, sent_at FROM subscribers WHERE email = ?')
+      .bind(email).first();
+    if (radek?.status === 'confirmed') return odpoved({ ok: true });
+    if (radek?.status === 'pending' && radek.sent_at && ted - new Date(radek.sent_at) < ZNOVU_ZA) {
+      return odpoved({ ok: true });
+    }
+
+    const token = radek?.status === 'pending' && radek.token ? radek.token : novyToken();
+    if (radek) {
+      // Čekající (poslat znovu) nebo odhlášený, který se přihlašuje znovu
+      // — nový souhlas, nový čas.
+      await env.DB.prepare(`UPDATE subscribers SET status = 'pending', token = ?, created_at = ?,
+          consent_version = ?, unsubscribed_at = NULL WHERE email = ?`)
+        .bind(token, ted.toISOString(), VERZE_SOUHLASU, email).run();
+    } else {
+      await env.DB.prepare(`INSERT INTO subscribers (email, created_at, consent_version, status, token)
+          VALUES (?, ?, ?, 'pending', ?)`)
+        .bind(email, ted.toISOString(), VERZE_SOUHLASU, token).run();
+    }
+
+    const mail = potvrzovaciMail(token);
+    if (await posliPostu(env, { komu: email, ...mail })) {
+      await env.DB.prepare('UPDATE subscribers SET sent_at = ? WHERE email = ?')
+        .bind(ted.toISOString(), email).run();
+    }
   } catch (e) {
     console.error('signup', e);
     return odpoved({ ok: false, error: 'Something went wrong. Please try again later.' }, 500);

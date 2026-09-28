@@ -80,10 +80,14 @@ jobs:
           binding = "DB"
           database_name = "$DATABAZE"
           database_id = "$id"
+          migrations_dir = "migrations"
           EOF
           cat web/wrangler.toml
           cd web
-          npx -y wrangler@4 d1 execute "$DATABAZE" --remote --file schema.sql
+          # Změny tabulek jdou přes migrace (web/migrations/): wrangler si
+          # pamatuje, které už proběhly, a pustí jen nové.
+          npx -y wrangler@4 d1 migrations apply "$DATABAZE" --remote
+          npx -y wrangler@4 d1 execute "$DATABAZE" --remote --file uklid.sql
 
       - name: Projekt Pages
         if: env.PRESKOCIT != '1'
@@ -95,6 +99,20 @@ jobs:
           if [ "$stav" != "200" ]; then
             npx -y wrangler@4 pages project create "$PROJEKT" --production-branch main
           fi
+
+      # Klíč k Resendu (odesílání potvrzovacích e-mailů) dostane web jako
+      # tajnou proměnnou projektu. Bez klíče se přihlášky jen ukládají.
+      - name: Klíč pro odesílání pošty
+        if: env.PRESKOCIT != '1'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        run: |
+          if [ -z "$RESEND_API_KEY" ]; then
+            echo "::warning::Chybí tajemství RESEND_API_KEY — potvrzovací e-maily se neposílají."
+            exit 0
+          fi
+          printf '%s' "$RESEND_API_KEY" | npx -y wrangler@4 pages secret put RESEND_API_KEY --project-name "$PROJEKT"
 
       - name: Nasadit
         if: env.PRESKOCIT != '1'
@@ -132,3 +150,44 @@ jobs:
           done
           api "$CF_API/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PROJEKT/domains" \
             | jq -r '.result[] | "\(.name): \(.status)"'
+
+      # Odesílací doména v Resendu (EU): založit, zapsat její DNS záznamy
+      # do Cloudflare, vypnout sledování otevření a kliknutí a požádat
+      # o ověření. Záznamy jsou na subdoméně send.* a resend._domainkey,
+      # takže se nepletou s příjmem pošty (Email Routing na kořeni).
+      - name: Odesílací doména
+        if: env.PRESKOCIT != '1'
+        env:
+          T: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          R: ${{ secrets.RESEND_API_KEY }}
+        run: |
+          if [ -z "$R" ]; then echo "Bez RESEND_API_KEY — přeskočeno."; exit 0; fi
+          cf() { curl -sS -H "Authorization: Bearer $T" -H "Content-Type: application/json" "$@"; }
+          rs() { curl -sS -H "Authorization: Bearer $R" -H "Content-Type: application/json" "$@"; }
+          id=$(rs https://api.resend.com/domains | jq -r --arg d "$DOMENA" '.data[]? | select(.name == $d) | .id')
+          if [ -z "$id" ]; then
+            id=$(rs -X POST https://api.resend.com/domains               --data "{\"name\":\"$DOMENA\",\"region\":\"eu-west-1\"}" | tee /dev/stderr | jq -r '.id // empty')
+          fi
+          test -n "$id"
+          rs -X PATCH "https://api.resend.com/domains/$id"             --data '{"open_tracking":false,"click_tracking":false}' | jq -c .
+          zona=$(cf "$CF_API/zones?name=$DOMENA" | jq -r '.result[0].id')
+          rs "https://api.resend.com/domains/$id" | jq -c '.records[]' | while read -r z; do
+            typ=$(jq -r .type <<<"$z"); jmeno=$(jq -r .name <<<"$z")
+            obsah=$(jq -r .value <<<"$z"); priorita=$(jq -r '.priority // 10' <<<"$z")
+            case "$jmeno" in *".$DOMENA") ;; *) jmeno="$jmeno.$DOMENA" ;; esac
+            je=$(cf "$CF_API/zones/$zona/dns_records?type=$typ&name=$jmeno" | jq -r '.result | length')
+            if [ "$je" != "0" ]; then echo "$typ $jmeno: už existuje"; continue; fi
+            if [ "$typ" = "MX" ]; then
+              telo=$(jq -nc --arg n "$jmeno" --arg c "$obsah" --argjson p "$priorita" '{type:"MX",name:$n,content:$c,priority:$p}')
+            else
+              telo=$(jq -nc --arg t "$typ" --arg n "$jmeno" --arg c "$obsah" '{type:$t,name:$n,content:$c}')
+            fi
+            echo "$typ $jmeno: $(cf -X POST "$CF_API/zones/$zona/dns_records" --data "$telo" | jq -c '{success, errors: [.errors[]?.message]}')"
+          done
+          # DMARC — doporučení poštovních služeb; jen pokud žádný není.
+          je=$(cf "$CF_API/zones/$zona/dns_records?type=TXT&name=_dmarc.$DOMENA" | jq -r '.result | length')
+          if [ "$je" = "0" ]; then
+            cf -X POST "$CF_API/zones/$zona/dns_records"               --data "{\"type\":\"TXT\",\"name\":\"_dmarc.$DOMENA\",\"content\":\"v=DMARC1; p=none;\"}" | jq -c '{success}'
+          fi
+          rs -X POST "https://api.resend.com/domains/$id/verify" | jq -c .
+          rs "https://api.resend.com/domains/$id" | jq -r '"Doména: \(.status)", (.records[] | "  \(.type) \(.name): \(.status)")'

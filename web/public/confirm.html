@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Confirm your email — PerpyX</title>
+<meta name="description" content="Confirm your PerpyX beta signup.">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0b0f14">
+<link rel="icon" href="/icon-192.png" type="image/png">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<svg class="sprite" aria-hidden="true">
+  <defs>
+    <linearGradient id="g" x1="8" y1="8" x2="92" y2="92" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#7c5cff"/>
+    </linearGradient>
+    <symbol id="x" viewBox="0 0 100 100">
+      <g transform="translate(50,50)">
+        <g transform="rotate(-45)">
+          <rect x="-32" y="-8" width="22" height="16" rx="4" fill="url(#g)"/>
+          <rect x="10" y="-8" width="22" height="16" rx="4" fill="url(#g)"/>
+        </g>
+        <g transform="rotate(45)"><rect x="-32" y="-8" width="64" height="16" rx="4" fill="url(#g)"/></g>
+      </g>
+    </symbol>
+  </defs>
+</svg>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="/" aria-label="PerpyX home"><svg aria-hidden="true"><use href="#x"/></svg>PerpyX</a>
+    <a class="btn small ghost" href="/">Back to home</a>
+  </div>
+</header>
+
+<main class="wrap doc akce">
+  <h1>Confirm your email</h1>
+  <p id="text">One last step: confirm that you want to join the PerpyX beta.</p>
+  <p><button class="btn" type="button" id="go">Confirm my email</button></p>
+  <p class="msg" id="msg" role="status" aria-live="polite"></p>
+</main>
+<script>
+(() => {
+  const t = new URLSearchParams(location.search).get('t') || '';
+  const go = document.getElementById('go');
+  const msg = document.getElementById('msg');
+  const say = (s, k) => { msg.textContent = s; msg.className = 'msg ' + (k || ''); };
+  if (!/^[0-9a-f]{64}$/.test(t)) {
+    go.hidden = true;
+    say('This link is not valid. Please use the link from the email we sent you.', 'err');
+    return;
+  }
+  go.addEventListener('click', async () => {
+    go.disabled = true;
+    say('One moment…');
+    try {
+      const res = await fetch('/api/confirm', { method: 'POST',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Something went wrong.');
+      go.hidden = true;
+      document.getElementById('text').hidden = true;
+      say("You're on the list! We'll email you when the next beta round opens.", 'ok');
+    } catch (e) {
+      go.disabled = false;
+      say(e.message || 'Something went wrong. Please try again.', 'err');
+    }
+  });
+})();
+</script>
+
+
+<footer>
+  <div class="wrap">
+    <div>© 2026 PerpyX · Not affiliated with Bybit. Not financial advice.</div>
+    <nav><a href="/">Home</a><a href="/#beta">Beta</a></nav>
+  </div>
+</footer>
+</body>
+</html>
