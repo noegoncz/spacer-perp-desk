@@ -230,7 +230,7 @@ export const cs = {
   'alarm.hit': '{symbol} dosáhl {price}',
   'alarm.hint': 'Alarmy hlídají otevřená aplikace, a to páry s otevřenou pozicí '
     + 'a pár zobrazený v grafu. Upozornění při zavřené aplikaci potřebuje '
-    + 'aplikaci pro Android.',
+    + 'aplikaci pro Android. Alarmy jsou informativní a mohou přijít pozdě nebo vůbec.',
   'style.color': 'Barva',
   'style.width': 'Tloušťka',
   'style.opacity': 'Průhlednost',
@@ -337,6 +337,11 @@ export const cs = {
   'indSet.barvaPoc': 'Barva pásma',
 
   /* ---------- nastavení ---------- */
+  'about.title': 'O aplikaci PerpyX',
+  'about.disclaimer': 'PerpyX jen zobrazuje data z tvého účtu na Bybitu a veřejná tržní data. Není to finanční poradenství a nikdy nezadává příkazy. Data mohou být zpožděná nebo neúplná — než podle nich něco uděláš, ověř si je na Bybitu. Cenové alarmy jsou informativní: mohou přijít pozdě nebo vůbec (třeba když telefon spí nebo je offline), takže se na ně při řízení rizika nikdy nespoléhej. PerpyX není spojený s Bybitem.',
+  'about.notice': 'PerpyX zobrazuje tvoje data z Bybitu — není to finanční poradenství. Data mohou být zpožděná a alarmy nemusí dorazit, takže si vše ověř na Bybitu.',
+  'about.gotIt': 'Rozumím',
+  'about.privacy': 'Zásady ochrany soukromí',
   'account.title': 'Účet PerpyX',
   'account.hint': 'Přihlas se a seznamy, kresby a alarmy se budou zálohovat samy. Bez hesla — pošleme ti kód e-mailem, jednou na telefon. API klíče se nikam neposílají.',
   'account.email': 'E-mail',

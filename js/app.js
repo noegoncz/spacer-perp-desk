@@ -692,6 +692,13 @@ function wireEvents() {
   naUdalost('backupImportBtn', 'click', () => el('backupFile')?.click());
   naUdalost('backupFile', 'change', obnovZalohu);
 
+  // Upozornění při prvním spuštění — jednou, pak už jen v Nastavení.
+  ukazPrvek('disclaimerNote', !store.loadJson('perpdesk.disclaimerSeen', false));
+  naUdalost('disclaimerOkBtn', 'click', () => {
+    store.saveJson('perpdesk.disclaimerSeen', true);
+    ukazPrvek('disclaimerNote', false);
+  });
+
   // Účet PerpyX
   naUdalost('accountSendBtn', 'click', posliKodUctu);
   naUdalost('accountEmail', 'keydown', (e) => { if (e.key === 'Enter') posliKodUctu(); });

@@ -1746,6 +1746,31 @@ Zadávání příkazů je z plánu **vypuštěné** (viz „Mimo plán" výš).
 Připomínky ke grafu a indikátorům má uživatel další a řeší se průběžně mezi
 checkpointy — nečekají na ně.
 
+## Audit 2026-09-28: soukromí, disclaimer, klíče
+
+Uživatel nechal projít zásady, disclaimer, podmínky, práci s klíči
+a sběr e-mailů. Opraveno v tomto pořadí:
+
+1. ✅ Klíč jen pro čtení se vynucuje (v0.20.1, viz „Bezpečnost klíčů").
+2. ✅ **APK nezálohuje data přes Android** (apk.yml, krok „Vypnout
+   systémovou zálohu dat"): šablona Capacitoru měla `allowBackup="true"`
+   — ověřeno v logu sestavení — a Android by na Disk Google zálohoval
+   i úložiště WebView s API klíčem. Teď `allowBackup="false"`,
+   `fullBackupContent="false"` a `dataExtractionRules` bez čehokoli
+   (Android 12+ jinak přenáší data na nový telefon). Zálohu řeší účet.
+3. ✅ **Disclaimer v aplikaci** (v0.20.2): jednorázové upozornění nahoře
+   na pozicích (`perpdesk.disclaimerSeen`) a trvale Nastavení → About
+   PerpyX s odkazem na zásady; u alarmů dovětek „informativní, mohou
+   přijít pozdě nebo vůbec". Na webu samostatný odstavec „Important"
+   nad formulářem bety.
+4. ✅ **Zásady doplněné:** GitHub Pages (IP adresy při načítání
+   aplikace), Bybit jako samostatný správce, předávání do USA u Resendu,
+   slib doplnit Hetzner / Google před jejich použitím.
+5. ⏳ **Obchodní podmínky** — neexistují; nutné před betou na Google Play.
+6. ⏳ Automatické mazání seznamu zájemců po 24 měsících a e-mail před
+   smazáním neaktivního účtu (slíbeno v zásadách, hoří od září 2027).
+7. ⏳ Šifrování klíče v telefonu (Keystore / otisk) — checkpoint 9.
+
 ## Web perpyx.com (2026-09-28)
 
 Úvodní stránka aplikace se sběrem e-mailů zájemců o betu, **anglicky**.

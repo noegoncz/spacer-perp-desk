@@ -233,7 +233,7 @@ export const en = {
   'alarm.lastFired': 'Last fired {time}.',
   'alarm.hint': 'Alerts fire while the app is open, on pairs with an open position '
     + 'or on the pair shown in the chart. Alerts with the app closed need the '
-    + 'Android build.',
+    + 'Android build. Alarms are informational and can be delayed or missed.',
   'alarm.hit': '{symbol} reached {price}',
   'style.color': 'Colour',
   'style.width': 'Thickness',
@@ -341,6 +341,11 @@ export const en = {
   'indSet.barvaPoc': 'POC colour',
 
   /* ---------- settings ---------- */
+  'about.title': 'About PerpyX',
+  'about.disclaimer': 'PerpyX only displays data from your Bybit account and public market data. It is not financial advice and it never places orders. Data can be delayed or incomplete — always check on Bybit before acting. Price alarms are informational: they can be delayed or missed (for example when the phone is asleep or offline), so never rely on them alone to manage risk. PerpyX is not affiliated with Bybit.',
+  'about.notice': 'PerpyX shows your Bybit data — it is not financial advice. Data can be delayed and alarms can be missed, so always check on Bybit before acting.',
+  'about.gotIt': 'Got it',
+  'about.privacy': 'Privacy policy',
   'account.title': 'PerpyX account',
   'account.hint': 'Sign in to back up your watchlists, drawings and alarms automatically. No password — we email you a code, once per phone. API keys are never uploaded.',
   'account.email': 'Email',

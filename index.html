@@ -74,6 +74,13 @@
 
   <!-- ===== Pozice ===== -->
   <section id="viewPositions">
+    <!-- Upozornění při prvním spuštění (jednou): nejde o finanční poradenství,
+         data mohou být zpožděná, alarmy nemusí dorazit. Trvale v Nastavení. -->
+    <div id="disclaimerNote" class="notice" hidden>
+      <p data-i18n="about.notice">PerpyX shows your Bybit data — it is not financial advice.
+        Data can be delayed and alarms can be missed, so always check on Bybit before acting.</p>
+      <button type="button" id="disclaimerOkBtn" class="secondary-btn" data-i18n="about.gotIt">Got it</button>
+    </div>
     <!-- Jeden řádek, popisek vedle hodnoty. Dvě kartičky pod sebou braly
          na výšku tolik místa, že na displej zbyly dvě pozice. -->
     <div class="summary" id="summary" hidden>
@@ -520,6 +527,23 @@
           <li data-i18n="settings.help5">Leave the IP restriction empty — mobile networks change IP.</li>
         </ol>
       </details>
+    </div>
+
+    <!-- O aplikaci: disclaimer a zásady ochrany soukromí (odkaz otevře prohlížeč). -->
+    <div class="card">
+      <h2 data-i18n="about.title">About PerpyX</h2>
+      <p class="hint" data-i18n="about.disclaimer">
+        PerpyX only displays data from your Bybit account and public market data. It is not
+        financial advice and it never places orders. Data can be delayed or incomplete — always
+        check on Bybit before acting. Price alarms are informational: they can be delayed or
+        missed (for example when the phone is asleep or offline), so never rely on them alone to
+        manage risk. PerpyX is not affiliated with Bybit.
+      </p>
+      <p class="about-links">
+        <a href="https://perpyx.com/privacy" target="_blank" rel="noopener" data-i18n="about.privacy">Privacy policy</a>
+        · <a href="https://perpyx.com" target="_blank" rel="noopener">perpyx.com</a>
+        · <a href="mailto:hello@perpyx.com">hello@perpyx.com</a>
+      </p>
     </div>
 
     <div class="button-row">

@@ -151,6 +151,14 @@ h2 { font-size: clamp(1.7rem, 3.4vw, 2.3rem); line-height: 1.15; margin: 0 0 12p
   border-radius: 999px; color: #9fe9f7; background: rgba(34, 211, 238, 0.1);
   border: 1px solid rgba(34, 211, 238, 0.3); }
 
+/* ---- upozornění ---- */
+.disclaimer-section { padding: 0 0 8px; }
+.disclaimer {
+  margin: 0; padding: 18px 20px; border: 1px solid #3a3320; border-radius: 14px;
+  background: rgba(240, 185, 11, 0.06); color: #c9c2a8; font-size: 0.92rem; line-height: 1.6;
+}
+.disclaimer strong { color: #f1e6c0; }
+
 /* ---- beta ---- */
 .beta {
   position: relative; overflow: hidden;
