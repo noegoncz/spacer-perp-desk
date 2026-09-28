@@ -63,16 +63,70 @@ jobs:
             cp icons/icon-512.png "$d/ic_launcher_round.png"
           done
 
-      # Zatím ladicí sestavení. ⚠ Je podepsané klíčem, který si runner pokaždé
-      # vyrobí nový, takže novější APK nejde nainstalovat přes starší —
-      # nejdřív odinstalovat. Pevný podpisový klíč přijde s první verzí,
-      # která se bude aktualizovat.
+      # Číslo verze roste s každým sestavením. Android aktualizaci se stejným
+      # nebo nižším číslem odmítne jako návrat ke starší verzi.
+      - name: Číslo verze APK
+        run: |
+          gradle=apk/android/app/build.gradle
+          sed -i "s/versionCode [0-9]\+/versionCode ${GITHUB_RUN_NUMBER}/" "$gradle"
+          sed -i "s/versionName \"[^\"]*\"/versionName \"1.0.${GITHUB_RUN_NUMBER}\"/" "$gradle"
+          grep -E "versionCode|versionName" "$gradle"
+
+      # ⚠ Podpis **trvalým klíčem**. Android nainstaluje aktualizaci jen
+      # tehdy, když je podepsaná stejným klíčem jako nainstalovaná verze.
+      # Ladicí sestavení si runner podepisoval pokaždé novým klíčem, takže
+      # každé nové APK šlo nainstalovat jen po odinstalování starého — a to
+      # smazalo všechna data v aplikaci (API klíč, kresby, alarmy).
+      # Klíč je v šifrovaných tajemstvích repozitáře, do repa nikdy nesmí.
+      # Záloha je u uživatele (~/PerpyX-podpis). Bez tajemství se sestaví
+      # aspoň ladicí verze, ať jde workflow vyzkoušet.
+      - name: Podpisový klíč
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/perpyx.p12"
+            echo "PODEPSAT=1" >> "$GITHUB_ENV"
+          else
+            echo "::warning::Chybí tajemství ANDROID_KEYSTORE_B64 — sestaví se jen ladicí APK, které nejde aktualizovat bez odinstalování."
+          fi
+
       - name: Sestavit APK
-        working-directory: apk/android
-        run: ./gradlew assembleDebug --no-daemon
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          if [ "$PODEPSAT" = "1" ]; then
+            cd apk
+            npx cap build android \
+              --androidreleasetype APK \
+              --signing-type apksigner \
+              --keystorepath "$RUNNER_TEMP/perpyx.p12" \
+              --keystorepass "$KEYSTORE_PASSWORD" \
+              --keystorealias "$KEY_ALIAS" \
+              --keystorealiaspass "$KEYSTORE_PASSWORD"
+          else
+            cd apk/android
+            ./gradlew assembleDebug --no-daemon
+          fi
 
       - name: Připravit soubor
-        run: cp apk/android/app/build/outputs/apk/debug/app-debug.apk PerpyX.apk
+        run: |
+          if [ "$PODEPSAT" = "1" ]; then
+            apk=$(find apk/android/app/build/outputs/apk/release -name "*.apk" | grep -v unsigned | head -1)
+          else
+            apk=apk/android/app/build/outputs/apk/debug/app-debug.apk
+          fi
+          echo "APK: $apk"
+          test -f "$apk"
+          cp "$apk" PerpyX.apk
+          # Kontrola, že je APK opravdu podepsané trvalým klíčem, ne ladicím.
+          if [ "$PODEPSAT" = "1" ]; then
+            podpis=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort | tail -1)
+            "$podpis" verify --print-certs PerpyX.apk | grep -E "Signer #1 certificate DN|SHA-256"
+            "$podpis" verify --print-certs PerpyX.apk | grep -q "CN=PerpyX"
+          fi
+          rm -f "$RUNNER_TEMP/perpyx.p12"
 
       - name: Uložit jako artefakt
         uses: actions/upload-artifact@v4
@@ -91,4 +145,4 @@ jobs:
             --target "$GITHUB_SHA" \
             --prerelease \
             --title "PerpyX APK (${GITHUB_SHA::7})" \
-            --notes "Testovací sestavení obalu pro Android. Aplikace se načítá z GitHub Pages."
+            --notes "Sestavení obalu pro Android (verze ${GITHUB_RUN_NUMBER}). Aplikace se načítá z GitHub Pages. Podepsané trvalým klíčem — instaluje se přes předchozí verzi bez ztráty dat."

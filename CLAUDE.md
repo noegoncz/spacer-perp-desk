@@ -1368,10 +1368,31 @@ systémovou notifikaci se zvukem a vibrací.
 a alarmy z PWA v Brave se do něj samy nepřenesou — v APK se klíč zadává
 znovu.
 
-⚠ **Zatím ladicí podpis**, který si runner pokaždé vyrobí nový. Novější APK
-proto nejde nainstalovat přes starší — nejdřív odinstalovat, a tím se smaže
-i úložiště (klíč, kresby, alarmy). Než se APK začne používat naostro, musí
-přijít **pevný podpisový klíč** v tajemstvích GitHubu a jeho záloha mimo repo.
+✅ **Pevný podpisový klíč (2026-09-28).** Dřív ladicí podpis, který si
+runner pokaždé vyrobil nový — novější APK pak šlo nainstalovat jen po
+odinstalování staršího, a to smazalo úložiště (klíč, kresby, alarmy).
+
+- Klíč je **PKCS12** (`perpyx-release.p12`, alias `perpyx`, RSA 2048,
+  platnost 30 let), vyrobený jednou lokálně v Pythonu (`cryptography`),
+  protože na počítači není Java.
+- **Kopie pro sestavení** je v šifrovaných tajemstvích repozitáře:
+  `ANDROID_KEYSTORE_B64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`.
+  Z GitHubu se zpátky stáhnout nedá.
+- **Záloha u uživatele**: `C:\Users\roman\PerpyX-podpis` (klíč + `CTI-ME.txt`
+  s heslem). ⚠ Ztráta klíče = každá další verze jen po odinstalování.
+- Workflow podepisuje přes `npx cap build android --androidreleasetype APK
+  --signing-type apksigner` a na konci **ověří `apksigner`em, že podpis je
+  `CN=PerpyX`** — kdyby se omylem podepsalo ladicím klíčem, sestavení spadne.
+- `versionCode` = číslo běhu workflow, roste s každým sestavením (Android
+  starší číslo jako aktualizaci odmítne).
+- ⚠ Klíč **nikdy do repozitáře** (`.gitignore` má `*.p12`, `*.keystore`,
+  `*.jks`) ani do logu.
+- Přechod z ladicího podpisu na trvalý vyžadoval **jedno poslední
+  odinstalování** (2026-09-28); od té doby se APK instaluje přes předchozí.
+
+Stavová lišta v APK má světlé ikony (`plugins.SystemBars.style: "DARK"`
+v `apk/capacitor.config.json` — „tmavý styl" znamená světlý obsah pro tmavé
+pozadí).
 
 #### Ověřeno na telefonu (2026-09-24, první APK)
 
