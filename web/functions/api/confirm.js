@@ -4,9 +4,11 @@
 // Poštovní filtry a náhledy odkazy v e-mailech samy otevírají — potvrzení
 // přes GET by tak proběhlo bez člověka a double opt-in by nic neznamenal.
 
-import { odpoved, ciziPuvod, platnyToken } from '../../lib/spolecne.js';
+import {
+  odpoved, ciziPuvod, platnyToken, posliPostu, uvitaciMail, upozorneniSpravci, SPRAVCE,
+} from '../../lib/spolecne.js';
 
-export async function onRequestPost({ request, env }) {
+export async function onRequestPost({ request, env, waitUntil }) {
   if (ciziPuvod(request)) return odpoved({ ok: false, error: 'Forbidden.' }, 403);
   let t;
   try {
@@ -16,13 +18,26 @@ export async function onRequestPost({ request, env }) {
   }
   if (!platnyToken(t)) return odpoved({ ok: false, error: 'This link is not valid.' }, 400);
 
-  const radek = await env.DB.prepare('SELECT status FROM subscribers WHERE token = ?').bind(t).first();
+  const radek = await env.DB.prepare('SELECT email, status FROM subscribers WHERE token = ?').bind(t).first();
   if (!radek) {
     return odpoved({ ok: false, error: 'This link has expired or is not valid. Please sign up again.' }, 404);
   }
   if (radek.status !== 'confirmed') {
     await env.DB.prepare(`UPDATE subscribers SET status = 'confirmed', confirmed_at = ?,
         unsubscribed_at = NULL WHERE token = ?`).bind(new Date().toISOString(), t).run();
+    // Uvítání zájemci a upozornění provozovateli — jen při prvním potvrzení
+    // (opakované klepnutí na odkaz nic dalšího neposílá). Na pozadí:
+    // potvrzení nesmí čekat na poštu ani spadnout, když se odeslání nepovede.
+    waitUntil((async () => {
+      try {
+        await posliPostu(env, { komu: radek.email, ...uvitaciMail(t) });
+        const { pocet } = await env.DB.prepare(
+          "SELECT COUNT(*) AS pocet FROM subscribers WHERE status = 'confirmed'").first();
+        await posliPostu(env, { komu: SPRAVCE, ...upozorneniSpravci(radek.email, pocet) });
+      } catch (e) {
+        console.error('confirm mail', e);
+      }
+    })());
   }
   return odpoved({ ok: true });
 }

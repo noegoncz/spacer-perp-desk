@@ -91,3 +91,61 @@ Unsubscribe: ${odhlasit}`;
     },
   };
 }
+
+/** Kam jdou upozornění pro provozovatele — přeposílá se na jeho Gmail
+ *  (Email Routing), takže osobní adresa nemusí být ve veřejném repu. */
+export const SPRAVCE = 'hello@perpyx.com';
+
+/** Uvítání po potvrzení: potvrzuje, že je zájemce na seznamu, a co čekat. */
+export function uvitaciMail(token) {
+  const odhlasit = `${WEB}/unsubscribe?t=${token}`;
+  const html = `<!doctype html><html><body style="margin:0;background:#f3f5f9;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0d1420">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f5f9;padding:32px 12px"><tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:16px;padding:36px 32px">
+<tr><td style="padding-bottom:24px;font-size:22px;font-weight:800;letter-spacing:0.2px">Perpy<span style="color:#7c5cff">X</span></td></tr>
+<tr><td style="font-size:22px;font-weight:700;padding-bottom:12px">You're on the beta list</td></tr>
+<tr><td style="font-size:16px;line-height:1.6;color:#3b4656;padding-bottom:16px">Thanks for confirming your email. We'll write to you when the next beta round opens, with a download link and a short guide to getting started.</td></tr>
+<tr><td style="font-size:16px;line-height:1.6;color:#3b4656;padding-bottom:16px">What you'll need: an Android phone and a <strong>read-only</strong> Bybit API key. PerpyX never asks for trading or withdrawal permissions, and your key stays on your phone.</td></tr>
+<tr><td style="font-size:16px;line-height:1.6;color:#3b4656;padding-bottom:8px">Questions or ideas? Just reply to this email — it comes straight to the developer.</td></tr>
+</table>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px"><tr><td style="font-size:12px;line-height:1.6;color:#8a95a5;padding:18px 8px;text-align:center">
+PerpyX · Roman Spacek, Czech Republic · <a href="${WEB}/privacy" style="color:#8a95a5">Privacy</a> · <a href="${esc(odhlasit)}" style="color:#8a95a5">Unsubscribe</a>
+</td></tr></table>
+</td></tr></table></body></html>`;
+  const text = `You're on the beta list
+
+Thanks for confirming your email. We'll write to you when the next beta
+round opens, with a download link and a short guide to getting started.
+
+What you'll need: an Android phone and a read-only Bybit API key. PerpyX
+never asks for trading or withdrawal permissions, and your key stays on
+your phone.
+
+Questions or ideas? Just reply to this email — it comes straight to the
+developer.
+
+PerpyX · Roman Spacek, Czech Republic · ${WEB}/privacy
+Unsubscribe: ${odhlasit}`;
+  return {
+    predmet: "You're on the PerpyX beta list",
+    html,
+    text,
+    hlavickyMailu: {
+      'List-Unsubscribe': `<${WEB}/api/unsubscribe?t=${token}>`,
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    },
+  };
+}
+
+/** Upozornění pro provozovatele (česky, jen pro něj). */
+export function upozorneniSpravci(email, pocet) {
+  const text = `Nový potvrzený zájemce o betu: ${email}
+Potvrzených celkem: ${pocet}
+
+Seznam: Cloudflare → Storage & databases → D1 → perpyx-web → subscribers`;
+  return {
+    predmet: `PerpyX beta: nový zájemce (${pocet})`,
+    html: `<pre style="font-family:inherit;font-size:15px">${esc(text)}</pre>`,
+    text,
+  };
+}

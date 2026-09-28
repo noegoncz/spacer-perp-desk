@@ -1630,6 +1630,10 @@ Pages se nedostane (deploy.yml kopíruje jen `css`, `js`, `icons`, `vendor`).
   doménu a zapíše její DNS záznamy. ⚠ **Potvrzuje se tlačítkem na stránce
   (POST), ne samotným otevřením odkazu** — poštovní filtry odkazy
   v e-mailech otevírají samy a potvrdily by adresu bez člověka.
+- **Po potvrzení** dostane zájemce uvítací e-mail a provozovatel
+  upozornění s počtem potvrzených — na `hello@perpyx.com` (přeposílá se
+  na jeho Gmail), aby jeho osobní adresa nebyla ve veřejném repu. Jen při
+  prvním potvrzení, na pozadí (`waitUntil`).
 - **Tabulky se mění migracemi** (`web/migrations/`, `wrangler d1
   migrations apply`), ne přepisováním schématu. `web/uklid.sql` běží při
   každém nasazení (maže zkušební přihlášky na `@test.perpyx.invalid`).
