@@ -124,12 +124,18 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          AUTH_TEST_KEY: ${{ secrets.AUTH_TEST_KEY }}
         run: |
           if [ -z "$RESEND_API_KEY" ]; then
             echo "::warning::Chybí tajemství RESEND_API_KEY — potvrzovací e-maily se neposílají."
             exit 0
           fi
           printf '%s' "$RESEND_API_KEY" | npx -y wrangler@4 pages secret put RESEND_API_KEY --project-name "$PROJEKT"
+          # Klíč pro automatický test přihlášení (tools/test-ucet-server.py):
+          # jen s ním vrátí server kód testovací adrese místo e-mailu.
+          if [ -n "$AUTH_TEST_KEY" ]; then
+            printf '%s' "$AUTH_TEST_KEY" | npx -y wrangler@4 pages secret put AUTH_TEST_KEY --project-name "$PROJEKT"
+          fi
 
       - name: Nasadit
         if: env.PRESKOCIT != '1'
