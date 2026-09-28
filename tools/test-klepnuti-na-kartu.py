@@ -125,16 +125,32 @@ for i in range(PO_PREJETI):
 print(f'hned po přejetí se graf otevřel {po_prejeti}× z {PO_PREJETI}')
 
 ev("clearInterval(window.__tik)")
+time.sleep(0.5)
+
+# ---- po zavření grafu ukáže seznam hned čerstvou cenu ----
+# Pod otevřeným grafem se seznam kvůli výkonu nepřekresluje (není vidět);
+# po návratu musí ukázat to, co mezitím přišlo, ne cenu z doby otevření.
+ev("document.querySelector('.position').click()")
+time.sleep(3)
+ev("window.__zprava('tickers.JUPUSDT', { symbol: 'JUPUSDT', markPrice: '0.31234' })")
+time.sleep(0.3)
+ev("history.back()")
+time.sleep(0.4)
+cerstva = ev("(document.querySelector('.position .cena-mark') || {}).textContent || ''")
+print('cena v kartě hned po zavření grafu:', cerstva, '(má být 0.31234)')
+cerstva_ok = cerstva == '0.31234'
 konzole = ev('(window.__chyby||[]).join(" | ")') or ''
 
 print()
-if otevreno == POKUSU and po_prejeti == PO_PREJETI and not konzole:
+if otevreno == POKUSU and po_prejeti == PO_PREJETI and cerstva_ok and not konzole:
     print('VÝSLEDEK: KLEPNUTÍ NA KARTU OTEVŘE GRAF POKAŽDÉ')
 else:
-    print('VÝSLEDEK: !!! KLEPNUTÍ SE ZTRÁCÍ')
+    print('VÝSLEDEK: !!! NĚCO NESEDÍ')
     if otevreno != POKUSU:
         print(f'  - graf se otevřel jen {otevreno}× z {POKUSU}')
     if po_prejeti != PO_PREJETI:
         print(f'  - hned po přejetí mezi záložkami se graf otevřel jen {po_prejeti}× z {PO_PREJETI}')
+    if not cerstva_ok:
+        print(f'  - po zavření grafu ukazuje seznam starou cenu ({cerstva})')
     if konzole:
         print(f'  - chyby v konzoli: {konzole}')

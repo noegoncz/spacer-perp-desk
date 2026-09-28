@@ -1555,6 +1555,55 @@ vrtoch prohlížeče, ne aplikaci. Počítá se proto volání `register()`.
 Graf tedy **nemá žádný obnovovací interval** — svíčka se hýbe, jak přicházejí
 ticky. Když se nehýbe, je rozbité spojení, ne časování.
 
+## Výkon — jak měřit a co už je vyřešené
+
+**Nástroj:** `tools/mereni-vykonu.py` spustí aplikaci se živým provozem jako
+od Bybitu (ticker každých 100 ms pro čtyři pozice, u grafu živá svíčka po
+250 ms), zpomalí procesor 4× (blíž telefonu než počítači) a ve třech
+scénářích (přehled, interakce, otevřený graf) změří vzorkovacím profilerem
+**vlastní čas funkcí a souborů**, metriky prohlížeče (skripty, styly,
+rozvržení), **dlouhé úlohy > 50 ms** (ty uživatel cítí jako zaseknutí),
+počet překreslení seznamu a doby interakcí. Výsledek jde i do
+`%TEMP%/perpyx-vykon.json`, aby šlo porovnat měření před změnou a po ní.
+**Před optimalizací změř, po ní změř znovu.**
+
+⚠ Měří se v headless Chrome na počítači se zpomalením, ne na telefonu.
+Poměry mezi částmi sedí, absolutní čísla jsou orientační. Doba přepnutí
+na 1h obsahuje umělé zdržení 700 ms z mocku.
+
+**První měření (2026-09-28, v0.17.5) a oprava (v0.17.6):**
+
+| | před | po |
+|---|---|---|
+| přehled pozic: vytížení hlavního vlákna | 80 % | 18 % |
+| přehled pozic: dlouhé úlohy za 10 s | 74× | 0× |
+| otevřený graf: vytížení | 78 % | 15 % |
+| otevřený graf: dlouhé úlohy za 10 s | 98× | 0× |
+| otevření grafu | 944 ms | 669 ms |
+
+Dvě příčiny, obě snadno přehlédnutelné:
+
+1. ⚠ **`číslo.toLocaleString(jazyk, volby)` staví při každém volání nový
+   `Intl.NumberFormat`** — a to je drahé. Formátování čísel (`format.js`)
+   zabíralo přes polovinu času hlavního vlákna. Formátovače se teď
+   vyrábějí jednou a drží v mapě podle jazyka a počtu desetinných míst;
+   totéž cenovky na ose (`cenaSPresnosti`) a čas u kříže (`formatCas`).
+   **Nový kód nesmí volat `toLocaleString` s volbami v ničem, co běží při
+   každém ticku.**
+2. ⚠ **Seznam pozic se celý stavěl znovu při každém ticku** — desetkrát za
+   vteřinu, a to i pod otevřeným grafem, kde vůbec není vidět. Teď nejvýš
+   jednou za 250 ms (`naplanujVykresleniPozic`), a když seznam není vidět,
+   jen se poznamená a dokreslí při návratu (`dokresliSeznamJeLiZastaraly`
+   po zavření grafu, přepnutí záložky a návratu z nastavení). Akce
+   uživatele (řazení, filtr, skrytí částek) kreslí hned. Hlídání alarmů
+   a zásahu SL/TP běží dál s každým tickem — omezuje se jen kreslení.
+
+**Co zbývá, až bude potřeba:** otevření grafu (~0,7 s při 4× zpomalení,
+většinou vnitřek knihovny grafu — přepočet indikátorů a první vykreslení
+300 svíček) a pár dlouhých úloh při interakcích (nejdelší ~230 ms). Karta
+pozice se pořád staví celá znovu místo úpravy jen změněných čísel; při
+čtyřech překresleních za vteřinu to už nevadí, ale je to další rezerva.
+
 ## Časové limity u volání
 
 ⚠ **`fetch` sám o sobě žádný časový limit nemá.** Na telefonu se požadavek umí

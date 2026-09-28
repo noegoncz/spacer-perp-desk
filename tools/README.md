@@ -50,6 +50,14 @@ jen nová stránka ve staré kartě.
 | `test-alarm-z-kresby.py` | zvonek u kresby z ní udělá alarm (trendová → čára, vodorovná → hladina, svislá → čas) |
 | `test-preloseni-foldu.py` | stav appky (pár, interval, zoom) i mřížka karty pozice přežijí přeložení Foldu |
 | `test-ucet-a-pohodli.py` | přehled účtu, funding, seznam příkazů, řazení/filtr pozic, práh likvidace, volume profile |
+| `test-klepnuti-na-kartu.py` | klepnutí na kartu otevře graf i při živých cenách a hned po přejetí záložek; po zavření grafu čerstvá cena |
+| `test-historie-obchod.py` | prohlídka uzavřeného obchodu: jen jeho plnění, interval podle délky, Historie nemění timeframe dalších grafů |
+| `test-indikatory-vrstveni.py` | indikátory v hlavním panelu se nemažou navzájem, RSI bez prázdných okrajů |
+| `test-mereni-a-cenovky.py` | měření, cenovky vodorovných kreseb, procenta u kříže, barva náhledu kresby |
+| `test-mereni-mazani-a-prepnuti-paru.py` | smazání měření; při přepnutí páru neprobliká graf předchozího |
+| `test-graf-osa-a-zpet.py` | cenovky SL/TP/likvidace na ose, velké tlačítko zpět |
+| `test-okraje-apk.py` | obsah nezaleze pod systémové lišty v APK (napodobené proměnné Capacitoru) |
+| `mereni-vykonu.py` | **není test, ale měření**: co zabírá čas při živém provozu (profil funkcí, dlouhé úlohy, překreslení), viz CLAUDE.md „Výkon" |
 | `test-graf-znacky.py` | trojúhelníky plnění místo čáry vstupu, linka aktuální ceny se ziskem, dlouhé čárkování SL/TP, plný vstup v proužku, součet fundingu i při odmítnutém okně |
 
 ⚠ Barvu na plátně neměř natvrdo. Linka zisku je červená, když je poslední

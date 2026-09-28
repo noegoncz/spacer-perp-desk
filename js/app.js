@@ -115,7 +115,7 @@ let poslednicCena = null;  // poslední cena z grafu — předvyplní hladinu al
 const client = new BybitClient({
   onPositions(list) {
     lastPositions = list;
-    vykresliPozice();
+    naplanujVykresleniPozic();
     syncOpenChart(list);
     /*
      * Alarmy na párech s otevřenou pozicí se hlídají i se zavřeným grafem —
@@ -206,8 +206,54 @@ function prikazyPodleParu() {
   return mapa;
 }
 
+/*
+ * ⚠ Seznam pozic se při živých cenách **nepřekresluje při každém ticku**.
+ * Bybit posílá ticker každých ~100 ms na každý pár, takže se při čtyřech
+ * pozicích celý seznam stavěl znovu desetkrát za vteřinu — a to i s otevřeným
+ * grafem, kdy seznam vůbec není vidět. Měření (tools/mereni-vykonu.py)
+ * ukázalo hlavní vlákno vytížené na 80 %, proto aplikace reagovala líně.
+ *
+ * Teď se překresluje nejvýš jednou za PRODLEVA_SEZNAMU ms, a když seznam
+ * není vidět, jen se poznamená, že je potřeba — překreslí se při návratu.
+ * Čtyřikrát za vteřinu na čísla, která se mění o desetiny procenta, stačí.
+ * Akce uživatele (řazení, filtr, skrytí částek) kreslí hned, tady ne.
+ */
+const PRODLEVA_SEZNAMU = 250;
+let casPoslednihoSeznamu = 0;
+let odlozenySeznam = null;
+let seznamZastaraly = false;
+
+function seznamJeVidet() {
+  return !el('viewPositions')?.hidden && el('viewChart')?.hidden !== false;
+}
+
+function naplanujVykresleniPozic() {
+  if (!seznamJeVidet()) {
+    seznamZastaraly = true;
+    return;
+  }
+  if (odlozenySeznam) return; // překreslení už čeká, vezme si čerstvá data
+  const zbyva = PRODLEVA_SEZNAMU - (Date.now() - casPoslednihoSeznamu);
+  if (zbyva <= 0) {
+    vykresliPozice();
+    return;
+  }
+  odlozenySeznam = setTimeout(() => {
+    odlozenySeznam = null;
+    if (seznamJeVidet()) vykresliPozice();
+    else seznamZastaraly = true;
+  }, zbyva);
+}
+
+/** Po návratu na přehled dokreslit, co se mezitím změnilo. */
+function dokresliSeznamJeLiZastaraly() {
+  if (seznamZastaraly && seznamJeVidet()) vykresliPozice();
+}
+
 /** Překreslí seznam pozic i lištu nad ním podle aktuálního řazení a filtru. */
 function vykresliPozice() {
+  casPoslednihoSeznamu = Date.now();
+  seznamZastaraly = false;
   const seznam = serazenePozice();
   const prikazy = prikazyPodleParu();
   ui.renderPositions(seznam, hideAmounts, openChart, prahLikvidace, {
@@ -491,6 +537,7 @@ async function connectIfPossible() {
   if (!apiKey || !apiSecret) {
     ui.showPlaceholder(t('positions.noKeys'), t('action.openSettings'));
     ui.showView('positions');
+    dokresliSeznamJeLiZastaraly();
     return;
   }
 
@@ -509,7 +556,10 @@ async function connectIfPossible() {
 
 function wireEvents() {
   naUdalost('settingsBtn', 'click', openSettings);
-  naUdalost('backBtn', 'click', () => ui.showView('positions'));
+  naUdalost('backBtn', 'click', () => {
+    ui.showView('positions');
+    dokresliSeznamJeLiZastaraly();
+  });
   naUdalost('placeholderBtn', 'click', openSettings);
   naUdalost('retryBtn', 'click', () => {
     if (client.hasCredentials()) client.refresh();
@@ -752,6 +802,7 @@ async function saveAndConnect() {
   ui.clearError();
   ui.showPlaceholder(t('positions.loading'));
   ui.showView('positions');
+  dokresliSeznamJeLiZastaraly();
   await client.start();
 }
 
@@ -877,6 +928,8 @@ function closeChart() {
   client.setKlineSubscription(null, null);
   zavriNabidky();
   ui.showChart(false);
+  // Pod grafem se seznam nepřekresloval — teď má zase ukázat čerstvá čísla.
+  dokresliSeznamJeLiZastaraly();
 }
 
 async function nactiSviceProInterval(interval) {
@@ -1334,6 +1387,7 @@ let aktivniZalozka = 'positions';
 function prepniZalozku(nazev) {
   aktivniZalozka = nazev;
   ui.showView(nazev);
+  dokresliSeznamJeLiZastaraly();
   if (nazev === 'watchlist') nactiTrhy();
   if (nazev === 'history') nactiHistorii();
 }

@@ -16,16 +16,27 @@ import { formatPrice } from './format.js';
 import { t, getLocale } from './i18n.js';
 import { nactiNastaveni, parametryVypoctu, ZDROJE, TYPY_MA, vyhladit } from './indikatory.js';
 
-/** Datum a čas pro cenovku u kříže — stejné pásmo jako osa grafu. */
+/**
+ * Datum a čas pro cenovku u kříže — stejné pásmo jako osa grafu. Volá se při
+ * každém pohybu kříže, proto se formátovač drží v paměti (podle jazyka),
+ * místo aby se s `toLocaleString` stavěl pokaždé znovu.
+ */
+const FORMATOVACE_CASU = new Map();
 function formatCas(timestamp) {
   if (!timestamp) return '';
-  return new Date(timestamp).toLocaleString(getLocale(), {
-    day: 'numeric',
-    month: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'Europe/Prague',
-  });
+  const jazyk = getLocale();
+  let f = FORMATOVACE_CASU.get(jazyk);
+  if (!f) {
+    f = new Intl.DateTimeFormat(jazyk, {
+      day: 'numeric',
+      month: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Europe/Prague',
+    });
+    FORMATOVACE_CASU.set(jazyk, f);
+  }
+  return f.format(new Date(timestamp));
 }
 
 const K = () => window.klinecharts;
@@ -1077,11 +1088,20 @@ export const VYCHOZI_STYL = { color: BARVY_KRESEB[0], width: 1, opacity: 1 };
 /** Cena naformátovaná s přesností páru, s oddělovači tisíců jako na ose. */
 function cenaSPresnosti(chart, cena) {
   const presnost = chart.getSymbol()?.pricePrecision ?? 2;
-  return cena.toLocaleString('en-US', {
-    minimumFractionDigits: presnost,
-    maximumFractionDigits: presnost,
-  });
+  // ⚠ Formátovač se vyrábí jednou na přesnost, ne při každém překreslení —
+  // `toLocaleString` s volbami si ho staví pokaždé znovu a je to drahé
+  // (viz format.js a tools/mereni-vykonu.py).
+  let f = FORMATOVACE_CEN.get(presnost);
+  if (!f) {
+    f = new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: presnost,
+      maximumFractionDigits: presnost,
+    });
+    FORMATOVACE_CEN.set(presnost, f);
+  }
+  return f.format(cena);
 }
+const FORMATOVACE_CEN = new Map();
 
 /**
  * Štítek s cenou na cenové ose v barvě čáry — stejně jako u aktuální ceny.
