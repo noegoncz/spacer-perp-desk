@@ -112,7 +112,12 @@ jobs:
           COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
         run: |
           mkdir -p web/public/data
-          if ! timeout 45m python web/tools/kategorie.py; then
+          # Generování trvá kvůli limitům CoinGecka desítky minut — při
+          # běžném pushi se vezme soubor, který už na webu je, čerstvý
+          # jen při denním běhu a ručním spuštění.
+          if [ "$GITHUB_EVENT_NAME" = "push" ]              && curl -fsS "https://$DOMENA/data/kategorie.json" -o web/public/data/kategorie.json; then
+            echo "Kategorie převzaty z webu."
+          elif ! timeout 45m python web/tools/kategorie.py; then
             echo "::warning::CoinGecko nevyšel, beru poslední soubor z webu."
             curl -fsS "https://$DOMENA/data/kategorie.json" -o web/public/data/kategorie.json               || echo "::warning::Ani starý soubor není — kategorie na webu chybí."
           fi
