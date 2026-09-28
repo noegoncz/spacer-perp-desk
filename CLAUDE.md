@@ -40,6 +40,14 @@ výslovně chtěl, aby to bylo **totéž**, ne dvě různé grafiky.
   „X", ikona + nápis vedle sebe) je promyšlený pro **větší kontexty** —
   README, případná úvodní obrazovka, opis appky v obchodě — ne pro
   16px lištu v telefonu.
+- **Reference v1** je uložená v `design/logo-v1/` (SVG značky, SVG ikony
+  a PNG z doby vzniku). **Doladění (2026-09-28)** před stavbou webu:
+  srovnání v1 se sedmi variantami téhož tkaného X (čistý kanál, hloubka
+  u křížení, zkosené konce, protisměrné přechody, pilulky, prémiová
+  dlaždice, stoupající pruh navrchu, kombinace) je na plátně
+  https://claude.ai/artifact/8NUuFpWtN9Shghdjgr4scY. Uživatel vybírá;
+  klidně zůstane v1. Logo se řeší **před webem**, protože ho web používá
+  všude (hlavička, favicon, náhled při sdílení).
 - ⚠ Font **Sora** z Google Fonts se používá **jen** ve wordmark náhledech
   (zatím žádné v repu), ne v appce samotné — appka drží zavedený
   `-apple-system, "Segoe UI", Roboto, system-ui, sans-serif` všude, ať se
