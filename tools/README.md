@@ -59,6 +59,7 @@ jen nová stránka ve staré kartě.
 | `test-graf-osa-a-zpet.py` | cenovky SL/TP/likvidace na ose, velké tlačítko zpět |
 | `test-okraje-apk.py` | obsah nezaleze pod systémové lišty v APK (napodobené proměnné Capacitoru) |
 | `mereni-vykonu.py` | **není test, ale měření**: co zabírá čas při živém provozu (profil funkcí, dlouhé úlohy, překreslení), viz CLAUDE.md „Výkon" |
+| `snimky-web.py` | **není test**: snímky aplikace pro web (`web/public/img/`), veřejná data ze skutečného Bybitu, pozice vymyšlené |
 | `test-graf-znacky.py` | trojúhelníky plnění místo čáry vstupu, linka aktuální ceny se ziskem, dlouhé čárkování SL/TP, plný vstup v proužku, součet fundingu i při odmítnutém okně |
 
 ⚠ Barvu na plátně neměř natvrdo. Linka zisku je červená, když je poslední

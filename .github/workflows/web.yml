@@ -1,0 +1,134 @@
+name: Nasazení webu perpyx.com
+
+# Web (úvodní stránka + přihláška do bety) běží na Cloudflare Pages,
+# seznam zájemců je v databázi Cloudflare D1. Všechno se zakládá a nasazuje
+# odsud — v Cloudflare se ručně nic nenastavuje, stačí tajemství
+# CLOUDFLARE_API_TOKEN (vlastní token „perpyx-deploy", viz CLAUDE.md).
+#
+# Každý krok je opakovatelný: databázi, projekt, domény i DNS záznamy
+# založí jen tehdy, když ještě neexistují. Nic existujícího nemaže.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - '.github/workflows/web.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web
+  cancel-in-progress: false
+
+env:
+  PROJEKT: perpyx
+  DATABAZE: perpyx-web
+  DOMENA: perpyx.com
+  CF_API: https://api.cloudflare.com/client/v4
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Stáhnout repozitář
+        uses: actions/checkout@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Účet Cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          # Bez tokenu se nic nenasazuje, ale běh neselže — dokud Cloudflare
+          # není nastavené, nemá každý push do web/ končit červeně.
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::warning::Chybí tajemství CLOUDFLARE_API_TOKEN (gh secret set CLOUDFLARE_API_TOKEN) — web se nenasadil."
+            echo "PRESKOCIT=1" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          ucet=$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$CF_API/accounts" | jq -r '.result[0].id // empty')
+          if [ -z "$ucet" ]; then
+            echo "::error::Token nevidí žádný účet — zkontroluj oprávnění Account v tokenu."
+            exit 1
+          fi
+          echo "CLOUDFLARE_ACCOUNT_ID=$ucet" >> "$GITHUB_ENV"
+
+      - name: Databáze D1
+        if: env.PRESKOCIT != '1'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          id=$(npx -y wrangler@4 d1 list --json | jq -r --arg n "$DATABAZE" '.[] | select(.name == $n) | .uuid')
+          if [ -z "$id" ]; then
+            # Západní Evropa — data zájemců zůstávají v EU.
+            npx -y wrangler@4 d1 create "$DATABAZE" --location weur
+            id=$(npx -y wrangler@4 d1 list --json | jq -r --arg n "$DATABAZE" '.[] | select(.name == $n) | .uuid')
+          fi
+          test -n "$id"
+          echo "Databáze $DATABAZE: $id"
+          cat > web/wrangler.toml <<EOF
+          name = "$PROJEKT"
+          pages_build_output_dir = "./public"
+          compatibility_date = "2026-09-01"
+
+          [[d1_databases]]
+          binding = "DB"
+          database_name = "$DATABAZE"
+          database_id = "$id"
+          EOF
+          cat web/wrangler.toml
+          cd web
+          npx -y wrangler@4 d1 execute "$DATABAZE" --remote --file schema.sql
+
+      - name: Projekt Pages
+        if: env.PRESKOCIT != '1'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          stav=$(curl -sS -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "$CF_API/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PROJEKT")
+          if [ "$stav" != "200" ]; then
+            npx -y wrangler@4 pages project create "$PROJEKT" --production-branch main
+          fi
+
+      - name: Nasadit
+        if: env.PRESKOCIT != '1'
+        working-directory: web
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx -y wrangler@4 pages deploy --branch main --commit-dirty=true
+
+      # Doména: připojit k projektu a nasměrovat DNS. Když doména ještě
+      # není v účtu (nekoupená), krok jen upozorní a web běží na *.pages.dev.
+      - name: Doména
+        if: env.PRESKOCIT != '1'
+        env:
+          T: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          api() { curl -sS -H "Authorization: Bearer $T" -H "Content-Type: application/json" "$@"; }
+          subdomena=$(api "$CF_API/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PROJEKT" | jq -r '.result.subdomain')
+          echo "Web běží na https://$subdomena"
+          zona=$(api "$CF_API/zones?name=$DOMENA" | jq -r '.result[0].id // empty')
+          if [ -z "$zona" ]; then
+            echo "::warning::Doména $DOMENA v účtu zatím není — web je jen na https://$subdomena"
+            exit 0
+          fi
+          for jmeno in "$DOMENA" "www.$DOMENA"; do
+            api -X POST "$CF_API/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PROJEKT/domains" \
+              --data "{\"name\":\"$jmeno\"}" | jq -c '{success, errors: [.errors[]?.message]}'
+            zaznam=$(api "$CF_API/zones/$zona/dns_records?name=$jmeno" | jq -r '.result[0].content // empty')
+            if [ -z "$zaznam" ]; then
+              api -X POST "$CF_API/zones/$zona/dns_records" \
+                --data "{\"type\":\"CNAME\",\"name\":\"$jmeno\",\"content\":\"$subdomena\",\"proxied\":true}" \
+                | jq -c '{success, errors: [.errors[]?.message]}'
+            elif [ "$zaznam" != "$subdomena" ]; then
+              echo "::warning::$jmeno už má DNS záznam na $zaznam — nechávám ho být."
+            fi
+          done
+          api "$CF_API/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PROJEKT/domains" \
+            | jq -r '.result[] | "\(.name): \(.status)"'

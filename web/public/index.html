@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PerpyX — Bybit perpetuals at a glance</title>
+<meta name="description" content="PerpyX is a read-only Android app for monitoring Bybit perpetual positions: live PnL, SL/TP ladders, funding, price alarms and a touch-first chart. Join the beta.">
+<meta name="theme-color" content="#0b0f14">
+<link rel="icon" href="/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<meta property="og:title" content="PerpyX — Bybit perpetuals at a glance">
+<meta property="og:description" content="A read-only position monitor for Android. Live PnL, SL/TP ladders, funding, alarms and a touch-first chart.">
+<meta property="og:image" content="https://perpyx.com/img/graf-fold.webp">
+<meta property="og:type" content="website">
+<link rel="canonical" href="https://perpyx.com/">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<svg class="sprite" aria-hidden="true">
+  <defs>
+    <linearGradient id="g" x1="8" y1="8" x2="92" y2="92" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#7c5cff"/>
+    </linearGradient>
+    <symbol id="x" viewBox="0 0 100 100">
+      <g transform="translate(50,50)">
+        <g transform="rotate(-45)">
+          <rect x="-32" y="-8" width="22" height="16" rx="4" fill="url(#g)"/>
+          <rect x="10" y="-8" width="22" height="16" rx="4" fill="url(#g)"/>
+        </g>
+        <g transform="rotate(45)"><rect x="-32" y="-8" width="64" height="16" rx="4" fill="url(#g)"/></g>
+      </g>
+    </symbol>
+  </defs>
+</svg>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="/" aria-label="PerpyX home"><svg aria-hidden="true"><use href="#x"/></svg>PerpyX</a>
+    <a class="btn small" href="#beta">Join the beta</a>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <span class="eyebrow"><span class="dot"></span>Private beta · Android</span>
+        <h1>Your Bybit perpetuals, <span class="grad">at a glance.</span></h1>
+        <p class="lead">PerpyX is a fast, read-only position monitor for traders who check their
+          positions forty times a day. Live PnL, stop-loss and take-profit ladders, honest
+          funding numbers and a chart you can actually draw on with a thumb.</p>
+        <div class="hero-cta">
+          <a class="btn" href="#beta">Join the beta</a>
+          <a class="btn ghost" href="#features">See what it does</a>
+        </div>
+        <p class="hero-note">Read-only by design. Your API keys never leave your phone.</p>
+      </div>
+      <div class="shots">
+        <div class="phone back"><img src="/img/trhy.webp" width="824" height="1760" alt="PerpyX markets list with 24-hour trend sparklines"></div>
+        <div class="phone front"><img src="/img/pozice.webp" width="824" height="1760" alt="PerpyX positions screen with live PnL and stop-loss / take-profit ladders"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="kicker">What you get</div>
+        <h2>Everything about a position, without opening the exchange app.</h2>
+        <p>Built around one question: how are my positions doing right now — and how close are they to anything that matters?</p>
+      </div>
+      <div class="grid">
+        <div class="card">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg></div>
+          <h3>Live positions</h3>
+          <p>Mark price, PnL and size stream in over WebSocket. No refresh button, no pull-to-reload.</p>
+        </div>
+        <div class="card">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h18"/><path d="M6 8v8M12 6v12M18 9v6"/></svg></div>
+          <h3>SL / TP ladder</h3>
+          <p>Every card shows entry, stop-losses and take-profits on one scale, with the price moving between them and what each level means in USDT.</p>
+        </div>
+        <div class="card">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+          <h3>Funding, honestly</h3>
+          <p>Next payment and its amount, the pair's real interval, and the total paid since <em>this</em> position opened — not since you first traded the pair.</p>
+        </div>
+        <div class="card">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v6M12 15v6M3 12h6M15 12h6"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg></div>
+          <h3>Touch-first drawing</h3>
+          <p>A crosshair you steer from anywhere on the screen, so your finger never hides the point you're placing. Trendlines, levels, channels, Fibonacci, measure.</p>
+        </div>
+        <div class="card">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></div>
+          <h3>Price alarms</h3>
+          <p>Alert on a price level, on a trendline you drew, or at a point in time. Turn any drawing into an alarm with one tap.</p>
+        </div>
+        <div class="card">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 5-6"/></svg></div>
+          <h3>A real chart</h3>
+          <p>Your entry, SL, TP, liquidation and open orders drawn on the chart, fills marked on the candles they happened in, plus RSI, EMA, Bollinger, volume profile and more.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="screens">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="kicker">Screens</div>
+        <h2>Made for one hand — and for the big screen when you unfold.</h2>
+        <p>Designed and tested on a foldable: a compact list on the cover screen, a full-width chart when you open it up.</p>
+      </div>
+      <div class="gallery">
+        <figure><div class="phone"><img src="/img/pozice.webp" width="824" height="1760" loading="lazy" alt="Positions list"></div><figcaption>Positions</figcaption></figure>
+        <figure><div class="phone"><img src="/img/graf.webp" width="824" height="1760" loading="lazy" alt="Chart on a phone screen"></div><figcaption>Chart</figcaption></figure>
+        <figure class="wide"><div class="phone"><img src="/img/graf-fold.webp" width="1346" height="1682" loading="lazy" alt="Chart on an unfolded screen with entry, SL, TP, orders and indicators"></div><figcaption>Chart, unfolded</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <section id="security">
+    <div class="wrap split">
+      <div>
+        <div class="kicker">Security</div>
+        <h2>Read-only. On purpose.</h2>
+        <ul class="checks">
+          <li><div><strong>It can't trade.</strong> PerpyX only reads positions, orders and balances. It has no code path that places an order.</div></li>
+          <li><div><strong>Keys stay on your phone.</strong> Your API key and secret are stored on the device, never on our servers.</div></li>
+          <li><div><strong>Signed locally.</strong> Each request is signed on the phone; only the signature travels to Bybit, never the secret.</div></li>
+          <li><div><strong>Use a read-only key.</strong> We ask for one, and you can revoke it on Bybit at any time.</div></li>
+        </ul>
+      </div>
+      <div class="flow" aria-hidden="true">
+        <div class="step lock"><div><b>Your phone</b><span>API key + secret stay here</span></div></div>
+        <div class="arrow">↓ signed request only</div>
+        <div class="step"><div><b>Bybit API</b><span>read-only: positions, orders, balance</span></div></div>
+        <div class="arrow">↓ live data</div>
+        <div class="step"><div><b>PerpyX</b><span>PnL, ladders, funding, chart, alarms</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="roadmap">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="kicker">Coming next</div>
+        <h2>Where it's heading.</h2>
+      </div>
+      <div class="roadmap">
+        <div class="card"><span class="tag">Next</span><h3>Alerts with the screen off</h3><p>Push notifications for alarms, even when the phone is asleep.</p></div>
+        <div class="card"><span class="tag">Next</span><h3>Categories &amp; watchlists</h3><p>AI, L1, DeFi, memes… plus your own lists you swipe between.</p></div>
+        <div class="card"><span class="tag">Planned</span><h3>RSI divergences</h3><p>Bullish and bearish divergences on the chart, then a scanner across your lists.</p></div>
+        <div class="card"><span class="tag">Later</span><h3>More exchanges</h3><p>Starting with Bybit USDT perpetuals, then others.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="beta-section">
+    <div class="wrap">
+      <div class="beta" id="beta">
+        <div>
+          <div class="kicker">Private beta</div>
+          <h2>Want in early?</h2>
+          <p>Leave your email and we'll invite you when the next beta round opens. Android only for now. No spam — just beta invites and major updates.</p>
+        </div>
+        <form id="signup" novalidate>
+          <div class="field">
+            <input type="email" name="email" id="email" placeholder="you@example.com" autocomplete="email" required aria-label="Email address">
+            <button class="btn" type="submit" id="send">Join the beta</button>
+          </div>
+          <label class="hp" aria-hidden="true">Leave this empty <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+          <label class="consent"><input type="checkbox" name="consent" id="consent" required>
+            <span>I agree that PerpyX may email me about the beta and product updates. I can unsubscribe at any time. See the <a href="/privacy">privacy policy</a>.</span></label>
+          <p class="msg" id="msg" role="status" aria-live="polite"></p>
+        </form>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>© 2026 PerpyX · Not affiliated with Bybit. Not financial advice.</div>
+    <nav><a href="/privacy">Privacy</a><a href="#beta">Beta</a></nav>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const form = document.getElementById('signup');
+  const msg = document.getElementById('msg');
+  const send = document.getElementById('send');
+  const say = (text, kind) => { msg.textContent = text; msg.className = 'msg ' + (kind || ''); };
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = form.email.value.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return say('Please enter a valid email address.', 'err');
+    if (!form.consent.checked) return say('Please tick the consent box so we can email you.', 'err');
+    send.disabled = true;
+    say('Sending…');
+    try {
+      const res = await fetch('/api/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, consent: true, website: form.website.value }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Something went wrong.');
+      form.reset();
+      say("You're on the list. We'll be in touch when the next beta round opens.", 'ok');
+    } catch (err) {
+      say(err.message || 'Something went wrong. Please try again.', 'err');
+    } finally {
+      send.disabled = false;
+    }
+  });
+})();
+</script>
+</body>
+</html>

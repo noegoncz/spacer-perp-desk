@@ -27,3 +27,6 @@ apk/package-lock.json
 *.keystore
 *.jks
 *.p12
+
+# Vygenerovaný při nasazení webu (obsahuje ID databáze z Cloudflare)
+web/wrangler.toml

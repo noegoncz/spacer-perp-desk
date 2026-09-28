@@ -118,6 +118,8 @@ vendor/                 # KLineChart + licence, stažené v repu (ne CDN)
 tools/                  # testy přes DevTools Protocol, bez API klíčů (viz tools/README.md)
 .github/workflows/deploy.yml
 .github/workflows/apk.yml   # sestavení APK, vydání apk-latest
+.github/workflows/web.yml   # nasazení webu perpyx.com na Cloudflare
+web/                    # web aplikace (úvod + přihláška do bety), NE aplikace samotná
 ```
 
 ### `js/bybit.js` je izolovaný záměrně
@@ -1594,6 +1596,45 @@ Zadávání příkazů je z plánu **vypuštěné** (viz „Mimo plán" výš).
 
 Připomínky ke grafu a indikátorům má uživatel další a řeší se průběžně mezi
 checkpointy — nečekají na ně.
+
+## Web perpyx.com (2026-09-28)
+
+Úvodní stránka aplikace se sběrem e-mailů zájemců o betu, **anglicky**.
+Je to samostatná věc ve složce `web/`, s aplikací nesdílí kód a do GitHub
+Pages se nedostane (deploy.yml kopíruje jen `css`, `js`, `icons`, `vendor`).
+
+- `web/public/` — statická stránka (`index.html`, `privacy.html`,
+  `style.css`, snímky v `img/`), `_headers` s bezpečnostními hlavičkami
+  (CSP bez cizích zdrojů).
+- `web/functions/api/signup.js` — Pages Function: `POST /api/signup`
+  uloží e-mail do **Cloudflare D1** (`perpyx-web`, tabulka `subscribers`,
+  schéma v `web/schema.sql`).
+- **Hosting Cloudflare** (Pages + D1, doména u Cloudflare Registrar).
+  Zvoleno, aby šlo všechno zakládat a nasazovat odsud bez ručního
+  nastavování: `.github/workflows/web.yml` sám založí databázi (v EU,
+  `--location weur`), projekt Pages, připojí doménu a DNS záznamy —
+  všechno jen pokud ještě neexistuje. Potřebuje jediné tajemství
+  `CLOUDFLARE_API_TOKEN` (vlastní token `perpyx-deploy`: Account ·
+  Cloudflare Pages · Edit, Workers Scripts · Edit, D1 · Edit; Zone · DNS ·
+  Edit, Zone · Read, jen pro zónu perpyx.com). ⚠ Token nikdy do chatu ani
+  do repa — uživatel ho zadává sám přes `gh secret set`.
+- `web/wrangler.toml` se generuje při nasazení (nese ID databáze) a v repu
+  není.
+
+**Ochrana soukromí je součást návrhu, ne dodatek:** stránka nenačítá nic
+cizího (žádná písma z Google, analytika, skripty), takže nepotřebuje lištu
+s cookies. Ukládá se **jen e-mail a čas souhlasu** — žádná IP adresa ani
+země. Duplicitní přihláška projde tiše, aby z odpovědi nešlo poznat, kdo
+na seznamu je. Proti robotům skryté pole (honeypot) a kontrola `Origin`.
+Souhlas je nezaškrtnutý checkbox s odkazem na `/privacy`.
+
+**Snímky aplikace** vyrábí `tools/snimky-web.py`: veřejná data (svíčky,
+trhy) jdou ze skutečného Bybitu, pozice a účet jsou vymyšlené kolem
+aktuálních cen — žádný klíč, nic ze skutečného účtu. Úrovně pozice
+a kresby na BTC se rozmístí podle posledních svíček, aby byly v grafu
+vidět. ⚠ Knihovna grafu píše písmem „Helvetica Neue", které na Windows
+spadne na patkové; skript ho přesměruje na Roboto/Segoe UI (jen pro
+snímky, v telefonu to nevadí).
 
 ## Start aplikace musí být neprůstřelný
 
