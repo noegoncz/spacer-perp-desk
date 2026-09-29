@@ -517,6 +517,11 @@ function boot() {
   prepniTridu('magnetBtn', 'active', magnetZapnut);
   wireEvents();
   vykresliUcet();
+  if (ucet.prihlasen() && !store.hasCredentials() && !store.loadJson('perpdesk.exchangeSkipped', false)) {
+    ukazUvod('burza');
+  }
+  // Zakrytí z <head> už převzalo úvodní okno, nebo není potřeba.
+  document.documentElement.classList.remove('uvod-start');
   ucet.spust();
   alarmyServer.spust({
     onPush: pushDoAplikace,
@@ -558,7 +563,7 @@ async function connectIfPossible() {
   const { apiKey, apiSecret } = store.loadCredentials();
 
   if (!apiKey || !apiSecret) {
-    ui.showPlaceholder(t('positions.noKeys'), t('action.openSettings'));
+    ui.showPlaceholder(t('positions.noKeys'), t('exchanges.connect'));
     ui.showView('positions');
     dokresliSeznamJeLiZastaraly();
     return;
@@ -584,7 +589,10 @@ function wireEvents() {
     ui.showView('positions');
     dokresliSeznamJeLiZastaraly();
   });
-  naUdalost('placeholderBtn', 'click', openSettings);
+  naUdalost('placeholderBtn', 'click', () => {
+    if (store.hasCredentials()) openSettings();
+    else ukazUvod('burza', true);
+  });
   naUdalost('retryBtn', 'click', () => {
     if (client.hasCredentials()) client.refresh();
   });
@@ -714,6 +722,14 @@ function wireEvents() {
     ukazPrvek('disclaimerNote', false);
   });
 
+  // Úvodní obrazovka a burzy
+  naUdalost('onbSkipBtn', 'click', () => {
+    store.saveJson('perpdesk.exchangeSkipped', true);
+    skryjUvod();
+  });
+  naUdalost('onbCloseBtn', 'click', skryjUvod);
+  naUdalost('exchangeAddBtn', 'click', () => ukazUvod('burza', true));
+
   // Alarmy hlídané serverem (push, i se zhasnutým displejem)
   alarmyServer.naZmenu(vykresliPushStav);
   naUdalost('accountPushBtn', 'click', async () => {
@@ -824,10 +840,7 @@ function vykresliPrepinacSltp() {
 }
 
 function openSettings() {
-  const { apiKey, apiSecret } = store.loadCredentials();
-  el('apiKey').value = apiKey;
-  el('apiSecret').value = apiSecret;
-  el('apiSecret').type = 'password';
+  vykresliBurzy();
   const prah = el('liqThreshold');
   if (prah) prah.value = String(prahLikvidace);
   vykresliPrepinacSltp();
@@ -908,6 +921,11 @@ async function saveAndConnect() {
   // Ukládá se až po ověření, ať se do telefonu nedostane nefunkční klíč.
   store.saveCredentials(apiKey, apiSecret);
   varovaniKlice = null;
+  el('apiKey').value = '';
+  el('apiSecret').value = '';
+  ui.clearSettingsMessage();
+  skryjUvod();
+  vykresliBurzy();
   client.stop();
   client.setCredentials(apiKey, apiSecret);
   ui.clearError();
@@ -923,10 +941,8 @@ function clearCredentials() {
   store.clearCredentials();
   varovaniKlice = null;
   lastPositions = [];
-  el('apiKey').value = '';
-  el('apiSecret').value = '';
-  ui.showSettingsMessage(t('settings.cleared'), true);
-  ui.showPlaceholder(t('positions.keysCleared'), t('action.openSettings'));
+  vykresliBurzy();
+  ui.showPlaceholder(t('positions.keysCleared'), t('exchanges.connect'));
 }
 
 /* ---------- graf ---------- */
@@ -2871,7 +2887,8 @@ async function obnovZalohu(e) {
 let emailUctu = '';
 
 function zpravaUctu(text, ok = true) {
-  const p = el('accountMsg');
+  // Přihlašuje se na úvodní obrazovce, zálohy a odhlášení jsou v nastavení.
+  const p = el(uvodViditelny() ? 'accountMsg' : 'accountSettingsMsg');
   if (!p) return;
   p.textContent = text || '';
   p.className = `settings-msg ${ok ? 'ok' : 'fail'}`;
@@ -2887,9 +2904,11 @@ function ukazKrokUctu(krok) {
 
 function vykresliUcet() {
   const prihlasen = ucet.prihlasen();
-  ukazPrvek('accountOut', !prihlasen);
   ukazPrvek('accountIn', prihlasen);
-  if (!prihlasen) return;
+  if (!prihlasen) {
+    ukazUvod('prihlaseni');
+    return;
+  }
   const kdo = el('accountWho');
   if (kdo) kdo.textContent = ucet.email();
   const z = ucet.posledniZaloha();
@@ -2934,8 +2953,12 @@ async function overKodUctu() {
     const me = await ucet.overKod(emailUctu, kod);
     el('accountCode').value = '';
     ukazKrokUctu('email');
+    store.saveJson('perpdesk.disclaimerSeen', true);   // přečetl na úvodní obrazovce
+    ukazPrvek('disclaimerNote', false);
     await nabidniObnovuPoPrihlaseni(me);
     alarmyServer.zapniPush().then(vykresliPushStav);
+    if (store.hasCredentials()) skryjUvod();
+    else ukazUvod('burza');
   } catch (e) {
     const zprava = {
       'wrong-code': t('account.wrongCode', { left: e.data?.left ?? '?' }),
@@ -3199,6 +3222,72 @@ function vykresliPushStav() {
   p.textContent = text;
   p.classList.toggle('ok', s.push === 'on' && alarmyServer.hlidaServer());
   if (btn) btn.hidden = !tlacitko;
+}
+
+/* ---------- úvodní obrazovka a burzy ---------- */
+
+/**
+ * Úvodní obrazovka: `prihlaseni` (povinné — bez účtu se dál nejde)
+ * nebo `burza` (připojení klíče; jde přeskočit). `zavritelna` = otevřená
+ * z nastavení, má křížek.
+ */
+function ukazUvod(krok, zavritelna = false) {
+  document.documentElement.classList.remove('uvod-start');
+  ukazPrvek('onboarding', true);
+  ukazPrvek('onbLogin', krok === 'prihlaseni');
+  ukazPrvek('onbExchange', krok === 'burza');
+  ukazPrvek('onbCloseBtn', zavritelna && krok === 'burza');
+  ukazPrvek('onbSkipBtn', !zavritelna);
+  document.documentElement.classList.add('uvod');
+  if (krok === 'burza') ui.clearSettingsMessage();
+}
+
+function skryjUvod() {
+  // Přihlášení se zavřít nedá — bez účtu aplikace nepokračuje.
+  if (!ucet.prihlasen()) return;
+  document.documentElement.classList.remove('uvod-start');
+  ukazPrvek('onboarding', false);
+  document.documentElement.classList.remove('uvod');
+}
+
+const uvodViditelny = () => el('onboarding')?.hidden === false;
+
+/** Připojené burzy v nastavení — klíč se nikdy neukazuje, jen jeho konec. */
+function vykresliBurzy() {
+  const seznam = el('exchangeList');
+  if (!seznam) return;
+  const { apiKey } = store.loadCredentials();
+  if (!apiKey) {
+    const p = document.createElement('p');
+    p.className = 'hint';
+    p.textContent = t('exchanges.none');
+    seznam.replaceChildren(p);
+    ukazPrvek('exchangeAddBtn', true);
+    return;
+  }
+  const radek = document.createElement('div');
+  radek.className = 'exchange-row';
+  const nazev = document.createElement('div');
+  nazev.className = 'exchange-name';
+  nazev.textContent = 'Bybit';
+  const klic = document.createElement('div');
+  klic.className = 'exchange-key';
+  klic.textContent = t('exchanges.keyEnding', { end: apiKey.slice(-4) });
+  nazev.append(klic);
+  const vymenit = document.createElement('button');
+  vymenit.type = 'button';
+  vymenit.className = 'secondary-btn';
+  vymenit.textContent = t('exchanges.replace');
+  vymenit.addEventListener('click', () => ukazUvod('burza', true));
+  const odpojit = document.createElement('button');
+  odpojit.type = 'button';
+  odpojit.className = 'text-btn danger';
+  odpojit.textContent = t('exchanges.disconnect');
+  odpojit.addEventListener('click', clearCredentials);
+  radek.append(nazev, vymenit, odpojit);
+  seznam.replaceChildren(radek);
+  // Víc burz zatím neumíme — „přidat" by nabídlo jen tu, co už je.
+  ukazPrvek('exchangeAddBtn', false);
 }
 
 /*

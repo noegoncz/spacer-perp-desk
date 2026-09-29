@@ -11,8 +11,14 @@ window.__chyby = [];
 window.addEventListener('error', (e) => window.__chyby.push('error: ' + e.message));
 window.addEventListener('unhandledrejection', (e) => window.__chyby.push(
   'rejection: ' + ((e.reason && e.reason.message) || e.reason)));
-localStorage.setItem('perpdesk.apiKey','FAKEKEY1234567890ab');
-localStorage.setItem('perpdesk.apiSecret','FAKESECRET1234567890abcdef');
+if (!sessionStorage.getItem('__bezUctu')) {
+  localStorage.setItem('perpdesk.session', JSON.stringify({ token: '0'.repeat(64), email: 'test@example.com' }));
+}
+// '__bezKlice' — telefon bez připojené burzy (test úvodní obrazovky).
+if (!sessionStorage.getItem('__bezKlice')) {
+  localStorage.setItem('perpdesk.apiKey','FAKEKEY1234567890ab');
+  localStorage.setItem('perpdesk.apiSecret','FAKESECRET1234567890abcdef');
+}
 window.WebSocket = function(){this.readyState=0;this.send=()=>{};this.close=()=>{};};
 window.WebSocket.OPEN = 1;
 // ⚠ `createdTime` je u Bybitu čas, kdy na páru vznikla pozice POPRVÉ

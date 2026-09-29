@@ -18,6 +18,8 @@
   try {
     var z = JSON.parse(localStorage.getItem('perpdesk.lock') || 'null');
     if (z && z.hash) document.documentElement.classList.add('zamek-start');
+    // Nepřihlášený (první spuštění): rovnou úvodní obrazovka s přihlášením.
+    if (!localStorage.getItem('perpdesk.session')) document.documentElement.classList.add('uvod-start');
   } catch (e) { /* bez úložiště bez zámku */ }
 </script>
 </head>
@@ -411,35 +413,7 @@
          zařízení, automatická cloudová záloha. Zatím volitelné. -->
     <div class="card" id="accountCard">
       <h2 data-i18n="account.title">PerpyX account</h2>
-      <div id="accountOut">
-        <p class="hint" data-i18n="account.hint">
-          Sign in to back up your watchlists, drawings and alarms automatically.
-          No password — we email you a code, once per phone. API keys are never uploaded.
-        </p>
-        <div id="accountStepEmail">
-          <label for="accountEmail" data-i18n="account.email">Email</label>
-          <input type="email" id="accountEmail" autocomplete="email" inputmode="email"
-                 autocapitalize="off" spellcheck="false" placeholder="you@example.com">
-          <div class="button-row">
-            <button type="button" id="accountSendBtn" class="primary-btn" data-i18n="account.sendCode">Send code</button>
-          </div>
-          <p class="hint account-legal"><span data-i18n="account.legal">By signing in you agree to the</span>
-            <a href="https://perpyx.com/terms" target="_blank" rel="noopener" data-i18n="account.termsLink">Terms of use</a>
-            <span data-i18n="account.legalAnd">and the</span>
-            <a href="https://perpyx.com/privacy" target="_blank" rel="noopener" data-i18n="account.privacyLink">Privacy policy</a>.</p>
-        </div>
-        <div id="accountStepCode" hidden>
-          <p class="hint" id="accountCodeHint"></p>
-          <label for="accountCode" data-i18n="account.code">Code from the email</label>
-          <input type="text" id="accountCode" inputmode="numeric" autocomplete="one-time-code"
-                 maxlength="6" placeholder="123456">
-          <div class="button-row">
-            <button type="button" id="accountVerifyBtn" class="primary-btn" data-i18n="account.signIn">Sign in</button>
-            <button type="button" id="accountBackBtn" class="secondary-btn" data-i18n="account.otherEmail">Different email</button>
-          </div>
-        </div>
-      </div>
-      <div id="accountIn" hidden>
+      <div id="accountIn">
         <p class="account-who"><span data-i18n="account.signedInAs">Signed in as</span> <strong id="accountWho"></strong></p>
         <p class="hint" id="accountBackupState"></p>
         <!-- Alarmy se zhasnutým displejem: push ze serverového hlídače. -->
@@ -464,7 +438,7 @@
           <button type="button" id="accountDeleteBtn" class="text-btn danger" data-i18n="account.delete">Delete account</button>
         </div>
       </div>
-      <p id="accountMsg" class="settings-msg" hidden></p>
+      <p id="accountSettingsMsg" class="settings-msg" hidden></p>
     </div>
 
     <!-- Zámek aplikace — volitelný (js/zamek.js). -->
@@ -504,36 +478,18 @@
       <p id="lockSettingsMsg" class="settings-msg" hidden></p>
     </div>
 
-    <div class="card">
-      <h2 data-i18n="settings.title">Bybit connection</h2>
-      <p class="hint" data-i18n="settings.hint">
-        Enter a read-only API key. The key and secret are stored on this phone
-        only, are never sent anywhere else and are not in the repository.
-        Requests are signed on the device itself.
-      </p>
-
-      <label for="apiKey" data-i18n="settings.apiKey">API key</label>
-      <input type="text" id="apiKey" autocomplete="off" autocapitalize="off"
-             autocorrect="off" spellcheck="false" inputmode="text"
-             data-i18n-ph="settings.apiKeyPlaceholder" placeholder="e.g. AbCdEf123456">
-
-      <label for="apiSecret" data-i18n="settings.apiSecret">API secret</label>
-      <div class="secret-row">
-        <input type="password" id="apiSecret" autocomplete="off" autocapitalize="off"
-               autocorrect="off" spellcheck="false">
-        <button type="button" id="revealBtn" class="icon-btn" data-i18n-aria="settings.revealSecret">👁</button>
-      </div>
-
+    <!-- Burzy: jen přehled připojených, klíč se nikdy nezobrazuje.
+         Přidání a výměna klíče jdou přes úvodní okno (krok Burza). -->
+    <div class="card" id="exchangeCard">
+      <h2 data-i18n="exchanges.title">Exchanges</h2>
+      <div id="exchangeList"></div>
       <div class="button-row">
-        <button type="button" id="saveBtn" class="primary-btn" data-i18n="settings.save">Save and connect</button>
-        <button type="button" id="testBtn" class="secondary-btn" data-i18n="settings.test">Test</button>
+        <button type="button" id="exchangeAddBtn" class="secondary-btn" data-i18n="exchanges.add">Add exchange</button>
       </div>
+    </div>
 
-      <p id="settingsMsg" class="settings-msg" hidden></p>
-
-      <hr>
-
-      <button type="button" id="clearBtn" class="danger-btn" data-i18n="settings.clear">Delete keys from this phone</button>
+    <div class="card">
+      <h2 data-i18n="settings.general">General</h2>
 
       <hr>
 
@@ -558,8 +514,10 @@
       <label for="language" data-i18n="settings.language">Language</label>
       <select id="language" class="select-field"></select>
 
-      <hr>
-
+      <!-- Pokročilé: záloha do souboru. S účtem se zálohuje samo; soubor
+           zůstává kvůli přenositelnosti dat a jako pojistka bez e-mailu. -->
+      <details class="help advanced">
+        <summary data-i18n="settings.advanced">Advanced</summary>
       <!-- Záloha: seznamy, kresby, alarmy, nastavení (js/zaloha.js). Bez klíčů. -->
       <label data-i18n="backup.title">Backup</label>
       <p class="hint" data-i18n="backup.hint">
@@ -572,17 +530,8 @@
       </div>
       <input type="file" id="backupFile" accept="application/json,.json" hidden>
       <p id="backupMsg" class="settings-msg" hidden></p>
-
-      <details class="help">
-        <summary data-i18n="settings.helpTitle">How to create a read-only key on Bybit</summary>
-        <ol>
-          <li data-i18n="settings.help1">Bybit → profile → API → Create New Key.</li>
-          <li data-i18n="settings.help2">Choose System-generated API Keys.</li>
-          <li data-i18n="settings.help3">Permissions: read-only, tick Positions (and Orders for the chart).</li>
-          <li data-i18n="settings.help4">Leave trading and withdrawals unticked.</li>
-          <li data-i18n="settings.help5">Leave the IP restriction empty — mobile networks change IP.</li>
-        </ol>
       </details>
+
     </div>
 
     <!-- O aplikaci: disclaimer a zásady ochrany soukromí (odkaz otevře prohlížeč). -->
@@ -608,6 +557,100 @@
     </div>
   </section>
 </main>
+
+<!-- Úvodní obrazovka (js/app.js, ukazUvod): při prvním spuštění povinné
+     přihlášení e-mailem, pak připojení burzy. Klíč se zadává jen tady. -->
+<div id="onboarding" class="onboarding" hidden>
+  <div class="onb-inner">
+    <button type="button" id="onbCloseBtn" class="icon-btn onb-close" data-i18n-aria="action.close" hidden>✕</button>
+    <svg class="lock-mark" viewBox="0 0 100 100" aria-hidden="true">
+      <g transform="translate(50,50)">
+        <g transform="rotate(-45)">
+          <rect x="-32" y="-8" width="22" height="16" rx="4" fill="url(#brandGrad)"/>
+          <rect x="10" y="-8" width="22" height="16" rx="4" fill="url(#brandGrad)"/>
+        </g>
+        <g transform="rotate(45)"><rect x="-32" y="-8" width="64" height="16" rx="4" fill="url(#brandGrad)"/></g>
+      </g>
+    </svg>
+
+    <!-- Krok 1: přihlášení -->
+    <div id="onbLogin">
+      <h2 data-i18n="onb.welcome">Welcome to PerpyX</h2>
+      <p class="hint" data-i18n="onb.loginHint">Sign in with your email — no password, we send you a code.
+        Your watchlists, drawings and alarms are then backed up automatically, and alarms work
+        even with the screen off.</p>
+        <div id="accountStepEmail">
+          <label for="accountEmail" data-i18n="account.email">Email</label>
+          <input type="email" id="accountEmail" autocomplete="email" inputmode="email"
+                 autocapitalize="off" spellcheck="false" placeholder="you@example.com">
+          <div class="button-row">
+            <button type="button" id="accountSendBtn" class="primary-btn" data-i18n="account.sendCode">Send code</button>
+          </div>
+          <p class="hint account-legal"><span data-i18n="account.legal">By signing in you agree to the</span>
+            <a href="https://perpyx.com/terms" target="_blank" rel="noopener" data-i18n="account.termsLink">Terms of use</a>
+            <span data-i18n="account.legalAnd">and the</span>
+            <a href="https://perpyx.com/privacy" target="_blank" rel="noopener" data-i18n="account.privacyLink">Privacy policy</a>.</p>
+        </div>
+        <div id="accountStepCode" hidden>
+          <p class="hint" id="accountCodeHint"></p>
+          <label for="accountCode" data-i18n="account.code">Code from the email</label>
+          <input type="text" id="accountCode" inputmode="numeric" autocomplete="one-time-code"
+                 maxlength="6" placeholder="123456">
+          <div class="button-row">
+            <button type="button" id="accountVerifyBtn" class="primary-btn" data-i18n="account.signIn">Sign in</button>
+            <button type="button" id="accountBackBtn" class="secondary-btn" data-i18n="account.otherEmail">Different email</button>
+          </div>
+        </div>
+      <p class="hint onb-disclaimer" data-i18n="about.notice">PerpyX shows your Bybit data — it is not financial advice.
+        Data can be delayed and alarms can be missed, so always check on Bybit before acting.</p>
+      <p id="accountMsg" class="settings-msg" hidden></p>
+    </div>
+
+    <!-- Krok 2: burza -->
+    <div id="onbExchange" hidden>
+      <h2 data-i18n="onb.connect">Connect your exchange</h2>
+      <p class="hint" data-i18n="onb.connectHint">PerpyX reads your positions with a read-only API key.
+        The key stays on this phone and is never sent to us.</p>
+      <div class="exchange-pick">
+        <button type="button" class="exchange-btn active" id="exBybitBtn">Bybit</button>
+        <button type="button" class="exchange-btn" disabled>Binance <span data-i18n="exchanges.soon">soon</span></button>
+        <button type="button" class="exchange-btn" disabled>Hyperliquid <span data-i18n="exchanges.soon">soon</span></button>
+        <button type="button" class="exchange-btn" disabled>OKX <span data-i18n="exchanges.soon">soon</span></button>
+      </div>
+      <div id="exchangeForm">
+      <label for="apiKey" data-i18n="settings.apiKey">API key</label>
+      <input type="text" id="apiKey" autocomplete="off" autocapitalize="off"
+             autocorrect="off" spellcheck="false" inputmode="text"
+             data-i18n-ph="settings.apiKeyPlaceholder" placeholder="e.g. AbCdEf123456">
+
+      <label for="apiSecret" data-i18n="settings.apiSecret">API secret</label>
+      <div class="secret-row">
+        <input type="password" id="apiSecret" autocomplete="off" autocapitalize="off"
+               autocorrect="off" spellcheck="false">
+        <button type="button" id="revealBtn" class="icon-btn" data-i18n-aria="settings.revealSecret">👁</button>
+      </div>
+
+      <div class="button-row">
+        <button type="button" id="saveBtn" class="primary-btn" data-i18n="settings.save">Save and connect</button>
+        <button type="button" id="testBtn" class="secondary-btn" data-i18n="settings.test">Test</button>
+      </div>
+
+      <p id="settingsMsg" class="settings-msg" hidden></p>
+      <details class="help">
+        <summary data-i18n="settings.helpTitle">How to create a read-only key on Bybit</summary>
+        <ol>
+          <li data-i18n="settings.help1">Bybit → profile → API → Create New Key.</li>
+          <li data-i18n="settings.help2">Choose System-generated API Keys.</li>
+          <li data-i18n="settings.help3">Permissions: read-only, tick Positions (and Orders for the chart).</li>
+          <li data-i18n="settings.help4">Leave trading and withdrawals unticked.</li>
+          <li data-i18n="settings.help5">Leave the IP restriction empty — mobile networks change IP.</li>
+        </ol>
+      </details>
+      </div>
+      <button type="button" id="onbSkipBtn" class="text-btn onb-skip" data-i18n="onb.skip">Skip for now — browse markets without a key</button>
+    </div>
+  </div>
+</div>
 
 <!-- Zámek aplikace (js/zamek.js): PIN, volitelně otisk prstu. -->
 <div id="lockScreen" class="lock-screen" hidden>

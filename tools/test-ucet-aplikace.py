@@ -26,7 +26,7 @@ KOREN = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 KLIC = open(sys.argv[2]).read().strip()
 EMAIL = f'app{int(time.time())}@test.perpyx.invalid'
 
-pred = "window.__pravyFetch = window.fetch.bind(window);"
+pred = "window.__pravyFetch = window.fetch.bind(window); sessionStorage.setItem('__bezUctu', '1');"
 mock = open(os.path.join(KOREN, 'tools', 'mock-bybit.js'), encoding='utf-8').read()
 po = """
 (() => {
@@ -112,7 +112,8 @@ ev("localStorage.setItem('perpdesk.lists', JSON.stringify({ verze: 1, aktivni: '
 nacti()
 
 print('1) přihlášení')
-over(ev("!document.getElementById('accountOut').hidden"), 'nepřihlášený vidí formulář')
+over(ev("!document.getElementById('onboarding').hidden && !document.getElementById('onbLogin').hidden"),
+     'nepřihlášený vidí povinné přihlášení (úvodní obrazovka)')
 kod = prihlas()
 over(len(kod or '') == 6, 'kód přišel')
 over(ev("!document.getElementById('accountIn').hidden"), 'po šesti číslicích přihlášen bez tlačítka')
@@ -155,7 +156,8 @@ ev("document.getElementById('settingsBtn').click()")
 time.sleep(0.5)
 ev("document.getElementById('accountDeleteBtn').click()")
 time.sleep(2)
-over(ev("!document.getElementById('accountOut').hidden"), 'po smazání formulář přihlášení')
+over(ev("!document.getElementById('onboarding').hidden && !document.getElementById('onbLogin').hidden"),
+     'po smazání zase povinné přihlášení')
 over(ev("localStorage.getItem('perpdesk.session')") is None, 'relace zapomenutá')
 over(bool(json.loads(ev("localStorage.getItem('perpdesk.lists')") or '{}').get('seznamy')), 'data v telefonu zůstala')
 

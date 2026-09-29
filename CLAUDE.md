@@ -1747,6 +1747,31 @@ Zadávání příkazů je z plánu **vypuštěné** (viz „Mimo plán" výš).
 Připomínky ke grafu a indikátorům má uživatel další a řeší se průběžně mezi
 checkpointy — nečekají na ně.
 
+## Úvodní obrazovka: povinný účet, pak burza (v0.23.0, 2026-09-29)
+
+Rozhodnutí uživatele: přihlášení v nastavení nestačí — **účet je povinný
+hned při prvním spuštění** (beta i placená verze ho potřebují) a hned
+potom nabídka připojit burzu. **Klíč se v nastavení nikdy nezobrazuje.**
+
+- `#onboarding` (index.html) přes celou obrazovku, nad aplikací, pod
+  zámkem (z-index 90 vs. 100). Krok **přihlášení** (e-mail → kód,
+  souhlas s podmínkami, krátký disclaimer) **nejde zavřít**; po
+  odhlášení i smazání účtu se vrací (`vykresliUcet` → `ukazUvod`).
+- Krok **burza**: Bybit, vedle Binance / Hyperliquid / OKX jako „brzy".
+  Formulář klíče (s kontrolou jen pro čtení) je jen tady. Jde přeskočit
+  (`perpdesk.exchangeSkipped`) — Trhy fungují i bez klíče; tlačítko pod
+  hláškou „bez klíče" vede sem, ne do nastavení.
+- Nastavení: karta **Burzy** jen s přehledem („Klíč jen pro čtení
+  ••••ABCD", Vyměnit klíč, Odpojit) — výměna otevře stejné okno
+  s křížkem. Karta Obecné (likvidace, SL/TP, jazyk) a sbalená
+  **Pokročilé** se zálohou do souboru: s účtem se zálohuje samo, soubor
+  zůstává kvůli přenositelnosti dat (GDPR) a jako pojistka bez e-mailu.
+- Jako u zámku: bez účtu přidá skript v `<head>` třídu `uvod-start`, ať
+  úvodní okno naskočí dřív než aplikace (žádné probliknutí).
+- ⚠ **Testy:** `mock-bybit.js` podstrčí přihlášený účet a klíč; testy
+  účtu je vypínají přes `sessionStorage` `__bezUctu` / `__bezKlice`
+  (musí se nastavit **před** mockem). Test: `tools/test-uvod.py`.
+
 ## Alarmy se zhasnutým displejem — server + push (v0.22.0, 2026-09-29)
 
 Zvolená cesta (rozhodnutí uživatele 2026-09-28): **serverový hlídač

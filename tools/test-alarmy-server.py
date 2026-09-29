@@ -36,7 +36,7 @@ cena = float(json.load(urllib.request.urlopen(
     'https://api.bybit.com/v5/market/tickers?category=linear&symbol=BTCUSDT', timeout=15))['result']['list'][0]['lastPrice'])
 print('BTC teď:', cena)
 
-pred = "window.__pravyFetch = window.fetch.bind(window);"
+pred = "window.__pravyFetch = window.fetch.bind(window); sessionStorage.setItem('__bezUctu', '1');"
 mock = open(os.path.join(KOREN, 'tools', 'mock-bybit.js'), encoding='utf-8').read()
 po = """
 (() => {
@@ -121,7 +121,7 @@ over('on' in stav, f'stav v nastavení ({stav[:70]})')
 
 print('2) alarmy na server')
 ev(f"""import('./js/alarmy.js').then((m) => {{
-  for (const [c, id] of [[{cena + 1.2}, 'nad'], [{cena - 1.2}, 'pod'], [{cena * 3}, 'daleko']]) {{
+  for (const [c, id] of [[{cena + 0.6}, 'nad'], [{cena - 0.6}, 'pod'], [{cena * 3}, 'daleko']]) {{
     const a = m.novy('BTCUSDT', c); a.id = 'test-' + id; m.uloz(a);
   }}
 }})""", cekat=True)
@@ -131,9 +131,9 @@ d = hlidac()
 nase = [a['id'] for a in d['alarms'] if a['id'].startswith('test-')]
 over(set(nase) >= {'test-nad', 'test-pod', 'test-daleko'}, f'hlídač alarmy vidí ({nase})')
 
-print('3) zaznění na serveru (čekám na pohyb ceny, nejvýš 3 min)')
+print('3) zaznění na serveru (čekám na pohyb ceny, nejvýš 5 min)')
 zaznel = None
-konec = time.time() + 180
+konec = time.time() + 300
 while time.time() < konec and not zaznel:
     time.sleep(10)
     ev("import('./js/alarmy-server.js').then((m) => m.stahniStav())", cekat=True)
