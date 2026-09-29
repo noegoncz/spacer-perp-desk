@@ -88,13 +88,20 @@ h1 .grad { background: var(--grad); -webkit-background-clip: text; background-cl
 .lead { color: #b9c6d6; font-size: 1.15rem; max-width: 34em; margin: 0 0 28px; }
 .hero-cta { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
 .hero-note { color: var(--muted); font-size: 0.9rem; margin-top: 14px; }
-/* Burzy: podporovaná plně, připravované tlumeně s „next". */
-.exchanges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
-.ex {
-  padding: 5px 12px; border: 1px solid var(--line); border-radius: 999px;
-  color: var(--muted); font-size: 0.85rem; font-weight: 600; background: rgba(17, 24, 35, 0.6);
+/* Burzy: dva řádky s popiskem — „Works with" (plně) a „Coming soon"
+   (tlumeně, čárkovaný rámeček). Samotné „next" u každé burzy nebylo
+   srozumitelné. */
+.exchanges { display: grid; gap: 10px; margin-top: 22px; }
+.ex-group { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ex-label {
+  min-width: 96px; color: var(--muted); font-size: 0.75rem; font-weight: 650;
+  letter-spacing: 0.8px; text-transform: uppercase;
 }
-.ex em { font-style: normal; font-weight: 500; font-size: 0.75rem; color: #6f7f94; margin-left: 4px; }
+.ex {
+  padding: 5px 12px; border: 1px dashed #2f3d52; border-radius: 999px;
+  color: #7d8da2; font-size: 0.85rem; font-weight: 600;
+}
+.ex.live { border-style: solid; background: rgba(17, 24, 35, 0.6); }
 .ex.live { color: var(--text); border-color: rgba(34, 211, 238, 0.5); }
 .ex.live::before {
   content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 7px; border-radius: 50%;
