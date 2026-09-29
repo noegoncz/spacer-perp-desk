@@ -428,7 +428,7 @@ export const en = {
   'account.invalidEmail': 'Please enter a valid email address.',
   'account.wrongCode': 'Wrong code. {left} attempts left.',
   'account.codeExpired': 'The code has expired. Send a new one.',
-  'account.limitToday': 'For security, sign-in for this email is paused until tomorrow (too many codes or wrong attempts). If it wasn't you, your account is still safe — nobody can sign in without the code from your inbox.',
+  'account.limitToday': 'For security, sign-in for this email is paused until tomorrow (too many codes or wrong attempts). If it was not you, your account is still safe — nobody can sign in without the code from your inbox.',
   'account.tooMany': 'Too many wrong attempts. Send a new code.',
   'account.failed': 'Something went wrong ({why}). Try again.',
   'account.offerRestore': 'Your account has a backup from {date} ({lists} watchlists, {drawings} drawings, {alarms} alarms).\n\nRestore it on this phone?',
