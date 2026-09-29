@@ -452,6 +452,39 @@
       <p id="accountMsg" class="settings-msg" hidden></p>
     </div>
 
+    <!-- Zámek aplikace — volitelný (js/zamek.js). -->
+    <div class="card" id="lockCard">
+      <h2 data-i18n="lock.title">App lock</h2>
+      <p class="hint" data-i18n="lock.hint">Optional. Ask for a PIN — or your fingerprint — when you
+        open PerpyX, so nobody holding your phone can see your positions.</p>
+      <div class="switch-row">
+        <span data-i18n="lock.usePinLock">Lock with PIN</span>
+        <button type="button" id="lockPinToggle" class="nastaveni-prepinac" aria-pressed="false"
+                data-i18n-aria="lock.usePinLock"></button>
+      </div>
+      <div id="lockSetup" hidden>
+        <label for="lockPinInput" id="lockPinLabel"></label>
+        <input type="password" id="lockPinInput" inputmode="numeric" maxlength="6" autocomplete="off">
+        <div class="button-row">
+          <button type="button" id="lockSetupOk" class="primary-btn" data-i18n="lock.continue">Continue</button>
+          <button type="button" id="lockSetupCancel" class="secondary-btn" data-i18n="lock.cancel">Cancel</button>
+        </div>
+      </div>
+      <div id="lockOptions" hidden>
+        <div class="switch-row" id="lockBioRow" hidden>
+          <span data-i18n="lock.useBiometric">Unlock with fingerprint</span>
+          <button type="button" id="lockBioToggle" class="nastaveni-prepinac" aria-pressed="false"
+                  data-i18n-aria="lock.useBiometric"></button>
+        </div>
+        <label for="lockAfter" data-i18n="lock.after">Lock when I leave the app for</label>
+        <select id="lockAfter" class="select-field"></select>
+        <div class="button-row">
+          <button type="button" id="lockChangeBtn" class="secondary-btn" data-i18n="lock.change">Change PIN</button>
+        </div>
+      </div>
+      <p id="lockSettingsMsg" class="settings-msg" hidden></p>
+    </div>
+
     <div class="card">
       <h2 data-i18n="settings.title">Bybit connection</h2>
       <p class="hint" data-i18n="settings.hint">
@@ -556,6 +589,33 @@
     </div>
   </section>
 </main>
+
+<!-- Zámek aplikace (js/zamek.js): PIN, volitelně otisk prstu. -->
+<div id="lockScreen" class="lock-screen" hidden>
+  <svg class="lock-mark" viewBox="0 0 100 100" aria-hidden="true">
+    <g transform="translate(50,50)">
+      <g transform="rotate(-45)">
+        <rect x="-32" y="-8" width="22" height="16" rx="4" fill="url(#brandGrad)"/>
+        <rect x="10" y="-8" width="22" height="16" rx="4" fill="url(#brandGrad)"/>
+      </g>
+      <g transform="rotate(45)"><rect x="-32" y="-8" width="64" height="16" rx="4" fill="url(#brandGrad)"/></g>
+    </g>
+  </svg>
+  <p class="lock-title" data-i18n="lock.enterPin">Enter your PIN</p>
+  <div id="lockDots" class="lock-dots" aria-hidden="true"></div>
+  <p id="lockMsg" class="lock-msg" role="status" aria-live="polite"></p>
+  <div id="lockPad" class="lock-pad">
+    <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
+    <button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>
+    <button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button>
+    <button type="button" id="lockBioBtn" class="lock-bio" data-i18n-aria="lock.useBiometric" hidden>
+      <svg viewBox="0 0 24 24"><path d="M12 11v3m-3.5-5.2A4.5 4.5 0 0 1 16.5 11v2.5a9 9 0 0 1-1.2 4.5M7.5 12v1a7 7 0 0 0 .9 3.4M12 4.5a7 7 0 0 1 7 7v1.5M5 11.5a7 7 0 0 1 3-5.7M9.5 18.8A10.5 10.5 0 0 1 8.5 14"/></svg>
+    </button>
+    <button type="button" data-k="0">0</button>
+    <button type="button" data-k="smazat" class="lock-del" data-i18n-aria="lock.delete">⌫</button>
+  </div>
+  <button type="button" id="lockForgotBtn" class="text-btn" data-i18n="lock.forgot">Forgot PIN?</button>
+</div>
 
 <footer class="footer">
   <span id="versionLabel">—</span>

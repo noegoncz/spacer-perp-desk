@@ -1933,3 +1933,57 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
  * šířky spadl do stejného pravidla. Fold rozevřený je málem čtvercový
  * (~0.8), proto `min-aspect-ratio: 3/4`.
  */
+
+/* ---------- zámek aplikace (js/zamek.js) ---------- */
+
+/* Přes všechno včetně vysouvacích nabídek (z-index 30) a grafu. */
+.lock-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: calc(24px + var(--okraj-nahore)) 24px calc(24px + var(--okraj-dole));
+  background: var(--bg);
+}
+html.zamceno, html.zamceno body { overflow: hidden; }
+.lock-mark { width: 56px; height: 56px; margin-bottom: 6px; }
+.lock-title { margin: 0; font-size: 1.05rem; font-weight: 600; }
+.lock-dots { display: flex; gap: 14px; min-height: 16px; }
+.lock-dots span {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 1.5px solid var(--text-dim);
+}
+.lock-dots span.on { background: var(--accent); border-color: var(--accent); }
+.lock-msg { margin: 0; min-height: 1.3em; font-size: 0.85rem; color: var(--short); text-align: center; }
+.lock-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 72px);
+  gap: 14px 22px;
+  margin-top: 6px;
+}
+.lock-pad button {
+  width: 72px; height: 72px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1.5rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+.lock-pad button:active { background: var(--surface-2); }
+.lock-pad .lock-del { border-color: transparent; background: transparent; font-size: 1.3rem; }
+.lock-pad .lock-bio { border-color: transparent; background: transparent; display: grid; place-items: center; }
+/* Skrytý otisk nechává prázdné místo, ať nula zůstane uprostřed. */
+.lock-pad .lock-bio[hidden] { display: grid !important; visibility: hidden; }
+.lock-bio svg { width: 32px; height: 32px; fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-linecap: round; }
+.lock-screen.chyba .lock-dots { animation: zatres 0.35s; }
+@keyframes zatres {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}

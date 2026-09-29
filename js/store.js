@@ -28,7 +28,7 @@ function write(key, value) {
  * Hlášení změn uložených dat — podle něj se spouští automatická cloudová
  * záloha (js/ucet.js). Klíče, relace a technické značky zálohu nespouští.
  */
-const BEZ_ZALOHY = new Set([KEY_API, KEY_SECRET, 'perpdesk.session', 'perpdesk.lastPing',
+const BEZ_ZALOHY = new Set([KEY_API, KEY_SECRET, 'perpdesk.session', 'perpdesk.lastPing', 'perpdesk.lock',
   'perpdesk.coinCategories']);
 const posluchaci = new Set();
 

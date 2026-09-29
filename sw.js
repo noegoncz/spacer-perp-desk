@@ -33,6 +33,7 @@ const SHELL = [
   './js/sestavy.js',
   './js/zaloha.js',
   './js/ucet.js',
+  './js/zamek.js',
   './js/i18n.js',
   './js/i18n/en.js',
   './js/i18n/cs.js',

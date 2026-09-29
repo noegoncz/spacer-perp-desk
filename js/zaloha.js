@@ -23,6 +23,8 @@ const NEZALOHOVAT = new Set([
   // Přihlášení k účtu patří jen tomuto zařízení.
   'perpdesk.session',
   'perpdesk.lastPing',
+  // Zámek (PIN, otisk) patří k tomuhle telefonu.
+  'perpdesk.lock',
 ]);
 
 function klice() {

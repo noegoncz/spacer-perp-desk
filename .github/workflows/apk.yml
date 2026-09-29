@@ -45,7 +45,7 @@ jobs:
         working-directory: apk
         # Filesystem + Share: uložení zálohy dat (js/zaloha.js). WebView
         # obyčejné stažení souboru neumí, soubor se proto nabídne ke sdílení.
-        run: npm install --no-audit --no-fund @capacitor/core@latest @capacitor/cli@latest @capacitor/android@latest @capacitor/filesystem@latest @capacitor/share@latest
+        run: npm install --no-audit --no-fund @capacitor/core@latest @capacitor/cli@latest @capacitor/android@latest @capacitor/filesystem@latest @capacitor/share@latest @capgo/capacitor-native-biometric@latest
 
       # Projekt android/ se generuje pokaždé znovu a v repu není. Až přibude
       # nativní kód (služba na popředí pro alarmy), půjde do repa a tenhle

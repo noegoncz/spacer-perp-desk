@@ -15,6 +15,7 @@ import * as alarmy from './alarmy.js';
 import * as sestavy from './sestavy.js';
 import * as zaloha from './zaloha.js';
 import * as ucet from './ucet.js';
+import * as zamek from './zamek.js';
 import * as store from './store.js';
 import * as ui from './ui.js';
 
@@ -501,6 +502,14 @@ function boot() {
   registerServiceWorker();
   setLanguage(store.loadLanguage());
   applyStaticTexts();
+  // Zámek hned po textech — obsah nesmí problesknout dřív, než se zamkne.
+  zamek.spust({
+    onZapomenuto: () => {
+      if (!confirm(t('lock.forgotConfirm'))) return;
+      zamek.zapomenutyPin();
+      location.reload();
+    },
+  });
   postavVyberJazyka();
   ui.renderVersion(self.APP_VERSION, self.APP_BUILD);
   prepniTridu('hideBtn', 'active', hideAmounts);
@@ -699,6 +708,25 @@ function wireEvents() {
     ukazPrvek('disclaimerNote', false);
   });
 
+  // Zámek aplikace (nastavení)
+  naUdalost('lockPinToggle', 'click', () => {
+    rezimZamku = zamek.zapnuto() ? 'vypnout' : 'novy';
+    vykresliZamek(true);
+  });
+  naUdalost('lockChangeBtn', 'click', () => {
+    rezimZamku = 'zmenaStary';
+    vykresliZamek(true);
+  });
+  naUdalost('lockSetupOk', 'click', potvrdPinZamku);
+  naUdalost('lockPinInput', 'keydown', (e) => { if (e.key === 'Enter') potvrdPinZamku(); });
+  naUdalost('lockSetupCancel', 'click', () => {
+    rezimZamku = null;
+    vykresliZamek();
+  });
+  naUdalost('lockBioToggle', 'click', prepniOtiskZamku);
+  naUdalost('lockAfter', 'change', (e) => zamek.nastavDobu(Number(e.target.value)));
+  vykresliZamek();
+
   // Účet PerpyX
   naUdalost('accountSendBtn', 'click', posliKodUctu);
   naUdalost('accountEmail', 'keydown', (e) => { if (e.key === 'Enter') posliKodUctu(); });
@@ -790,6 +818,10 @@ function openSettings() {
   const prah = el('liqThreshold');
   if (prah) prah.value = String(prahLikvidace);
   vykresliPrepinacSltp();
+  // Dostupnost otisku se zjišťuje asynchronně — při otevření nastavení
+  // znovu, ať řádek s otiskem odpovídá tomu, co telefon umí teď.
+  rezimZamku = null;
+  vykresliZamek();
   ui.clearSettingsMessage();
   ui.showView('settings');
 }
@@ -2978,4 +3010,122 @@ async function smazUcet() {
   } catch (e) {
     zpravaUctu(t('account.failed', { why: duvod(e) }), false);
   }
+}
+
+/* ---------- zámek aplikace v nastavení (js/zamek.js) ---------- */
+
+let rezimZamku = null;   // 'novy' | 'znovu' | 'vypnout' | 'zmenaStary'
+let prvniPinZamku = '';
+
+function zpravaZamku(text, ok = true) {
+  const p = el('lockSettingsMsg');
+  if (!p) return;
+  p.textContent = text || '';
+  p.className = `settings-msg ${ok ? 'ok' : 'fail'}`;
+  p.hidden = !text;
+}
+
+async function vykresliZamek(vycistit = false) {
+  const zap = zamek.zapnuto();
+  const prepinac = el('lockPinToggle');
+  if (prepinac) {
+    prepinac.classList.toggle('on', zap);
+    prepinac.setAttribute('aria-pressed', String(zap));
+  }
+  ukazPrvek('lockSetup', Boolean(rezimZamku));
+  ukazPrvek('lockOptions', zap && !rezimZamku);
+  const popisek = el('lockPinLabel');
+  if (popisek && rezimZamku) {
+    popisek.textContent = t({
+      novy: 'lock.newPin', znovu: 'lock.repeatPin', vypnout: 'lock.currentPin', zmenaStary: 'lock.currentPin',
+    }[rezimZamku]);
+  }
+  if (vycistit) {
+    const pole = el('lockPinInput');
+    if (pole) {
+      pole.value = '';
+      pole.focus();
+    }
+    zpravaZamku('');
+  }
+  const doba = el('lockAfter');
+  if (doba && !doba.options.length) {
+    doba.replaceChildren(...zamek.DOBY.map((m) => {
+      const o = document.createElement('option');
+      o.value = String(m);
+      o.textContent = m === 0 ? t('lock.immediately') : t('lock.minutes', { n: m });
+      return o;
+    }));
+  }
+  if (doba) doba.value = String(zamek.poMinutach());
+  const otisk = el('lockBioToggle');
+  if (otisk) {
+    otisk.classList.toggle('on', zamek.sBiometrii());
+    otisk.setAttribute('aria-pressed', String(zamek.sBiometrii()));
+  }
+  // Řádek s otiskem jen tam, kde telefon otisk umí (v APK se čtečkou).
+  ukazPrvek('lockBioRow', zap && await zamek.biometrieDostupna());
+}
+
+async function potvrdPinZamku() {
+  const pole = el('lockPinInput');
+  const pin = (pole?.value || '').trim();
+  if (pole) pole.value = '';
+  if (rezimZamku === 'novy') {
+    if (!/^\d{4,6}$/.test(pin)) {
+      zpravaZamku(t('lock.pinInvalid'), false);
+      return;
+    }
+    prvniPinZamku = pin;
+    rezimZamku = 'znovu';
+    await vykresliZamek();
+    zpravaZamku('');
+    pole?.focus();
+    return;
+  }
+  if (rezimZamku === 'znovu') {
+    if (pin !== prvniPinZamku) {
+      prvniPinZamku = '';
+      rezimZamku = 'novy';
+      await vykresliZamek();
+      zpravaZamku(t('lock.pinMismatch'), false);
+      return;
+    }
+    const zmena = zamek.zapnuto();
+    await zamek.nastavPin(pin);
+    prvniPinZamku = '';
+    rezimZamku = null;
+    await vykresliZamek();
+    zpravaZamku(t(zmena ? 'lock.changed' : 'lock.on'));
+    return;
+  }
+  if (!(await zamek.overPin(pin))) {
+    zpravaZamku(t('lock.pinWrong'), false);
+    pole?.focus();
+    return;
+  }
+  if (rezimZamku === 'vypnout') {
+    zamek.vypni();
+    rezimZamku = null;
+    await vykresliZamek();
+    zpravaZamku(t('lock.off'));
+  } else if (rezimZamku === 'zmenaStary') {
+    rezimZamku = 'novy';
+    await vykresliZamek();
+    zpravaZamku('');
+    pole?.focus();
+  }
+}
+
+async function prepniOtiskZamku() {
+  if (zamek.sBiometrii()) {
+    zamek.nastavBiometrii(false);
+  } else if (await zamek.overOtiskem()) {
+    // Zapnout jen po úspěšném přiložení prstu — ať je jisté, že čtečka jde.
+    zamek.nastavBiometrii(true);
+    zpravaZamku('');
+  } else {
+    zpravaZamku(t('lock.bioFailed'), false);
+  }
+  vykresliZamek();
 }

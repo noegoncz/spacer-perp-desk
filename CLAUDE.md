@@ -127,6 +127,7 @@ js/alarmy.js            # cenové alarmy: model, vyhodnocení protnutí, uklád�
 js/sestavy.js           # sestavy coinů v Trzích + kategorie z CoinGecko (bez DOM)
 js/zaloha.js            # záloha a obnova dat do souboru (bez API klíčů)
 js/ucet.js              # účet PerpyX: přihlášení kódem, cloudová záloha, denní aktivita
+js/zamek.js             # volitelný zámek aplikace: PIN + otisk prstu
 js/app.js               # orchestrace, lifecycle, update service workeru
 vendor/                 # KLineChart + licence, stažené v repu (ne CDN)
 tools/                  # testy přes DevTools Protocol, bez API klíčů (viz tools/README.md)
@@ -1769,7 +1770,36 @@ a sběr e-mailů. Opraveno v tomto pořadí:
 5. ✅ **Podmínky používání** (`web/public/terms.html`, verze 1 pro bezplatnou betu): co PerpyX je a není, jen klíč pro čtení, data a alarmy „as is", účet, přijatelné použití, odpovědnost v mezích zákona (spotřebitelská práva nedotčena), ukončení, změny, české právo. Odkazy z patičky webu, z Nastavení → About a u přihlášení k účtu. ⚠ Před placenou verzí doplnit předplatné a nechat projít odborníkem.
 6. ⏳ Automatické mazání seznamu zájemců po 24 měsících a e-mail před
    smazáním neaktivního účtu (slíbeno v zásadách, hoří od září 2027).
-7. ⏳ Šifrování klíče v telefonu (Keystore / otisk) — checkpoint 9.
+7. ⏳ Šifrování klíče v telefonu (Keystore) — checkpoint 9. **Zámek
+   aplikace už je** (v0.21.0, níž); šifrování klíče samo zbývá.
+
+### ✅ Zámek aplikace (v0.21.0, 2026-09-29)
+
+**Volitelný** (rozhodnutí uživatele: otisk i zámek jen jako volba).
+Nastavení → App lock. Chrání soukromí (kdo drží odemčený telefon, nevidí
+pozice), ne peníze — klíč je jen pro čtení.
+
+- Zámek = **PIN 4–6 číslic**; **otisk prstu je volitelná zkratka nad
+  PINem** (čtečka selhává — mokrý prst, po restartu chce Android PIN —
+  a bez záložní cesty by se uživatel nedostal dovnitř). Otisk se zapne
+  až po úspěšném přiložení prstu.
+- Zamyká se při startu a po odchodu z aplikace: hned (už při odchodu,
+  ať náhled v přehledu aplikací neukazuje obsah), nebo po 1 / 5 / 15 min.
+- PIN jen jako **PBKDF2** (sůl, 150 000 iterací). Pět pokusů volně,
+  pak čekání 30 s, 60 s, 120 s…
+- **Zapomenutý PIN** zruší zámek a **smaže API klíče** — seznamy,
+  kresby, alarmy a nastavení zůstanou. Zloděj se ke klíči nedostane.
+- Nastavení zámku patří k telefonu: **nezálohuje se** (zaloha.js,
+  store.js) ani do cloudu.
+- Otisk jen v APK: `@capgo/capacitor-native-biometric` (apk.yml),
+  `window.Capacitor.Plugins.NativeBiometric` (`isAvailable`,
+  `verifyIdentity`). ⚠ **Výzva k otisku je systémové okno a Android
+  kvůli ní může hlásit změnu viditelnosti** — bez pojistky
+  (`vyzvaBezi`, 3 s od poslední výzvy) by se výzva po zavření vyvolávala
+  dokola. Sama se výzva nabídne jen po skutečném návratu do aplikace.
+- Řádek s otiskem se v nastavení ukáže jen tam, kde telefon otisk umí;
+  dostupnost se zjišťuje při každém otevření nastavení.
+- Test: `tools/test-zamek.py` (otisk přes podstrčený plugin).
 
 ## Web perpyx.com (2026-09-28)
 
