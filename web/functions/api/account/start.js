@@ -4,7 +4,9 @@
 // zjistit, kdo PerpyX používá. Nový kód nejdřív po minutě a celkový
 // strop za hodinu, ať nejde přes nás zasypat cizí schránky poštou.
 
-import { json, otisk, kod6, EMAIL, ted, mailSKodem } from '../../../lib/ucet.js';
+import {
+  json, otisk, kod6, EMAIL, ted, mailSKodem, KODU_ZA_DEN, CHYB_ZA_DEN,
+} from '../../../lib/ucet.js';
 import { posliPostu } from '../../../lib/spolecne.js';
 
 const ZNOVU_ZA = 60e3;
@@ -37,6 +39,16 @@ export async function onRequestPost({ request, env }) {
   const zaHodinu = await env.DB.prepare('SELECT COUNT(*) AS n FROM login_codes WHERE created_at > ?')
     .bind(new Date(Date.now() - 3600e3).toISOString()).first();
   if (zaHodinu.n > STROP_ZA_HODINU) return json(request, { ok: false, error: 'busy' }, 429);
+
+  // Denní strop kódů na e-mail (web/migrations/0005_login_limity.sql).
+  const den = ted().slice(0, 10);
+  const limit = await env.DB.prepare('SELECT codes, failures FROM login_limits WHERE email = ? AND day = ?')
+    .bind(email, den).first();
+  if (limit && (limit.codes >= KODU_ZA_DEN || limit.failures >= CHYB_ZA_DEN)) {
+    return json(request, { ok: false, error: 'limit-today' }, 429);
+  }
+  await env.DB.prepare(`INSERT INTO login_limits (email, day, codes) VALUES (?, ?, 1)
+      ON CONFLICT(email, day) DO UPDATE SET codes = codes + 1`).bind(email, den).run();
 
   const kod = kod6();
   await env.DB.prepare(`INSERT INTO login_codes (email, code_hash, created_at, expires_at, attempts)

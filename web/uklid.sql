@@ -19,3 +19,7 @@ DELETE FROM alarms WHERE account_id IN (SELECT id FROM accounts WHERE email LIKE
 DELETE FROM push_tokens WHERE account_id IN (SELECT id FROM accounts WHERE email LIKE '%@test.perpyx.invalid');
 DELETE FROM accounts WHERE email LIKE '%@test.perpyx.invalid';
 DELETE FROM login_codes WHERE email LIKE '%@test.perpyx.invalid';
+
+-- Denní limity přihlašování stačí držet dva dny.
+DELETE FROM login_limits WHERE day < strftime('%Y-%m-%d', 'now', '-2 days');
+DELETE FROM login_limits WHERE email LIKE '%@test.perpyx.invalid';

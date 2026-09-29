@@ -2937,7 +2937,8 @@ async function posliKodUctu() {
     const hint = el('accountCodeHint');
     if (hint) hint.textContent = t(d.wait ? 'account.codeWait' : 'account.codeSent', { email: adresa });
   } catch (e) {
-    zpravaUctu(t(e.kod === 'invalid-email' ? 'account.invalidEmail' : 'account.failed', { why: duvod(e) }), false);
+    const klic = { 'invalid-email': 'account.invalidEmail', 'limit-today': 'account.limitToday' }[e.kod] || 'account.failed';
+    zpravaUctu(t(klic, { why: duvod(e) }), false);
   } finally {
     if (btn) btn.disabled = false;
   }
@@ -2964,6 +2965,7 @@ async function overKodUctu() {
       'wrong-code': t('account.wrongCode', { left: e.data?.left ?? '?' }),
       'code-expired': t('account.codeExpired'),
       'too-many-attempts': t('account.tooMany'),
+      'limit-today': t('account.limitToday'),
     }[e.kod] || t('account.failed', { why: duvod(e) });
     zpravaUctu(zprava, false);
   } finally {

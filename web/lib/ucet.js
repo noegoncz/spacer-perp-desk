@@ -56,6 +56,11 @@ export function kod6() {
 }
 
 export const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Na jeden e-mail a den: nejvýš 10 kódů a 15 špatných pokusů přes všechny
+// kódy (web/migrations/0005_login_limity.sql). Platí i pro testovací adresy.
+export const KODU_ZA_DEN = 10;
+export const CHYB_ZA_DEN = 15;
 export const ted = () => new Date().toISOString();
 
 /**

@@ -122,5 +122,18 @@ s, o, _ = dotaz('GET', '/me', token=token)
 over(s == 200 and o.get('backup') is None, 'po smazání je účet prázdný (zálohy pryč)')
 dotaz('POST', '/delete', token=token)
 
+print('denní limit špatných pokusů')
+EMAIL2 = f'limit{int(time.time())}@test.perpyx.invalid'
+kod = ''
+for i in range(3):   # 3 kódy × 5 špatných pokusů = 15 za den
+    s, o, _ = dotaz('POST', '/start', {'email': EMAIL2}, test=True)
+    kod = o.get('testCode', '')
+    for _ in range(5):
+        dotaz('POST', '/verify', {'email': EMAIL2, 'code': '000000' if kod != '000000' else '111111'})
+s, o, _ = dotaz('POST', '/start', {'email': EMAIL2}, test=True)
+over(s == 429 and o.get('error') == 'limit-today', f'po 15 chybách za den nový kód nedostane ({s} {o.get("error")})')
+s, o, _ = dotaz('POST', '/verify', {'email': EMAIL2, 'code': kod})
+over(s == 429 and o.get('error') == 'limit-today', 'ani správný kód už ten den neprojde')
+
 print()
 print('VÝSLEDEK:', 'VŠE V POŘÁDKU' if not chyby else f'!!! {len(chyby)} chyb')

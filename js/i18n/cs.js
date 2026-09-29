@@ -424,6 +424,7 @@ export const cs = {
   'account.invalidEmail': 'Zadej platný e-mail.',
   'account.wrongCode': 'Špatný kód. Zbývá pokusů: {left}.',
   'account.codeExpired': 'Kód vypršel. Pošli si nový.',
+  'account.limitToday': 'Z bezpečnostních důvodů je přihlášení k tomuhle e-mailu do zítřka pozastavené (moc kódů nebo špatných pokusů). Pokud jsi to nebyl ty, účet je v bezpečí — bez kódu z tvé schránky se nikdo nepřihlásí.',
   'account.tooMany': 'Příliš mnoho špatných pokusů. Pošli si nový kód.',
   'account.failed': 'Něco se nepovedlo ({why}). Zkus to znovu.',
   'account.offerRestore': 'Na účtu je záloha z {date} ({lists} seznamů, {drawings} kreseb, {alarms} alarmů).\n\nObnovit ji v tomhle telefonu?',
