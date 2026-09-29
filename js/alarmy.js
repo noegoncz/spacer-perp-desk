@@ -207,6 +207,22 @@ export function zkontrolujCas(ted = Date.now()) {
   return spustene;
 }
 
+/**
+ * Alarm zazněl na serveru (hlídač, když telefon spal). Jednorázový se tu
+ * vypne stejně jako po zaznění v telefonu — ale jen když zazněl **po
+ * poslední úpravě**; uživatel ho mezitím mohl znovu zapnout.
+ * Vrací true, když se něco změnilo.
+ */
+export function oznacZaznelo(id, cas) {
+  const a = najdi(id);
+  if (!a || !Number.isFinite(cas) || cas <= (a.spusteno || 0)) return false;
+  if (cas <= (a.zmeneno || 0)) return false;
+  a.spusteno = cas;
+  if (!a.opakovat) a.aktivni = false;
+  zapis();
+  return true;
+}
+
 /** Po zavření grafu se reference zahodí, ať staré ceny nespouštějí alarmy. */
 export function zapomenCenu(symbol) {
   if (symbol) posledniCeny.delete(symbol);

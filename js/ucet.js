@@ -74,6 +74,9 @@ async function dotaz(metoda, cesta, telo, { keepalive = false } = {}) {
   return data;
 }
 
+/** Dotaz na API účtu s přihlášením (pro alarmy na serveru, js/alarmy-server.js). */
+export const api = (metoda, cesta, telo) => dotaz(metoda, cesta, telo);
+
 function zapomenRelaci() {
   relace = null;
   try {

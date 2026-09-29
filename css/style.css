@@ -1052,6 +1052,7 @@ main {
 .card h2 { margin: 0 0 8px; font-size: 1.05rem; }
 .card + .card { margin-top: 12px; }
 .switch-row.zasedle { opacity: 0.45; }
+.push-state.ok { color: var(--long); }
 .about-links { margin: 8px 0 0; font-size: 0.85rem; color: var(--text-dim); }
 .about-links a { color: var(--accent); }
 

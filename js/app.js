@@ -16,6 +16,7 @@ import * as sestavy from './sestavy.js';
 import * as zaloha from './zaloha.js';
 import * as ucet from './ucet.js';
 import * as zamek from './zamek.js';
+import * as alarmyServer from './alarmy-server.js';
 import * as store from './store.js';
 import * as ui from './ui.js';
 
@@ -517,6 +518,11 @@ function boot() {
   wireEvents();
   vykresliUcet();
   ucet.spust();
+  alarmyServer.spust({
+    onPush: pushDoAplikace,
+    onKlepnuti: (data) => { if (data?.symbol) openChartSymbol({ symbol: data.symbol }); },
+    onZmena: () => vykresliAlarmy(),
+  });
   zapojPrejeti();
   odemkniZvuk();
   hlidejCasoveAlarmy();
@@ -706,6 +712,13 @@ function wireEvents() {
   naUdalost('disclaimerOkBtn', 'click', () => {
     store.saveJson('perpdesk.disclaimerSeen', true);
     ukazPrvek('disclaimerNote', false);
+  });
+
+  // Alarmy hlídané serverem (push, i se zhasnutým displejem)
+  alarmyServer.naZmenu(vykresliPushStav);
+  naUdalost('accountPushBtn', 'click', async () => {
+    await alarmyServer.zapniPush();
+    vykresliPushStav();
   });
 
   // Zámek aplikace (nastavení)
@@ -1997,12 +2010,38 @@ function textAlarmu(a) {
   return t('alarm.hit', { symbol: a.symbol, price: formatPrice(alarmy.uroven(a)) });
 }
 
+/** Kdy se alarm naposledy ohlásil v telefonu — proti dvojímu zvonění s push. */
+const ohlaseneAlarmy = new Map();
+const OKNO_DVOJITEHO = 5 * 60 * 1000;
+
 function ohlasAlarmy(spustene) {
   for (const a of spustene) {
     const text = textAlarmu(a);
+    ohlaseneAlarmy.set(a.id, Date.now());
+    // Aplikace na pozadí + alarmy hlídá server → ozve se push ze serveru
+    // (doručí ho Android i do spícího telefonu). Telefon by zvonil podruhé.
+    if (document.visibilityState !== 'visible' && alarmyServer.hlidaServer()) continue;
     ozviSe(a, text);
     ui.showNotice(text);
   }
+}
+
+/**
+ * Push ze serveru dorazil do otevřené aplikace (Android ho sám nezobrazí).
+ * Když už alarm zazněl v telefonu, jen se srovná stav; jinak se ozve tady.
+ */
+async function pushDoAplikace(data) {
+  const id = data?.alarmId;
+  const nedavno = id && Date.now() - (ohlaseneAlarmy.get(id) || 0) < OKNO_DVOJITEHO;
+  const alarm = (id && alarmy.najdi(id)) || { id, symbol: data?.symbol || '', typ: 'cena', zprava: '' };
+  if (!nedavno) {
+    ohlaseneAlarmy.set(id, Date.now());
+    const text = alarm.price || alarm.typ === 'cas' ? textAlarmu(alarm)
+      : t('alarm.hit', { symbol: alarm.symbol, price: data?.price || '' });
+    ozviSe(alarm, text);
+    ui.showNotice(text);
+  }
+  if (await alarmyServer.stahniStav()) vykresliAlarmy();
 }
 
 /** Nová cena páru — zkontroluje alarmy a ohlásí, co zaznělo. */
@@ -2896,6 +2935,7 @@ async function overKodUctu() {
     el('accountCode').value = '';
     ukazKrokUctu('email');
     await nabidniObnovuPoPrihlaseni(me);
+    alarmyServer.zapniPush().then(vykresliPushStav);
   } catch (e) {
     const zprava = {
       'wrong-code': t('account.wrongCode', { left: e.data?.left ?? '?' }),
@@ -2996,6 +3036,7 @@ async function obnovZUctu() {
 
 async function odhlasUcet() {
   if (!confirm(t('account.confirmSignOut'))) return;
+  await alarmyServer.odhlasZarizeni();
   await ucet.odhlas();
   zpravaUctu('');
 }
@@ -3003,6 +3044,7 @@ async function odhlasUcet() {
 async function smazUcet() {
   if (!confirm(t('account.confirmDelete'))) return;
   try {
+    await alarmyServer.odhlasZarizeni();
     await ucet.smazUcet();
     zpravaUctu(t('account.deleted'));
   } catch (e) {
@@ -3133,6 +3175,30 @@ async function prepniOtiskZamku() {
     zpravaZamku(t('lock.bioFailed'), false);
   }
   vykresliZamek();
+}
+
+/* ---------- alarmy se zhasnutým displejem (js/alarmy-server.js) ---------- */
+
+function vykresliPushStav() {
+  const p = el('accountPushState');
+  const btn = el('accountPushBtn');
+  if (!p) return;
+  const s = alarmyServer.stavServeru();
+  let text = '';
+  let tlacitko = false;
+  if (s.push === 'unsupported') text = t('account.pushWeb');
+  else if (s.push === 'denied') text = t('account.pushDenied');
+  else if (s.push === 'on') text = t(alarmyServer.hlidaServer() ? 'account.pushOn' : 'account.pushOnStale');
+  else if (s.push === 'error') {
+    text = t('account.pushError', { why: s.chyba || '?' });
+    tlacitko = true;
+  } else {
+    text = t('account.pushOff');
+    tlacitko = true;
+  }
+  p.textContent = text;
+  p.classList.toggle('ok', s.push === 'on' && alarmyServer.hlidaServer());
+  if (btn) btn.hidden = !tlacitko;
 }
 
 /*

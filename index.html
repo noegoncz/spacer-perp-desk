@@ -442,6 +442,12 @@
       <div id="accountIn" hidden>
         <p class="account-who"><span data-i18n="account.signedInAs">Signed in as</span> <strong id="accountWho"></strong></p>
         <p class="hint" id="accountBackupState"></p>
+        <!-- Alarmy se zhasnutým displejem: push ze serverového hlídače. -->
+        <p class="hint push-state" id="accountPushState"></p>
+        <div class="button-row">
+          <button type="button" id="accountPushBtn" class="primary-btn" hidden
+                  data-i18n="account.pushEnable">Turn on alarms with the screen off</button>
+        </div>
         <div class="button-row">
           <button type="button" id="accountBackupBtn" class="secondary-btn" data-i18n="account.backupNow">Back up now</button>
           <button type="button" id="accountRestoreBtn" class="secondary-btn" data-i18n="account.restore">Restore…</button>

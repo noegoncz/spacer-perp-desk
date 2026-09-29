@@ -10,9 +10,13 @@ export async function onRequestGet({ request, env }) {
     env.DB.prepare(`SELECT account_id, token FROM push_tokens
         WHERE account_id IN (SELECT DISTINCT account_id FROM alarms WHERE active = 1)`).all(),
   ]);
-  await env.DB.prepare(`INSERT INTO watcher_status (id, seen_at, info) VALUES (1, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET seen_at = excluded.seen_at, info = excluded.info`)
-    .bind(ted(), info.slice(0, 200)).run();
+  // Ozvání se zapisuje jen s parametrem info — posílá ho hlídač; test,
+  // který se jen dívá, stav hlídače přepisovat nesmí.
+  if (info) {
+    await env.DB.prepare(`INSERT INTO watcher_status (id, seen_at, info) VALUES (1, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET seen_at = excluded.seen_at, info = excluded.info`)
+      .bind(ted(), info.slice(0, 300)).run();
+  }
 
   const podleUctu = {};
   for (const t of tokeny.results) (podleUctu[t.account_id] ||= []).push(t.token);

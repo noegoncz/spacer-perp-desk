@@ -88,17 +88,34 @@ async function posliPush(token, { titulek, text, data }) {
           notification: {
             channel_id: 'alarms', sound: 'default', default_vibrate_timings: true,
             notification_priority: 'PRIORITY_MAX', tag: data.alarmId,
+            icon: 'ic_stat_perpyx', color: '#22d3ee',
           },
         },
       },
     }),
   });
-  if (res.ok) return 'ok';
-  const chyba = await res.text();
-  if (res.status === 404 || /UNREGISTERED|INVALID_ARGUMENT.*token/i.test(chyba)) return 'neplatny';
-  log('FCM chyba', res.status, chyba.slice(0, 200));
+  if (res.ok) {
+    stavFcm = `ok ${new Date().toISOString()}`;
+    return 'ok';
+  }
+  // ⚠ Chyba přichází jako víceřádkový JSON a zpráva („registration
+  // token…") stojí před kódem — hledání textu na jednom řádku ji minulo.
+  let e = {};
+  try {
+    e = (await res.json()).error || {};
+  } catch { /* prázdné tělo */ }
+  const kody = [e.status, ...(e.details || []).map((x) => x.errorCode)].filter(Boolean);
+  const neplatny = res.status === 404 || kody.includes('UNREGISTERED')
+    || (kody.includes('INVALID_ARGUMENT') && /registration token/i.test(e.message || ''));
+  stavFcm = `${res.status} ${kody.join('/')} ${new Date().toISOString()}`;
+  if (neplatny) return 'neplatny';
+  log('FCM chyba', res.status, kody.join('/'), (e.message || '').slice(0, 150));
   return 'chyba';
 }
+
+// Poslední výsledek u Firebase — hlídač ho posílá s každou obnovou alarmů
+// (watcher_status), ať jde stav push ověřit bez přihlašování na server.
+let stavFcm = 'zatím nic';
 
 /* ---------- alarmy z perpyx.com ---------- */
 
@@ -119,7 +136,8 @@ async function watcherApi(cesta, telo) {
 
 async function obnovAlarmy() {
   try {
-    const d = await watcherApi(`/api/watcher/alarms?info=${encodeURIComponent(`par:${ceny.size} ws:${stavWs}`)}`);
+    const info = `par:${ceny.size} ws:${stavWs} alarmu:${alarmy.length} fcm:${stavFcm}`;
+    const d = await watcherApi(`/api/watcher/alarms?info=${encodeURIComponent(info)}`);
     alarmy = (d.alarms || []).filter((a) => !spusteneTed.has(`${a.account}:${a.id}`));
     tokeny = d.tokens || {};
     spusteneTed.clear();

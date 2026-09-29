@@ -1747,6 +1747,65 @@ Zadávání příkazů je z plánu **vypuštěné** (viz „Mimo plán" výš).
 Připomínky ke grafu a indikátorům má uživatel další a řeší se průběžně mezi
 checkpointy — nečekají na ně.
 
+## Alarmy se zhasnutým displejem — server + push (v0.22.0, 2026-09-29)
+
+Zvolená cesta (rozhodnutí uživatele 2026-09-28): **serverový hlídač
+a push přes Firebase**, ne služba v telefonu.
+
+```
+telefon (účet, alarmy) ──PUT /api/account/alarms──▶ perpyx.com (D1)
+                                                       ▲   │ GET /api/watcher/alarms (15 s)
+                     push (FCM) ◀── hlídač na Hetzneru ◀┘   │ POST /api/watcher/fired
+                                    ▲ veřejné ceny Bybitu (WS tickers)
+```
+
+- **Hlídač** `server/hlidac.mjs` (Node 22, bez závislostí): drží stream
+  tickerů Bybitu pro páry s alarmy, vyhodnocuje protnutí **stejným
+  kódem jako aplikace** (`js/alarmy-logika.js`, sdílený soubor — nesmí
+  importovat nic, co v Node neexistuje), posílá push přes FCM HTTP v1
+  (JWT RS256 přes node:crypto), hlásí zaznění. Ceny = `lastPrice`.
+  ⚠ Po výpadku streamu se reference cen zahodí, jinak by stará cena
+  vyrobila falešné protnutí. Test: `tools/test-hlidac.py` (skutečný
+  stream Bybitu, podstrčené API, režim ZKOUSKA=1).
+- **Server** Hetzner (CX23, Norimberk), zakládá ho `server.yml` přes
+  Hetzner API ze šablony `server/cloud-init.yaml` (tajemství dosazená
+  při založení). **Zvenku nemá otevřený žádný port** (firewall
+  `perpyx-zavreno` bez příchozích pravidel), nikdo se na něj
+  nepřihlašuje; SSH klíč se vyrobí jen kvůli e-mailu s heslem a zahodí.
+  **Kód si stahuje z GitHubu každé 3 minuty sám** (systemd timer)
+  a při změně `server/` nebo `js/alarmy-logika.js` restartuje službu —
+  běžné změny hlídače tedy workflow nepotřebují. Po změně tajemství:
+  spustit `server.yml` ručně se „znovu".
+- **Stav hlídače bez přihlašování:** hlídač při každé obnově posílá
+  `info` (stream, počet alarmů, poslední výsledek u Firebase) →
+  `watcher_status`; číst jde `GET /api/watcher/status` s WATCHER_TOKEN.
+  ⚠ Chyby FCM chodí jako víceřádkový JSON a zpráva („registration
+  token…") stojí **před** kódem — rozpoznávat parsováním, ne regulárním
+  výrazem přes text (první verze tak neplatné tokeny nemazala).
+- **Tajemství:** `WATCHER_TOKEN` (hlídač ↔ perpyx.com; web.yml ho dá
+  webu), `FCM_SERVICE_ACCOUNT` (jen na server, přes cloud-init),
+  `GOOGLE_SERVICES_JSON` (do APK), `HCLOUD_TOKEN` (zakládání serveru).
+- **Aplikace** (`js/alarmy-server.js`, `js/push.js`): po přihlášení
+  povolí push (nativní `@capacitor/push-notifications`, kanál `alarms`
+  s nejvyšší důležitostí), token pošle na účet; alarmy odesílá po každé
+  změně (odklad 2 s), stav (co zaznělo) stahuje při návratu do aplikace
+  a po push. Jednorázový alarm, který zazněl na serveru **po poslední
+  úpravě v telefonu**, se vypne i v telefonu (`oznacZaznelo`, pole
+  `zmeneno`); úprava v telefonu po zaznění ho zase zapne.
+- ⚠ **Dvojité zvonění:** aplikace na pozadí + server hlídá → telefon
+  místně nezvoní (ozve se push). Push do otevřené aplikace (Android ho
+  sám nezobrazí) se ozve, jen když tentýž alarm nezazněl v telefonu
+  v posledních 5 minutách. Klepnutí na notifikaci otevře graf páru.
+- Hlídač se počítá za živý, když se ozval v posledních 3 minutách; jinak
+  telefon hlídá i na pozadí sám a nastavení to přizná.
+- Odhlášení i smazání účtu nejdřív odebere telefon z push.
+- APK: `google-services.json` z tajemství, jednobarevná ikonka
+  `ic_stat_perpyx` (barevné logo by Android ukázal jako bílý čtverec),
+  `POST_NOTIFICATIONS`.
+- Test celého řetězce **naostro**: `tools/test-alarmy-server.py`
+  (aplikace → perpyx.com → hlídač na Hetzneru → Firebase; alarm těsně
+  u ceny BTC, vymyšlený token musí Firebase odmítnout a hlídač smazat).
+
 ## Audit 2026-09-28: soukromí, disclaimer, klíče
 
 Uživatel nechal projít zásady, disclaimer, podmínky, práci s klíči

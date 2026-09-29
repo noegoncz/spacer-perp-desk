@@ -25,6 +25,7 @@ const NEZALOHOVAT = new Set([
   'perpdesk.lastPing',
   // Zámek (PIN, otisk) patří k tomuhle telefonu.
   'perpdesk.lock',
+  'perpdesk.pushToken',
 ]);
 
 function klice() {

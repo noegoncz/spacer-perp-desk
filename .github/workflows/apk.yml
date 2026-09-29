@@ -45,7 +45,7 @@ jobs:
         working-directory: apk
         # Filesystem + Share: uložení zálohy dat (js/zaloha.js). WebView
         # obyčejné stažení souboru neumí, soubor se proto nabídne ke sdílení.
-        run: npm install --no-audit --no-fund @capacitor/core@latest @capacitor/cli@latest @capacitor/android@latest @capacitor/filesystem@latest @capacitor/share@latest @capgo/capacitor-native-biometric@latest
+        run: npm install --no-audit --no-fund @capacitor/core@latest @capacitor/cli@latest @capacitor/android@latest @capacitor/filesystem@latest @capacitor/share@latest @capgo/capacitor-native-biometric@latest @capacitor/push-notifications@latest
 
       # Projekt android/ se generuje pokaždé znovu a v repu není. Až přibude
       # nativní kód (služba na popředí pro alarmy), půjde do repa a tenhle
@@ -90,6 +90,51 @@ jobs:
           grep -q 'android:allowBackup="false"' "$man"
           grep -q 'dataExtractionRules' "$man"
           grep -o 'android:allowBackup="[a-z]*"[^>]*' "$man"
+
+      # Push notifikace (alarmy se zhasnutým displejem, server/hlidac.mjs).
+      # google-services.json je z projektu Firebase; šablona Capacitoru si
+      # plugin Google Services zapne sama, když soubor v app/ najde.
+      # K tomu jednobarevná ikonka do stavové lišty — barevné logo by
+      # Android ukázal jako bílý čtvereček.
+      - name: Firebase a ikonka notifikací
+        env:
+          GS: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -z "$GS" ]; then
+            echo "::warning::Chybí GOOGLE_SERVICES_JSON — push notifikace nebudou fungovat."
+            exit 0
+          fi
+          printf '%s' "$GS" > apk/android/app/google-services.json
+          python3 - <<'PY'
+          import json
+          d = json.load(open('apk/android/app/google-services.json'))
+          balicky = [c['client_info']['android_client_info']['package_name'] for c in d['client']]
+          assert 'io.github.noegoncz.perpyx' in balicky, balicky
+          print('Firebase projekt:', d['project_info']['project_id'])
+          PY
+          grep -n "google-services" apk/android/app/build.gradle apk/android/build.gradle
+          mkdir -p apk/android/app/src/main/res/drawable
+          cat > apk/android/app/src/main/res/drawable/ic_stat_perpyx.xml <<'XML'
+          <?xml version="1.0" encoding="utf-8"?>
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+            <path android:fillColor="#FFFFFFFF"
+                android:pathData="M16.1,18.79L18.79,16.1L7.9,5.21L5.21,7.9Z M18.79,7.9L16.1,5.21L5.21,16.1L7.9,18.79Z" />
+          </vector>
+          XML
+          man=apk/android/app/src/main/AndroidManifest.xml
+          python3 - <<'PY'
+          p = 'apk/android/app/src/main/AndroidManifest.xml'
+          s = open(p).read()
+          meta = ('<meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_stat_perpyx" />'
+                  '<meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="alarms" />')
+          i = s.index('>', s.index('<application')) + 1
+          s = s[:i] + meta + s[i:]
+          if 'POST_NOTIFICATIONS' not in s:
+              s = s.replace('</manifest>', '<uses-permission android:name="android.permission.POST_NOTIFICATIONS" /></manifest>')
+          open(p, 'w').write(s)
+          PY
+          grep -o 'default_notification_icon\|POST_NOTIFICATIONS' "$man" | sort -u
 
       # Ikona appky místo výchozí ikony Capacitoru. Adaptivní ikona
       # (mipmap-anydpi-v26) se maže, jinak by přebila naše PNG.
