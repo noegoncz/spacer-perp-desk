@@ -8,6 +8,14 @@
 /img/*
   Cache-Control: public, max-age=86400
 
+# Styly a stránky se vždy ověří u serveru (levný dotaz s ETag). Výchozí
+# čtyřhodinová cache Cloudflaru nechala po úpravě webu starý vzhled —
+# nové prvky pak byly vidět jako holý text.
+/*.css
+  Cache-Control: public, max-age=0, must-revalidate
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate
+
 # Kategorie coinů čte aplikace z GitHub Pages / APK — jiný původ, proto CORS.
 /data/*
   Access-Control-Allow-Origin: *
