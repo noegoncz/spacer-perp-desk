@@ -1051,6 +1051,7 @@ main {
 
 .card h2 { margin: 0 0 8px; font-size: 1.05rem; }
 .card + .card { margin-top: 12px; }
+.switch-row.zasedle { opacity: 0.45; }
 .about-links { margin: 8px 0 0; font-size: 0.85rem; color: var(--text-dim); }
 .about-links a { color: var(--accent); }
 
@@ -1950,6 +1951,9 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
   background: var(--bg);
 }
 html.zamceno, html.zamceno body { overflow: hidden; }
+/* Než naběhne js/zamek.js: obsah skrytý, obrazovka zámku už vidět. */
+html.zamek-start body > *:not(#lockScreen) { visibility: hidden; }
+html.zamek-start #lockScreen[hidden] { display: flex !important; }
 .lock-mark { width: 56px; height: 56px; margin-bottom: 6px; }
 .lock-title { margin: 0; font-size: 1.05rem; font-weight: 600; }
 .lock-dots { display: flex; gap: 14px; min-height: 16px; }

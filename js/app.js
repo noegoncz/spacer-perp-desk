@@ -2779,8 +2779,6 @@ function checkForUpdate() {
   registration?.update().catch(() => {});
 }
 
-boot();
-
 /* ---------- záloha a obnova (js/zaloha.js) ---------- */
 
 function zpravaZalohy(text, ok = true) {
@@ -3062,9 +3060,15 @@ async function vykresliZamek(vycistit = false) {
   if (otisk) {
     otisk.classList.toggle('on', zamek.sBiometrii());
     otisk.setAttribute('aria-pressed', String(zamek.sBiometrii()));
+    otisk.disabled = !zap;
   }
   // Řádek s otiskem jen tam, kde telefon otisk umí (v APK se čtečkou).
-  ukazPrvek('lockBioRow', zap && await zamek.biometrieDostupna());
+  // Bez PINu je vidět, ale zašedlý s vysvětlením — jinak by uživatel
+  // nevěděl, že otisk existuje ani proč nejde zapnout.
+  const umi = await zamek.biometrieDostupna();
+  ukazPrvek('lockBioRow', umi);
+  el('lockBioRow')?.classList.toggle('zasedle', !zap);
+  ukazPrvek('lockBioHint', umi && !zap);
 }
 
 async function potvrdPinZamku() {
@@ -3118,6 +3122,7 @@ async function potvrdPinZamku() {
 }
 
 async function prepniOtiskZamku() {
+  if (!zamek.zapnuto()) return;
   if (zamek.sBiometrii()) {
     zamek.nastavBiometrii(false);
   } else if (await zamek.overOtiskem()) {
@@ -3129,3 +3134,12 @@ async function prepniOtiskZamku() {
   }
   vykresliZamek();
 }
+
+/*
+ * ⚠ Spuštění musí být **úplně na konci souboru.** Funkce se „vytáhnou"
+ * nahoru samy, ale proměnné deklarované `let` až pod voláním ještě
+ * neexistují — boot() na ně sáhne a spadne na „Cannot access … before
+ * initialization" (stalo se ve v0.21.0 s nastavením zámku). Nový kód
+ * patří nad tenhle řádek.
+ */
+boot();

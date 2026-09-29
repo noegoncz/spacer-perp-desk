@@ -9,6 +9,8 @@ if (window.caches) caches.keys().then((k) => k.forEach((n) => caches.delete(n)))
 
 window.__chyby = [];
 window.addEventListener('error', (e) => window.__chyby.push('error: ' + e.message));
+window.addEventListener('unhandledrejection', (e) => window.__chyby.push(
+  'rejection: ' + ((e.reason && e.reason.message) || e.reason)));
 localStorage.setItem('perpdesk.apiKey','FAKEKEY1234567890ab');
 localStorage.setItem('perpdesk.apiSecret','FAKESECRET1234567890abcdef');
 window.WebSocket = function(){this.readyState=0;this.send=()=>{};this.close=()=>{};};

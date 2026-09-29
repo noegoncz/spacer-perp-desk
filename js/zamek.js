@@ -262,4 +262,7 @@ export function spust({ onOdemceno, onZapomenuto } = {}) {
     }
   });
   if (zapnuto()) zamkni();
+  // Dočasné zakrytí z <head> (index.html) už není potřeba — zámek drží
+  // obrazovka zámku, nebo zámek není.
+  document.documentElement.classList.remove('zamek-start');
 }

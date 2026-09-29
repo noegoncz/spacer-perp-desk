@@ -340,6 +340,7 @@ export const cs = {
   'lock.title': 'Zámek aplikace',
   'lock.hint': 'Volitelné. Při otevření PerpyX chtít PIN — nebo otisk prstu — ať nikdo, kdo drží tvůj telefon, nevidí pozice.',
   'lock.usePinLock': 'Zamykat PINem',
+  'lock.bioNeedsPin': 'Pro otisk prstu nejdřív zapni PIN — je to cesta dovnitř, když čtečka otisk nepozná.',
   'lock.useBiometric': 'Odemykat otiskem prstu',
   'lock.after': 'Zamknout po odchodu z aplikace za',
   'lock.immediately': 'Hned',

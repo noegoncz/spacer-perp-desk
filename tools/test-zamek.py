@@ -22,6 +22,17 @@ KOREN = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 mock = open(os.path.join(KOREN, 'tools', 'mock-bybit.js'), encoding='utf-8').read()
 mock += """
 window.confirm = () => true;
+// Co je vidět v okamžiku, kdy je stránka sestavená, ale moduly aplikace
+// ještě neběží (readyState „interactive" předchází spuštění modulů;
+// DOMContentLoaded až po nich). Se zapnutým zámkem nesmí být vidět obsah.
+document.addEventListener('readystatechange', () => {
+  if (document.readyState !== 'interactive' || window.__prvniPohled) return;
+  window.__prvniPohled = {
+    obsah: getComputedStyle(document.querySelector('main')).visibility,
+    zamek: getComputedStyle(document.getElementById('lockScreen')).display,
+    appBezi: Boolean(window.__graf || document.documentElement.classList.contains('zamceno')),
+  };
+});
 if (sessionStorage.getItem('__otisk')) {
   window.__vyzev = 0;
   window.Capacitor = { isNativePlatform: () => true, Plugins: { NativeBiometric: {
@@ -81,6 +92,8 @@ def nacti():
 nacti()
 print('1) zapnutí')
 over(not zamceno(), 'bez zámku se nic nezamyká')
+over(ev("document.getElementById('errorBar').hidden"), 'bez zámku žádná chybová hláška při startu')
+over((ev("window.__prvniPohled") or {}).get('obsah') == 'visible', 'bez zámku je obsah vidět hned')
 ev("document.getElementById('settingsBtn').click()")
 time.sleep(0.4)
 ev("document.getElementById('lockPinToggle').click()")
@@ -100,6 +113,9 @@ over(ev("document.getElementById('lockBioRow').hidden"), 'v prohlížeči se oti
 print('2) zamčeno po načtení')
 nacti()
 over(zamceno(), 'po načtení zamčeno')
+prvni = ev("window.__prvniPohled") or {}
+over(prvni.get('obsah') == 'hidden' and prvni.get('zamek') == 'flex',
+     f'obsah neproblikne — zámek je vidět už před naběhnutím aplikace ({prvni})')
 napis('1235')
 over(zamceno() and 'Wrong' in (ev("document.getElementById('lockMsg').textContent") or ''), 'špatný PIN neprojde')
 napis('1234')
@@ -127,6 +143,16 @@ napis('1234')
 
 print('5) otisk prstu')
 ev("sessionStorage.setItem('__otisk', '1')")
+ev("localStorage.setItem('__pin', localStorage.getItem('perpdesk.lock')); localStorage.removeItem('perpdesk.lock')")
+nacti()
+ev("document.getElementById('settingsBtn').click()")
+time.sleep(0.8)
+over(not ev("document.getElementById('lockBioRow').hidden") and ev("document.getElementById('lockBioRow').classList.contains('zasedle')")
+     and not ev("document.getElementById('lockBioHint').hidden"), 'bez PINu je otisk vidět zašedlý s vysvětlením')
+ev("document.getElementById('lockBioToggle').click()")
+time.sleep(0.3)
+over(ev("window.__vyzev") == 0, 'bez PINu otisk zapnout nejde')
+ev("localStorage.setItem('perpdesk.lock', localStorage.getItem('__pin'))")
 nacti()
 napis('1234')
 ev("document.getElementById('settingsBtn').click()")

@@ -11,6 +11,15 @@
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="stylesheet" href="css/style.css">
 <script src="js/version.js"></script>
+<script>
+  /* Zámek dřív, než se cokoli vykreslí: aplikace (ES moduly) naběhne až po
+     vykreslení stránky a obsah by na vteřinu problikl. js/zamek.js pak
+     obrazovku zámku převezme a třídu sundá. */
+  try {
+    var z = JSON.parse(localStorage.getItem('perpdesk.lock') || 'null');
+    if (z && z.hash) document.documentElement.classList.add('zamek-start');
+  } catch (e) { /* bez úložiště bez zámku */ }
+</script>
 </head>
 <body>
 
@@ -462,6 +471,15 @@
         <button type="button" id="lockPinToggle" class="nastaveni-prepinac" aria-pressed="false"
                 data-i18n-aria="lock.usePinLock"></button>
       </div>
+      <!-- Otisk je vidět vždy, když ho telefon umí; bez PINu zašedlý, protože
+           PIN je záložní cesta, když čtečka selže. -->
+      <div class="switch-row" id="lockBioRow" hidden>
+        <span data-i18n="lock.useBiometric">Unlock with fingerprint</span>
+        <button type="button" id="lockBioToggle" class="nastaveni-prepinac" aria-pressed="false"
+                data-i18n-aria="lock.useBiometric"></button>
+      </div>
+      <p class="hint" id="lockBioHint" hidden data-i18n="lock.bioNeedsPin">To use your fingerprint,
+        turn on the PIN first — the PIN is your way in when the fingerprint doesn't work.</p>
       <div id="lockSetup" hidden>
         <label for="lockPinInput" id="lockPinLabel"></label>
         <input type="password" id="lockPinInput" inputmode="numeric" maxlength="6" autocomplete="off">
@@ -471,11 +489,6 @@
         </div>
       </div>
       <div id="lockOptions" hidden>
-        <div class="switch-row" id="lockBioRow" hidden>
-          <span data-i18n="lock.useBiometric">Unlock with fingerprint</span>
-          <button type="button" id="lockBioToggle" class="nastaveni-prepinac" aria-pressed="false"
-                  data-i18n-aria="lock.useBiometric"></button>
-        </div>
         <label for="lockAfter" data-i18n="lock.after">Lock when I leave the app for</label>
         <select id="lockAfter" class="select-field"></select>
         <div class="button-row">

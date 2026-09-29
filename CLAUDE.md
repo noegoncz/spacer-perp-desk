@@ -1799,7 +1799,25 @@ pozice), ne peníze — klíč je jen pro čtení.
   dokola. Sama se výzva nabídne jen po skutečném návratu do aplikace.
 - Řádek s otiskem se v nastavení ukáže jen tam, kde telefon otisk umí;
   dostupnost se zjišťuje při každém otevření nastavení.
-- Test: `tools/test-zamek.py` (otisk přes podstrčený plugin).
+- ⚠ **Zámek musí zakrýt obsah dřív, než naběhne aplikace.** ES moduly
+  běží až po vykreslení stránky, takže dashboard na vteřinu problikl
+  (v0.21.0, hlášeno z telefonu). Proto malý skript v `<head>`: když je
+  zámek zapnutý, přidá `html.zamek-start` — CSS skryje obsah a ukáže
+  obrazovku zámku; `zamek.spust()` ji převezme a třídu sundá.
+- Otisk je v nastavení vidět vždy, když ho telefon umí; **bez PINu
+  zašedlý s vysvětlením** (rozhodnutí uživatele), zapnout nejde.
+- Test: `tools/test-zamek.py` (otisk přes podstrčený plugin, měření
+  v `readystatechange` „interactive" — to je před spuštěním modulů,
+  `DOMContentLoaded` až po nich).
+
+⚠ **`boot()` v app.js musí být úplně na konci souboru.** Ve v0.21.0 byl
+v půlce a všechno přidané pod ním (záloha, účet, zámek) se spoléhalo, že
+proměnné `let` už existují. Funkce se vytáhnou nahoru samy, proměnné ne:
+start spadl na „Cannot access 'rezimZamku' before initialization" —
+v telefonu problikla červená lišta. Testy to nechytily, protože chyba
+byla v asynchronní funkci (zamítnutý slib) a mock hlídal jen `error`.
+**`mock-bybit.js` teď hlídá i `unhandledrejection`** — do `__chyby`
+padá obojí.
 
 ## Web perpyx.com (2026-09-28)
 

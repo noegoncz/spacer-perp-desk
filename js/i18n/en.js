@@ -344,6 +344,7 @@ export const en = {
   'lock.title': 'App lock',
   'lock.hint': 'Optional. Ask for a PIN — or your fingerprint — when you open PerpyX, so nobody holding your phone can see your positions.',
   'lock.usePinLock': 'Lock with PIN',
+  'lock.bioNeedsPin': 'To use your fingerprint, turn on the PIN first — the PIN is your way in when the fingerprint doesn\'t work.',
   'lock.useBiometric': 'Unlock with fingerprint',
   'lock.after': 'Lock when I leave the app for',
   'lock.immediately': 'Immediately',
