@@ -130,7 +130,12 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           AUTH_TEST_KEY: ${{ secrets.AUTH_TEST_KEY }}
+          WATCHER_TOKEN: ${{ secrets.WATCHER_TOKEN }}
         run: |
+          # Token serverového hlídače alarmů (/api/watcher/*, server/hlidac.mjs).
+          if [ -n "$WATCHER_TOKEN" ]; then
+            printf '%s' "$WATCHER_TOKEN" | npx -y wrangler@4 pages secret put WATCHER_TOKEN --project-name "$PROJEKT"
+          fi
           if [ -z "$RESEND_API_KEY" ]; then
             echo "::warning::Chybí tajemství RESEND_API_KEY — potvrzovací e-maily se neposílají."
             exit 0

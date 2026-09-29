@@ -15,5 +15,7 @@ DELETE FROM backups WHERE created_at < strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-3
 DELETE FROM backups WHERE account_id IN (SELECT id FROM accounts WHERE email LIKE '%@test.perpyx.invalid');
 DELETE FROM activity WHERE account_id IN (SELECT id FROM accounts WHERE email LIKE '%@test.perpyx.invalid');
 DELETE FROM sessions WHERE account_id IN (SELECT id FROM accounts WHERE email LIKE '%@test.perpyx.invalid');
+DELETE FROM alarms WHERE account_id IN (SELECT id FROM accounts WHERE email LIKE '%@test.perpyx.invalid');
+DELETE FROM push_tokens WHERE account_id IN (SELECT id FROM accounts WHERE email LIKE '%@test.perpyx.invalid');
 DELETE FROM accounts WHERE email LIKE '%@test.perpyx.invalid';
 DELETE FROM login_codes WHERE email LIKE '%@test.perpyx.invalid';

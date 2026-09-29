@@ -1,0 +1,87 @@
+#cloud-config
+# Server hlídače alarmů PerpyX (Hetzner). Šablona — .github/workflows/server.yml
+# do ní dosadí tajemství (__WATCHER_TOKEN__, __FCM_B64__) a pošle ji při
+# založení serveru. Na server se nikdo nepřihlašuje: zvenku nemá otevřený
+# žádný port (firewall bez příchozích pravidel), kód si sám stahuje
+# z GitHubu a hlídač běží jako služba systemd pod neprivilegovaným uživatelem.
+
+package_update: true
+package_upgrade: true
+packages: [git, curl, ca-certificates, xz-utils, unattended-upgrades]
+
+write_files:
+  - path: /etc/perpyx/hlidac.env
+    permissions: '0640'
+    content: |
+      WATCHER_TOKEN=__WATCHER_TOKEN__
+      API=https://perpyx.com
+      FCM_FILE=/etc/perpyx/fcm.json
+  - path: /etc/perpyx/fcm.json
+    permissions: '0640'
+    encoding: b64
+    content: __FCM_B64__
+  - path: /etc/systemd/system/perpyx-hlidac.service
+    content: |
+      [Unit]
+      Description=PerpyX - hlidac cenovych alarmu
+      After=network-online.target
+      Wants=network-online.target
+      [Service]
+      User=perpyx
+      Group=perpyx
+      EnvironmentFile=/etc/perpyx/hlidac.env
+      ExecStart=/opt/node/bin/node /opt/perpyx/server/hlidac.mjs
+      Restart=always
+      RestartSec=5
+      NoNewPrivileges=yes
+      ProtectSystem=strict
+      ProtectHome=yes
+      PrivateTmp=yes
+      [Install]
+      WantedBy=multi-user.target
+  # Aktualizace: každé 3 minuty stáhnout repozitář; když se změnil hlídač
+  # nebo sdílená logika alarmů, restartovat službu.
+  - path: /usr/local/bin/perpyx-aktualizace
+    permissions: '0755'
+    content: |
+      #!/bin/sh
+      set -e
+      cd /opt/perpyx
+      runuser -u perpyx -- git fetch -q origin main
+      ZMENA=$(runuser -u perpyx -- git diff --name-only HEAD origin/main -- server js/alarmy-logika.js | wc -l)
+      runuser -u perpyx -- git reset -q --hard origin/main
+      if [ "$ZMENA" -gt 0 ]; then systemctl restart perpyx-hlidac; fi
+  - path: /etc/systemd/system/perpyx-aktualizace.service
+    content: |
+      [Unit]
+      Description=PerpyX - aktualizace hlidace z GitHubu
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/bin/perpyx-aktualizace
+  - path: /etc/systemd/system/perpyx-aktualizace.timer
+    content: |
+      [Unit]
+      Description=PerpyX - pravidelna aktualizace hlidace
+      [Timer]
+      OnBootSec=2min
+      OnUnitActiveSec=3min
+      [Install]
+      WantedBy=timers.target
+
+runcmd:
+  - useradd --system --home /opt/perpyx --shell /usr/sbin/nologin perpyx || true
+  - chown root:perpyx /etc/perpyx/hlidac.env /etc/perpyx/fcm.json
+  # Node 22 přímo z nodejs.org, s kontrolou otisku (Ubuntu má starší verzi
+  # bez vestavěného WebSocketu).
+  - |
+    set -e
+    case "$(uname -m)" in x86_64) A=x64 ;; aarch64) A=arm64 ;; esac
+    SUM=$(curl -fsS https://nodejs.org/dist/latest-v22.x/SHASUMS256.txt | grep "linux-$A.tar.xz")
+    F=$(echo "$SUM" | awk '{print $2}')
+    curl -fsSo /tmp/node.tar.xz "https://nodejs.org/dist/latest-v22.x/$F"
+    echo "$(echo "$SUM" | awk '{print $1}')  /tmp/node.tar.xz" | sha256sum -c
+    mkdir -p /opt/node && tar -xJf /tmp/node.tar.xz -C /opt/node --strip-components=1
+  - git clone -q https://github.com/noegoncz/spacer-perp-desk.git /opt/perpyx
+  - chown -R perpyx:perpyx /opt/perpyx
+  - systemctl daemon-reload
+  - systemctl enable --now perpyx-hlidac.service perpyx-aktualizace.timer

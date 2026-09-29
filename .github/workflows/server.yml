@@ -1,0 +1,109 @@
+name: Server hlídače alarmů (Hetzner)
+
+# Založí server pro hlídač alarmů (server/hlidac.mjs) přes Hetzner Cloud API.
+# Běží ručně, nebo když se změní šablona serveru. Běžné změny hlídače
+# workflow nepotřebují — server si je každé 3 minuty stáhne z GitHubu sám.
+#
+# Tajemství: HCLOUD_TOKEN (Hetzner, Read & Write), WATCHER_TOKEN (hlídač ↔
+# perpyx.com), FCM_SERVICE_ACCOUNT (Firebase, posílání push).
+#
+# Server nemá otevřený žádný port zvenku a nikdo se na něj nepřihlašuje.
+# SSH klíč se při založení vyrobí jen proto, aby Hetzner neposílal
+# e-mailem heslo roota; soukromá část se hned zahodí.
+on:
+  workflow_dispatch:
+    inputs:
+      znovu:
+        description: 'Založit server znovu (smaže stávající) — po změně tajemství'
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths:
+      - 'server/cloud-init.yaml'
+      - '.github/workflows/server.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: server
+  cancel-in-progress: false
+
+env:
+  NAZEV: perpyx-hlidac
+  H_API: https://api.hetzner.cloud/v1
+
+jobs:
+  server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Založit nebo ověřit server
+        env:
+          T: ${{ secrets.HCLOUD_TOKEN }}
+          WATCHER_TOKEN: ${{ secrets.WATCHER_TOKEN }}
+          FCM: ${{ secrets.FCM_SERVICE_ACCOUNT }}
+          ZNOVU: ${{ inputs.znovu }}
+        run: |
+          set -e
+          for p in T WATCHER_TOKEN FCM; do
+            if [ -z "${!p}" ]; then echo "::error::Chybí tajemství pro $p."; exit 1; fi
+          done
+          h() { curl -fsS -H "Authorization: Bearer $T" -H "Content-Type: application/json" "$@"; }
+
+          id=$(h "$H_API/servers?name=$NAZEV" | jq -r '.servers[0].id // empty')
+          if [ -n "$id" ] && [ "$ZNOVU" = "true" ]; then
+            echo "Mažu stávající server $id"
+            h -X DELETE "$H_API/servers/$id" > /dev/null
+            sleep 20
+            id=""
+          fi
+          if [ -n "$id" ]; then
+            h "$H_API/servers/$id" | jq -r '.server | "Server běží: \(.name) \(.status) \(.server_type.name) \(.datacenter.name) \(.public_net.ipv4.ip)"'
+            exit 0
+          fi
+
+          # Firewall bez jediného příchozího pravidla = zvenku zavřeno úplně.
+          fw=$(h "$H_API/firewalls?name=perpyx-zavreno" | jq -r '.firewalls[0].id // empty')
+          if [ -z "$fw" ]; then
+            fw=$(h -X POST "$H_API/firewalls" --data '{"name":"perpyx-zavreno","rules":[]}' | jq -r '.firewall.id')
+          fi
+
+          # Jednorázový SSH klíč (jen kvůli e-mailu s heslem, viz nahoře).
+          ssh-keygen -q -t ed25519 -N '' -f "$RUNNER_TEMP/k"
+          klic="perpyx-bez-pristupu-$GITHUB_RUN_ID"
+          h -X POST "$H_API/ssh_keys" --data "$(jq -nc --arg n "$klic" --arg k "$(cat "$RUNNER_TEMP/k.pub")" '{name:$n, public_key:$k}')" > /dev/null
+          rm -f "$RUNNER_TEMP/k" "$RUNNER_TEMP/k.pub"
+
+          # Šablona + tajemství (FCM jako base64, ať neřešíme odřádkování).
+          fcm_b64=$(printf '%s' "$FCM" | base64 -w0)
+          python3 - "$WATCHER_TOKEN" "$fcm_b64" > "$RUNNER_TEMP/user-data" <<'PY'
+          import sys
+          s = open('server/cloud-init.yaml', encoding='utf-8').read()
+          print(s.replace('__WATCHER_TOKEN__', sys.argv[1]).replace('__FCM_B64__', sys.argv[2]), end='')
+          PY
+          grep -q '__' "$RUNNER_TEMP/user-data" && { echo "::error::Nedosazené místo v šabloně"; exit 1; } || true
+
+          # Nejlevnější typy v pořadí; když některý v lokalitě není, zkusí další.
+          for typ in cx22 cax11 cx23 cpx11; do
+            for misto in nbg1 fsn1 hel1; do
+              telo=$(jq -nc --arg n "$NAZEV" --arg t "$typ" --arg l "$misto" --arg k "$klic" \
+                --argjson fw "$fw" --rawfile u "$RUNNER_TEMP/user-data" \
+                '{name:$n, server_type:$t, location:$l, image:"ubuntu-24.04", ssh_keys:[$k],
+                  firewalls:[{firewall:$fw}], user_data:$u, labels:{app:"perpyx"}}')
+              odpoved=$(curl -sS -H "Authorization: Bearer $T" -H "Content-Type: application/json" \
+                -X POST "$H_API/servers" --data "$telo")
+              novy=$(echo "$odpoved" | jq -r '.server.id // empty')
+              if [ -n "$novy" ]; then
+                echo "$odpoved" | jq -r '.server | "Založen: \(.name) \(.server_type.name) \(.datacenter.name) \(.public_net.ipv4.ip)"'
+                rm -f "$RUNNER_TEMP/user-data"
+                exit 0
+              fi
+              echo "$typ/$misto: $(echo "$odpoved" | jq -r '.error.message // .error.code // "?"')"
+            done
+          done
+          rm -f "$RUNNER_TEMP/user-data"
+          echo "::error::Server se nepodařilo založit."
+          exit 1

@@ -8,6 +8,8 @@ export async function onRequestPost({ request, env }) {
     env.DB.prepare('DELETE FROM backups WHERE account_id = ?').bind(ucet.id),
     env.DB.prepare('DELETE FROM activity WHERE account_id = ?').bind(ucet.id),
     env.DB.prepare('DELETE FROM sessions WHERE account_id = ?').bind(ucet.id),
+    env.DB.prepare('DELETE FROM alarms WHERE account_id = ?').bind(ucet.id),
+    env.DB.prepare('DELETE FROM push_tokens WHERE account_id = ?').bind(ucet.id),
     env.DB.prepare('DELETE FROM accounts WHERE id = ?').bind(ucet.id),
   ]);
   return json(request, { ok: true });
