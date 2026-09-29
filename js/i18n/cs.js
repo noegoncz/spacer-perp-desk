@@ -337,6 +337,11 @@ export const cs = {
   'indSet.barvaPoc': 'Barva pásma',
 
   /* ---------- nastavení ---------- */
+  'about.terms': 'Podmínky používání',
+  'account.legal': 'Přihlášením souhlasíš s',
+  'account.legalAnd': 'a',
+  'account.termsLink': 'podmínkami používání',
+  'account.privacyLink': 'zásadami ochrany soukromí',
   'about.title': 'O aplikaci PerpyX',
   'about.disclaimer': 'PerpyX jen zobrazuje data z tvého účtu na Bybitu a veřejná tržní data. Není to finanční poradenství a nikdy nezadává příkazy. Data mohou být zpožděná nebo neúplná — než podle nich něco uděláš, ověř si je na Bybitu. Cenové alarmy jsou informativní: mohou přijít pozdě nebo vůbec (třeba když telefon spí nebo je offline), takže se na ně při řízení rizika nikdy nespoléhej. PerpyX není spojený s Bybitem.',
   'about.notice': 'PerpyX zobrazuje tvoje data z Bybitu — není to finanční poradenství. Data mohou být zpožděná a alarmy nemusí dorazit, takže si vše ověř na Bybitu.',

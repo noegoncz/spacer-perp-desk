@@ -1766,7 +1766,7 @@ a sběr e-mailů. Opraveno v tomto pořadí:
 4. ✅ **Zásady doplněné:** GitHub Pages (IP adresy při načítání
    aplikace), Bybit jako samostatný správce, předávání do USA u Resendu,
    slib doplnit Hetzner / Google před jejich použitím.
-5. ⏳ **Obchodní podmínky** — neexistují; nutné před betou na Google Play.
+5. ✅ **Podmínky používání** (`web/public/terms.html`, verze 1 pro bezplatnou betu): co PerpyX je a není, jen klíč pro čtení, data a alarmy „as is", účet, přijatelné použití, odpovědnost v mezích zákona (spotřebitelská práva nedotčena), ukončení, změny, české právo. Odkazy z patičky webu, z Nastavení → About a u přihlášení k účtu. ⚠ Před placenou verzí doplnit předplatné a nechat projít odborníkem.
 6. ⏳ Automatické mazání seznamu zájemců po 24 měsících a e-mail před
    smazáním neaktivního účtu (slíbeno v zásadách, hoří od září 2027).
 7. ⏳ Šifrování klíče v telefonu (Keystore / otisk) — checkpoint 9.

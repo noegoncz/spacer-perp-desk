@@ -341,6 +341,11 @@ export const en = {
   'indSet.barvaPoc': 'POC colour',
 
   /* ---------- settings ---------- */
+  'about.terms': 'Terms of use',
+  'account.legal': 'By signing in you agree to the',
+  'account.legalAnd': 'and the',
+  'account.termsLink': 'Terms of use',
+  'account.privacyLink': 'Privacy policy',
   'about.title': 'About PerpyX',
   'about.disclaimer': 'PerpyX only displays data from your Bybit account and public market data. It is not financial advice and it never places orders. Data can be delayed or incomplete — always check on Bybit before acting. Price alarms are informational: they can be delayed or missed (for example when the phone is asleep or offline), so never rely on them alone to manage risk. PerpyX is not affiliated with Bybit.',
   'about.notice': 'PerpyX shows your Bybit data — it is not financial advice. Data can be delayed and alarms can be missed, so always check on Bybit before acting.',
