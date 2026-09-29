@@ -1640,6 +1640,42 @@ která celý zápis dělá přijatelně bezpečným.
 
 Pořadí, jak se na to má chodit. Odškrtnuté jsou hotové.
 
+### Stav k 2026-09-29 večer (v0.23.2, APK 1.0.7) — odkud pokračovat
+
+**Hotovo** (podrobnosti v sekcích výš): pevný podpis APK · web perpyx.com
+s betou (double opt-in, zásady, podmínky, e-mail privacy@/hello@) ·
+Trhy se seznamy a kategoriemi, řazení · záloha do souboru · **účet**
+(povinný při prvním spuštění, kód z e-mailu, cloudová záloha s historií,
+denní aktivita, limity proti hádání kódu) · **alarmy se zhasnutým
+displejem** (hlídač na Hetzneru + Firebase, test naostro prošel) ·
+zámek aplikace PIN + otisk · jen klíč pro čtení (vynucené) · APK bez
+systémové zálohy · úvodní obrazovka (účet → burza), klíč v nastavení
+nikdy vidět · audit soukromí body 1–5.
+
+**Čeká na ověření v telefonu** (uživatel zatím nepotvrdil): push alarmu
+se zhasnutým displejem (APK 1.0.7), otisk prstu, záloha do souboru přes
+sdílení, úvodní obrazovka, oprava v0.23.2 (zámek byl zaseklý kvůli
+syntaktické chybě v en.js — uživatel má aplikaci zavřít a otevřít).
+
+**Další v pořadí:** 1) Binance (nejdřív společné rozhraní burz, pak
+adaptér; ověřit dostupnost futures pro EU/ČR) → 2) Hyperliquid (bez
+klíče, jen adresa) → 3) OKX · pak RSI divergence (graf) → skener nad
+seznamem (na serveru) · přehled pro provozovatele (zájemci, účty,
+aktivita, stav hlídače) · Google Play (uzavřený test 12 testerů / 14 dní,
+kód zabalený v APK, kanály beta/stabilní) · předplatné (Play Billing) ·
+passkey místo kódu (před placenou verzí).
+
+**Drobné dluhy:** e-mail před smazáním neaktivního účtu a automatické
+mazání zájemců po 24 měsících (slíbeno v zásadách, hoří 09/2027) ·
+šifrování klíče v telefonu (Keystore) · přehled všech alarmů napříč
+páry · tažení hladiny alarmu prstem · RSI/Volume/ostatní indikátory
+dál (viz „Nejbližší dodělávky") · kontrola shody verzí index.html ×
+version.js.
+
+⚠ **Po každé úpravě textů pusť `tools/test-syntaxe.py`** a skripty
+s texty piš do souboru (Write), ne přes heredoc v shellu — ten mění
+zdvojená zpětná lomítka (v0.23.1 tak shodil celou aplikaci).
+
 ### Směr dál — rozhodnutí uživatele (2026-09-28)
 
 Uživatel používá **už jen APK**; verzi v Brave nevyvíjíme ani nepoužíváme
