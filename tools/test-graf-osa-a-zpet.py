@@ -121,8 +121,9 @@ if not b:
 else:
     if b['w'] < 48 or b['h'] < 44:
         chyby.append(f"tlačítko zpět je malé: {b['w']}×{b['h']}")
-    if b['vpravo'] > 16:
-        chyby.append(f"tlačítko zpět není u pravého okraje ({b['vpravo']} px)")
+    # v0.24.1: vpravo, ale s odstupem od kraje (dlaň ho u hrany mačkala omylem)
+    if not (8 <= b['vpravo'] <= 40):
+        chyby.append(f"tlačítko zpět nemá odstup od pravého okraje 8–40 px ({b['vpravo']} px)")
     # skutečné klepnutí prstem
     for typ, body in (('touchStart', [{'x': b['x'], 'y': b['y'], 'id': 1}]),
                       ('touchEnd', [])):

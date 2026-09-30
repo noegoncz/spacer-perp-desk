@@ -461,7 +461,18 @@ export function renderPositions(list, hide, onSelect, liqThreshold = 10, volby =
   }
 }
 
+/**
+ * Načítání pozic: tiché obrysy karet místo textu „Loading…", tlačítka
+ * a diagnostiky. Při startu to trvá zlomek vteřiny a text s tlačítkem
+ * jen probleskl a vypadal jako chyba (hlášeno z telefonu, v0.24.1).
+ */
+export function showLoading() {
+  showPlaceholder('');
+  dom.placeholder.classList.add('nacitani');
+}
+
 export function showPlaceholder(text, buttonLabel = null) {
+  dom.placeholder.classList.remove('nacitani');
   dom.list.replaceChildren();
   dom.summary.hidden = true;
   skryj(dom.accountSummary, true);

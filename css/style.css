@@ -1220,7 +1220,9 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
 /* Intervaly se posouvají, tlačítka nástrojů zůstávají vždy vidět. */
 .intervals {
   display: flex;
-  flex: 1;
+  /* Jen na šířku svých tlačítek (na úzkém displeji se zúží a posouvá);
+     zbylé místo dostane tlačítko zpět. */
+  flex: 0 1 auto;
   min-width: 0;
   gap: 6px;
   overflow-x: auto;
@@ -1232,10 +1234,15 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
    aby se trefilo bez míření, a barevně odlišené, aby se nepletlo
    s přepínáním intervalu. */
 .chart-back-big {
-  flex: none;
+  /* Vyplní místo mezi posledním timeframem a pravým okrajem (rozevřený
+     Fold), na úzkém displeji aspoň dvojnásobná šířka. Odstup od kraje:
+     dlaň ho u samé hrany mačkala omylem. */
+  flex: 1 0 104px;
+  max-width: 260px;
+  margin-left: auto;
+  margin-right: 10px;
   display: grid;
   place-items: center;
-  width: 56px;
   height: 46px;
   padding: 0;
   border: 1px solid var(--accent);
@@ -2067,3 +2074,18 @@ details.advanced { margin-top: 14px; }
   border: none; background: rgba(0, 0, 0, 0.7); color: #fff; font-size: 0.8rem; cursor: pointer;
 }
 .feedback-info pre { margin: 6px 0 0; font-size: 0.72rem; color: var(--text-dim); white-space: pre-wrap; }
+
+/* ---------- načítání pozic: obrysy karet místo textu ---------- */
+.placeholder .kostry { display: none; }
+.placeholder.nacitani .kostry { display: grid; gap: 12px; width: 100%; }
+.placeholder.nacitani #placeholderText,
+.placeholder.nacitani #placeholderBtn { display: none; }
+.kostry span {
+  display: block; height: 150px; border-radius: var(--radius);
+  background: linear-gradient(90deg, var(--surface) 0%, var(--surface-2) 50%, var(--surface) 100%);
+  background-size: 200% 100%;
+  animation: kostra 1.4s ease-in-out infinite;
+  opacity: 0.7;
+}
+@keyframes kostra { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+@media (prefers-reduced-motion: reduce) { .kostry span { animation: none; } }

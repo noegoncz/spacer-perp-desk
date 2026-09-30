@@ -847,6 +847,13 @@ a modře orámované, aby se nepletlo s přepínáním intervalu. ⚠ Nesmí mí
 třídu `interval-btn` — ta tlačítka se berou jako přepnutí timeframu (stalo
 se s tlačítkem středu, viz níž).
 
+**Šířka (v0.24.1):** tlačítko vyplní místo mezi posledním timeframem
+a pravým okrajem (`flex: 1 0 104px`, nejvýš 260 px) — na rozevřeném Foldu
+~200 px, na zavřeném displeji 104 px (dřív 56, v rohu se špatně trefovalo).
+⚠ **Od pravého kraje drží odstup ~18 px** (`margin-right`): u samé hrany
+ho dlaň mačkala omylem. Lišta timeframů se dál posouvá do strany.
+Test: `tools/test-start-a-zpet.py`.
+
 ⚠ **Pomocná tlačítka lišty (magnet, indikátory, koš, celá obrazovka)
 jsou v napevno ukotvené části vpravo**, mimo posuvnou oblast s nástroji.
 Dřív byla v posuvné části a na úzkém displeji skončila mimo obrazovku —
@@ -1652,8 +1659,11 @@ zámek aplikace PIN + otisk · jen klíč pro čtení (vynucené) · APK bez
 systémové zálohy · úvodní obrazovka (účet → burza), klíč v nastavení
 nikdy vidět · audit soukromí body 1–5.
 
-**Čeká na ověření v telefonu** (uživatel zatím nepotvrdil): push alarmu
-se zhasnutým displejem (APK 1.0.7), otisk prstu, záloha do souboru přes
+**Ověřeno na telefonu 2026-09-30:** push alarmu (notifikace přijde),
+hlášení z aplikace. **Příště:** pohodlnější okno nastavení alarmu (uživatel
+to chce řešit později).
+
+**Čeká na ověření v telefonu** (uživatel zatím nepotvrdil): otisk prstu, záloha do souboru přes
 sdílení, úvodní obrazovka, oprava v0.23.2 (zámek byl zaseklý kvůli
 syntaktické chybě v en.js — uživatel má aplikaci zavřít a otevřít).
 
@@ -2126,6 +2136,12 @@ slib se ukáží v chybové liště. Nic nesmí selhat potichu — zamrzlá obra
 bez hlášky je to nejhorší, co uživatel může dostat.
 
 ## Diagnostika v aplikaci
+
+⚠ **Prvních 6 s načítání jsou jen tiché obrysy karet** (`ui.showLoading()`,
+v0.24.1), žádný text, tlačítko ani diagnostika. Běžný start trvá zlomek
+vteřiny a „Loading positions… / Try again" s diagnostikou jen probleskly
+a vypadaly jako chyba (hlášeno z telefonu). Diagnostika se ukáže, až když
+data nejdou déle (`DIAGNOSTIKA_PO` v app.js). Test: `tools/test-start-a-zpet.py`.
 
 Dokud nejsou vidět pozice, ukazuje se pod hláškou **diagnostický blok**: krok,
 počet pokusů, stav REST i WebSocketu, čas posledních dat a poslední chyba

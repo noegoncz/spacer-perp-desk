@@ -472,9 +472,22 @@ function otevriPrikaz(order) {
  * stav REST, ne počet pozic — nula otevřených pozic je běžný stav a žádnou
  * diagnostiku si nezaslouží.
  */
+/** Kdy začalo načítání — diagnostika se ukáže až po chvíli bez dat. */
+let zacatekNacitani = 0;
+const DIAGNOSTIKA_PO = 6000;
+
 function ukazDiagnostiku() {
   if (!client.hasCredentials() || client.status.rest === 'ok') {
     ui.showDiagnostics(null);
+    return;
+  }
+  // Běžné načtení trvá zlomek vteřiny — diagnostika (a „Zkusit znovu") by
+  // jen probleskla. Ukáže se, až když data nejdou déle.
+  const ceka = zacatekNacitani ? DIAGNOSTIKA_PO - (Date.now() - zacatekNacitani) : 0;
+  if (ceka > 0) {
+    ui.showDiagnostics(null);
+    clearTimeout(ukazDiagnostiku.odklad);
+    ukazDiagnostiku.odklad = setTimeout(ukazDiagnostiku, ceka + 50);
     return;
   }
   const d = client.diag;
@@ -571,7 +584,8 @@ async function connectIfPossible() {
   }
 
   client.setCredentials(apiKey, apiSecret);
-  ui.showPlaceholder(t('positions.loading'));
+  ui.showLoading();
+  zacatekNacitani = Date.now();
   ukazDiagnostiku();
   try {
     await client.start();
@@ -948,7 +962,8 @@ async function saveAndConnect() {
   client.stop();
   client.setCredentials(apiKey, apiSecret);
   ui.clearError();
-  ui.showPlaceholder(t('positions.loading'));
+  ui.showLoading();
+  zacatekNacitani = Date.now();
   ui.showView('positions');
   dokresliSeznamJeLiZastaraly();
   await client.start();
