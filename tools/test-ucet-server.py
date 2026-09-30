@@ -111,6 +111,17 @@ over(s == 401, 'po odhlášení token neplatí')
 s, o, _ = dotaz('GET', '/me', token='0' * 64)
 over(s == 401, 'vymyšlený token neprojde')
 
+print('hlášení z aplikace')
+token = prihlas()
+s, o, _ = dotaz('POST', '/feedback', {'kind': 'problem', 'message': '', 'images': []}, token=token)
+over(s == 400 and o.get('error') == 'empty', 'prázdné hlášení odmítnuto')
+male_jpeg = '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q=='
+s, o, _ = dotaz('POST', '/feedback', {'kind': 'idea', 'message': 'Test hlášení', 'images': [male_jpeg],
+                                      'info': {'version': 'test', 'apiKey': 'NESMI'}}, token=token)
+over(s == 200 and o.get('ok') and o.get('test'), f'hlášení přijato (testovací účet bez e-mailu) ({s} {o})')
+s, o, _ = dotaz('POST', '/feedback', {'kind': 'idea', 'message': 'x'})
+over(s == 401, 'bez přihlášení hlášení nejde')
+
 print('smazání účtu')
 token = prihlas()
 s, o, _ = dotaz('GET', '/me', token=token)

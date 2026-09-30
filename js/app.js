@@ -9,7 +9,7 @@ import {
   SCHEMATA, maNastaveni, nactiNastaveni, ulozNastaveni, resetNastaveni,
   popisekPole, popisekSekce, omez,
 } from './indikatory.js';
-import { t, setLanguage, applyStaticTexts, JAZYKY, getLocale } from './i18n.js';
+import { t, setLanguage, applyStaticTexts, JAZYKY, getLocale, getLanguage } from './i18n.js';
 import { priceDecimals, formatPrice, formatPercent, liquidationDistance } from './format.js';
 import * as alarmy from './alarmy.js';
 import * as sestavy from './sestavy.js';
@@ -17,6 +17,7 @@ import * as zaloha from './zaloha.js';
 import * as ucet from './ucet.js';
 import * as zamek from './zamek.js';
 import * as alarmyServer from './alarmy-server.js';
+import * as hlaseni from './hlaseni.js';
 import * as store from './store.js';
 import * as ui from './ui.js';
 
@@ -720,6 +721,24 @@ function wireEvents() {
   naUdalost('disclaimerOkBtn', 'click', () => {
     store.saveJson('perpdesk.disclaimerSeen', true);
     ukazPrvek('disclaimerNote', false);
+  });
+
+  // Hlášení problému / nápadu (beta)
+  naUdalost('feedbackBtn', 'click', otevriHlaseni);
+  naUdalost('feedbackSettingsBtn', 'click', otevriHlaseni);
+  naUdalost('feedbackClose', 'click', zavriHlaseni);
+  naUdalost('feedbackBackdrop', 'click', zavriHlaseni);
+  naUdalost('feedbackAddShot', 'click', () => el('feedbackFile')?.click());
+  naUdalost('feedbackFile', 'change', pridejSnimky);
+  naUdalost('feedbackSend', 'click', odesliHlaseni);
+  document.querySelectorAll('.feedback-kind [data-kind]').forEach((b) => {
+    b.addEventListener('click', () => {
+      hlaseniDruh = b.dataset.kind;
+      document.querySelectorAll('.feedback-kind [data-kind]').forEach((x) => {
+        x.classList.toggle('active', x === b);
+        x.setAttribute('aria-checked', String(x === b));
+      });
+    });
   });
 
   // Úvodní obrazovka a burzy
@@ -2904,6 +2923,7 @@ function ukazKrokUctu(krok) {
 
 function vykresliUcet() {
   const prihlasen = ucet.prihlasen();
+  ukazPrvek('feedbackBtn', HLASENI_ZAPNUTO && prihlasen);
   ukazPrvek('accountIn', prihlasen);
   if (!prihlasen) {
     ukazUvod('prihlaseni');
@@ -3290,6 +3310,115 @@ function vykresliBurzy() {
   seznam.replaceChildren(radek);
   // Víc burz zatím neumíme — „přidat" by nabídlo jen tu, co už je.
   ukazPrvek('exchangeAddBtn', false);
+}
+
+/* ---------- hlášení problému / nápadu (js/hlaseni.js) ---------- */
+
+/**
+ * Dočasně po dobu bety: tlačítko v rohu hlavních obrazovek. Po betě stačí
+ * přepnout na false — zůstane jen řádek v nastavení (O aplikaci).
+ */
+const HLASENI_ZAPNUTO = true;
+let hlaseniDruh = 'problem';
+let hlaseniSnimky = [];
+
+function hlaseniUdaje() {
+  const lista = el('errorBar');
+  return hlaseni.technickeUdaje({
+    lang: getLanguage(),
+    view: chartSymbol ? `chart ${chartSymbol} ${chartInterval}` : aktivniZalozka,
+    exchange: store.hasCredentials() ? 'bybit' : 'none',
+    push: alarmyServer.stavServeru().push,
+    lock: zamek.zapnuto() ? 'on' : 'off',
+    lastError: lista && !lista.hidden ? lista.textContent.slice(0, 200) : '',
+  });
+}
+
+function zpravaHlaseni(text, ok = true) {
+  const p = el('feedbackMsg');
+  if (!p) return;
+  p.textContent = text || '';
+  p.className = `settings-msg ${ok ? 'ok' : 'fail'}`;
+  p.hidden = !text;
+}
+
+function otevriHlaseni() {
+  const info = el('feedbackInfo');
+  if (info) {
+    info.textContent = Object.entries(hlaseniUdaje())
+      .filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join('\n');
+  }
+  zpravaHlaseni('');
+  ukazPrvek('feedbackBackdrop', true);
+  ukazPrvek('sheetFeedback', true);
+}
+
+function zavriHlaseni() {
+  ukazPrvek('feedbackBackdrop', false);
+  ukazPrvek('sheetFeedback', false);
+}
+
+function vykresliSnimky() {
+  const box = el('feedbackShots');
+  if (!box) return;
+  box.replaceChildren(...hlaseniSnimky.map((s, i) => {
+    const d = document.createElement('div');
+    d.className = 'feedback-shot';
+    const img = document.createElement('img');
+    img.src = s.nahled;
+    img.alt = '';
+    const x = document.createElement('button');
+    x.type = 'button';
+    x.textContent = '✕';
+    x.setAttribute('aria-label', t('feedback.remove'));
+    x.addEventListener('click', () => {
+      hlaseniSnimky.splice(i, 1);
+      vykresliSnimky();
+    });
+    d.append(img, x);
+    return d;
+  }));
+  ukazPrvek('feedbackAddShot', hlaseniSnimky.length < hlaseni.MAX_SNIMKU);
+}
+
+async function pridejSnimky(e) {
+  const soubory = [...(e.target.files || [])];
+  e.target.value = '';
+  if (hlaseniSnimky.length + soubory.length > hlaseni.MAX_SNIMKU) zpravaHlaseni(t('feedback.tooMany'), false);
+  for (const f of soubory.slice(0, hlaseni.MAX_SNIMKU - hlaseniSnimky.length)) {
+    try {
+      hlaseniSnimky.push(await hlaseni.zmensiSnimek(f));
+    } catch { /* ne obrázek — přeskočit */ }
+  }
+  vykresliSnimky();
+}
+
+async function odesliHlaseni() {
+  const text = (el('feedbackText')?.value || '').trim();
+  if (!text && !hlaseniSnimky.length) {
+    zpravaHlaseni(t('feedback.empty'), false);
+    return;
+  }
+  const btn = el('feedbackSend');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = t('feedback.sending');
+  }
+  try {
+    await hlaseni.odesli({ druh: hlaseniDruh, text, snimky: hlaseniSnimky, info: hlaseniUdaje() });
+    el('feedbackText').value = '';
+    hlaseniSnimky = [];
+    vykresliSnimky();
+    zpravaHlaseni(t('feedback.sent'));
+    setTimeout(zavriHlaseni, 1800);
+  } catch (e) {
+    zpravaHlaseni(e?.kod === 'limit-today' ? t('feedback.limit') : t('feedback.failed', { why: e?.kod || e?.message || 'offline' }), false);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = t('feedback.send');
+    }
+  }
 }
 
 /*

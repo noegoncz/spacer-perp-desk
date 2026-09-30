@@ -1783,6 +1783,28 @@ Zadávání příkazů je z plánu **vypuštěné** (viz „Mimo plán" výš).
 Připomínky ke grafu a indikátorům má uživatel další a řeší se průběžně mezi
 checkpointy — nečekají na ně.
 
+## Hlášení problému / nápadu z aplikace (v0.24.0, 2026-09-30)
+
+Na přání uživatele pro betu: testeři mají po ruce, kde nahlásit problém
+nebo nápad, a na mobilu se problém líp ukáže screenshotem než popíše.
+
+- **Bublina vpravo dole** na hlavních obrazovkách (`#feedbackBtn`,
+  z-index 15 — graf ji překryje, nabídky taky) + řádek v Nastavení →
+  O aplikaci. Jen pro přihlášené. **Dočasné**: po betě
+  `HLASENI_ZAPNUTO = false` v app.js (řádek v nastavení zůstane).
+- Okno: Problém / Nápad, text, **až 3 screenshoty z galerie** (uživatel
+  udělá snímek jako obvykle a přiloží ho). `js/hlaseni.js` je zmenší na
+  1600 px a JPEG. Technické údaje (verze, telefon, obrazovka, jazyk,
+  obrazovka v aplikaci, burza ano/ne, push, zámek, poslední chyba) jsou
+  vidět předem. ⚠ **Nikdy API klíč** — test to hlídá.
+- Server `/api/account/feedback`: e-mail na `hello@perpyx.com` (Email
+  Routing → Gmail) se snímky v příloze, **reply-to = e-mail uživatele**.
+  Nejvýš 10 hlášení denně na účet; tabulka `feedback` drží text a údaje,
+  **snímky ne** (jen v e-mailu); maže se se smazáním účtu. Testovací
+  účty e-mail neposílají.
+- Testy: `tools/test-hlaseni.py` (skutečný výběr souboru přes CDP),
+  `tools/test-ucet-server.py` (naostro).
+
 ## Úvodní obrazovka: povinný účet, pak burza (v0.23.0, 2026-09-29)
 
 Rozhodnutí uživatele: přihlášení v nastavení nestačí — **účet je povinný

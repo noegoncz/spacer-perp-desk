@@ -16,6 +16,7 @@ DELETE FROM backups WHERE account_id IN (SELECT id FROM accounts WHERE email LIK
 DELETE FROM activity WHERE account_id IN (SELECT id FROM accounts WHERE email LIKE '%@test.perpyx.invalid');
 DELETE FROM sessions WHERE account_id IN (SELECT id FROM accounts WHERE email LIKE '%@test.perpyx.invalid');
 DELETE FROM alarms WHERE account_id IN (SELECT id FROM accounts WHERE email LIKE '%@test.perpyx.invalid');
+DELETE FROM feedback WHERE account_id IN (SELECT id FROM accounts WHERE email LIKE '%@test.perpyx.invalid');
 DELETE FROM push_tokens WHERE account_id IN (SELECT id FROM accounts WHERE email LIKE '%@test.perpyx.invalid');
 DELETE FROM accounts WHERE email LIKE '%@test.perpyx.invalid';
 DELETE FROM login_codes WHERE email LIKE '%@test.perpyx.invalid';

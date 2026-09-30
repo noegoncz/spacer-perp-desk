@@ -544,6 +544,9 @@
         missed (for example when the phone is asleep or offline), so never rely on them alone to
         manage risk. PerpyX is not affiliated with Bybit.
       </p>
+      <div class="button-row">
+        <button type="button" id="feedbackSettingsBtn" class="secondary-btn" data-i18n="feedback.open">Report a problem or idea</button>
+      </div>
       <p class="about-links">
         <a href="https://perpyx.com/terms" target="_blank" rel="noopener" data-i18n="about.terms">Terms of use</a>
         · <a href="https://perpyx.com/privacy" target="_blank" rel="noopener" data-i18n="about.privacy">Privacy policy</a>
@@ -557,6 +560,39 @@
     </div>
   </section>
 </main>
+
+<!-- Hlášení problému / nápadu během bety (js/hlaseni.js). Tlačítko v rohu
+     hlavních obrazovek; graf (z-index 20) ho překryje. Vypíná se
+     konstantou HLASENI_ZAPNUTO v app.js. -->
+<button type="button" id="feedbackBtn" class="feedback-fab" hidden
+        data-i18n-aria="feedback.open" data-i18n-title="feedback.open">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4h0A2.5 2.5 0 0 1 4 13.5z"/><path d="M12 7v4M12 13.2v.3"/></svg>
+</button>
+<div id="feedbackBackdrop" class="sheet-backdrop feedback-backdrop" hidden></div>
+<div id="sheetFeedback" class="sheet feedback-sheet" hidden>
+  <div class="sheet-head">
+    <span data-i18n="feedback.title">Report a problem or idea</span>
+    <button type="button" class="icon-btn" id="feedbackClose" data-i18n-aria="action.close">✕</button>
+  </div>
+  <div class="feedback-kind" role="radiogroup">
+    <button type="button" class="chip active" data-kind="problem" role="radio" aria-checked="true" data-i18n="feedback.problem">Problem</button>
+    <button type="button" class="chip" data-kind="idea" role="radio" aria-checked="false" data-i18n="feedback.idea">Idea</button>
+  </div>
+  <textarea id="feedbackText" class="feedback-text" rows="5" maxlength="5000"
+            data-i18n-ph="feedback.placeholder" placeholder="What happened, or what would make PerpyX better?"></textarea>
+  <div class="feedback-shots" id="feedbackShots"></div>
+  <input type="file" id="feedbackFile" accept="image/*" multiple hidden>
+  <button type="button" id="feedbackAddShot" class="secondary-btn" data-i18n="feedback.addShot">Attach screenshot</button>
+  <p class="hint" data-i18n="feedback.shotHint">Take a screenshot as usual, then attach it here. Screenshots can show your balances — send only what you are comfortable sharing.</p>
+  <details class="help feedback-info">
+    <summary data-i18n="feedback.infoTitle">Technical info sent with the report</summary>
+    <pre id="feedbackInfo"></pre>
+  </details>
+  <p id="feedbackMsg" class="settings-msg" hidden></p>
+  <div class="sheet-akce">
+    <button type="button" id="feedbackSend" class="primary-btn" data-i18n="feedback.send">Send</button>
+  </div>
+</div>
 
 <!-- Úvodní obrazovka (js/app.js, ukazUvod): při prvním spuštění povinné
      přihlášení e-mailem, pak připojení burzy. Klíč se zadává jen tady. -->

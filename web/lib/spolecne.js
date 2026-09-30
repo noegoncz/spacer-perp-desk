@@ -28,14 +28,16 @@ export const platnyToken = (t) => typeof t === 'string' && /^[0-9a-f]{64}$/.test
  * Odešle e-mail přes Resend. Bez klíče (RESEND_API_KEY) vrátí false
  * a nic neodešle — přihláška se pak uloží, ale potvrzení nepřijde.
  */
-export async function posliPostu(env, { komu, predmet, html, text, hlavickyMailu }) {
+export async function posliPostu(env, { komu, predmet, html, text, hlavickyMailu, prilohy, odpovedNa }) {
   if (!env.RESEND_API_KEY) return false;
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      from: ODESILATEL, to: [komu], reply_to: ODPOVED_NA,
+      from: ODESILATEL, to: [komu], reply_to: odpovedNa || ODPOVED_NA,
       subject: predmet, html, text, headers: hlavickyMailu,
+      // Přílohy: [{ filename, content (base64) }] — např. screenshoty z hlášení.
+      attachments: prilohy,
     }),
   });
   if (!res.ok) throw new Error(`Resend ${res.status}: ${await res.text()}`);
