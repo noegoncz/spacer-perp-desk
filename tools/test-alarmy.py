@@ -127,6 +127,7 @@ kriz = ev("!!document.querySelector('.draw-layer.kresli')")
 stred = ev("""(() => { const r = document.getElementById('drawLayer').getBoundingClientRect();
   return JSON.stringify([r.left + r.width / 2, r.top + r.height / 2]); })()""")
 klepni(*json.loads(stred))  # klepnutí potvrdí hladinu pod křížem
+time.sleep(0.4)
 print('zvonek spustil kříž:', kriz)
 otevreno = ev("!document.getElementById('sheetAlarm').hidden")
 poli = ev("document.querySelectorAll('#alarmBody .nastaveni-radek').length")
@@ -177,7 +178,8 @@ print()
 
 # ---- opakovaný alarm zůstává zapnutý ----
 ev("%s.querySelectorAll('.nastaveni-volba')[1].click()" % radek_formulare('Trigger'))
-ev("%s.querySelector('.nastaveni-prepinac').click()" % radek_formulare('Active'))
+# Přepínač Zapnutý je od v0.25.0 v hlavičce okna, ne v řádku formuláře.
+ev("document.querySelector('#alarmActiveBox .nastaveni-prepinac').click()")
 ev("document.getElementById('alarmSaveBtn').click()")
 time.sleep(0.6)
 # Tři přechody přes hladinu (dolů, nahoru, dolů) = tři zaznění. Počítají se

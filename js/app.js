@@ -122,6 +122,7 @@ const client = new BybitClient({
   onPositions(list) {
     lastPositions = list;
     naplanujVykresleniPozic();
+    if (grafZNotifikace) dokonciGrafZNotifikace();
     syncOpenChart(list);
     /*
      * Alarmy na párech s otevřenou pozicí se hlídají i se zavřeným grafem —
@@ -353,7 +354,7 @@ function zkontrolujSltp(list) {
 
 function ohlasZasah(klic, symbol, cena) {
   const text = t(klic, { symbol, price: formatPrice(cena) });
-  ozviSe({ zvuk: true, vibrace: true, notifikace: true, symbol, id: `sltp-${symbol}` }, text);
+  ozviSe({ symbol, id: `sltp-${symbol}` }, text, { zvuk: true });
   ui.showNotice(text);
 }
 
@@ -519,6 +520,7 @@ function boot() {
   applyStaticTexts();
   // Zámek hned po textech — obsah nesmí problesknout dřív, než se zamkne.
   zamek.spust({
+    onOdemceno: () => dokonciGrafZNotifikace(),
     onZapomenuto: () => {
       if (!confirm(t('lock.forgotConfirm'))) return;
       zamek.zapomenutyPin();
@@ -539,7 +541,7 @@ function boot() {
   ucet.spust();
   alarmyServer.spust({
     onPush: pushDoAplikace,
-    onKlepnuti: (data) => { if (data?.symbol) openChartSymbol({ symbol: data.symbol }); },
+    onKlepnuti: (data) => otevriGrafZNotifikace(data?.symbol),
     onZmena: () => vykresliAlarmy(),
   });
   zapojPrejeti();
@@ -716,7 +718,12 @@ function wireEvents() {
   document.querySelectorAll('[data-close]').forEach((btn) => {
     btn.addEventListener('click', zavriNabidky);
   });
-  naUdalost('sheetBackdrop', 'click', zavriNabidky);
+  // Klepnutí, které nabídku otevřelo (potvrzení hladiny křížem v grafu),
+  // dojde jako `click` až po jejím otevření — a když je nabídka nízká, trefí
+  // ztmavené pozadí a hned ji zase zavře. Chvíli po otevření se proto ignoruje.
+  naUdalost('sheetBackdrop', 'click', () => {
+    if (Date.now() - otevrenaNabidkaV > 400) zavriNabidky();
+  });
 
   naUdalost('revealBtn', 'click', () => {
     const input = el('apiSecret');
@@ -1026,7 +1033,9 @@ async function otevriGraf(symbol, position, trh) {
   ui.showChart(true);
 
   // Aby hardwarové tlačítko zpět zavřelo graf, a ne celou aplikaci.
-  history.pushState({ chart: true }, '');
+  // (Graf nahrazující jiný otevřený graf záznam už má.)
+  if (otevriGraf.bezHistorie) otevriGraf.bezHistorie = false;
+  else history.pushState({ chart: true }, '');
 
   // Plátno se musí vytvářet až po zobrazení, jinak má nulové rozměry.
   if (!chart) {
@@ -2017,7 +2026,6 @@ function zapipej() {
  * stránka žije (i na pozadí); notifikace se zavřenou aplikací potřebuje APK.
  */
 async function ukazNotifikaci(alarm, text) {
-  if (alarm.notifikace === false) return;
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   try {
     const registrace = await navigator.serviceWorker?.getRegistration();
@@ -2035,21 +2043,16 @@ async function ukazNotifikaci(alarm, text) {
   }
 }
 
-/** Povolení se ptá až ve chvíli, kdy si uživatel notifikace vysloveně zapne. */
-async function zajistiPovoleniNotifikaci() {
-  if (!('Notification' in window)) return false;
-  if (Notification.permission === 'granted') return true;
-  if (Notification.permission === 'denied') return false;
-  try {
-    return (await Notification.requestPermission()) === 'granted';
-  } catch {
-    return false;
-  }
-}
-
-function ozviSe(alarm, text) {
-  if (alarm.vibrace !== false) navigator.vibrate?.([120, 70, 120, 70, 200]);
-  if (alarm.zvuk !== false) zapipej();
+/**
+ * Odezva v telefonu. Alarmy doručuje server pushem (i se zhasnutým
+ * displejem), takže volby zvuk / vibrace / notifikace u alarmu zmizely
+ * (v0.25.0, rozhodnutí uživatele). V otevřené aplikaci stačí pruh
+ * a zavibrování; pípnutí z aplikace zůstává jen jako záloha, když server
+ * alarmy zrovna nehlídá — a pro zásah SL/TP, ten server nehlídá vůbec.
+ */
+function ozviSe(alarm, text, { zvuk = !alarmyServer.hlidaServer() } = {}) {
+  navigator.vibrate?.([120, 70, 120, 70, 200]);
+  if (zvuk) zapipej();
   ukazNotifikaci(alarm, text);
 }
 
@@ -2092,6 +2095,48 @@ async function pushDoAplikace(data) {
     ui.showNotice(text);
   }
   if (await alarmyServer.stahniStav()) vykresliAlarmy();
+}
+
+/**
+ * Klepnutí na notifikaci alarmu otevře graf páru — a když na něm je
+ * otevřená pozice, tak **s ní** (čáry vstupu, SL, TP, PnL). Dřív se graf
+ * otevíral jako z Trhů, bez pozice.
+ *
+ * Po probuzení telefonu (nebo studeném startu) ještě nemusí být pozice
+ * načtené a aplikace může být zamčená — proto se jen poznamená, co otevřít,
+ * a otevře se, až je to možné: po odemčení a po prvních pozicích (nejvýš
+ * 8 s čekání, pak aspoň bez pozice).
+ */
+let grafZNotifikace = null;
+const CEKANI_NA_POZICE = 8000;
+
+function otevriGrafZNotifikace(symbol) {
+  if (!symbol) return;
+  grafZNotifikace = { symbol, od: Date.now() };
+  dokonciGrafZNotifikace();
+}
+
+function dokonciGrafZNotifikace() {
+  const c = grafZNotifikace;
+  if (!c) return;
+  clearTimeout(dokonciGrafZNotifikace.odklad);
+  // Zamčeno: otevře se po odemčení (zamek.spust → onOdemceno).
+  if (zamek.jeZamceno()) return;
+  const pozice = lastPositions.find((p) => p.symbol === c.symbol) || null;
+  const pozicePrisly = !client.hasCredentials() || client.status.rest === 'ok';
+  if (!pozice && !pozicePrisly && Date.now() - c.od < CEKANI_NA_POZICE) {
+    dokonciGrafZNotifikace.odklad = setTimeout(dokonciGrafZNotifikace, 250);
+    return;
+  }
+  grafZNotifikace = null;
+  if (chartSymbol === c.symbol && (chartPosition || !pozice)) return; // už je otevřený
+  // Jiný otevřený graf se nahradí; záznam v historii zůstane jeden, ať
+  // tlačítko zpět nevyžaduje dvě klepnutí.
+  const uzOtevreny = Boolean(chartSymbol);
+  if (uzOtevreny) closeChart();
+  if (uzOtevreny) otevriGraf.bezHistorie = true;
+  if (pozice) openChart(pozice);
+  else openChartSymbol({ symbol: c.symbol });
 }
 
 /** Nová cena páru — zkontroluje alarmy a ohlásí, co zaznělo. */
@@ -2314,57 +2359,6 @@ function poleCeny() {
   return box;
 }
 
-/** Odezva alarmu: zvuk, vibrace, notifikace — vedle sebe místo tří řádků. */
-const ODEZVY = [
-  {
-    klic: 'zvuk',
-    popisek: 'alarm.sound',
-    ikona: '<svg viewBox="0 0 24 24"><path d="M5 9v6h4l5 4V5L9 9z"/>'
-      + '<path d="M17 8a5 5 0 010 8"/></svg>',
-  },
-  {
-    klic: 'vibrace',
-    popisek: 'alarm.vibrate',
-    ikona: '<svg viewBox="0 0 24 24"><rect x="8" y="4" width="8" height="16" rx="2"/>'
-      + '<path d="M4 9v6M20 9v6"/></svg>',
-  },
-  {
-    klic: 'notifikace',
-    popisek: 'alarm.notification',
-    ikona: '<svg viewBox="0 0 24 24"><path d="M18 15V10a6 6 0 10-12 0v5l-2 3h16z"/>'
-      + '<path d="M10 21h4"/></svg>',
-  },
-];
-
-function prepinaceOdezvy() {
-  const box = document.createElement('div');
-  box.className = 'alarm-odezva';
-
-  ODEZVY.forEach(({ klic, popisek, ikona }) => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'alarm-odezva-btn';
-    btn.innerHTML = ikona;
-    btn.dataset.klic = klic;
-    btn.setAttribute('aria-label', t(popisek));
-    btn.title = t(popisek);
-    btn.classList.toggle('on', upravovanyAlarm[klic] !== false);
-
-    btn.addEventListener('click', async () => {
-      const zapnout = !btn.classList.contains('on');
-      // Notifikace se musí nejdřív povolit; bez povolení přepínač nenaskočí.
-      if (klic === 'notifikace' && zapnout && !(await zajistiPovoleniNotifikaci())) {
-        el('alarmNote').textContent = t('alarm.notifDenied');
-        return;
-      }
-      upravovanyAlarm[klic] = zapnout;
-      btn.classList.toggle('on', zapnout);
-    });
-    box.append(btn);
-  });
-  return box;
-}
-
 /** Vstup `datetime-local` — na Androidu otevře nativní výběr data a času. */
 function poleCasu() {
   const pad = (n) => String(n).padStart(2, '0');
@@ -2436,12 +2430,17 @@ function postavFormularAlarmu() {
   } else if (a.typ === 'cara') {
     prvky.push(radekAlarmu('alarm.trendLevel', textUrovne()), radekVzdalenosti());
   } else {
-    prvky.push(radekAlarmu('alarm.price', poleCeny()), tlacitkoZamereni(), radekVzdalenosti());
+    // Zaměřovač a číselník v jednom řádku — dřív dva řádky přes celou šířku.
+    const cena = document.createElement('div');
+    cena.className = 'alarm-cena';
+    cena.append(tlacitkoZamereni(), poleCeny());
+    prvky.push(cena, radekVzdalenosti());
   }
+  const volby = [];
 
   // Podmínka ani opakování nedávají u času smysl — ten nastane jednou.
   if (a.typ !== 'cas') {
-    prvky.push(
+    volby.push(
       volba('alarm.condition', [
         { hodnota: 'any', klicPopisku: 'alarm.crossAny' },
         { hodnota: 'up', klicPopisku: 'alarm.crossUp' },
@@ -2460,18 +2459,23 @@ function postavFormularAlarmu() {
     );
   }
 
-  prvky.push(
-    radekAlarmu('alarm.message', poleZpravy()),
-    // Zvuk, vibrace a notifikace jsou tři ikony v jednom řádku, ne tři
-    // řádky s přepínači — formulář se jinak nevejde na displej a tlačítko
-    // Uložit zůstane pod okrajem.
-    radekAlarmu('alarm.alerting', prepinaceOdezvy()),
-  );
+  volby.push(radekAlarmu('alarm.message', poleZpravy()));
+  // Na rozevřeném Foldu jdou volby do dvou sloupců (CSS), formulář je pak
+  // skoro poloviční.
+  const mrizka = document.createElement('div');
+  mrizka.className = 'alarm-volby';
+  mrizka.append(...volby);
+  prvky.push(mrizka);
 
-  // Zapnutí se nabízí jen u uloženého alarmu; nový je zapnutý z podstaty.
-  if (a.id) {
-    prvky.push(radekAlarmu('alarm.active',
-      ovladacPole({ typ: 'prepinac' }, a.aktivni, (v) => { a.aktivni = v; })));
+  // Zapnutí je v hlavičce vedle nadpisu — u použitého (zešedlého) alarmu je
+  // to první, co se hledá. Nabízí se jen u uloženého; nový je zapnutý.
+  const zapnuti = el('alarmActiveBox');
+  if (zapnuti) {
+    zapnuti.hidden = !a.id;
+    const popisek = document.createElement('span');
+    popisek.textContent = t('alarm.active');
+    zapnuti.replaceChildren(popisek,
+      ovladacPole({ typ: 'prepinac' }, a.aktivni, (v) => { a.aktivni = v; }));
   }
 
   el('alarmBody').replaceChildren(...prvky);
@@ -2483,7 +2487,7 @@ function postavFormularAlarmu() {
 function ukazPoznamkuAlarmu() {
   const a = upravovanyAlarm;
   if (!a) return;
-  const radky = [t('alarm.hint')];
+  const radky = [t(alarmyServer.hlidaServer() ? 'alarm.hintServer' : 'alarm.hint')];
   if (a.typ === 'cara') {
     const rozsah = alarmy.rozsahCary(a);
     radky.unshift(alarmy.dobehla(a)
@@ -2617,8 +2621,11 @@ function ukazPrvek(id, viditelny) {
   if (prvek) prvek.hidden = !viditelny;
 }
 
+let otevrenaNabidkaV = 0;
+
 function otevriNabidku(id) {
   zavriNabidky();
+  otevrenaNabidkaV = Date.now();
   ukazPrvek('sheetBackdrop', true);
   ukazPrvek(id, true);
 }

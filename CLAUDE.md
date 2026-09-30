@@ -572,8 +572,16 @@ Vejít se musí na **zavřený displej Foldu**, jinak zůstane tlačítko Uloži
 okrajem a uživatel netuší, že tam ještě něco je (stalo se, v0.12.0). Proto:
 
 - řádky v `#sheetAlarm` jsou nižší než v nastavení indikátorů,
-- zvuk, vibrace a notifikace jsou **tři ikony v jednom řádku**, ne tři řádky
-  s přepínači,
+- **kompaktní okno (v0.25.0, přání uživatele — zabíralo moc místa):**
+  zaměřovač a číselník ceny v jednom řádku, krátké volby (`↕ Both / ↑ Up /
+  ↓ Down`, `Once`, `1 d / 7 d / 30 d`), na rozevřeném Foldu volby ve
+  **dvou sloupcích** (okno ~310 px místo ~2/3 výšky), nižší Uložit,
+- **přepínač Active je v hlavičce** vedle nadpisu (`#alarmActiveBox`) —
+  u použitého, zešedlého alarmu je to první, co se hledá,
+- **volby zvuk / vibrace / notifikace zmizely** (v0.25.0): alarm vždy
+  doručuje server pushem. Zvonek byl webová notifikace (Notifications
+  API), kterou WebView v APK neumí — šel vypnout, ale už ne zapnout
+  („Notifications are blocked"). Viz Odezva níž,
 - `.sheet-akce` je `position: sticky` u spodního okraje, takže Uložit je vidět
   vždycky. Měří to `tools/test-alarmy.py` na emulovaných 430×820.
 
@@ -625,6 +633,16 @@ Alarm na páru **bez pozice a bez otevřeného grafu se nehlídá** — aplikace
 takový pár nemá odkud brát cenu. Píše se to i v nápovědě pod formulářem.
 
 ##### Odezva: zvuk, vibrace, notifikace
+
+**Od v0.25.0** (`ozviSe()`): v otevřené aplikaci pruh + vibrace; pípnutí
+z aplikace jen jako **záloha, když server alarmy nehlídá**, a u zásahu
+SL/TP (ten server nehlídá). Jinak zvoní push ze serveru. Starší popis
+níž platí pro tu záložní cestu.
+
+⚠ **Klepnutí vedle nabídky se chvíli po otevření ignoruje** (400 ms,
+`otevrenaNabidkaV`). Klepnutí, které okno alarmu otevřelo (potvrzení
+hladiny křížem), dojde jako `click` až po otevření — a u nízkého okna
+trefilo ztmavené pozadí a okno hned zavřelo. Chytil to `test-alarmy.py`.
 
 Zvuk počítá WebAudio, v repozitáři žádný soubor není.
 
@@ -1890,7 +1908,12 @@ telefon (účet, alarmy) ──PUT /api/account/alarms──▶ perpyx.com (D1)
 - ⚠ **Dvojité zvonění:** aplikace na pozadí + server hlídá → telefon
   místně nezvoní (ozve se push). Push do otevřené aplikace (Android ho
   sám nezobrazí) se ozve, jen když tentýž alarm nezazněl v telefonu
-  v posledních 5 minutách. Klepnutí na notifikaci otevře graf páru.
+  v posledních 5 minutách. Klepnutí na notifikaci otevře graf páru
+  **i s otevřenou pozicí** (v0.25.0, `otevriGrafZNotifikace`): dřív se
+  otevřel jako z Trhů, bez čar a PnL. Po probuzení / studeném startu
+  čeká na odemčení zámku a na první pozice (nejvýš 8 s); otevřený graf
+  jiného páru nahradí bez dalšího záznamu v historii. Test:
+  `tools/test-notifikace-graf.py`, na starém kódu padá ve 3 bodech.
 - Hlídač se počítá za živý, když se ozval v posledních 3 minutách; jinak
   telefon hlídá i na pozadí sám a nastavení to přizná.
 - Odhlášení i smazání účtu nejdřív odebere telefon z push.
