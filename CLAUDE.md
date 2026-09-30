@@ -1804,6 +1804,8 @@ nebo nápad, a na mobilu se problém líp ukáže screenshotem než popíše.
   účty e-mail neposílají.
 - Testy: `tools/test-hlaseni.py` (skutečný výběr souboru přes CDP),
   `tools/test-ucet-server.py` (naostro).
+- ✅ **Ověřeno uživatelem na telefonu 2026-09-30** — hlášení se
+  screenshotem dorazilo do Gmailu.
 
 ## Úvodní obrazovka: povinný účet, pak burza (v0.23.0, 2026-09-29)
 
