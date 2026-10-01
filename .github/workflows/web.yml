@@ -197,7 +197,18 @@ jobs:
           if [ -z "$R" ]; then echo "Bez RESEND_API_KEY — přeskočeno."; exit 0; fi
           cf() { curl -sS -H "Authorization: Bearer $T" -H "Content-Type: application/json" "$@"; }
           rs() { curl -sS -H "Authorization: Bearer $R" -H "Content-Type: application/json" "$@"; }
-          id=$(rs https://api.resend.com/domains | jq -r --arg d "$DOMENA" '.data[]? | select(.name == $d) | .id')
+          # Seznam domén Resend občas vrátí chybu (limit dotazů) — pak by se
+          # doména zakládala znovu a spadlo by to na „registered already".
+          # Proto víc pokusů, než se usoudí, že doména neexistuje.
+          id=''
+          for pokus in 1 2 3 4; do
+            seznam=$(rs https://api.resend.com/domains)
+            if jq -e '.data' >/dev/null 2>&1 <<<"$seznam"; then
+              id=$(jq -r --arg d "$DOMENA" '.data[]? | select(.name == $d) | .id' <<<"$seznam")
+              break
+            fi
+            echo "Seznam domén nevyšel (pokus $pokus): $seznam"; sleep 5
+          done
           if [ -z "$id" ]; then
             id=$(rs -X POST https://api.resend.com/domains               --data "{\"name\":\"$DOMENA\",\"region\":\"eu-west-1\"}" | tee /dev/stderr | jq -r '.id // empty')
           fi
