@@ -109,12 +109,17 @@ h1 .grad { background: var(--grad); -webkit-background-clip: text; background-cl
 }
 
 .shots { position: relative; display: flex; justify-content: center; align-items: flex-end; gap: 0; }
+/* Rohy a rámeček rostou s velikostí telefonu (procenta šířky / výšky),
+   ne pevně v px — na úzkém displeji byly malé náhledy skoro kulaté. */
 .phone {
-  border-radius: 28px; padding: 8px; background: #05080c;
+  border-radius: 10% / 4.7%; padding: 2.2%; background: #05080c;
   border: 1px solid #263448;
   box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.02) inset;
 }
-.phone img { border-radius: 20px; }
+.phone img { border-radius: 8% / 3.7%; }
+/* Rozevřený Fold: snímky skoro čtvercové, poměr stran jiný. */
+.gallery.duo .phone { border-radius: 4.5% / 3.6%; padding: 1.4%; }
+.gallery.duo .phone img { border-radius: 3.4% / 2.7%; }
 .shots .phone.back { width: 46%; transform: translateX(14%) rotate(-4deg); opacity: 0.9; }
 .shots .phone.front { width: 58%; position: relative; z-index: 1; transform: translateX(-6%); }
 
