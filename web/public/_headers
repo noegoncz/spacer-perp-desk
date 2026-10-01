@@ -2,7 +2,7 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()
-  Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
+  Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
   Strict-Transport-Security: max-age=31536000; includeSubDomains
 
 # Obrázky se drží den — po výměně snímků proto zvednout ?v= v index.html,
@@ -16,6 +16,8 @@
 /*.css
   Cache-Control: public, max-age=0, must-revalidate
 /*.html
+  Cache-Control: public, max-age=0, must-revalidate
+/js/*
   Cache-Control: public, max-age=0, must-revalidate
 
 # Kategorie coinů čte aplikace z GitHub Pages / APK — jiný původ, proto CORS.

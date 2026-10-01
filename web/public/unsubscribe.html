@@ -41,35 +41,7 @@
   <p><button class="btn" type="button" id="go">Unsubscribe</button></p>
   <p class="msg" id="msg" role="status" aria-live="polite"></p>
 </main>
-<script>
-(() => {
-  const t = new URLSearchParams(location.search).get('t') || '';
-  const go = document.getElementById('go');
-  const msg = document.getElementById('msg');
-  const say = (s, k) => { msg.textContent = s; msg.className = 'msg ' + (k || ''); };
-  if (!/^[0-9a-f]{64}$/.test(t)) {
-    go.hidden = true;
-    say('This link is not valid. Please use the link from the email we sent you.', 'err');
-    return;
-  }
-  go.addEventListener('click', async () => {
-    go.disabled = true;
-    say('One moment…');
-    try {
-      const res = await fetch('/api/unsubscribe', { method: 'POST',
-        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t }) });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) throw new Error(data.error || 'Something went wrong.');
-      go.hidden = true;
-      document.getElementById('text').hidden = true;
-      say("You've been unsubscribed. You won't receive any more emails from us.", 'ok');
-    } catch (e) {
-      go.disabled = false;
-      say(e.message || 'Something went wrong. Please try again.', 'err');
-    }
-  });
-})();
-</script>
+<script src="/js/unsubscribe.js?v=1"></script>
 
 
 <footer>
