@@ -4,16 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PerpyX — your perpetuals at a glance</title>
-<meta name="description" content="PerpyX is a read-only Android app for monitoring crypto perpetual positions — Bybit today, Binance, Hyperliquid and OKX next: live PnL, SL/TP ladders, funding, price alarms and a touch-first chart. Join the beta.">
+<meta name="description" content="PerpyX is a read-only Android app for monitoring crypto perpetual positions — Bybit today, Binance, Hyperliquid and OKX next: live PnL, SL/TP ladders, funding, push price alerts even with the screen off, watchlists and a touch-first chart. Join the beta.">
 <meta name="theme-color" content="#0b0f14">
 <link rel="icon" href="/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <meta property="og:title" content="PerpyX — your perpetuals at a glance">
-<meta property="og:description" content="A read-only position monitor for Android. Live PnL, SL/TP ladders, funding, alarms and a touch-first chart.">
+<meta property="og:description" content="A read-only position monitor for Android. Live PnL, SL/TP ladders, funding, push price alerts, watchlists and a touch-first chart.">
 <meta property="og:image" content="https://perpyx.com/img/graf-fold.webp">
 <meta property="og:type" content="website">
 <link rel="canonical" href="https://perpyx.com/">
-<link rel="stylesheet" href="/style.css?v=4">
+<link rel="stylesheet" href="/style.css?v=5">
 </head>
 <body>
 
@@ -49,7 +49,8 @@
         <h1>Your perpetuals, <span class="grad">at a glance.</span></h1>
         <p class="lead">PerpyX is a fast, read-only position monitor for traders who check their
           positions forty times a day. Live PnL, stop-loss and take-profit ladders, honest
-          funding numbers and a chart you can actually draw on with a thumb.</p>
+          funding numbers, price alerts that reach you even with the screen off — and a chart
+          you can actually draw on with a thumb.</p>
         <div class="hero-cta">
           <a class="btn" href="#beta">Join the beta</a>
           <a class="btn ghost" href="#features">See what it does</a>
@@ -86,7 +87,7 @@
         <div class="card">
           <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg></div>
           <h3>Live positions</h3>
-          <p>Mark price, PnL and size stream in over WebSocket. No refresh button, no pull-to-reload.</p>
+          <p>Mark price, PnL and size stream in over WebSocket. Sort by size, PnL or distance to liquidation; the card turns red when liquidation gets close.</p>
         </div>
         <div class="card">
           <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h18"/><path d="M6 8v8M12 6v12M18 9v6"/></svg></div>
@@ -99,19 +100,34 @@
           <p>Next payment and its amount, the pair's real interval, and the total paid since <em>this</em> position opened — not since you first traded the pair.</p>
         </div>
         <div class="card">
-          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v6M12 15v6M3 12h6M15 12h6"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg></div>
-          <h3>Touch-first drawing</h3>
-          <p>A crosshair you steer from anywhere on the screen, so your finger never hides the point you're placing. Trendlines, levels, channels, Fibonacci, measure.</p>
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></div>
+          <h3>Alerts, even with the screen off</h3>
+          <p>On a price level, on a trendline you drew, or at a point in time. Our server watches the price and sends a push notification; tap it and the chart opens with your position.</p>
         </div>
         <div class="card">
-          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></div>
-          <h3>Price alarms</h3>
-          <p>Alert on a price level, on a trendline you drew, or at a point in time. Turn any drawing into an alarm with one tap.</p>
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-6-4-6 4z"/></svg></div>
+          <h3>Watchlists &amp; categories</h3>
+          <p>Every perpetual on the exchange, filtered by category — AI, L1, DeFi, memes and more — plus your own lists you swipe between. Sort by volume, 24h change, funding or open interest.</p>
+        </div>
+        <div class="card">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v6M12 15v6M3 12h6M15 12h6"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg></div>
+          <h3>Touch-first drawing</h3>
+          <p>A crosshair you steer from anywhere on the screen, so your finger never hides the point you're placing. Trendlines, levels, channels, Fibonacci, measure — saved per pair.</p>
         </div>
         <div class="card">
           <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 5-6"/></svg></div>
           <h3>A real chart</h3>
-          <p>Your entry, SL, TP, liquidation and open orders drawn on the chart, fills marked on the candles they happened in, plus RSI, EMA, Bollinger, volume profile and more.</p>
+          <p>Entry, SL, TP, liquidation and open orders on the chart, fills on the candles they happened in, live PnL line, plus RSI, EMA, Bollinger, volume profile and more. Hide any layer for a clean view.</p>
+        </div>
+        <div class="card">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><path d="M3.05 11a9 9 0 1 1 .5 4"/><path d="M3 4v5h5"/></svg></div>
+          <h3>Trade history</h3>
+          <p>Your closed trades with PnL — tap one to see its chart with every entry and exit marked where it actually happened.</p>
+        </div>
+        <div class="card">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19a4.5 4.5 0 1 0-1.4-8.8A6 6 0 0 0 4.5 12 3.5 3.5 0 0 0 6 19z"/></svg></div>
+          <h3>Your setup, backed up</h3>
+          <p>Sign in with a code from your email — no password. Watchlists, drawings, alerts and settings are backed up automatically and come back on a new phone. API keys never leave the device.</p>
         </div>
       </div>
     </div>
@@ -124,10 +140,14 @@
         <h2>Made for one hand — and for the big screen when you unfold.</h2>
         <p>Designed and tested on a foldable: a compact list on the cover screen, a full-width chart when you open it up.</p>
       </div>
-      <div class="gallery">
-        <figure><div class="phone"><img src="/img/pozice.webp" width="824" height="1760" loading="lazy" alt="Positions list"></div><figcaption>Positions</figcaption></figure>
+      <div class="gallery tri">
+        <figure><div class="phone"><img src="/img/pozice.webp" width="824" height="1760" loading="lazy" alt="Positions list with live PnL and SL/TP ladders"></div><figcaption>Positions</figcaption></figure>
+        <figure><div class="phone"><img src="/img/trhy.webp" width="824" height="1760" loading="lazy" alt="Markets with your own watchlists and category filters"></div><figcaption>Watchlists</figcaption></figure>
         <figure><div class="phone"><img src="/img/graf.webp" width="824" height="1760" loading="lazy" alt="Chart on a phone screen"></div><figcaption>Chart</figcaption></figure>
-        <figure class="wide"><div class="phone"><img src="/img/graf-fold.webp" width="1346" height="1682" loading="lazy" alt="Chart on an unfolded screen with entry, SL, TP, orders and indicators"></div><figcaption>Chart, unfolded</figcaption></figure>
+      </div>
+      <div class="gallery duo">
+        <figure><div class="phone"><img src="/img/graf-fold.webp" width="1346" height="1682" loading="lazy" alt="Chart on an unfolded screen with entry, SL, TP, orders and indicators"></div><figcaption>Chart, unfolded</figcaption></figure>
+        <figure><div class="phone"><img src="/img/alarm.webp" width="1346" height="1682" loading="lazy" alt="Setting a price alert on the chart"></div><figcaption>Price alert</figcaption></figure>
       </div>
     </div>
   </section>
@@ -141,7 +161,9 @@
           <li><div><strong>It can't trade.</strong> PerpyX only reads positions, orders and balances. It has no code path that places an order.</div></li>
           <li><div><strong>Keys stay on your phone.</strong> Your API key and secret are stored on the device, never on our servers.</div></li>
           <li><div><strong>Signed locally.</strong> Each request is signed on the phone; only the signature travels to Bybit, never the secret.</div></li>
-          <li><div><strong>Use a read-only key.</strong> We ask for one, and you can revoke it on Bybit at any time.</div></li>
+          <li><div><strong>Read-only, enforced.</strong> PerpyX checks the key's permissions and refuses one that can trade or withdraw. You can revoke it on Bybit at any time.</div></li>
+          <li><div><strong>Alerts without your keys.</strong> The alert server only gets your alert levels and pairs. It watches public prices — it never sees your keys, positions or balance.</div></li>
+          <li><div><strong>Optional app lock.</strong> A PIN, with your fingerprint as a shortcut, so nobody holding your unlocked phone sees your positions.</div></li>
         </ul>
       </div>
       <div class="flow" aria-hidden="true">
@@ -149,7 +171,9 @@
         <div class="arrow">↓ signed request only</div>
         <div class="step"><div><b>Bybit API</b><span>read-only: positions, orders, balance</span></div></div>
         <div class="arrow">↓ live data</div>
-        <div class="step"><div><b>PerpyX</b><span>PnL, ladders, funding, chart, alarms</span></div></div>
+        <div class="step"><div><b>PerpyX</b><span>PnL, ladders, funding, chart, alerts</span></div></div>
+        <div class="arrow">↑ push when an alert fires</div>
+        <div class="step"><div><b>Alert server</b><span>public prices + your alert levels only</span></div></div>
       </div>
     </div>
   </section>
@@ -161,10 +185,10 @@
         <h2>Where it's heading.</h2>
       </div>
       <div class="roadmap">
-        <div class="card"><span class="tag">Next</span><h3>Alerts with the screen off</h3><p>Push notifications for alarms, even when the phone is asleep.</p></div>
-        <div class="card"><span class="tag">Next</span><h3>Categories &amp; watchlists</h3><p>AI, L1, DeFi, memes… plus your own lists you swipe between.</p></div>
-        <div class="card"><span class="tag">Planned</span><h3>RSI divergences</h3><p>Bullish and bearish divergences on the chart, then a scanner across your lists.</p></div>
-        <div class="card"><span class="tag">Next</span><h3>More exchanges</h3><p>Binance, Hyperliquid and OKX next — all your positions across exchanges in one list.</p></div>
+        <div class="card"><span class="tag">Next</span><h3>More exchanges</h3><p>Binance, Hyperliquid and OKX — all your positions across exchanges in one list.</p></div>
+        <div class="card"><span class="tag">Next</span><h3>RSI divergences</h3><p>Bullish and bearish divergences marked right on the chart.</p></div>
+        <div class="card"><span class="tag">Planned</span><h3>Divergence scanner</h3><p>Scans your watchlists on the server and pings you when a setup appears.</p></div>
+        <div class="card"><span class="tag">Planned</span><h3>Google Play</h3><p>A public release on Google Play after the beta.</p></div>
       </div>
     </div>
   </section>
@@ -185,7 +209,7 @@
         <div>
           <div class="kicker">Private beta</div>
           <h2>Want in early?</h2>
-          <p>Leave your email and we'll invite you when the next beta round opens. Android only for now. No spam — just beta invites and major updates.</p>
+          <p>Leave your email and we'll invite you when the next beta round opens. Android only for now. Beta testers can report a bug or an idea with screenshots right from the app. No spam — just beta invites and major updates.</p>
         </div>
         <form id="signup" novalidate>
           <div class="field">

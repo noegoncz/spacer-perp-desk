@@ -2069,7 +2069,18 @@ země. Duplicitní přihláška projde tiše, aby z odpovědi nešlo poznat, kdo
 na seznamu je. Proti robotům skryté pole (honeypot) a kontrola `Origin`.
 Souhlas je nezaškrtnutý checkbox s odkazem na `/privacy`.
 
-**Snímky aplikace** vyrábí `tools/snimky-web.py`: veřejná data (svíčky,
+**Obsah webu aktualizován 2026-10-01** (před rozesíláním odkazu na
+betu): 9 funkcí (push alarmy, seznamy a kategorie, historie, záloha,
+vrstvy), galerie 3 + 2 snímky (nově Trhy se seznamy a okno alarmu),
+bezpečnost (vynucené read-only, server alarmů bez klíčů, zámek), plán
+(burzy, divergence, skener, Google Play). ⚠ **Zásady ochrany soukromí
+doplněny o Hetzner a Firebase** a sekci „Price alerts" — slibovaly to
+„před spuštěním" a alarmy přitom už dva dny běžely. Podmínky v1.1: účet
+je povinný. Při další serverové funkci zásady upravit **předem**.
+
+**Snímky aplikace** vyrábí `tools/snimky-web.py` (od 2026-10-01 s
+podstrčeným účtem, kategoriemi z perpyx.com, dvěma seznamy, alarmem
+a „živým" hlídačem — jinak by vyfotil přihlašovací obrazovku): veřejná data (svíčky,
 trhy) jdou ze skutečného Bybitu, pozice a účet jsou vymyšlené kolem
 aktuálních cen — žádný klíč, nic ze skutečného účtu. Úrovně pozice
 a kresby na BTC se rozmístí podle posledních svíček, aby byly v grafu

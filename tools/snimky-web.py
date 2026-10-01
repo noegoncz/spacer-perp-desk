@@ -87,6 +87,24 @@ kresby = [
      'style': {'color': '#f5c542', 'width': 1, 'opacity': 1}},
 ]
 
+# Alarm na BTC kousek nad aktuální cenou — kvůli snímku okna alarmu.
+alarm_cena = round(ceny['BTCUSDT'] * 1.012, 1)
+alarmy_data = [{'id': 'snimek1', 'symbol': 'BTCUSDT', 'typ': 'cena', 'price': alarm_cena,
+                'smer': 'up', 'opakovat': False, 'platnostDnu': 7, 'aktivni': True, 'zprava': 'Breakout'}]
+
+# Kategorie z webu (stejný soubor, který si stáhne aplikace tlačítkem
+# Identify coins) a dva seznamy, ať jsou na snímku Trhů vidět.
+kategorie = json.load(urllib.request.urlopen(urllib.request.Request(
+    'https://perpyx.com/data/kategorie.json', headers={'User-Agent': 'Mozilla/5.0'}), timeout=15))
+kategorie['stazeno'] = TED
+seznamy = {'verze': 1, 'aktivni': 'fav', 'seznamy': [
+    {'id': 'fav', 'nazev': 'My watchlist', 'polozky': ['bybit:' + s for s in (
+        'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'WLDUSDT', 'XRPUSDT', 'DOGEUSDT', 'SUIUSDT', 'HYPEUSDT',
+        'TAOUSDT', 'LINKUSDT', 'AVAXUSDT', 'PEPEUSDT' if False else '1000PEPEUSDT')]},
+    {'id': 'ai', 'nazev': 'AI plays', 'polozky': ['bybit:' + s for s in (
+        'TAOUSDT', 'FETUSDT', 'WLDUSDT', 'RENDERUSDT', 'VIRTUALUSDT')]},
+]}
+
 podstrc = r"""
 (() => {
   if (navigator.serviceWorker) {
@@ -104,12 +122,25 @@ podstrc = r"""
   localStorage.setItem('perpdesk.indicators', JSON.stringify(['VOL', 'EMA', 'RSI']));
   localStorage.setItem('perpdesk.favourites', JSON.stringify(['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'WLDUSDT']));
   localStorage.setItem('perpdesk.drawings.BTCUSDT', JSON.stringify(%(kresby)s));
+  // Aplikace od v0.23 chce účet; podstrčený (volání perpyx.com/api se
+  // zachytí níž). Upozornění a bublina hlášení na snímky nepatří.
+  localStorage.setItem('perpdesk.session', JSON.stringify({ token: '0'.repeat(64), email: 'demo@perpyx.com' }));
+  localStorage.setItem('perpdesk.disclaimerSeen', '1');
+  localStorage.setItem('perpdesk.alarms', JSON.stringify(%(alarmy)s));
+  localStorage.setItem('perpdesk.coinCategories', JSON.stringify(%(kategorie)s));
+  localStorage.setItem('perpdesk.lists', JSON.stringify(%(seznamy)s));
+  localStorage.removeItem('perpdesk.layers');
+  const bezBubliny = document.createElement('style');
+  bezBubliny.textContent = '#feedbackBtn { display: none !important; }';
+  document.addEventListener('DOMContentLoaded', () => document.head.appendChild(bezBubliny));
   const ok = (t) => Promise.resolve(new Response(JSON.stringify(t),
     { status: 200, headers: { 'Content-Type': 'application/json' } }));
   const skutecny = window.fetch.bind(window);
   window.fetch = function (vstup, volby) {
     const u = String(vstup && vstup.url ? vstup.url : vstup);
     const q = new URL(u, location.origin).searchParams;
+    // Hlídač „žije" — jinak by okno alarmu psalo, že server není dostupný.
+    if (u.includes('perpyx.com/api/')) return ok({ ok: true, alarms: [], watcherSeen: new Date().toISOString() });
     if (u.includes('/v5/position/list')) return ok({ retCode: 0, result: { list: POZICE } });
     if (u.includes('/v5/order/realtime')) {
       const s = q.get('symbol');
@@ -156,9 +187,26 @@ podstrc = r"""
   window.WebSocket.OPEN = 1;
   window.WebSocket.CONNECTING = 0;
   window.WebSocket.CLOSED = 3;
+  // Push jako v APK (podstrčený), ať aplikace ví, že alarmy hlídá server.
+  const posl = {};
+  window.Capacitor = { isNativePlatform: () => true, Plugins: { PushNotifications: {
+    createChannel: async () => {},
+    checkPermissions: async () => ({ receive: 'granted' }),
+    requestPermissions: async () => ({ receive: 'granted' }),
+    addListener: async (j, fn) => { (posl[j] ||= []).push(fn); return { remove() {} }; },
+    register: async () => { setTimeout(() => (posl.registration || []).forEach((f) => f({ value: 'snimky' })), 20); },
+  } } };
+  // Instance grafu do window.__graf (kvůli klepnutí na hladinu alarmu).
+  (function cekej() {
+    if (!window.klinecharts || !window.klinecharts.init) return setTimeout(cekej, 50);
+    const puvodni = window.klinecharts.init;
+    window.klinecharts.init = function (...a) { return (window.__graf = puvodni.apply(this, a)); };
+  })();
 })();
 """ % {'pozice': json.dumps(pozice), 'prikazy': json.dumps(prikazy),
-       'plneni': json.dumps(plneni), 'kresby': json.dumps(kresby)}
+       'plneni': json.dumps(plneni), 'kresby': json.dumps(kresby),
+       'alarmy': json.dumps(alarmy_data), 'kategorie': json.dumps(kategorie),
+       'seznamy': json.dumps(seznamy)}
 
 p = Prohlizec()
 for c in ('Page.enable', 'Runtime.enable', 'Network.enable'):
@@ -208,5 +256,18 @@ spust(673, 841)
 ev("""[...document.querySelectorAll('.position')].find((k) => k.textContent.includes('BTCUSDT')).click()""")
 time.sleep(6)
 snimek('graf-fold.webp')
+
+# 5) Okno alarmu na rozevřeném Foldu — klepnutím na hladinu alarmu
+p.prikaz('Emulation.setTouchEmulationEnabled', enabled=True, maxTouchPoints=5)
+y = ev("""(() => { const v = document.getElementById('drawLayer').getBoundingClientRect();
+  const yy = window.__graf.convertToPixel({ value: %s }, { paneId: 'candle_pane' });
+  return v.top + (Array.isArray(yy) ? yy[0].y : yy.y); })()""" % alarm_cena)
+bod = [{'x': 300, 'y': y, 'radiusX': 10, 'radiusY': 10, 'force': 1, 'id': 1}]
+p.prikaz('Input.dispatchTouchEvent', type='touchStart', touchPoints=bod)
+time.sleep(0.05)
+p.prikaz('Input.dispatchTouchEvent', type='touchEnd', touchPoints=[])
+time.sleep(1.2)
+print('okno alarmu:', ev("!document.getElementById('sheetAlarm').hidden"))
+snimek('alarm.webp')
 
 print('chyby:', ev('(window.__chyby||[]).join(" | ")'))

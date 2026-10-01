@@ -140,7 +140,9 @@ h2 { font-size: clamp(1.7rem, 3.4vw, 2.3rem); line-height: 1.15; margin: 0 0 12p
 .icon svg { width: 22px; height: 22px; }
 
 /* ---- galerie snímků ---- */
-.gallery { display: grid; grid-template-columns: 1fr 1fr 1.62fr; gap: 20px; align-items: start; }
+.gallery { display: grid; gap: 20px; align-items: start; }
+.gallery.tri { grid-template-columns: repeat(3, 1fr); }
+.gallery.duo { grid-template-columns: 1fr 1fr; margin-top: 28px; }
 .gallery figure { margin: 0; }
 .gallery figcaption { color: var(--muted); font-size: 0.92rem; margin-top: 12px; text-align: center; }
 
@@ -224,14 +226,14 @@ footer a:hover { color: var(--text); }
   .shots { max-width: 520px; margin-inline: auto; }
   .grid { grid-template-columns: 1fr 1fr; }
   .roadmap { grid-template-columns: 1fr 1fr; }
-  .gallery { grid-template-columns: 1fr 1fr; }
-  .gallery figure.wide { grid-column: 1 / -1; }
+  .gallery.duo { grid-template-columns: 1fr; }
   .beta { padding: 32px 24px; }
 }
 @media (max-width: 560px) {
   body { font-size: 16px; }
   section { padding: 52px 0; }
   .grid, .roadmap { grid-template-columns: 1fr; }
+  .gallery.tri { gap: 10px; }
   .field { flex-direction: column; }
   .top .btn.small { display: none; }
 }

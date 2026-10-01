@@ -37,7 +37,7 @@
 
 <main class="wrap doc">
   <h1>Privacy policy</h1>
-  <p class="updated">Last updated: 28 September 2026 (PerpyX accounts, providers)</p>
+  <p class="updated">Last updated: 1 October 2026 (price alerts and push notifications, accounts required)</p>
 
   <p>PerpyX is an independent project, not affiliated with Bybit. This page explains what
     data we handle on this website and in the PerpyX app, and why. The short version: we
@@ -80,16 +80,21 @@
     USA). Like any web host, GitHub processes the IP address of your device when the app loads
     or updates; we receive no data from it. Transfers are covered by the EU–US Data Privacy
     Framework and the EU Standard Contractual Clauses.</p>
-  <p>If we add other providers — for example a server in the EU for alarm push notifications
-    or Google Play for distribution and payments — we will list them here before they are
-    used.</p>
+  <p>The alert server that watches prices for your price alerts runs at Hetzner Online GmbH
+    (Germany, EU), which acts as our processor. Push notifications are delivered through
+    Firebase Cloud Messaging (Google Ireland Ltd. / Google LLC, USA), which acts as our
+    processor; transfers are covered by the EU–US Data Privacy Framework and the EU Standard
+    Contractual Clauses. What they process is described under “Price alerts” below.</p>
+  <p>If we add other providers — for example Google Play for distribution and payments — we
+    will list them here before they are used.</p>
 
   <h2>No cookies, no tracking</h2>
   <p>This website uses no cookies, no analytics and no third-party scripts or fonts. Our
     emails contain no tracking pixels and no tracked links.</p>
 
-  <h2>PerpyX account (optional)</h2>
-  <p>You can use PerpyX without an account. If you sign in, we store:</p>
+  <h2>PerpyX account</h2>
+  <p>To use the app you sign in with your email address (a one-time code, no password). We
+    store:</p>
   <ul>
     <li>your email address and when the account was created,</li>
     <li>a sign-in session per device (stored only as a one-way hash),</li>
@@ -106,6 +111,20 @@
     through Resend. A session unused for a year expires. You can delete your account and all
     its backups at any time in the app (Settings → PerpyX account → Delete account); accounts
     unused for 12 months may be deleted after we notify you by email.</p>
+
+  <h2>Price alerts</h2>
+  <p>So that your price alerts work even when your phone is asleep, the app sends them to our
+    server: the pair, the alert level (or the points of the line, or the time), the condition,
+    whether it repeats, when it expires, your optional message and the app language. It also
+    sends a push token — a random identifier Android issues for notifications to your device.
+    Our alert server reads <strong>public</strong> prices from Bybit and, when a level is
+    crossed, sends a notification through Firebase Cloud Messaging; Google receives the push
+    token and the notification text (the pair, the price and your message). We record when
+    an alert fired, so the app can show it.</p>
+  <p>Your API keys, positions, orders and balances are never sent to the alert server. The
+    legal basis is the performance of the service you asked for (Art. 6(1)(b) GDPR). An alert
+    you delete in the app is deleted on the server too; signing out removes the push token of
+    that device, and deleting your account deletes all your alerts and tokens.</p>
 
   <h2>Reports from the app</h2>
   <p>During the beta you can report a problem or an idea from the app. We receive your text,
@@ -127,11 +146,12 @@
       us. Bybit receives your requests (and so your IP address) as it does from its own app;
       it is a separate controller under its own privacy policy. Your drawings, alarms and settings are stored on your device — and, only if you sign
       in to a PerpyX account, backed up as described above.</li>
-    <li>PerpyX works with read-only keys and cannot place orders.</li>
+    <li>PerpyX works with read-only keys and cannot place orders; it refuses keys that can
+      trade or withdraw.</li>
+    <li>The optional app lock (PIN, with fingerprint as a shortcut) stays on your device. The
+      PIN is stored only as a salted hash; your fingerprint is checked by Android and never
+      reaches the app or us.</li>
   </ul>
-  <p>If a future version adds features that need a server (for example push notifications
-    for alarms while your screen is off), we will update this policy before they launch and
-    explain exactly what is sent. API keys will stay on your device.</p>
 
   <h2>Your rights</h2>
   <p>Under the GDPR you have the right to access your data, to have it corrected or deleted,
