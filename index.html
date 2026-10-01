@@ -226,6 +226,12 @@
                 data-i18n-aria="chart.magnet" data-i18n-title="chart.magnet">
           <svg viewBox="0 0 24 24"><path d="M6 4v8a6 6 0 0012 0V4"/><path d="M6 9h5M13 9h5"/></svg>
         </button>
+        <!-- Vrstvy: skrýt kresby, alarmy, indikátory, obchod. Svítí, když
+             je něco skryté — ať se nezdá, že kresby zmizely. -->
+        <button type="button" class="tool-btn" id="layersBtn"
+                data-i18n-aria="chart.layers" data-i18n-title="chart.layers">
+          <svg viewBox="0 0 24 24"><path d="M12 4 3 9l9 5 9-5z"/><path d="M3 14l9 5 9-5"/></svg>
+        </button>
         <button type="button" class="tool-btn" id="indicatorBtn"
                 data-i18n-aria="chart.indicators" data-i18n-title="chart.indicators">
           <svg viewBox="0 0 24 24"><path d="M3 16l4-6 3 3 4-7 3 5 4-4"/><path d="M3 20h18"/></svg>
@@ -298,6 +304,19 @@
         <button type="button" class="icon-btn" data-close="sheetIndicators" data-i18n-aria="action.close">✕</button>
       </div>
       <div class="sheet-body" id="indicatorList"></div>
+    </div>
+
+    <!-- Vrstvy grafu -->
+    <div id="sheetLayers" class="sheet" hidden>
+      <div class="sheet-head">
+        <span data-i18n="chart.layers">Layers</span>
+        <div class="sheet-head-akce">
+          <button type="button" id="layersAllBtn" class="text-btn"></button>
+          <button type="button" class="icon-btn" data-close="sheetLayers"
+                  data-i18n-aria="action.close">✕</button>
+        </div>
+      </div>
+      <div class="sheet-body nastaveni" id="layersBody"></div>
     </div>
 
     <!-- Nastavení jednoho indikátoru; obsah se skládá ze schématu -->

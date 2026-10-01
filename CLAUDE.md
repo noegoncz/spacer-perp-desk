@@ -877,6 +877,26 @@ jsou v napevno ukotvené části vpravo**, mimo posuvnou oblast s nástroji.
 Dřív byla v posuvné části a na úzkém displeji skončila mimo obrazovku —
 uživatel na ikonu indikátorů vůbec nedosáhl.
 
+**Vrstvy (v0.26.0, rozhodnutí uživatele 2026-10-01)** — ikona vrstev
+v ukotvené části lišty (před indikátory) otevře nabídku se čtyřmi
+přepínači: **Kresby**, **Alarmy** (skryté dál hlídají), **Indikátory**
+(všechny najednou, včetně panelů RSI/MACD) a **Obchod** (vstup, SL/TP,
+limitky, likvidace, trojúhelníky plnění, linka zisku). Cenovky na ose,
+legenda ani mřížka vrstvy nejsou — uživatel je řešit nechce. Nahoře
+Skrýt vše / Zobrazit vše.
+
+- Skryté se **nemaže**: overlaye dostanou `visible: false`
+  (`chart.setLayers()`), i nově vznikající (po změně intervalu).
+  ⚠ Indikátory se naopak z grafu **vyndají** (`removeIndicator`) — jen
+  zneviditelněné by nechaly prázdný panel; výběr (`aktivniIndikatory`,
+  `perpdesk.indicators`) zůstává a s odkrytím se vloží zpátky.
+- Ikona **svítí**, když je něco skryté — jinak to vypadá, že kresby
+  zmizely. Stav je společný pro všechny páry (`perpdesk.layers`).
+- Skrytá kresba ani alarm nejdou vybrat klepnutím. Co uživatel začne
+  používat, samo se ukáže: nástroj kreslení → Kresby, zvonek → Alarmy,
+  výběr indikátoru → Indikátory.
+- Test: `tools/test-vrstvy.py`.
+
 ⚠ **Gesto zahájené na cenové ose musí zůstat u osy.** Když prst sjede do
 plochy grafu, knihovna by začala graf posouvat a obraz poskakuje. Řeší to
 `oddelGestaOsy()`: na `touchstart` nad osou vypne posun a zoom grafu a vrátí

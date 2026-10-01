@@ -135,6 +135,19 @@ export function saveIndicators(nazvy) {
   write('perpdesk.indicators', JSON.stringify(nazvy || []));
 }
 
+/** Vrstvy grafu — co je vidět. Společné pro všechny páry. */
+export function loadLayers() {
+  try {
+    return JSON.parse(read('perpdesk.layers') || '{}') || {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveLayers(vrstvy) {
+  write('perpdesk.layers', JSON.stringify(vrstvy || {}));
+}
+
 export function loadMagnet() {
   return read('perpdesk.magnet') === '1';
 }

@@ -1181,6 +1181,7 @@ export function createPriceChart(container, layer, handlers = {}) {
         // na pixel svíčky; ostatní jen cenu.
         points: [l.odCasu ? { timestamp: l.odCasu, value: l.price } : { value: l.price }],
         lock: true,
+        visible: vrstvy.obchod,
         extendData: {
           color: l.color, title: l.title, dash: l.dash, bezCenovky: l.bezCenovky,
           plna: l.plna, odCasu: l.odCasu,
@@ -1206,6 +1207,7 @@ export function createPriceChart(container, layer, handlers = {}) {
         ...tvar,
         groupId: SKUPINA_ALARMY,
         lock: true, // alarm se mění v jeho nastavení, ne taháním po grafu
+        visible: vrstvy.alarmy,
         extendData: {
           id: a.id, typ: a.typ, title: a.title, aktivni: a.aktivni, color: a.barva,
         },
@@ -1224,6 +1226,7 @@ export function createPriceChart(container, layer, handlers = {}) {
           groupId: SKUPINA_KRESBY,
           points: k.points,
           lock: true,
+          visible: vrstvy.kresby,
           extendData: { ...VYCHOZI_STYL, ...(k.style || {}) },
           styles: stylKresby(k.style),
         });
@@ -1302,6 +1305,24 @@ export function createPriceChart(container, layer, handlers = {}) {
   let dodatekKresby = null;
   let vyberBodu = null; // křížem se zrovna vybírá hladina alarmu, ne kresba
   let linkaPnlZapnuta = false;
+
+  /*
+   * Vrstvy (v0.26.0): co je v grafu vidět. Skrytá skupina se nekreslí, ale
+   * nemaže — kresby i alarmy zůstávají uložené a skryté alarmy dál hlídají.
+   * Obchod = vstup, SL/TP, limitky, likvidace, trojúhelníky plnění a linka
+   * zisku. Indikátory se při skrytí z grafu vyndají (ne jen zneviditelní),
+   * aby se sbalily i jejich panely; výběr uživatele (`aktivniIndikatory`)
+   * zůstává a s odkrytím se vrátí.
+   */
+  const vrstvy = { kresby: true, alarmy: true, indikatory: true, obchod: true };
+  const vlastniPanelIndikatoru = new Map();
+  const vlozIndikator = (nazev) => {
+    const id = vlastniPanelIndikatoru.get(nazev)
+      ? chart.createIndicator(nazev)
+      : pridejDoHlavnihoPanelu(nazev);
+    if (id) pouzijNastaveni(nazev);
+    return id;
+  };
 
   /*
    * ⚠ Do hlavního panelu se indikátor **přidává** (druhý argument `true`).
@@ -1481,6 +1502,7 @@ export function createPriceChart(container, layer, handlers = {}) {
         groupId: SKUPINA_KRESBY,
         points: body,
         lock: true, // posouvá se jen přes naše úchyty, ne prstem po čáře
+        visible: vrstvy.kresby,
         mode: magnet ? 'weak_magnet' : 'normal',
         extendData: { ...posledniStyl, ...(dodatekKresby || {}) },
         styles: stylKresby(posledniStyl),
@@ -1544,6 +1566,7 @@ export function createPriceChart(container, layer, handlers = {}) {
    */
   function alarmPodPrstem(mx, my) {
     let nej = null;
+    if (!vrstvy.alarmy) return null; // skrytý alarm se klepnutím nevybírá
     for (const o of chart.getOverlays({ groupId: SKUPINA_ALARMY })) {
       const d = o.extendData || {};
       const body = (o.points || []).map(toPixel);
@@ -1593,7 +1616,8 @@ export function createPriceChart(container, layer, handlers = {}) {
       const my = e.clientY - r.top;
       if (mx < 0 || my < 0 || mx > r.width || my > r.height) return;
 
-      const kresby = chart.getOverlays({ groupId: SKUPINA_KRESBY });
+      // Skryté kresby se klepnutím nevybírají.
+      const kresby = vrstvy.kresby ? chart.getOverlays({ groupId: SKUPINA_KRESBY }) : [];
       const index = kresleni.hitTest(mx, my, kresby);
       if (index >= 0) {
         upravovanaKresba = kresby[index];
@@ -1966,11 +1990,12 @@ export function createPriceChart(container, layer, handlers = {}) {
        * skončil, příště by se obnovil jako obyčejný indikátor a objevil
        * se i v nabídce, kde nemá co dělat.
        */
-      if (info && !linkaPnlZapnuta) {
+      const ukazat = Boolean(info) && vrstvy.obchod;
+      if (ukazat && !linkaPnlZapnuta) {
         // `true` = přidat k ostatním (viz pridejDoHlavnihoPanelu).
         chart.createIndicator({ name: 'PNLLINE', paneId: HLAVNI_PANEL }, true);
         linkaPnlZapnuta = true;
-      } else if (!info && linkaPnlZapnuta) {
+      } else if (!ukazat && linkaPnlZapnuta) {
         chart.removeIndicator({ name: 'PNLLINE' });
         linkaPnlZapnuta = false;
       }
@@ -1979,7 +2004,7 @@ export function createPriceChart(container, layer, handlers = {}) {
       // by se kreslily dvě přes sebe, takže se u pozice schová; popisek
       // ceny na ose i odpočet do konce svíčky zůstávají.
       chart.setStyles({
-        candle: { priceMark: { last: { line: { show: !info } } } },
+        candle: { priceMark: { last: { line: { show: !ukazat } } } },
       });
     },
 
@@ -2000,6 +2025,7 @@ export function createPriceChart(container, layer, handlers = {}) {
           groupId: SKUPINA_ZNACKY,
           points: [{ timestamp: z.time, value: z.price }],
           lock: true,
+          visible: vrstvy.obchod,
           extendData: { vstup: z.vstup, color: z.color, title: z.title, maly: z.maly },
         });
       });
@@ -2151,12 +2177,8 @@ export function createPriceChart(container, layer, handlers = {}) {
         return false;
       }
 
-      const id = vlastniPanel
-        ? chart.createIndicator(nazev)
-        : pridejDoHlavnihoPanelu(nazev);
-
-      if (!id) return false;
-      pouzijNastaveni(nazev);
+      vlastniPanelIndikatoru.set(nazev, Boolean(vlastniPanel));
+      if (vrstvy.indikatory && !vlozIndikator(nazev)) return false;
       aktivniIndikatory.add(nazev);
       handlers.onIndicatorsChanged?.();
       setTimeout(umistiVrstvu, 0);
@@ -2166,11 +2188,8 @@ export function createPriceChart(container, layer, handlers = {}) {
     restoreIndicators(nazvy, jeVlastniPanel) {
       (nazvy || []).forEach((nazev) => {
         if (aktivniIndikatory.has(nazev)) return;
-        const id = jeVlastniPanel(nazev)
-          ? chart.createIndicator(nazev)
-          : pridejDoHlavnihoPanelu(nazev);
-        if (!id) return;
-        pouzijNastaveni(nazev);
+        vlastniPanelIndikatoru.set(nazev, Boolean(jeVlastniPanel(nazev)));
+        if (vrstvy.indikatory && !vlozIndikator(nazev)) return;
         aktivniIndikatory.add(nazev);
       });
       setTimeout(umistiVrstvu, 0);
@@ -2178,12 +2197,44 @@ export function createPriceChart(container, layer, handlers = {}) {
 
     /** Promítne uložené nastavení do běžícího indikátoru. */
     applyIndicatorSettings(nazev) {
-      if (!aktivniIndikatory.has(nazev)) return;
+      if (!aktivniIndikatory.has(nazev) || !vrstvy.indikatory) return;
       pouzijNastaveni(nazev);
     },
 
     activeIndicators() {
       return [...aktivniIndikatory];
+    },
+
+    /* ---------- vrstvy ---------- */
+
+    getLayers() {
+      return { ...vrstvy };
+    },
+
+    /** `zmena` = { kresby?, alarmy?, indikatory?, obchod? } — true je vidět. */
+    setLayers(zmena) {
+      const pred = { ...vrstvy };
+      for (const k of Object.keys(vrstvy)) {
+        if (typeof zmena?.[k] === 'boolean') vrstvy[k] = zmena[k];
+      }
+      if (pred.kresby !== vrstvy.kresby) {
+        chart.overrideOverlay({ groupId: SKUPINA_KRESBY, visible: vrstvy.kresby });
+      }
+      if (pred.alarmy !== vrstvy.alarmy) {
+        chart.overrideOverlay({ groupId: SKUPINA_ALARMY, visible: vrstvy.alarmy });
+      }
+      if (pred.obchod !== vrstvy.obchod) {
+        chart.overrideOverlay({ groupId: SKUPINA_POZICE, visible: vrstvy.obchod });
+        chart.overrideOverlay({ groupId: SKUPINA_ZNACKY, visible: vrstvy.obchod });
+        this.setPnlInfo(pnlInfo);
+      }
+      if (pred.indikatory !== vrstvy.indikatory) {
+        aktivniIndikatory.forEach((nazev) => {
+          if (vrstvy.indikatory) vlozIndikator(nazev);
+          else chart.removeIndicator({ name: nazev });
+        });
+        setTimeout(umistiVrstvu, 0);
+      }
     },
 
     destroy() {

@@ -684,6 +684,12 @@ function wireEvents() {
   });
 
   naUdalost('indicatorBtn', 'click', () => otevriNabidku('sheetIndicators'));
+  naUdalost('layersBtn', 'click', otevriVrstvy);
+  naUdalost('layersAllBtn', 'click', () => {
+    const vse = Object.values(chart?.getLayers() || {}).every(Boolean);
+    nastavVrstvy(Object.fromEntries(VRSTVY.map(({ klic }) => [klic, !vse])));
+    otevriVrstvy();
+  });
   naUdalost('alarmBtn', 'click', novyAlarmKrizem);
   naUdalost('alarmSaveBtn', 'click', ulozAlarm);
   naUdalost('alarmDeleteBtn', 'click', smazAlarm);
@@ -1050,6 +1056,9 @@ async function otevriGraf(symbol, position, trh) {
     chart.setLastStyle(store.loadDrawStyle());
     chart.setLoader(nactiSvice);
     chart.setMagnet(magnetZapnut);
+    // Vrstvy před indikátory — skryté indikátory se do grafu vůbec nevloží.
+    chart.setLayers(store.loadLayers());
+    oznacVrstvy();
     chart.restoreIndicators(store.loadIndicators(), maVlastniPanel);
     oznacAktivniIndikatory();
     postavNabidky();
@@ -1219,6 +1228,8 @@ function oznacAktivniIndikatory() {
 function vyberNastroj(nastroj) {
   if (!chart) return;
   chart.cancelDrawing();
+  // Kreslit naslepo nejde — se zvoleným nástrojem se kresby zase ukážou.
+  if (nastroj && nastroj !== 'mereni') ukazVrstvu('kresby');
 
   document.querySelectorAll('.tool-btn[data-tool]').forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.tool === nastroj);
@@ -1249,6 +1260,7 @@ function postavNabidky() {
 
       btn.append(ikona, zkratka, popis);
       btn.addEventListener('click', () => {
+        ukazVrstvu('indikatory'); // zapnutý indikátor má být vidět
         chart.toggleIndicator(i.id, i.vlastniPanel);
         zavriNabidky(); // po výběru se roletka zavře, ať nepřekáží grafu
       });
@@ -1274,6 +1286,69 @@ function postavNabidky() {
   );
 
   oznacAktivniIndikatory();
+}
+
+/* ---------- vrstvy grafu ---------- */
+
+/** Čtyři vrstvy, rozhodnutí uživatele 2026-10-01 (osa, legenda, mřížka ne). */
+const VRSTVY = [
+  { klic: 'kresby', popisek: 'layers.drawings' },
+  { klic: 'alarmy', popisek: 'layers.alarms', poznamka: 'layers.alarmsNote' },
+  { klic: 'indikatory', popisek: 'layers.indicators' },
+  { klic: 'obchod', popisek: 'layers.trade', poznamka: 'layers.tradeNote' },
+];
+
+function nastavVrstvy(zmena) {
+  if (!chart) return;
+  chart.setLayers(zmena);
+  const vrstvy = chart.getLayers();
+  store.saveLayers(vrstvy);
+  // Skryté kresby nejde upravovat — rozdělaná úprava a paleta zmizí.
+  if (!vrstvy.kresby) {
+    vyberNastroj('');
+    zobrazPaletu(null);
+  }
+  oznacVrstvy();
+}
+
+function ukazVrstvu(klic) {
+  if (chart && !chart.getLayers()[klic]) nastavVrstvy({ [klic]: true });
+}
+
+/** Ikona vrstev svítí, když je něco skryté. */
+function oznacVrstvy() {
+  const skryto = chart && Object.values(chart.getLayers()).some((v) => !v);
+  prepniTridu('layersBtn', 'active', Boolean(skryto));
+}
+
+function otevriVrstvy() {
+  if (!chart) return;
+  const vrstvy = chart.getLayers();
+  el('layersBody').replaceChildren(...VRSTVY.map(({ klic, popisek, poznamka }) => {
+    const radek = document.createElement('div');
+    radek.className = 'nastaveni-radek';
+    const text = document.createElement('span');
+    text.className = 'nastaveni-popisek';
+    text.textContent = t(popisek);
+    if (poznamka) {
+      const maly = document.createElement('small');
+      maly.className = 'vrstva-poznamka';
+      maly.textContent = t(poznamka);
+      text.append(maly);
+    }
+    radek.dataset.vrstva = klic;
+    radek.append(text, ovladacPole({ typ: 'prepinac' }, vrstvy[klic],
+      (v) => { nastavVrstvy({ [klic]: v }); popisVsechVrstev(); }));
+    return radek;
+  }));
+  popisVsechVrstev();
+  otevriNabidku('sheetLayers');
+}
+
+function popisVsechVrstev() {
+  const vse = Object.values(chart?.getLayers() || {}).every(Boolean);
+  const btn = el('layersAllBtn');
+  if (btn) btn.textContent = t(vse ? 'layers.hideAll' : 'layers.showAll');
 }
 
 /* ---------- nastavení indikátorů ---------- */
@@ -2200,6 +2275,7 @@ function vykresliAlarmy() {
  */
 function novyAlarmKrizem() {
   if (!chart || !chartSymbol) return;
+  ukazVrstvu('alarmy');
   vyberNastroj(''); // rozdělané kreslení by se s křížem pralo
   chart.pickPrice(t('alarm.pickHint'), (bod) => {
     if (!Number.isFinite(bod?.value)) return;
@@ -2217,6 +2293,7 @@ function novyAlarmKrizem() {
  */
 function alarmZKresby() {
   if (!chart || !chartSymbol) return;
+  ukazVrstvu('alarmy');
   const kresba = chart.selectedDrawing();
   if (!kresba) return;
   const alarm = alarmy.zKresby(chartSymbol, kresba);
@@ -2613,7 +2690,7 @@ function zobrazPaletu(styl) {
   oznac('styleOpacity', 'opacity', styl.opacity);
 }
 
-const NABIDKY = ['sheetIndicators', 'sheetSettings', 'sheetAlarm'];
+const NABIDKY = ['sheetIndicators', 'sheetSettings', 'sheetAlarm', 'sheetLayers'];
 
 /** Chybějící prvek se přeskočí, ať rozpadlá aktualizace nesestřelí graf. */
 function ukazPrvek(id, viditelny) {

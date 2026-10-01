@@ -1815,6 +1815,10 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
 /* Hladina alarmu v grafu je tyrkysová; zvonek v liště to má napovědět. */
 .tool-btn.ma-alarm svg { stroke: var(--alarm); }
 
+/* Vrstvy: popisek s drobnou poznámkou pod sebou. */
+#layersBody .nastaveni-popisek { display: flex; flex-direction: column; gap: 1px; }
+.vrstva-poznamka { font-size: 0.68rem; color: var(--text-dim); }
+
 /* ---------- nastavení indikátoru ---------- */
 
 .nastaveni { gap: 2px; }
