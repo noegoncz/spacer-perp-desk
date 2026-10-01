@@ -2058,9 +2058,30 @@ Pages se nedostane (deploy.yml kopíruje jen `css`, `js`, `icons`, `vendor`).
   každém nasazení (maže zkušební přihlášky na `@test.perpyx.invalid`).
 - **Kde jsou e-maily:** Cloudflare → Storage & databases → D1 →
   `perpyx-web` → tabulka `subscribers` (sloupec `status`).
-- Příchozí pošta: Email Routing, `privacy@perpyx.com` (a `hello@`) se
-  přeposílá na Gmail uživatele. Nastavené ručně v Cloudflare, token
-  k Email Routingu právo nemá.
+- **Pošta na perpyx.com: Zoho Mail (od 2026-10-01)**, tarif Mail Lite,
+  datacentrum EU (zoho.eu). Schránka **roman@perpyx.com** (správce),
+  aliasy **hello@** a **privacy@** (zobrazené jméno „PerpyX“). Web
+  https://mail.zoho.eu, správa https://mailadmin.zoho.eu.
+  - DNS: MX `mx/mx2/mx3.zoho.eu`, SPF jeden záznam
+    `include:_spf.mx.cloudflare.net include:zohomail.eu ~all`, DKIM
+    `zmail._domainkey`, DMARC `p=quarantine` beze změny. Zapsané přes
+    Cloudflare „Domain Connect“ ze Zoho. Ověřeno: SPF a DKIM pro
+    perpyx.com prošly, e-mail v Doručených.
+  - Cloudflare **Email Routing (přeposílání do Gmailu) je vypnutý** —
+    jeho MX nahradilo Zoho.
+  - **Resend** (kódy, potvrzení, hlášení) jede dál přes `send.perpyx.com`
+    a `resend._domainkey`, Zoho se ho netýká. Hlášení z aplikace a
+    upozornění na nové zájemce chodí na hello@ — teď tedy do Zoho.
+  - Zoho je v zásadách ochrany soukromí jako zpracovatel.
+- ⚠ **Whalebone blokuje perpyx.com jako „Malware“** (2026-10-01, plané
+  poplašení; DNS ochrana poskytovatelů, mj. INFOS Art u uživatele doma).
+  Blokovací stránka má certifikát whalebone.io → v prohlížeči
+  `ERR_CERT_COMMON_NAME_INVALID`; HSTS výjimku nepustí. Doma pak nejde
+  ani web, ani `perpyx.com/api` v aplikaci (přihlášení, záloha, alarmy
+  na server). Google Safe Browsing, Sucuri i Cloudflare security DNS
+  čisté. Nahlášeno 2026-10-01 na vysla@infos.cz a
+  domain-report@whalebone.io. Ověření: `nslookup perpyx.com` z domácí
+  sítě — `95.179.149.165` = blokace, `188.114.9x.x` = Cloudflare (OK).
 
 **Ochrana soukromí je součást návrhu, ne dodatek:** stránka nenačítá nic
 cizího (žádná písma z Google, analytika, skripty), takže nepotřebuje lištu
