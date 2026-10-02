@@ -2082,6 +2082,9 @@ Pages se nedostane (deploy.yml kopíruje jen `css`, `js`, `icons`, `vendor`).
   čisté. Nahlášeno 2026-10-01 na vysla@infos.cz a
   domain-report@whalebone.io. Ověření: `nslookup perpyx.com` z domácí
   sítě — `95.179.149.165` = blokace, `188.114.9x.x` = Cloudflare (OK).
+  ✅ **Vyřešeno 2026-10-02:** Whalebone doménu odebral z databáze hrozeb
+  (ticket 56899), z domácí sítě ověřeno — vede na Cloudflare. Kdyby se
+  to opakovalo, stačí znovu napsat na domain-report@whalebone.io.
 
 **Ochrana soukromí je součást návrhu, ne dodatek:** stránka nenačítá nic
 cizího (žádná písma z Google, analytika, skripty), takže nepotřebuje lištu
