@@ -89,7 +89,9 @@ email_b = f'refb{T}@test.perpyx.invalid'
 s, o = dotaz('POST', '/api/signup', {'email': email_b, 'consent': True, 'ref': nick}, puvod='https://perpyx.com')
 over(s == 200 and o.get('ok'), 'B se zapsal na webu přes odkaz')
 s, o = dotaz('GET', '/api/account/referral', token=a)
-over(o.get('counts', {}).get('invited') == 1 and o['people'][0]['email'].startswith('r***@'), f'A vidí B jako „přijal pozvánku" ({o.get("people")})')
+maska = o.get('people', [{}])[0].get('email', '')
+over(o.get('counts', {}).get('invited') == 1 and maska.startswith('re') and '@' not in maska and set(maska[2:]) <= {'*', '.'},
+     f'A vidí B jako „přijal pozvánku", e-mail zamaskovaný ({maska})')
 over(dotaz('PUT', '/api/account/referral', {'nick': nick + 'x'}, token=a)[1].get('error') == 'locked', 'použité jméno už změnit nejde')
 
 print('3) aplikace')
@@ -98,12 +100,14 @@ o = dotaz('GET', '/api/account/referral', token=a)[1]
 over(o.get('counts') == {'invited': 0, 'joined': 1, 'active': 0}, f'B se přihlásil stejným e-mailem → „začal používat" ({o.get("counts")})')
 over(dotaz('GET', '/api/account/referral', token=b)[1].get('invitedBy') == nick, 'B vidí, kdo ho pozval')
 dnes = datetime.date.today()
-for i, den in enumerate([dnes, dnes + datetime.timedelta(days=1)]):
+# 13 různých dní (s mezerami — po sobě jít nemusí) ještě nestačí, 14. uzná.
+dny = [dnes + datetime.timedelta(days=2 * i) for i in range(14)]
+for den in dny[:13]:
     dotaz('POST', '/api/account/ping', {'version': 'test', 'day': den.isoformat()}, token=b, test=True)
-over(dotaz('GET', '/api/account/referral', token=a)[1].get('counts', {}).get('active') == 0, 'po 2 dnech ještě není uznán')
-dotaz('POST', '/api/account/ping', {'version': 'test', 'day': (dnes + datetime.timedelta(days=2)).isoformat()}, token=b, test=True)
+over(dotaz('GET', '/api/account/referral', token=a)[1].get('counts', {}).get('active') == 0, 'po 13 dnech ještě není uznán')
+dotaz('POST', '/api/account/ping', {'version': 'test', 'day': dny[13].isoformat()}, token=b, test=True)
 o = dotaz('GET', '/api/account/referral', token=a)[1]
-over(o.get('counts') == {'invited': 0, 'joined': 0, 'active': 1}, f'po 3 dnech uznán ({o.get("counts")})')
+over(o.get('counts') == {'invited': 0, 'joined': 0, 'active': 1}, f'po 14 různých dnech uznán ({o.get("counts")})')
 
 print('4) ruční zadání')
 over(dotaz('POST', '/api/account/referral', {'code': 'neexistuje-xyz'}, token=c)[1].get('error') == 'not-found', 'neznámé jméno')

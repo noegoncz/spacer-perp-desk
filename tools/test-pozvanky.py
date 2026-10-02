@@ -23,8 +23,8 @@ po = """
 (() => {
   const dalsi = window.fetch;
   const stav = { ok: true, nick: null, link: null, counts: { invited: 1, joined: 1, active: 1 },
-    people: [ { email: 'p***@gmail.com', stage: 'active' }, { email: 'j***@seznam.cz', stage: 'joined' },
-              { email: 'k***@icloud.com', stage: 'invited' } ],
+    people: [ { email: 'pa*******.***', stage: 'active' }, { email: 'ja*********.**', stage: 'joined' },
+              { email: 'ka*********.***', stage: 'invited' } ],
     invitedBy: null, canEnterCode: true, activeDays: 3 };
   window.__pozvanky = [];
   const odp = (d, s = 200) => Promise.resolve(new Response(JSON.stringify(d), { status: s }));
@@ -107,7 +107,7 @@ print('3) stupně')
 pocty = [ev(f"document.getElementById('{i}').textContent") for i in ('inviteCountInvited', 'inviteCountJoined', 'inviteCountActive')]
 over(pocty == ['1', '1', '1'], f'tři počty ({pocty})')
 lide = ev("[...document.querySelectorAll('#invitePeople li')].map(l => l.textContent).join(' | ')") or ''
-over('p***@gmail.com' in lide and 'Accepted' in lide and 'Signed up' in lide, f'seznam se zamaskovanými e-maily ({lide})')
+over('pa*******.***' in lide and 'Accepted' in lide and 'Signed up' in lide, f'seznam se zamaskovanými e-maily ({lide})')
 
 print('4) kdo mě pozval')
 over(vidim('inviteByBox'), 'ruční zadání nabídnuto')

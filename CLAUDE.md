@@ -207,9 +207,11 @@ a v zásadách „Invites".
   ručně zadat přezdívku toho, kdo pozval (jednou, ne sám sebe).
 - **Tři stupně:** přijal pozvánku (zapsal se na webu) → začal používat
   (přihlásil se v aplikaci, `referrals`) → uznáno (aplikaci použil
-  **3 různé dny**, kdykoli — `AKTIVNI_DNU` v `web/lib/ref.js`;
-  kontroluje `ping.js`). Uživateli se přesné číslo neříká („několik dní").
-- Zvoucí vidí počty a seznam se **zamaskovanými e-maily** (`p***@gmail.com`).
+  **14 různých dní**, nemusí jít po sobě — `AKTIVNI_DNU` v
+  `web/lib/ref.js`; kontroluje `ping.js`). Uživateli se přesné číslo
+  neříká („několik různých dní").
+- Zvoucí vidí počty a seznam se **zamaskovanými e-maily**: první dva
+  znaky, zbytek hvězdičky, tečky zůstávají (`ro*******.***`).
 - Aplikace: `js/pozvanky.js`, tlačítko **Pozvat vlevo dole jen na
   přehledu pozic** (stejně vysoké jako bublina hlášení vpravo), okno
   `#sheetInvite`. Sdílení přes plugin Share / Web Share / schránku.

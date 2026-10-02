@@ -3,8 +3,12 @@
 
 import { ted } from './ucet.js';
 
-/** Kolik různých dní musí pozvaný aplikaci použít, aby se počítal jako bod. */
-export const AKTIVNI_DNU = 3;
+/**
+ * Kolik různých dní musí pozvaný aplikaci použít, aby se počítal jako bod
+ * (rozhodnutí uživatele 2026-10-02: 14 dní, dny nemusí jít po sobě —
+ * jeden vynechaný den nemá smazat dosavadní používání).
+ */
+export const AKTIVNI_DNU = 14;
 /** Jak dlouho po založení účtu jde ručně zadat přezdívku toho, kdo pozval. */
 export const RUCNE_DNU = 7;
 
@@ -27,10 +31,13 @@ export function chybaPrezdivky(nick) {
   return null;
 }
 
-/** p***@gmail.com — zvoucí pozná svého známého, nikdo jiný z toho nic nevyčte. */
+/**
+ * ro*******.*** — první dva znaky, zbytek hvězdičky (tečky zůstanou).
+ * Zvoucí podle začátku pozná svého známého; doména ani jméno vidět nejsou.
+ */
 export function zamaskuj(email) {
-  const [jmeno, domena] = String(email).split('@');
-  return `${(jmeno || '?')[0]}***@${domena || ''}`;
+  const s = String(email || '');
+  return s.slice(0, 2) + s.slice(2).replace(/[^.]/g, '*');
 }
 
 /** Účet zvoucího podle přezdívky (nebo null). */
