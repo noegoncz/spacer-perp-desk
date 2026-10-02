@@ -37,12 +37,12 @@
   .telefon {
     /* Okraj v px: procenta paddingu se počítají ze šířky záhlaví, ne telefonu
        (1,2 % = 18 px černé mezi rámečkem a displejem). */
-    position: absolute; padding: 3px; background: #05080c;
+    position: absolute; padding: 5px; background: #05080c;
     border: 1px solid #2a3a50; border-radius: 9% / 4.2%;
     box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.95);
   }
   .telefon img { display: block; width: 100%; border-radius: 8.2% / 3.8%; }
-  .fold { position: absolute; padding: 4px; background: #05080c; border: 1px solid #2a3a50; border-radius: 4% / 3.2%; box-shadow: 0 40px 90px -30px rgba(0,0,0,0.95); }
+  .fold { position: absolute; padding: 6px; background: #05080c; border: 1px solid #2a3a50; border-radius: 4% / 3.2%; box-shadow: 0 40px 90px -30px rgba(0,0,0,0.95); }
   .fold img { display: block; width: 100%; border-radius: 3.5% / 2.8%; }
   .cip { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--line); background: rgba(17, 24, 35, 0.8); color: #c3cfdd; font-size: 17px; font-weight: 600; }
   .cip.ziva { border-color: rgba(22, 199, 132, 0.6); color: var(--text); }
@@ -51,6 +51,7 @@
   /* Vlastní snímek z telefonu: ořízne stavovou a navigační lištu Androidu. */
   .orez { overflow: hidden; border-radius: 8.2% / 3.8%; aspect-ratio: 904 / 2000; background: #0b0f14; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.09); }
   .orez img { display: block; width: 100%; border-radius: 0; transform: translateY(-4.6%); }
+  .orez.cely img { transform: none; }  /* vlastní snímek bez stavové lišty */
   .popis { color: var(--muted); font-size: 15px; letter-spacing: 1.4px; text-transform: uppercase; font-weight: 700; }
 </style>
 </head>
@@ -135,8 +136,8 @@
     <div style="font-size:44px;font-weight:800;line-height:1.06;letter-spacing:-1.1px">Made for one hand.<br><span class="grad">Built for the fold.</span></div>
     <div style="color:#b9c6d6;font-size:18px">Live PnL · SL/TP at a glance · real funding</div>
   </div>
-  <div class="telefon" style="width:208px;left:540px;top:44px;transform:rotate(-5deg);z-index:1"><div class="orez"><img src="vlastni/pozice.jpg" alt=""></div></div>
-  <div class="telefon" style="width:208px;left:712px;top:78px;transform:rotate(3deg);z-index:2"><div class="orez"><img src="vlastni/graf.jpg" alt=""></div></div>
+  <div class="telefon" style="width:208px;left:540px;top:44px;transform:rotate(-5deg);z-index:2"><div class="orez cely"><img src="pozice-zahlavi.webp" alt=""></div></div>
+  <div class="telefon" style="width:208px;left:722px;top:78px;transform:rotate(3deg);z-index:1"><div class="orez"><img src="vlastni/graf.jpg" alt=""></div></div>
   <div class="fold" style="width:560px;left:900px;top:46px;transform:rotate(-2deg);z-index:3"><img src="../../web/public/img/graf-fold.webp" alt=""></div>
 </section>
 

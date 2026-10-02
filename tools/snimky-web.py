@@ -18,6 +18,11 @@ from dotyk import Prohlizec
 URL = sys.argv[1]
 KOREN = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CIL = os.path.join(KOREN, 'web', 'public', 'img')
+# SNIMEK=zahlavi: jen přehled pozic pro záhlaví na X (design/x-profil),
+# s pozicemi v plusu, poměrem stran jako displej telefonu (393 × 870).
+PRO_ZAHLAVI = os.environ.get('SNIMEK') == 'zahlavi'
+if PRO_ZAHLAVI:
+    CIL = os.path.join(KOREN, 'design', 'x-profil')
 os.makedirs(CIL, exist_ok=True)
 
 
@@ -46,6 +51,15 @@ NAVRH = [
     ('SOLUSDT', 'Sell', 12, 1.025, 1.03, 0.92, 3),
     ('WLDUSDT', 'Buy', 1500, 0.955, 0.93, 1.17, 4),
 ]
+if PRO_ZAHLAVI:
+    def k(sym, vel, pnl):
+        # vstup vůči ceně tak, aby nerealizovaný zisk long pozice byl `pnl` USDT
+        return (ceny[sym] - pnl / vel) / ceny[sym]
+    NAVRH = [
+        ('BTCUSDT', 'Buy', 0.05, k('BTCUSDT', 0.05, 47.3), 0.985, 1.03, 1),
+        ('ETHUSDT', 'Buy', 1.2, k('ETHUSDT', 1.2, 136.8), 0.96, 1.07, 2),
+        ('WLDUSDT', 'Buy', 1500, k('WLDUSDT', 1500, -7.4), 0.93, 1.15, 4),
+    ]
 TED = int(time.time() * 1000)
 pozice, prikazy, plneni = [], [], []
 for sym, strana, vel, k, sl, tp, dm in NAVRH:
@@ -74,6 +88,23 @@ for sym, strana, vel, k, sl, tp, dm in NAVRH:
              'price': str(round(dno + 0.14 * rozpeti, 1)), 'qty': '0.02', 'cumExecQty': '0',
              'reduceOnly': False, 'createdTime': str(TED - 3600000)},
         ]
+
+# Uzavřený obchod na BTC pro snímek Historie: dva nákupy u dna, prodej
+# u vrcholu — ze skutečných svíček, aby značky seděly na grafu. Leží před
+# plněními současné pozice (52 h a 19 h zpátky), takže se nepletou.
+dno_h = min(svicky[-44:-30], key=lambda s: s[2])
+dno_h2 = min(svicky[-30:-24], key=lambda s: s[2])
+vrch_h = max(svicky[-24:-14], key=lambda s: s[1])
+nakupy_h = [(dno_h[0], round(dno_h[2] + 0.15 * (dno_h[1] - dno_h[2]), 1), 0.03),
+            (dno_h2[0], round(dno_h2[2] + 0.2 * (dno_h2[1] - dno_h2[2]), 1), 0.02)]
+prodej_h = (vrch_h[0] + 3600000, round(vrch_h[1] - 0.15 * (vrch_h[1] - vrch_h[2]), 1))
+vstup_h = sum(c * q for _, c, q in nakupy_h) / 0.05
+uzavrene = [{
+    'symbol': 'BTCUSDT', 'orderId': 'hist-btc', 'side': 'Sell', 'qty': '0.05', 'closedSize': '0.05',
+    'avgEntryPrice': f'{vstup_h:.1f}', 'avgExitPrice': str(prodej_h[1]),
+    'closedPnl': f'{(prodej_h[1] - vstup_h) * 0.05:.4f}', 'cumEntryValue': f'{vstup_h * 0.05:.2f}',
+    'leverage': '5', 'createdTime': str(prodej_h[0]), 'updatedTime': str(prodej_h[0] + 19),
+}]
 
 # Kresby na BTC: trendová čára po dvou minimech a vodorovná úroveň u maxima.
 starsi = min(svicky[-44:-24], key=lambda s: s[2])
@@ -105,6 +136,12 @@ seznamy = {'verze': 1, 'aktivni': 'fav', 'seznamy': [
         'TAOUSDT', 'FETUSDT', 'WLDUSDT', 'RENDERUSDT', 'VIRTUALUSDT')]},
 ]}
 
+for i, (cas, cena, mnozstvi) in enumerate(nakupy_h):
+    plneni.append({'symbol': 'BTCUSDT', 'side': 'Buy', 'execType': 'Trade', 'execPrice': str(cena),
+                   'orderId': f'hist-buy-{i}', 'execQty': str(mnozstvi), 'execTime': str(cas + 1800000)})
+plneni.append({'symbol': 'BTCUSDT', 'side': 'Sell', 'execType': 'Trade', 'execPrice': str(prodej_h[1]),
+               'orderId': 'hist-btc', 'execQty': '0.05', 'execTime': str(prodej_h[0])})
+
 podstrc = r"""
 (() => {
   if (navigator.serviceWorker) {
@@ -116,7 +153,7 @@ podstrc = r"""
   const pismo = document.createElement('style');
   pismo.textContent = "@font-face { font-family: 'Helvetica Neue'; src: local('Roboto'), local('Segoe UI'); }";
   document.addEventListener('DOMContentLoaded', () => document.head.appendChild(pismo));
-  const POZICE = %(pozice)s, PRIKAZY = %(prikazy)s, PLNENI = %(plneni)s;
+  const POZICE = %(pozice)s, PRIKAZY = %(prikazy)s, PLNENI = %(plneni)s, UZAVRENE = %(uzavrene)s;
   localStorage.setItem('perpdesk.apiKey', 'UKAZKA-BEZ-KLICE');
   localStorage.setItem('perpdesk.apiSecret', 'UKAZKA-BEZ-KLICE');
   localStorage.setItem('perpdesk.indicators', JSON.stringify(['VOL', 'EMA', 'RSI']));
@@ -168,7 +205,7 @@ podstrc = r"""
       });
       return ok({ retCode: 0, result: { list: l.slice(0, 50), nextPageCursor: '' } });
     }
-    if (u.includes('/v5/position/closed-pnl')) return ok({ retCode: 0, result: { list: [] } });
+    if (u.includes('/v5/position/closed-pnl')) return ok({ retCode: 0, result: { list: UZAVRENE } });
     return skutecny(vstup, volby);
   };
   // Soukromý stream je vymyšlený (přihlášení vždy projde), veřejný jde na burzu.
@@ -206,7 +243,7 @@ podstrc = r"""
 """ % {'pozice': json.dumps(pozice), 'prikazy': json.dumps(prikazy),
        'plneni': json.dumps(plneni), 'kresby': json.dumps(kresby),
        'alarmy': json.dumps(alarmy_data), 'kategorie': json.dumps(kategorie),
-       'seznamy': json.dumps(seznamy)}
+       'seznamy': json.dumps(seznamy), 'uzavrene': json.dumps(uzavrene)}
 
 p = Prohlizec()
 for c in ('Page.enable', 'Runtime.enable', 'Network.enable'):
@@ -236,6 +273,10 @@ def spust(sirka, vyska):
 p.prikaz('Page.addScriptToEvaluateOnNewDocument', source=podstrc)
 
 # 1) Přehled pozic
+if PRO_ZAHLAVI:
+    spust(393, 870)
+    snimek('pozice-zahlavi.webp')
+    sys.exit(0)
 spust(412, 880)
 snimek('pozice.webp')
 
@@ -269,5 +310,14 @@ p.prikaz('Input.dispatchTouchEvent', type='touchEnd', touchPoints=[])
 time.sleep(1.2)
 print('okno alarmu:', ev("!document.getElementById('sheetAlarm').hidden"))
 snimek('alarm.webp')
+
+# 6) Historie: uzavřený obchod v grafu se značkami nákupů a prodeje
+spust(412, 880)
+ev("document.querySelector('[data-tab=history]').click()")
+time.sleep(4)
+ev("document.querySelector('.trade') && document.querySelector('.trade').click()")
+time.sleep(7)
+print('graf obchodu:', ev("!document.getElementById('viewChart').hidden"))
+snimek('historie.webp')
 
 print('chyby:', ev('(window.__chyby||[]).join(" | ")'))
