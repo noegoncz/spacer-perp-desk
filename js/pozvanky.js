@@ -46,8 +46,10 @@ async function sdilej() {
   const text = t('invite.shareText', { link: stav.link });
   const sdileni = self.Capacitor?.Plugins?.Share;
   try {
-    if (sdileni) await sdileni.share({ title: 'PerpyX', text, url: stav.link });
-    else if (navigator.share) await navigator.share({ title: 'PerpyX', text, url: stav.link });
+    // Odkaz je už v textu; s `url` navíc ho Telegram a další aplikace
+    // vložily podruhé (hlášeno uživatelem).
+    if (sdileni) await sdileni.share({ title: 'PerpyX', text });
+    else if (navigator.share) await navigator.share({ title: 'PerpyX', text });
     else await zkopiruj(text, t('invite.copiedLink'));
   } catch {
     // Zavřené okno sdílení není chyba.

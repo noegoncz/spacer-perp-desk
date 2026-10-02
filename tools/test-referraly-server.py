@@ -83,7 +83,7 @@ try:
     kam = ''
 except urllib.error.HTTPError as e:
     kam = e.headers.get('Location', '')
-over(f'ref={nick}' in kam and kam.endswith('#beta'), f'/ref/{nick} → přihláška s ref ({kam})')
+over(f'ref={nick}' in kam and '#' not in kam, f'/ref/{nick} → úvodní stránka nahoře s ref ({kam})')
 
 email_b = f'refb{T}@test.perpyx.invalid'
 s, o = dotaz('POST', '/api/signup', {'email': email_b, 'consent': True, 'ref': nick}, puvod='https://perpyx.com')

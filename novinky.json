@@ -1,5 +1,5 @@
 {
-  "verze": "0.28.0",
+  "verze": "0.28.1",
   "novinky": [
     {
       "en": "Invite friends: share your personal link from the Invite button on your positions. Every friend who actively uses PerpyX earns you bonus Pro time once PerpyX goes paid.",
@@ -8,8 +8,8 @@
   ],
   "opravy": [
     {
-      "en": "Small fixes and polish.",
-      "cs": "Drobné opravy a vylepšení."
+      "en": "Shared invites no longer contain the link twice.",
+      "cs": "Sdílená pozvánka už neobsahuje odkaz dvakrát."
     }
   ]
 }
