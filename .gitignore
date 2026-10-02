@@ -33,3 +33,7 @@ web/wrangler.toml
 
 # Generuje se při nasazení webu (web/tools/kategorie.py)
 web/public/data/
+
+# Vlastní snímky z účtu uživatele (skutečné částky) — do veřejného repa ne.
+design/x-profil/vlastni/
+design/x-profil/zahlavi-e.png

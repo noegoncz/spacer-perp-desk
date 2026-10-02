@@ -44,6 +44,9 @@
   .cip.ziva { border-color: rgba(22, 199, 132, 0.6); color: var(--text); }
   .cip.ziva::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px var(--green); }
   .cip.brzy { border-style: dashed; }
+  /* Vlastní snímek z telefonu: ořízne stavovou a navigační lištu Androidu. */
+  .orez { overflow: hidden; border-radius: 8% / 3.9%; aspect-ratio: 904 / 2000; }
+  .orez img { display: block; width: 100%; border-radius: 0; transform: translateY(-4.6%); }
   .popis { color: var(--muted); font-size: 15px; letter-spacing: 1.4px; text-transform: uppercase; font-weight: 700; }
 </style>
 </head>
@@ -113,6 +116,24 @@
   </div>
   <div class="telefon" style="width:220px;left:1080px;top:70px;transform:rotate(-5deg)"><img src="../../web/public/img/trhy.webp" alt=""></div>
   <div class="telefon" style="width:235px;left:1225px;top:40px;transform:rotate(4deg);z-index:2"><img src="../../web/public/img/pozice.webp" alt=""></div>
+</section>
+
+<!-- E: jako B, navíc dva běžné telefony (pozice, graf) — vlastní snímky
+     z vlastni/ (skutečné částky, proto mimo git). Text nahoře vlevo nad
+     místem pro profilovou fotku. -->
+<section class="platno" id="e" hidden>
+  <div class="mrizka" style="opacity:.2"></div>
+  <div class="zare" style="width:600px;height:500px;left:820px;top:-80px;background:#22d3ee;opacity:.26"></div>
+  <div class="zare" style="width:560px;height:440px;left:1040px;top:180px;background:#7c5cff;opacity:.45"></div>
+  <div class="zare" style="width:380px;height:320px;left:520px;top:160px;background:#7c5cff;opacity:.28"></div>
+  <div style="position:absolute;left:64px;top:58px;width:470px;display:grid;gap:14px">
+    <div class="znacka" style="font-size:30px"><svg class="logo" width="34" height="34"></svg>PerpyX</div>
+    <div style="font-size:44px;font-weight:800;line-height:1.06;letter-spacing:-1.1px">Made for one hand.<br><span class="grad">Built for the fold.</span></div>
+    <div style="color:#b9c6d6;font-size:18px">Live PnL · SL/TP at a glance · real funding</div>
+  </div>
+  <div class="telefon" style="width:208px;left:540px;top:44px;transform:rotate(-5deg);z-index:1"><div class="orez"><img src="vlastni/pozice.jpg" alt=""></div></div>
+  <div class="telefon" style="width:208px;left:712px;top:78px;transform:rotate(3deg);z-index:2"><div class="orez"><img src="vlastni/graf.jpg" alt=""></div></div>
+  <div class="fold" style="width:560px;left:900px;top:46px;transform:rotate(-2deg);z-index:3"><img src="../../web/public/img/graf-fold.webp" alt=""></div>
 </section>
 
 <!-- Profilová fotka 400 × 400: tkané X na tmavé dlaždici (jako ikona aplikace) -->

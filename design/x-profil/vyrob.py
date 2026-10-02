@@ -27,6 +27,6 @@ def vyfot(kotva, w, h, nazev, skala=2):
     print('uloženo', nazev)
 
 
-for v in 'abcd':
+for v in 'abcde':
     vyfot(v, 1500, 500, f'zahlavi-{v}.png')
 vyfot('avatar', 400, 400, 'profilova-fotka.png', skala=1)
