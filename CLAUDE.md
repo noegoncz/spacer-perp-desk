@@ -187,6 +187,39 @@ Stalo se ve verzi 0.1.2: `version.js` se stáhl čerstvý a UI hlásilo novou
 verzi, ale `style.css` se vzal starý, takže oprava v CSS se do telefonu
 nedostala, přestože na serveru byla.
 
+### Pozvi přátele — doporučení / referraly (v0.28.0, 2026-10-02)
+
+Rozhodnutí uživatele: odměna za doporučení bez přesného slibu („bonusový
+čas Pro, až bude PerpyX placený, čím víc přátel, tím víc"). Pravidla
+v podmínkách 7a (můžou se změnit, bez peněžní hodnoty, zneužití se nepočítá)
+a v zásadách „Invites".
+
+- **Přezdívka = kód odkazu** `perpyx.com/ref/<přezdívka>` (3–20 znaků,
+  malá písmena, čísla, pomlčka; rezervovaná slova a hrubý filtr nadávek;
+  unikátní — `accounts.ref_nick`). Jde změnit, dokud odkaz nikdo nepoužil.
+- **Párování přes e-mail, ne přes obchod:** `/ref/<x>` přesměruje na
+  `/?ref=x#beta`, web ukáže proužek „Pozval tě x" a pošle `ref`
+  s přihláškou (`subscribers.ref`, jen poprvé). Když se pak člověk
+  v aplikaci poprvé přihlásí **stejným e-mailem**, server ho spáruje
+  (`verify.js` → `sparujPriZalozeni`). Funguje pro APK, uzavřený test
+  i produkci v Play — obchod nemusí nic předávat.
+- **Záchrana:** v okně Pozvi přátele jde prvních 7 dní po založení účtu
+  ručně zadat přezdívku toho, kdo pozval (jednou, ne sám sebe).
+- **Tři stupně:** přijal pozvánku (zapsal se na webu) → začal používat
+  (přihlásil se v aplikaci, `referrals`) → uznáno (aplikaci použil
+  **3 různé dny**, kdykoli — `AKTIVNI_DNU` v `web/lib/ref.js`;
+  kontroluje `ping.js`). Uživateli se přesné číslo neříká („několik dní").
+- Zvoucí vidí počty a seznam se **zamaskovanými e-maily** (`p***@gmail.com`).
+- Aplikace: `js/pozvanky.js`, tlačítko **Pozvat vlevo dole jen na
+  přehledu pozic** (stejně vysoké jako bublina hlášení vpravo), okno
+  `#sheetInvite`. Sdílení přes plugin Share / Web Share / schránku.
+- Smazání účtu maže vazby v obou směrech a přezdívku z přihlášek.
+- Testy: `tools/test-pozvanky.py` (aplikace, API podstrčené),
+  `tools/test-referraly-server.py` (naostro, `AUTH_TEST_KEY`; testovací
+  účty smí v `ping` zapsat jiný den).
+- Později: **Install Referrer z Google Play** jako třetí pojistka
+  a bonus za pozvaného, který si koupí předplatné.
+
 ### Lišta nové verze a „Co je nového" (v0.27.0)
 
 Tlumená lišta nahoře: vlevo „Verze X je připravená · Co je nového ▾"

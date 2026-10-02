@@ -13,7 +13,7 @@
 <meta property="og:image" content="https://perpyx.com/img/graf-fold.webp?v=2">
 <meta property="og:type" content="website">
 <link rel="canonical" href="https://perpyx.com/">
-<link rel="stylesheet" href="/style.css?v=6">
+<link rel="stylesheet" href="/style.css?v=7">
 </head>
 <body>
 
@@ -40,6 +40,14 @@
     <a class="btn small" href="#beta">Join the beta</a>
   </div>
 </header>
+
+<!-- Odkaz perpyx.com/ref/<přezdívka>: proužek s tím, kdo pozval (js/signup.js). -->
+<div class="ref-banner" id="refBanner" hidden>
+  <div class="wrap">
+    <span class="ref-icon" aria-hidden="true">🎟️</span>
+    <span>You've been invited to the PerpyX beta by <b id="refNick"></b>. <a href="#beta">Join below</a>, and use the same email in the app later.</span>
+  </div>
+</div>
 
 <main>
   <section class="hero">
@@ -219,6 +227,7 @@
           <label class="hp" aria-hidden="true">Leave this empty <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
           <label class="consent"><input type="checkbox" name="consent" id="consent" required>
             <span>I agree that PerpyX may email me about the beta and product updates. I can unsubscribe at any time. See the <a href="/privacy">privacy policy</a>.</span></label>
+          <p class="ref-note" id="refNote" hidden>Invited by <b id="refNick2"></b></p>
           <p class="msg" id="msg" role="status" aria-live="polite"></p>
         </form>
       </div>
@@ -233,6 +242,6 @@
   </div>
 </footer>
 
-<script src="/js/signup.js?v=1"></script>
+<script src="/js/signup.js?v=2"></script>
 </body>
 </html>

@@ -1,9 +1,9 @@
 {
-  "verze": "0.27.0",
+  "verze": "0.28.0",
   "novinky": [
     {
-      "en": "A clearer update notice: see what's new before you update.",
-      "cs": "Přehlednější upozornění na novou verzi: co je nového uvidíš ještě před aktualizací."
+      "en": "Invite friends: share your personal link from the Invite button on your positions. Every friend who actively uses PerpyX earns you bonus Pro time once PerpyX goes paid.",
+      "cs": "Pozvi přátele: svůj osobní odkaz pošleš tlačítkem Pozvat na přehledu pozic. Za každého přítele, který PerpyX aktivně používá, získáš bonusový čas Pro, až bude PerpyX placený."
     }
   ],
   "opravy": [

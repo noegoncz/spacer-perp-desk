@@ -11,6 +11,10 @@ export async function onRequestPost({ request, env }) {
     env.DB.prepare('DELETE FROM alarms WHERE account_id = ?').bind(ucet.id),
     env.DB.prepare('DELETE FROM feedback WHERE account_id = ?').bind(ucet.id),
     env.DB.prepare('DELETE FROM push_tokens WHERE account_id = ?').bind(ucet.id),
+    // Doporučení: vazby v obou směrech pryč; přihlášky přes jeho odkaz
+    // ztratí přezdívku, ať ji případný nový majitel nezdědí.
+    env.DB.prepare('DELETE FROM referrals WHERE referred_id = ? OR referrer_id = ?').bind(ucet.id, ucet.id),
+    env.DB.prepare('UPDATE subscribers SET ref = NULL WHERE ref = (SELECT ref_nick FROM accounts WHERE id = ?)').bind(ucet.id),
     env.DB.prepare('DELETE FROM accounts WHERE id = ?').bind(ucet.id),
   ]);
   return json(request, { ok: true });

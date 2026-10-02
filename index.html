@@ -94,6 +94,12 @@
 
   <!-- ===== Pozice ===== -->
   <section id="viewPositions">
+    <!-- Pozvi přátele (js/pozvanky.js): jen na přehledu pozic, vlevo dole,
+         stejně vysoké jako bublina hlášení vpravo. -->
+    <button type="button" id="inviteBtn" class="invite-fab" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12v8H4v-8"/><path d="M2 7h20v5H2z"/><path d="M12 20V7"/><path d="M12 7H7.5a2.5 2.5 0 1 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 1 0 0-5C13 2 12 7 12 7z"/></svg>
+      <span data-i18n="invite.button">Invite</span>
+    </button>
     <!-- Upozornění při prvním spuštění (jednou): nejde o finanční poradenství,
          data mohou být zpožděná, alarmy nemusí dorazit. Trvale v Nastavení. -->
     <div id="disclaimerNote" class="notice" hidden>
@@ -622,6 +628,68 @@
   <div class="sheet-akce">
     <button type="button" id="feedbackSend" class="primary-btn" data-i18n="feedback.send">Send</button>
   </div>
+</div>
+
+<!-- Pozvi přátele (js/pozvanky.js) -->
+<div id="inviteBackdrop" class="sheet-backdrop feedback-backdrop" hidden></div>
+<div id="sheetInvite" class="sheet feedback-sheet invite-sheet" hidden>
+  <div class="sheet-head">
+    <span data-i18n="invite.title">Invite friends</span>
+    <button type="button" class="icon-btn" id="inviteClose" data-i18n-aria="action.close">✕</button>
+  </div>
+  <p class="invite-lead" data-i18n="invite.lead">Each friend who joins and actively uses PerpyX earns you bonus Pro time once PerpyX goes paid. The more friends, the more you get.</p>
+
+  <div id="inviteNickBox" class="invite-box">
+    <label for="inviteNickInput" class="invite-label" data-i18n="invite.nickLabel">Choose your invite name</label>
+    <div class="invite-row">
+      <span class="invite-prefix">perpyx.com/ref/</span>
+      <input type="text" id="inviteNickInput" class="invite-input" maxlength="20" autocomplete="off"
+             autocapitalize="none" spellcheck="false" data-i18n-ph="invite.nickPh" placeholder="yourname">
+      <button type="button" id="inviteNickSave" class="primary-btn invite-save" data-i18n="invite.save">Save</button>
+    </div>
+    <p class="hint" data-i18n="invite.nickHint">3–20 letters, numbers or dashes. Friends will see it when they open your link.</p>
+  </div>
+
+  <div id="inviteLinkBox" class="invite-box" hidden>
+    <div class="invite-link-row">
+      <span id="inviteLink" class="invite-link"></span>
+      <button type="button" id="inviteChangeNick" class="text-btn" data-i18n="invite.change">Change</button>
+    </div>
+    <div class="invite-actions">
+      <button type="button" id="inviteShare" class="primary-btn" data-i18n="invite.share">Share invite</button>
+      <button type="button" id="inviteCopyLink" class="secondary-btn" data-i18n="invite.copyLink">Copy link</button>
+      <button type="button" id="inviteCopyCode" class="secondary-btn"><span data-i18n="invite.copyCode">Copy code</span> <b id="inviteCode"></b></button>
+    </div>
+  </div>
+  <p id="inviteMsg" class="settings-msg" hidden></p>
+
+  <div class="invite-counts">
+    <div><b id="inviteCountInvited">0</b><span data-i18n="invite.stage.invited">Signed up</span></div>
+    <div><b id="inviteCountJoined">0</b><span data-i18n="invite.stage.joined">Using the app</span></div>
+    <div class="aktivni"><b id="inviteCountActive">0</b><span data-i18n="invite.stage.active">Accepted</span></div>
+  </div>
+  <ul id="invitePeople" class="invite-people"></ul>
+  <p id="invitePeopleEmpty" class="hint" data-i18n="invite.empty">No invited friends yet. Share your link to get started.</p>
+
+  <details class="help">
+    <summary data-i18n="invite.howTitle">How it works</summary>
+    <ol class="invite-how">
+      <li data-i18n="invite.how1">Your friend opens your link and joins the beta with their email.</li>
+      <li data-i18n="invite.how2">They install PerpyX and sign in with the same email, or enter your invite name in the app.</li>
+      <li data-i18n="invite.how3">The invite is accepted once they actively use PerpyX on several different days.</li>
+      <li data-i18n="invite.how4">Rewards and their form may change before the paid version launches.</li>
+    </ol>
+  </details>
+
+  <div id="inviteByBox" class="invite-box" hidden>
+    <label for="inviteByInput" class="invite-label" data-i18n="invite.byLabel">Were you invited? Enter their invite name</label>
+    <div class="invite-row">
+      <input type="text" id="inviteByInput" class="invite-input" maxlength="20" autocomplete="off"
+             autocapitalize="none" spellcheck="false" data-i18n-ph="invite.nickPh" placeholder="yourname">
+      <button type="button" id="inviteBySave" class="secondary-btn invite-save" data-i18n="invite.apply">Apply</button>
+    </div>
+  </div>
+  <p id="invitedBy" class="hint" hidden><span data-i18n="invite.invitedBy">Invited by</span> <b id="invitedByNick"></b></p>
 </div>
 
 <!-- Úvodní obrazovka (js/app.js, ukazUvod): při prvním spuštění povinné

@@ -242,3 +242,14 @@ footer a:hover { color: var(--text); }
   .field { flex-direction: column; }
   .top .btn.small { display: none; }
 }
+
+/* ---- pozvánka (perpyx.com/ref/…) ---- */
+.ref-banner {
+  border-bottom: 1px solid rgba(34, 211, 238, 0.3);
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.12), rgba(124, 92, 255, 0.12));
+  color: #d5e2f0; font-size: 0.95rem;
+}
+.ref-banner .wrap { display: flex; align-items: center; gap: 12px; padding-block: 12px; }
+.ref-banner b { color: var(--text); }
+.ref-icon { font-size: 1.2rem; }
+.ref-note { margin: 10px 0 0; color: var(--cyan); font-size: 0.92rem; }

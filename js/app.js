@@ -16,6 +16,7 @@ import * as sestavy from './sestavy.js';
 import * as zaloha from './zaloha.js';
 import * as ucet from './ucet.js';
 import * as zamek from './zamek.js';
+import * as pozvanky from './pozvanky.js';
 import * as alarmyServer from './alarmy-server.js';
 import * as hlaseni from './hlaseni.js';
 import * as store from './store.js';
@@ -752,6 +753,7 @@ function wireEvents() {
 
   // Hlášení problému / nápadu (beta)
   naUdalost('feedbackBtn', 'click', otevriHlaseni);
+  pozvanky.spust();
   naUdalost('feedbackSettingsBtn', 'click', otevriHlaseni);
   naUdalost('feedbackClose', 'click', zavriHlaseni);
   naUdalost('feedbackBackdrop', 'click', zavriHlaseni);
@@ -3046,6 +3048,7 @@ function ukazKrokUctu(krok) {
 function vykresliUcet() {
   const prihlasen = ucet.prihlasen();
   ukazPrvek('feedbackBtn', HLASENI_ZAPNUTO && prihlasen);
+  pozvanky.ukazTlacitko(prihlasen);
   ukazPrvek('accountIn', prihlasen);
   if (!prihlasen) {
     ukazUvod('prihlaseni');

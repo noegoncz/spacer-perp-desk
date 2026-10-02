@@ -2,6 +2,7 @@
 // Účet vznikne při prvním přihlášení — registrace zvlášť není.
 
 import { json, otisk, nahodneHex, ted, CHYB_ZA_DEN } from '../../../lib/ucet.js';
+import { sparujPriZalozeni } from '../../../lib/ref.js';
 
 const POKUSU = 5;
 
@@ -43,6 +44,12 @@ export async function onRequestPost({ request, env }) {
     ucet = { id: nahodneHex(16), created_at: ted() };
     await env.DB.prepare('INSERT INTO accounts (id, email, created_at, last_seen_at) VALUES (?, ?, ?, ?)')
       .bind(ucet.id, email, ucet.created_at, ucet.created_at).run();
+    // Zapsal se na webu přes odkaz od někoho? Spárovat (stupeň 2).
+    try {
+      await sparujPriZalozeni(env, ucet.id, email);
+    } catch (e) {
+      console.error('referral', e); // přihlášení nesmí kvůli doporučení selhat
+    }
   }
   const token = nahodneHex(32);
   await env.DB.prepare(`INSERT INTO sessions (token_hash, account_id, created_at, last_used_at, device)

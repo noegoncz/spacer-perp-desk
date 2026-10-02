@@ -3,6 +3,24 @@
   const msg = document.getElementById('msg');
   const send = document.getElementById('send');
   const say = (text, kind) => { msg.textContent = text; msg.className = 'msg ' + (kind || ''); };
+
+  // Pozvánka: perpyx.com/ref/<přezdívka> přesměruje sem s ?ref=. Ukáže se
+  // jen přezdívka, kterou server zná; s přihláškou se pak pošle.
+  let ref = '';
+  const zOdkazu = new URLSearchParams(location.search).get('ref') || '';
+  if (/^[a-z0-9-]{3,20}$/.test(zOdkazu)) {
+    fetch('/api/ref?nick=' + encodeURIComponent(zOdkazu))
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d.exists) return;
+        ref = d.nick;
+        document.getElementById('refNick').textContent = d.nick;
+        document.getElementById('refNick2').textContent = d.nick;
+        document.getElementById('refBanner').hidden = false;
+        document.getElementById('refNote').hidden = false;
+      })
+      .catch(() => {});
+  }
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = form.email.value.trim();
@@ -14,7 +32,7 @@
       const res = await fetch('/api/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, consent: true, website: form.website.value }),
+        body: JSON.stringify({ email, consent: true, website: form.website.value, ref }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) throw new Error(data.error || 'Something went wrong.');

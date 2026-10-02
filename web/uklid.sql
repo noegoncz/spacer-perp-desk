@@ -18,6 +18,8 @@ DELETE FROM sessions WHERE account_id IN (SELECT id FROM accounts WHERE email LI
 DELETE FROM alarms WHERE account_id IN (SELECT id FROM accounts WHERE email LIKE '%@test.perpyx.invalid');
 DELETE FROM feedback WHERE account_id IN (SELECT id FROM accounts WHERE email LIKE '%@test.perpyx.invalid');
 DELETE FROM push_tokens WHERE account_id IN (SELECT id FROM accounts WHERE email LIKE '%@test.perpyx.invalid');
+DELETE FROM referrals WHERE referred_id IN (SELECT id FROM accounts WHERE email LIKE '%@test.perpyx.invalid')
+  OR referrer_id IN (SELECT id FROM accounts WHERE email LIKE '%@test.perpyx.invalid');
 DELETE FROM accounts WHERE email LIKE '%@test.perpyx.invalid';
 DELETE FROM login_codes WHERE email LIKE '%@test.perpyx.invalid';
 

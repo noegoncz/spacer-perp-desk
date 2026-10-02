@@ -8,6 +8,7 @@
 import {
   odpoved, ciziPuvod, novyToken, posliPostu, potvrzovaciMail, VERZE_SOUHLASU,
 } from '../../lib/spolecne.js';
+import { normalizuj, zvouciPodlePrezdivky } from '../../lib/ref.js';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DEN = 86400e3;
@@ -39,12 +40,21 @@ export async function onRequestPost({ request, env }) {
 
   const ted = new Date();
   try {
+    // Přezdívka z odkazu perpyx.com/ref/… — jen existující; neznámá se tiše zahodí.
+    const zvouci = await zvouciPodlePrezdivky(env, normalizuj(data.ref));
+    const ref = zvouci ? zvouci.ref_nick : null;
+
     // Nepotvrzené přihlášky starší 30 dní pryč (slibuje to i e-mail).
     await env.DB.prepare("DELETE FROM subscribers WHERE status = 'pending' AND created_at < ?")
       .bind(new Date(ted - 30 * DEN).toISOString()).run();
 
     const radek = await env.DB.prepare('SELECT status, token, sent_at FROM subscribers WHERE email = ?')
       .bind(email).first();
+    // Kdo pozval, se zapíše jen poprvé — pozdější odkaz od někoho jiného
+    // ho nepřepíše.
+    if (radek && ref) {
+      await env.DB.prepare('UPDATE subscribers SET ref = ? WHERE email = ? AND ref IS NULL').bind(ref, email).run();
+    }
     if (radek?.status === 'confirmed') return odpoved({ ok: true });
     if (radek?.status === 'pending' && radek.sent_at && ted - new Date(radek.sent_at) < ZNOVU_ZA) {
       return odpoved({ ok: true });
@@ -58,9 +68,9 @@ export async function onRequestPost({ request, env }) {
           consent_version = ?, unsubscribed_at = NULL WHERE email = ?`)
         .bind(token, ted.toISOString(), VERZE_SOUHLASU, email).run();
     } else {
-      await env.DB.prepare(`INSERT INTO subscribers (email, created_at, consent_version, status, token)
-          VALUES (?, ?, ?, 'pending', ?)`)
-        .bind(email, ted.toISOString(), VERZE_SOUHLASU, token).run();
+      await env.DB.prepare(`INSERT INTO subscribers (email, created_at, consent_version, status, token, ref)
+          VALUES (?, ?, ?, 'pending', ?, ?)`)
+        .bind(email, ted.toISOString(), VERZE_SOUHLASU, token, ref).run();
     }
 
     const mail = potvrzovaciMail(token);
