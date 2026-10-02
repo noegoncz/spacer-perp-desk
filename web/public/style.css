@@ -245,11 +245,22 @@ footer a:hover { color: var(--text); }
 
 /* ---- pozvánka (perpyx.com/ref/…) ---- */
 .ref-banner {
+  /* Drží se pod hlavičkou i při rolování — pozvaný nesmí přehlédnout,
+     že se pozvánka zapíše s přihláškou. Neprůhledné pozadí, ať pod ním
+     neprosvítá obsah stránky. */
+  position: sticky; top: 65px; z-index: 9;
   border-bottom: 1px solid rgba(34, 211, 238, 0.3);
-  background: linear-gradient(90deg, rgba(34, 211, 238, 0.12), rgba(124, 92, 255, 0.12));
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.14), rgba(124, 92, 255, 0.14)), #0d1620;
+  box-shadow: 0 8px 20px -12px rgba(0, 0, 0, 0.8);
   color: #d5e2f0; font-size: 0.95rem;
 }
 .ref-banner .wrap { display: flex; align-items: center; gap: 12px; padding-block: 12px; }
+@media (max-width: 560px) {
+  .ref-banner { font-size: 0.86rem; }
+  .ref-banner .wrap { padding-block: 9px; }
+}
 .ref-banner b { color: var(--text); }
 .ref-icon { font-size: 1.2rem; }
 .ref-note { margin: 10px 0 0; color: var(--cyan); font-size: 0.92rem; }
+/* Odkaz „join the beta" nesmí schovat začátek formuláře pod hlavičku a proužek. */
+#beta { scroll-margin-top: 170px; }
