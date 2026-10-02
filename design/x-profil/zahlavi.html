@@ -32,20 +32,24 @@
   .grad { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .znacka { display: flex; align-items: center; gap: 14px; font-weight: 800; letter-spacing: -0.5px; }
   .znacka svg { flex: none; }
+  /* Moderní telefon: tenký světlejší rámeček (kov), displej až k okraji.
+     Tmavé okraje samotné aplikace pak čtou jako displej, ne jako rámeček —
+     s tlustým černým rámem vypadaly telefony o deset let starší. */
   .telefon {
-    position: absolute; background: #05080c; border: 1px solid #263448;
-    border-radius: 10% / 4.7%; padding: 2.2%;
-    box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.95);
+    position: absolute; padding: 1%;
+    background: linear-gradient(160deg, #3a4658, #1a2230 45%, #2c3646);
+    border-radius: 9% / 4.2%;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 40px 90px -30px rgba(0, 0, 0, 0.95);
   }
-  .telefon img { display: block; width: 100%; border-radius: 8% / 3.7%; }
-  .fold { position: absolute; background: #05080c; border: 1px solid #263448; border-radius: 4.5% / 3.6%; padding: 1.4%; box-shadow: 0 40px 90px -30px rgba(0,0,0,0.95); }
-  .fold img { display: block; width: 100%; border-radius: 3.4% / 2.7%; }
+  .telefon img { display: block; width: 100%; border-radius: 8.2% / 3.8%; }
+  .fold { position: absolute; padding: 0.7%; background: linear-gradient(160deg, #3a4658, #1a2230 45%, #2c3646); border-radius: 4% / 3.2%; box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 40px 90px -30px rgba(0,0,0,0.95); }
+  .fold img { display: block; width: 100%; border-radius: 3.5% / 2.8%; }
   .cip { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--line); background: rgba(17, 24, 35, 0.8); color: #c3cfdd; font-size: 17px; font-weight: 600; }
   .cip.ziva { border-color: rgba(22, 199, 132, 0.6); color: var(--text); }
   .cip.ziva::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px var(--green); }
   .cip.brzy { border-style: dashed; }
   /* Vlastní snímek z telefonu: ořízne stavovou a navigační lištu Androidu. */
-  .orez { overflow: hidden; border-radius: 8% / 3.9%; aspect-ratio: 904 / 2000; }
+  .orez { overflow: hidden; border-radius: 8.2% / 3.8%; aspect-ratio: 904 / 2000; background: #0b0f14; }
   .orez img { display: block; width: 100%; border-radius: 0; transform: translateY(-4.6%); }
   .popis { color: var(--muted); font-size: 15px; letter-spacing: 1.4px; text-transform: uppercase; font-weight: 700; }
 </style>
