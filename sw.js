@@ -82,6 +82,9 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   // Bybit se nikdy necachuje ani neobchází — data musí být vždy živá.
   if (url.origin !== self.location.origin) return;
+  // Poznámky k nové verzi patří k serveru, ne k cache (a mají jedinečný
+  // parametr, takže by se cache jen zbytečně plnila).
+  if (url.pathname.endsWith('/novinky.json')) return;
 
   // Navigace: nejdřív síť, ať se nedrží stará index.html.
   if (request.mode === 'navigate') {

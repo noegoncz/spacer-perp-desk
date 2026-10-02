@@ -4,8 +4,12 @@
 export const cs = {
   /* ---------- kostra aplikace ---------- */
   'app.description': 'Sledování otevřených pozic na Bybitu',
-  'update.available': 'Nová verze – načíst',
-  'update.reload': 'Načíst',
+  'update.available': 'Je připravená nová verze',
+  'update.availableVersion': 'Je připravená verze {version}',
+  'update.whatsNew': 'Co je nového',
+  'update.install': 'Aktualizovat',
+  'update.new': 'Novinky',
+  'update.fixes': 'Opravy a vylepšení',
 
   'action.hideAmounts': 'Skrýt částky',
   'action.refresh': 'Obnovit',

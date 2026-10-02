@@ -1015,6 +1015,57 @@ export function showUpdateBar(show) {
   dom.updateBar.hidden = !show;
 }
 
+/**
+ * Obsah lišty nové verze: číslo verze v titulku a seznam „Co je nového"
+ * (novinky nahoře, opravy pod nimi tlumeně). `poznamky` = novinky.json
+ * nové verze, `jazyk` = 'en' / 'cs'. Bez poznámek se rozbalení schová.
+ */
+export function renderUpdateNotes(poznamky, jazyk) {
+  const titulek = el('updateTitle');
+  const info = el('updateInfo');
+  const box = el('updateNotes');
+  if (!titulek || !info || !box) return;
+  const text = (p) => (p && (p[jazyk] || p.en)) || '';
+  const novinky = (poznamky?.novinky || []).map(text).filter(Boolean);
+  const opravy = (poznamky?.opravy || []).map(text).filter(Boolean);
+
+  titulek.textContent = poznamky?.verze
+    ? t('update.availableVersion', { version: poznamky.verze })
+    : t('update.available');
+  const neco = novinky.length || opravy.length;
+  info.querySelector('.update-vice').hidden = !neco;
+  info.disabled = !neco;
+
+  const blok = (nadpis, polozky, trida) => {
+    if (!polozky.length) return null;
+    const sekce = document.createElement('div');
+    sekce.className = trida;
+    const h = document.createElement('h4');
+    h.textContent = t(nadpis);
+    const ul = document.createElement('ul');
+    ul.append(...polozky.map((p) => {
+      const li = document.createElement('li');
+      li.textContent = p;
+      return li;
+    }));
+    sekce.append(h, ul);
+    return sekce;
+  };
+  box.replaceChildren(...[
+    blok('update.new', novinky, 'novinky'),
+    blok('update.fixes', opravy, 'opravy'),
+  ].filter(Boolean));
+}
+
+export function toggleUpdateNotes(otevrit) {
+  const info = el('updateInfo');
+  const box = el('updateNotes');
+  if (!info || !box) return;
+  const ted = otevrit ?? box.hidden;
+  box.hidden = !ted;
+  info.setAttribute('aria-expanded', String(ted));
+}
+
 
 /* ---------- sestavy a kategorie v Trzích ---------- */
 

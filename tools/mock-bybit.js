@@ -35,8 +35,11 @@ const pozice = { symbol:'JUPUSDT', side:'Buy', size:'2547', avgPrice:'0.30135',
   createdTime:String(OTEVRENO) };
 const ok = (t) => Promise.resolve(new Response(JSON.stringify(t),
   {status:200, headers:{'Content-Type':'application/json'}}));
-window.fetch = function (vstup) {
+const __puvodniFetch = window.fetch.bind(window);
+window.fetch = function (vstup, volby) {
   const u = String(vstup && vstup.url ? vstup.url : vstup);
+  // Poznámky k nové verzi jsou soubor aplikace, ne Bybit — jdou ze serveru.
+  if (u.includes('novinky.json')) return __puvodniFetch(vstup, volby);
   if (u.includes('/v5/market/time'))
     return ok({retCode:0, result:{timeNano:String(Date.now()*1e6)}, time:Date.now()});
   if (u.includes('/v5/position/list')) return ok({retCode:0, result:{list:[pozice]}});

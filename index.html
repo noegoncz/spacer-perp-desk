@@ -25,10 +25,19 @@
 </head>
 <body>
 
-<!-- Lišta o nové verzi; ukáže se, až service worker stáhne update -->
+<!-- Lišta o nové verzi; ukáže se, až service worker stáhne update.
+     Vlevo „Co je nového" (rozbalí seznam z novinky.json), vpravo Aktualizovat. -->
 <div id="updateBar" class="update-bar" hidden>
-  <span data-i18n="update.available">New version available</span>
-  <button type="button" id="updateBtn" class="update-btn" data-i18n="update.reload">Reload</button>
+  <div class="update-radek">
+    <button type="button" id="updateInfo" class="update-info" aria-expanded="false" aria-controls="updateNotes">
+      <span class="update-tecka" aria-hidden="true"></span>
+      <span class="update-text"><span id="updateTitle">New version available</span>
+        <span class="update-vice"><span data-i18n="update.whatsNew">What's new</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span></span>
+    </button>
+    <button type="button" id="updateBtn" class="update-btn" data-i18n="update.install">Update</button>
+  </div>
+  <div id="updateNotes" class="update-notes" hidden></div>
 </div>
 
 <header class="topbar">

@@ -9,7 +9,11 @@ export const en = {
   /* ---------- app shell ---------- */
   'app.description': 'Monitor your open Bybit positions',
   'update.available': 'New version available',
-  'update.reload': 'Reload',
+  'update.availableVersion': 'Version {version} is ready',
+  'update.whatsNew': "What's new",
+  'update.install': 'Update',
+  'update.new': 'New',
+  'update.fixes': 'Fixes and improvements',
 
   'action.hideAmounts': 'Hide amounts',
   'action.refresh': 'Refresh',

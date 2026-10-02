@@ -2900,11 +2900,34 @@ function refreshUpdateBar() {
   const waiting = registration?.waiting;
   const isUpdate = Boolean(waiting) && Boolean(navigator.serviceWorker.controller);
   ui.showUpdateBar(isUpdate);
+  if (isUpdate) nactiNovinky();
   // Až čekající worker přejde do jiného stavu, přehodnoť to znovu.
   waiting?.addEventListener('statechange', refreshUpdateBar);
 }
 
+/**
+ * „Co je nového" nové verze. Starý kód o novém nic neví, proto se čte
+ * novinky.json ze serveru — patří k právě nasazené (čekající) verzi.
+ * Jedinečný parametr obejde HTTP cache Pages i cache service workeru.
+ */
+let novinkyNacteny = false;
+async function nactiNovinky() {
+  if (novinkyNacteny) return;
+  novinkyNacteny = true;
+  try {
+    const res = await fetch(`novinky.json?t=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const poznamky = await res.json();
+    ui.renderUpdateNotes(poznamky, getLanguage() || 'en');
+  } catch {
+    novinkyNacteny = false; // příště zkusit znovu; lišta funguje i bez poznámek
+    ui.renderUpdateNotes(null, getLanguage() || 'en');
+  }
+}
+
 async function registerServiceWorker() {
+  // Rozbalení „Co je nového" nezávisí na tom, jestli registrace vyjde.
+  naUdalost('updateInfo', 'click', () => ui.toggleUpdateNotes());
   if (!('serviceWorker' in navigator)) return;
 
   try {

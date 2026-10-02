@@ -187,6 +187,23 @@ Stalo se ve verzi 0.1.2: `version.js` se stáhl čerstvý a UI hlásilo novou
 verzi, ale `style.css` se vzal starý, takže oprava v CSS se do telefonu
 nedostala, přestože na serveru byla.
 
+### Lišta nové verze a „Co je nového" (v0.27.0)
+
+Tlumená lišta nahoře: vlevo „Verze X je připravená · Co je nového ▾"
+(rozbalí seznam), vpravo tlačítko **Aktualizovat**. Obsah je
+v **`novinky.json`** v kořeni repa: `verze`, `novinky[]`, `opravy[]`,
+každá položka `{ en, cs }`. Drží se **jen poslední verze**, historie ne.
+
+- ⚠ **Při každém zvednutí `APP_VERSION` přepiš `novinky.json`.** Novinky
+  nahoře (to zajímavé, jednou větou), opravy jen obecně a stručně, ať
+  nebudí pozornost.
+- Lištu kreslí **stará** (běžící) verze, poznámky čte ze serveru
+  (`novinky.json?t=…`, `cache: 'no-store'`; SW ho necachuje) — patří tak
+  k čekající nové verzi. Nová podoba lišty se proto u uživatele poprvé
+  ukáže až při aktualizaci **z** v0.27.0 na další.
+- deploy.yml kopíruje `novinky.json` do Pages. Mock (`mock-bybit.js`)
+  ho pouští na server. Test: `tools/test-nova-verze.py`.
+
 ## Pozor na `hidden` v CSS
 
 Atribut `hidden` schovává prvek přes `display: none` v **prohlížečovém** stylu,

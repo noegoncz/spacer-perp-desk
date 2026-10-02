@@ -1,0 +1,15 @@
+{
+  "verze": "0.27.0",
+  "novinky": [
+    {
+      "en": "A clearer update notice: see what's new before you update.",
+      "cs": "Přehlednější upozornění na novou verzi: co je nového uvidíš ještě před aktualizací."
+    }
+  ],
+  "opravy": [
+    {
+      "en": "Small fixes and polish.",
+      "cs": "Drobné opravy a vylepšení."
+    }
+  ]
+}
