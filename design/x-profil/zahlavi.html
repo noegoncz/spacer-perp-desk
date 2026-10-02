@@ -1,0 +1,139 @@
+<!doctype html>
+<!--
+  Záhlaví profilu na X (1500 × 500) ve stylu webu perpyx.com.
+  Varianta se volí kotvou: zahlavi.html#a … #d, #avatar = profilová fotka 400 × 400.
+  Vykresluje design/x-profil/vyrob.py přes headless Chrome.
+
+  ⚠ X na mobilu ořízne horní a dolní okraj a vlevo dole přes záhlaví
+  kreslí profilovou fotku (~ 0–380 px na šířku, spodní ~ 40 %). Proto je
+  všechno podstatné ve střední výšce a vlevo dole nic není.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --bg: #0b0f14; --panel: #111823; --line: #223043; --text: #e6edf5; --muted: #8b9bb0;
+    --cyan: #22d3ee; --violet: #7c5cff; --green: #16c784;
+    --grad: linear-gradient(135deg, var(--cyan), var(--violet));
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { background: var(--bg); overflow: hidden; }
+  body { font-family: -apple-system, "Segoe UI", Roboto, system-ui, sans-serif; color: var(--text); -webkit-font-smoothing: antialiased; }
+  .platno { width: 1500px; height: 500px; position: relative; overflow: hidden; background: var(--bg); }
+  .platno[hidden] { display: none; }
+  .zare { position: absolute; border-radius: 50%; filter: blur(90px); opacity: 0.55; pointer-events: none; }
+  .mrizka {
+    position: absolute; inset: 0; opacity: 0.35;
+    background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 50px 50px;
+    mask-image: radial-gradient(ellipse 70% 80% at 60% 50%, #000 30%, transparent 75%);
+  }
+  .grad { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .znacka { display: flex; align-items: center; gap: 14px; font-weight: 800; letter-spacing: -0.5px; }
+  .znacka svg { flex: none; }
+  .telefon {
+    position: absolute; background: #05080c; border: 1px solid #263448;
+    border-radius: 10% / 4.7%; padding: 2.2%;
+    box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.95);
+  }
+  .telefon img { display: block; width: 100%; border-radius: 8% / 3.7%; }
+  .fold { position: absolute; background: #05080c; border: 1px solid #263448; border-radius: 4.5% / 3.6%; padding: 1.4%; box-shadow: 0 40px 90px -30px rgba(0,0,0,0.95); }
+  .fold img { display: block; width: 100%; border-radius: 3.4% / 2.7%; }
+  .cip { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--line); background: rgba(17, 24, 35, 0.8); color: #c3cfdd; font-size: 17px; font-weight: 600; }
+  .cip.ziva { border-color: rgba(22, 199, 132, 0.6); color: var(--text); }
+  .cip.ziva::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px var(--green); }
+  .cip.brzy { border-style: dashed; }
+  .popis { color: var(--muted); font-size: 15px; letter-spacing: 1.4px; text-transform: uppercase; font-weight: 700; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="g" x1="8" y1="8" x2="92" y2="92" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#7c5cff"/></linearGradient>
+    <symbol id="x" viewBox="0 0 100 100"><g transform="translate(50,50)"><g transform="rotate(-45)"><rect x="-32" y="-8" width="22" height="16" rx="4" fill="url(#g)"/><rect x="10" y="-8" width="22" height="16" rx="4" fill="url(#g)"/></g><g transform="rotate(45)"><rect x="-32" y="-8" width="64" height="16" rx="4" fill="url(#g)"/></g></g></symbol>
+  </defs>
+</svg>
+
+<!-- A: hlavička webu — titulek vpravo od fotky, tři telefony vpravo -->
+<section class="platno" id="a" hidden>
+  <div class="mrizka"></div>
+  <div class="zare" style="width:520px;height:420px;left:820px;top:40px;background:#7c5cff"></div>
+  <div class="zare" style="width:420px;height:360px;left:1080px;top:-120px;background:#22d3ee;opacity:.35"></div>
+  <div style="position:absolute;left:410px;top:118px;width:560px;display:grid;gap:18px">
+    <div class="znacka" style="font-size:34px"><svg class="logo" width="40" height="40"></svg>PerpyX</div>
+    <div style="font-size:58px;font-weight:800;line-height:1.04;letter-spacing:-1.5px">Your perpetuals,<br><span class="grad">at a glance.</span></div>
+    <div style="color:#b9c6d6;font-size:21px">Read-only position monitor for Android</div>
+  </div>
+  <div class="telefon" style="width:210px;left:1000px;top:90px;transform:rotate(-6deg);opacity:.9"><img src="../../web/public/img/trhy.webp" alt=""></div>
+  <div class="telefon" style="width:230px;left:1215px;top:40px;transform:rotate(5deg)"><img src="../../web/public/img/graf.webp" alt=""></div>
+  <div class="telefon" style="width:240px;left:1105px;top:60px;z-index:2"><img src="../../web/public/img/pozice.webp" alt=""></div>
+</section>
+
+<!-- B: Fold — široký graf jako hlavní obraz -->
+<section class="platno" id="b" hidden>
+  <div class="zare" style="width:600px;height:500px;left:760px;top:-60px;background:#22d3ee;opacity:.28"></div>
+  <div class="zare" style="width:520px;height:420px;left:1050px;top:160px;background:#7c5cff;opacity:.45"></div>
+  <div class="fold" style="width:600px;left:860px;top:40px;transform:rotate(-3deg)"><img src="../../web/public/img/graf-fold.webp" alt=""></div>
+  <div style="position:absolute;left:410px;top:120px;width:470px;display:grid;gap:16px">
+    <div class="znacka" style="font-size:30px"><svg class="logo" width="34" height="34"></svg>PerpyX</div>
+    <div style="font-size:50px;font-weight:800;line-height:1.05;letter-spacing:-1.2px">Made for one hand.<br><span class="grad">Built for the fold.</span></div>
+    <div style="color:#b9c6d6;font-size:19px">Live PnL · SL/TP at a glance · real funding</div>
+  </div>
+</section>
+
+<!-- C: čistá značka — velké tkané X, titulek a burzy -->
+<section class="platno" id="c" hidden>
+  <div class="mrizka" style="opacity:.25"></div>
+  <div class="zare" style="width:700px;height:500px;left:520px;top:0;background:#7c5cff;opacity:.35"></div>
+  <svg class="logo" style="position:absolute;left:990px;top:0;opacity:.95" width="500" height="500"></svg>
+  <div style="position:absolute;left:410px;top:112px;width:640px;display:grid;gap:20px">
+    <div style="font-size:66px;font-weight:800;line-height:1.02;letter-spacing:-1.8px">Your perpetuals,<br><span class="grad">at a glance.</span></div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <span class="cip ziva">Bybit</span><span class="cip brzy">Binance</span><span class="cip brzy">Hyperliquid</span><span class="cip brzy">OKX</span>
+    </div>
+    <div style="color:var(--muted);font-size:18px">Read-only · Android · beta soon at perpyx.com</div>
+  </div>
+</section>
+
+<!-- D: funkce — čtyři konkrétní věci, které TT neměl, a dva telefony -->
+<section class="platno" id="d" hidden>
+  <div class="mrizka" style="opacity:.25"></div>
+  <div class="zare" style="width:520px;height:420px;left:1000px;top:60px;background:#22d3ee;opacity:.3"></div>
+  <div class="zare" style="width:420px;height:380px;left:1180px;top:200px;background:#7c5cff;opacity:.45"></div>
+  <div style="position:absolute;left:410px;top:86px;width:620px;display:grid;gap:22px">
+    <div class="znacka" style="font-size:34px"><svg class="logo" width="40" height="40"></svg>PerpyX</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px 26px">
+      <div style="display:grid;gap:4px"><span class="popis">Funding</span><span style="font-size:22px;font-weight:700">Real cost per position</span></div>
+      <div style="display:grid;gap:4px"><span class="popis">SL / TP</span><span style="font-size:22px;font-weight:700">Every level at a glance</span></div>
+      <div style="display:grid;gap:4px"><span class="popis">Markets</span><span style="font-size:22px;font-weight:700">AI · Meme · L1 filters</span></div>
+      <div style="display:grid;gap:4px"><span class="popis">History</span><span style="font-size:22px;font-weight:700">Closed trades on the chart</span></div>
+    </div>
+    <div style="color:var(--muted);font-size:18px">Read-only position monitor · Android · foldable-ready</div>
+  </div>
+  <div class="telefon" style="width:220px;left:1080px;top:70px;transform:rotate(-5deg)"><img src="../../web/public/img/trhy.webp" alt=""></div>
+  <div class="telefon" style="width:235px;left:1225px;top:40px;transform:rotate(4deg);z-index:2"><img src="../../web/public/img/pozice.webp" alt=""></div>
+</section>
+
+<!-- Profilová fotka 400 × 400: tkané X na tmavé dlaždici (jako ikona aplikace) -->
+<section class="platno" id="avatar" hidden style="width:400px;height:400px;display:grid;place-items:center;background:#0d1420">
+  <svg class="logo" width="300" height="300"></svg>
+</section>
+
+<script>
+  // Tkané X jako celé SVG s vlastním přechodem pro každé místo — přes
+  // <use> a společný přechod se kreslilo jen tyrkysově.
+  document.querySelectorAll('svg.logo').forEach((svg, i) => {
+    svg.setAttribute('viewBox', '0 0 100 100');
+    svg.innerHTML = `<defs><linearGradient id="gx${i}" x1="8" y1="8" x2="92" y2="92" gradientUnits="userSpaceOnUse">`
+      + `<stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#7c5cff"/></linearGradient></defs>`
+      + `<g transform="translate(50,50)"><g transform="rotate(-45)">`
+      + `<rect x="-32" y="-8" width="22" height="16" rx="4" fill="url(#gx${i})"/>`
+      + `<rect x="10" y="-8" width="22" height="16" rx="4" fill="url(#gx${i})"/></g>`
+      + `<g transform="rotate(45)"><rect x="-32" y="-8" width="64" height="16" rx="4" fill="url(#gx${i})"/></g></g>`;
+  });
+  const id = (location.hash || '#a').slice(1);
+  document.getElementById(id).hidden = false;
+</script>
+</body>
+</html>
