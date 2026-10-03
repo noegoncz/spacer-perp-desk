@@ -1,13 +1,13 @@
 {
-  "verze": "0.30.1",
+  "verze": "0.30.2",
   "novinky": [
     {
-      "en": "Colours by direction everywhere: sells (take-profits, sell limits, sell fills) in red, buys in green. Fill markers on the chart are bigger and easier to spot.",
-      "cs": "Barvy podle směru všude: prodeje (take-profity, prodejní limitky, prodejní plnění) červeně, nákupy zeleně. Značky plnění v grafu jsou větší a lépe vidět."
+      "en": "Cleaner chart: the average entry is now a short mark by the price scale, and the average price is shown in the profit line.",
+      "cs": "Čistší graf: průměrný vstup je jen krátká značka u cenové osy a průměrná cena stojí v textu linky zisku."
     },
     {
-      "en": "Calmer chart: alerts are light grey (switched-off ones darker with a crossed-out bell) and the entry line is subtler.",
-      "cs": "Klidnější graf: alarmy světle šedé (vypnuté tmavší s přeškrtnutým zvonkem) a čára vstupu méně výrazná."
+      "en": "Fill markers: trades of your open position are big and bright, older closed trades are small and faded. Stop-losses show amount and value like take-profits.",
+      "cs": "Značky plnění: obchody otevřené pozice jsou velké a syté, starší zavřené obchody malé a tlumené. Stop-lossy ukazují množství a hodnotu jako take-profity."
     }
   ],
   "opravy": [

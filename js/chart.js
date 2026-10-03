@@ -181,7 +181,8 @@ function registrovatCaruPozice() {
       // nákupu). Ostatní úrovně přes celou šířku.
       const xBodu = Number.isFinite(coordinates[0].x)
         ? Math.min(bounding.width, Math.max(0, coordinates[0].x)) : null;
-      const x0 = d.odCasu && xBodu !== null ? xBodu : 0;
+      // `zub`: jen krátký úsek u cenové osy (průměrný vstup, v0.30.2).
+      const x0 = d.zub ? Math.max(0, bounding.width - 44) : (d.odCasu && xBodu !== null ? xBodu : 0);
       const x1 = d.doCasu && xBodu !== null ? xBodu : bounding.width;
       const styl = {
         color: d.color, size: 11, family: 'sans-serif', backgroundColor: 'transparent',
@@ -236,6 +237,13 @@ function registrovatCaruPozice() {
       return [cenovkaNaOse(chart, cena, coordinates[0].y, d.barvaOsy || d.color)];
     },
   });
+}
+
+/** '#rrggbb' → rgba s průhledností (pro tlumené značky). */
+function pruhledne(hex, alfa) {
+  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(hex));
+  if (!m) return hex;
+  return `rgba(${parseInt(m[1], 16)}, ${parseInt(m[2], 16)}, ${parseInt(m[3], 16)}, ${alfa})`;
 }
 
 /**
@@ -426,9 +434,10 @@ function registrovatZnackuPlneni() {
       const { x, y } = coordinates[0];
       const smer = d.vstup ? 1 : -1;
       // Výraznější (2026-10-03, uživatel je v grafu přehlížel): větší
-      // trojúhelník a silnější obrys barvou pozadí.
-      const sirka = d.maly ? 6 : 7;
-      const vyska = d.maly ? 12 : 14;
+      // trojúhelník a silnější obrys barvou pozadí. Plnění starších, už
+      // zavřených obchodů (`stary`) jsou malá a tlumená — patří minulosti.
+      const sirka = d.stary ? 3.5 : d.maly ? 7 : 7;
+      const vyska = d.stary ? 7 : d.maly ? 14 : 14;
       const zaklad = y + smer * vyska;
 
       const figury = [{
@@ -447,9 +456,9 @@ function registrovatZnackuPlneni() {
          */
         styles: {
           style: 'stroke_fill',
-          color: d.color,
+          color: d.stary ? pruhledne(d.color, 0.55) : d.color,
           borderColor: BARVY.pozadi,
-          borderSize: 2,
+          borderSize: d.stary ? 1 : 2,
         },
       }];
 
@@ -753,8 +762,9 @@ function registrovatLinkuPnl() {
       ctx.shadowColor = BARVY.pozadi;
       ctx.shadowBlur = 4;
       const znamenko = zisk >= 0 ? '+' : '−';
+      const desetin = chart.getSymbol()?.pricePrecision ?? 4;
       const popis = `${znamenko}${Math.abs(zisk).toFixed(2)} USDT | `
-        + `${znamenko}${Math.abs(procenta).toFixed(2)} %`;
+        + `${znamenko}${Math.abs(procenta).toFixed(2)} % · avg ${Number(vstup).toFixed(desetin)}`;
       // Třikrát přes sebe: jeden průchod dá závoj příliš slabý na to,
       // aby tmavé pozadí přebilo svíčku.
       for (let i = 0; i < 3; i += 1) ctx.fillText(popis, bounding.width - 6, y - 3);
@@ -1192,6 +1202,7 @@ export function createPriceChart(container, layer, handlers = {}) {
         extendData: {
           color: l.color, title: l.title, dash: l.dash, bezCenovky: l.bezCenovky,
           plna: l.plna, odCasu: l.odCasu, doCasu: l.doCasu, vlevo: l.vlevo, pod: l.pod, barvaOsy: l.barvaOsy,
+          zub: l.zub,
         },
       }),
     );
@@ -2033,7 +2044,7 @@ export function createPriceChart(container, layer, handlers = {}) {
           points: [{ timestamp: z.time, value: z.price }],
           lock: true,
           visible: vrstvy.obchod,
-          extendData: { vstup: z.vstup, color: z.color, title: z.title, maly: z.maly },
+          extendData: { vstup: z.vstup, color: z.color, title: z.title, maly: z.maly, stary: z.stary },
         });
       });
     },

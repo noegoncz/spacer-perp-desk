@@ -359,7 +359,7 @@ U SL, TP a likvidace nese barva informaci, tam se vyplatí.
 
 | čára | čárkování | barva |
 |---|---|---|
-| vstup (průměrný) | **plná, tlumená**, od levého okraje k poslednímu nákupu, popisek vlevo | fialová s 50 % průhledností |
+| vstup (průměrný) | jen **krátký zub u osy** (44 px) + štítek; průměr i v textu linky zisku („· avg …“) | fialová |
 | likvidace | `12-5` dlouhá | červená |
 | SL, celé i částečné | `14-6` dlouhá | oranžová |
 | TP, celé i částečné | `20-7` delší | **červená** `#f6465d` (prodej) |
@@ -376,7 +376,11 @@ drží barvu kresby).
 **Barva = směr příkazu (v0.30.1):** prodej červeně, nákup zeleně — TP
 longu červeně, TP shortu zeleně, v grafu i v panelu nad ním; trojúhelníky
 plnění nákup `#7dffb8`, prodej `#ff8a9a` (světlejší než svíčky), větší
-(6×12 px) s obrysem 2 px — uživatel je přehlížel. SL zůstává oranžový.
+(7×14 px) s obrysem 2 px — uživatel je přehlížel. SL zůstává oranžový
+(schválil), ale pod čarou má množství a hodnotu jako TP.
+**v0.30.2:** plnění za 7 dní — ta **otevřené pozice** velká a sytá (nákup
+`#4dff88`, prodej `#ff6b4a`), **starší zavřené obchody malé a tlumené**
+(`stary`); bez pozice jsou všechna malá. Šipka podle směru: nákup ▲, prodej ▼.
 | aktuální cena (PNLLINE) | **plná**, přes celou šířku | zelená `#3ee6a4` / červená podle zisku |
 
 Plné jsou jen dvě čáry, které ukazují **fakt** (kde jsem nakoupil, kde je
