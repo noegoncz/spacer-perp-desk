@@ -100,6 +100,22 @@ const BARVA_PLNENI = {
   prodej: '#ff6b4a',
 };
 
+/*
+ * Typ příkazu, jak ho píše burza (Bybit, `stopOrderType`). Schválně anglicky
+ * i v české mutaci — mají souhlasit s tím, co uživatel vidí v aplikaci burzy.
+ */
+const TYP_PRIKAZU = {
+  TakeProfit: 'Take Profit',
+  PartialTakeProfit: 'Partial TP',
+  StopLoss: 'Stop Loss',
+  PartialStopLoss: 'Partial SL',
+  TrailingStop: 'Trailing Stop',
+  Stop: 'Stop',
+  likvidace: 'Liquidation',
+  limitBuy: 'Limit Buy',
+  limitSell: 'Limit Sell',
+};
+
 const CARKOVANI = {
   likvidace: [12, 5],    // nejdelší mezery, nejvzdálenější a nejvážnější úroveň
   // SL a TP mají dlouhé čárkování, celé i částečné stejně — rozlišuje je
@@ -382,26 +398,59 @@ function ohlasZasah(klic, symbol, cena) {
  */
 const OKNO_PLNENI = 7 * 86400e3;
 
-async function znackyPlneni(position) {
+/*
+ * Plnění na páru, dotažená zpětně po 7denních oknech (víc Bybit v jednom
+ * dotazu nedá) až k začátku načtených svíček — uživatel chce vidět celou
+ * svou historickou aktivitu, ne jen poslední týden (2026-10-03). Drží se
+ * v paměti po dobu běhu, ať se při přepnutí timeframu nestahuje znovu.
+ */
+const plneniPary = new Map();   // symbol → { od, plneni: Map(klíč → plnění) }
+const MAX_OKEN_PLNENI = 60;     // pojistka ~ 14 měsíců na jedno dotažení
+
+async function dotahniPlneni(symbol, od) {
+  const ted = Date.now();
+  let z = plneniPary.get(symbol);
+  if (!z) {
+    z = { od: ted, plneni: new Map() };
+    plneniPary.set(symbol, z);
+  }
+  const pridej = (seznam) => seznam.forEach((f) => z.plneni.set(`${f.time}|${f.price}|${f.qty}|${f.buy}`, f));
+  // Poslední týden vždy znovu (přibývají plnění), starší jen co chybí.
+  pridej(await client.getExecutions(symbol, ted - OKNO_PLNENI, ted));
+  z.od = Math.min(z.od, ted - OKNO_PLNENI);
+  let okna = 0;
+  while (z.od > od && okna < MAX_OKEN_PLNENI) {
+    const konec = z.od;
+    const zacatek = Math.max(od, konec - OKNO_PLNENI);
+    pridej(await client.getExecutions(symbol, zacatek, konec));
+    z.od = zacatek;
+    okna += 1;
+  }
+  return [...z.plneni.values()].sort((a, b) => a.time - b.time);
+}
+
+let pozadavekPlneni = 0;
+
+async function znackyPlneni(position, od = Date.now() - OKNO_PLNENI) {
   if (!client.hasCredentials() || !chartSymbol) return;
   const symbol = chartSymbol;
+  const cislo = ++pozadavekPlneni;
   /*
-   * Plnění za posledních 7 dní. Ta, která patří **otevřené pozici** (od jejího
-   * otevření), jsou velká a sytá; starší (už zavřené obchody na páru) malá
-   * a tlumená — na první pohled je vidět, co je součást běžícího obchodu
-   * (přání uživatele 2026-10-03). Bez pozice jsou všechna malá.
+   * Plnění **otevřené pozice** (od jejího otevření) jsou velká a sytá,
+   * starší — už zavřené obchody na páru — malá a tlumená; na první pohled
+   * je vidět, co je součást běžícího obchodu. Bez pozice jsou všechna malá.
    *
    * ⚠ `openedAt` (createdTime) je čas, kdy na páru vznikla pozice **poprvé
    * v historii**, ne ta současná. Skutečné otevření dopočítá klient z plnění.
    */
   const otevreno = position ? await client.otevreniPozice(position).catch(() => null) : null;
-
   try {
-    const plneni = await client.getExecutions(symbol, Date.now() - OKNO_PLNENI, Date.now());
-    // Uživatel mezitím mohl přepnout na jiný pár.
-    if (chartSymbol !== symbol || prohlizenyObchod) return;
-    // Bez známého otevření (klíč bez práva, limit) se za současné berou všechna.
-    const soucasne = (f) => Boolean(position) && (otevreno === null || f.time >= otevreno);
+    const plneni = await dotahniPlneni(symbol, od);
+    // Uživatel mezitím mohl přepnout na jiný pár nebo spustit novější dotažení.
+    if (chartSymbol !== symbol || prohlizenyObchod || cislo !== pozadavekPlneni) return;
+    // Bez známého otevření (klíč bez práva, limit) se za současná berou plnění posledního týdne.
+    const hranice = otevreno ?? (Date.now() - OKNO_PLNENI);
+    const soucasne = (f) => Boolean(position) && f.time >= hranice;
     chart.setTradeMarks(plneni.map((f) => ({
       time: f.time,
       price: f.price,
@@ -415,6 +464,11 @@ async function znackyPlneni(position) {
   }
 }
 
+/** „Bybit · Unified" — burza a typ účtu nad grafem (víc burz přijde). */
+function popisBurzy() {
+  return `Bybit · ${client.typUctu === 'CONTRACT' ? 'Classic' : 'Unified'}`;
+}
+
 /** Linka aktuální ceny se ziskem; bez pozice se nekreslí. */
 function nastavLinkuPnl() {
   if (!chart) return;
@@ -423,6 +477,8 @@ function nastavLinkuPnl() {
       vstup: chartPosition.entry,
       size: chartPosition.size,
       long: chartPosition.side !== 'Sell',
+      mena: String(chartPosition.symbol || '').replace(/USDT$|USDC$/, ''),
+      skryt: hideAmounts,
     }
     : null);
 }
@@ -642,7 +698,7 @@ function wireEvents() {
     if (obchody.length) ui.renderHistory(obchody, hideAmounts, otevriProhlidku);
     if (chartSymbol) {
       ui.renderChartHeader(chartSymbol, chartPosition, hideAmounts, chartTrh);
-      ui.renderChartInfo(chartPosition, hideAmounts);
+      ui.renderChartInfo(chartPosition, hideAmounts, popisBurzy());
     }
   });
 
@@ -884,7 +940,7 @@ function postavVyberJazyka() {
       postavNabidky();
       if (chartSymbol) {
         ui.renderChartHeader(chartSymbol, chartPosition, hideAmounts, chartTrh);
-        ui.renderChartInfo(chartPosition, hideAmounts);
+        ui.renderChartInfo(chartPosition, hideAmounts, popisBurzy());
         applyChartLines(true);
       }
     }
@@ -1047,7 +1103,7 @@ async function otevriGraf(symbol, position, trh) {
   chartLineKey = '';
 
   ui.renderChartHeader(symbol, position, hideAmounts, trh);
-  ui.renderChartInfo(position, hideAmounts);
+  ui.renderChartInfo(position, hideAmounts, popisBurzy());
   ui.setActiveInterval(chartInterval);
   ui.showChartError('');
   ui.showChart(true);
@@ -1148,12 +1204,18 @@ let posledniZadostOInterval = 0;
 /** Loader knihovny — ta si data vyžádá sama, jakmile dostane symbol a období. */
 async function nactiSvice() {
   if (!chartSymbol) return [];
+  let bars;
   if (pripraveneSvice && pripraveneSvice.interval === chartInterval) {
-    const { bars } = pripraveneSvice;
+    bars = pripraveneSvice.bars;
     pripraveneSvice = null;
-    return bars;
+  } else {
+    bars = await nactiSviceProInterval(chartInterval);
   }
-  return nactiSviceProInterval(chartInterval);
+  // Značky plnění až k začátku načtených svíček (celá historie na páru).
+  if (!prohlizenyObchod && bars.length) {
+    setTimeout(() => znackyPlneni(chartPosition, bars[0].timestamp), 0);
+  }
+  return bars;
 }
 
 /**
@@ -2780,91 +2842,53 @@ function buildChartLines(position, orders) {
     lines.push({ price: position.entry, color: BARVA_CARY.vstupOsa, title: t('line.entry'),
                  plna: true, zub: true });
   }
-  if (position.liq) {
-    lines.push({ price: position.liq, color: BARVA_CARY.likvidace,
-                 title: t('line.liquidation'), dash: CARKOVANI.likvidace });
-  }
-  // Pod čarou SL, TP a limitek množství a hodnota: „3 SOL · 360.00 USDT".
+  /*
+   * Popisky (2026-10-03, přání uživatele — dřív zabíraly moc místa na šířku):
+   * nad čarou **typ příkazu jako na burze** a vedle množství v coinu, pod
+   * čarou hodnota v USDT. Žádná čísla TP1/TP2 ani podíly v procentech.
+   */
   const mena = String(position.symbol || '').replace(/USDT$|USDC$/, '');
-  const objem = (qty, price) => (hideAmounts
-    ? MASK_CARY
-    : `${formatSize(qty)} ${mena} · ${formatUsd(qty * price)} USDT`);
-  // Úrovně platné pro celou pozici mají holý popisek, bez čísla.
+  const nad = (typ, qty) => (qty > 0 ? `${typ} ${hideAmounts ? MASK_CARY : formatSize(qty)} ${mena}` : typ);
+  const pod = (qty, price) => (qty > 0
+    ? `${hideAmounts ? MASK_CARY : formatUsd(qty * price)} USDT` : '');
+
+  if (position.liq) {
+    lines.push({ price: position.liq, color: BARVA_CARY.likvidace, dash: CARKOVANI.likvidace,
+                 title: nad(TYP_PRIKAZU.likvidace, position.size), pod: pod(position.size, position.liq) });
+  }
   if (position.stopLoss) {
-    lines.push({ price: position.stopLoss, color: BARVA_CARY.sl,
-                 title: t('line.stopLoss'), dash: CARKOVANI.uroven,
-                 pod: objem(position.size, position.stopLoss) });
+    lines.push({ price: position.stopLoss, color: BARVA_CARY.sl, dash: CARKOVANI.uroven,
+                 title: nad(TYP_PRIKAZU.StopLoss, position.size), pod: pod(position.size, position.stopLoss) });
   }
   // Barva podle směru příkazu: TP longu prodává (červeně), TP shortu
   // nakupuje (zeleně). Totéž limitky — prodej červeně, nákup zeleně.
   const barvaTp = position.side === 'Sell' ? BARVA_CARY.nakup : BARVA_CARY.prodej;
   if (position.takeProfit) {
-    lines.push({ price: position.takeProfit, color: barvaTp,
-                 title: t('line.takeProfit'), dash: CARKOVANI.tp,
-                 pod: objem(position.size, position.takeProfit) });
+    lines.push({ price: position.takeProfit, color: barvaTp, dash: CARKOVANI.tp,
+                 title: nad(TYP_PRIKAZU.TakeProfit, position.size), pod: pod(position.size, position.takeProfit) });
   }
-
-  const tp = [];
-  const sl = [];
-  const limitky = [];
 
   for (const order of orders) {
     const price = order.trigger ?? order.price;
     if (!price) continue;
-
     // Bybit vrací SL a TP pozice i jako podmíněné příkazy. Bez tohohle by se
     // každá úroveň nakreslila dvakrát, jednou jako TP a jednou jako podmíněná.
-    if (samePrice(price, position.stopLoss) || samePrice(price, position.takeProfit)) {
-      continue;
-    }
+    if (samePrice(price, position.stopLoss) || samePrice(price, position.takeProfit)) continue;
 
     const strana = orderSide(order, position);
-    const cil = strana === 'tp' ? tp : strana === 'sl' ? sl : limitky;
-    cil.push({ price, qty: order.qty, side: order.side, buy: order.side === 'Buy' });
+    const buy = order.side === 'Buy';
+    const typ = TYP_PRIKAZU[order.stopOrderType] || (buy ? TYP_PRIKAZU.limitBuy : TYP_PRIKAZU.limitSell);
+    if (strana === 'tp') {
+      lines.push({ price, color: barvaTp, dash: CARKOVANI.tp, title: nad(typ, order.qty), pod: pod(order.qty, price) });
+    } else if (strana === 'sl') {
+      lines.push({ price, color: BARVA_CARY.sl, dash: CARKOVANI.castecna, title: nad(typ, order.qty), pod: pod(order.qty, price) });
+    } else {
+      // Limitky bez cenovky na ose — u přikupování jich bývá víc a osa by se
+      // zaplnila štítky. Nákup zeleně, prodej červeně.
+      lines.push({ price, color: buy ? BARVA_CARY.nakup : BARVA_CARY.prodej, bezCenovky: true,
+                   dash: CARKOVANI.limitka, title: nad(typ, order.qty), pod: pod(order.qty, price) });
+    }
   }
-
-  // Číslují se v pořadí, v jakém je cena zasáhne — nejblíž vstupu je první.
-  const podleVzdalenosti = (a, b) =>
-    Math.abs(a.price - position.entry) - Math.abs(b.price - position.entry);
-
-  // Částečná úroveň nese v popisku podíl z pozice, celá jen holé TP/SL.
-  const popisek = (zaklad, o) => {
-    const castecny = position.size > 0 && o.qty > 0 && o.qty < position.size;
-    if (!castecny) return zaklad;
-    return t('line.withShare', {
-      label: zaklad,
-      percent: Math.round((o.qty / position.size) * 100),
-    });
-  };
-
-  tp.sort(podleVzdalenosti).forEach((o, i) => {
-    lines.push({
-      price: o.price,
-      color: barvaTp,
-      title: popisek(t('line.takeProfitN', { n: i + 1 }), o),
-      dash: CARKOVANI.tp,
-      pod: o.qty > 0 ? objem(o.qty, o.price) : '',
-    });
-  });
-
-  sl.sort(podleVzdalenosti).forEach((o, i) => {
-    lines.push({
-      price: o.price,
-      color: BARVA_CARY.sl,
-      title: popisek(t('line.stopLossN', { n: i + 1 }), o),
-      dash: CARKOVANI.castecna,
-      pod: o.qty > 0 ? objem(o.qty, o.price) : '',
-    });
-  });
-
-  limitky.forEach((o) => {
-    // Limitky bez cenovky na ose — u přikupování jich bývá víc a osa by se
-    // zaplnila štítky. SL, TP a likvidace ji mají. Nákup zeleně, prodej
-    // červeně; pod čarou kolik a za kolik (2026-10-03).
-    lines.push({ price: o.price, color: o.buy ? BARVA_CARY.nakup : BARVA_CARY.prodej, bezCenovky: true,
-                 title: t('line.limit'), dash: CARKOVANI.limitka,
-                 pod: o.qty > 0 ? objem(o.qty, o.price) : '' });
-  });
 
   return lines;
 }
@@ -2905,7 +2929,7 @@ function syncOpenChart(list) {
   chartPosition = fresh;
   ui.renderChartHeader(chartSymbol, fresh, hideAmounts);
   // Panel se překresluje pokaždé — mark, PnL i ROE se mění s každým tickem.
-  ui.renderChartInfo(fresh, hideAmounts);
+  ui.renderChartInfo(fresh, hideAmounts, popisBurzy());
   applyChartLines();
   // Průměrný vstup se mění při přikoupení, linka ho musí sledovat.
   nastavLinkuPnl();

@@ -948,42 +948,47 @@ export function renderChartHeader(symbol, position, hide, trh = null) {
     dom.chartBadge.textContent += ` ${formatSize(position.leverage)}×`;
   }
   dom.chartPnl.className = `chart-pnl ${pnlClass(position.pnl)}`;
-  dom.chartPnl.textContent = hide ? MASK : `${formatSignedUsd(position.pnl)} USDT`;
+  // PnL a vedle ROE (2026-10-03: mřížka údajů nad grafem zmizela).
+  const ret = returnPercent(position);
+  dom.chartPnl.textContent = (hide ? MASK : `${formatSignedUsd(position.pnl)} USDT`)
+    + (ret ? `  ${formatPercent(ret.value)}` : '');
 }
 
 /**
  * Panel pod grafem. Nahradil legendu — ta jen opakovala hodnoty, které graf
  * sám píše na cenovou osu.
  */
-export function renderChartInfo(position, hide) {
-  // Bez pozice není co ukazovat; panel ustoupí grafu.
+export function renderChartInfo(position, hide, burza = '') {
+  /*
+   * Jeden tenký řádek místo mřížky 3 × 3 (2026-10-03, přání uživatele —
+   * zabírala čtvrtinu výšky a vstup, mark, SL a TP stejně stojí v grafu):
+   * burza a typ účtu, velikost v coinu a v USDT, margin, likvidace.
+   */
   dom.chartInfo.hidden = !position;
   if (!position) return;
 
-  const ret = returnPercent(position);
+  const mena = String(position.symbol || '').replace(/USDT$|USDC$/, '');
+  const margin = position.leverage && position.value ? position.value / position.leverage : null;
   const distance = liquidationDistance(position);
-  const margin =
-    position.leverage && position.value ? position.value / position.leverage : null;
-
-  const liqText = position.liq
-    ? formatPrice(position.liq) + (distance !== null ? ` (${formatPercent(distance)})` : '')
-    : '—';
-
-  const cells = [
-    [t('position.size'), hide ? MASK : formatSize(position.size), ''],
-    [t('position.value'), hide ? MASK : `${formatUsd(position.value)} USDT`, ''],
-    [t('position.margin'), hide ? MASK : margin ? `${formatUsd(margin)} USDT` : '—', ''],
-    [t('position.entry'), formatPrice(position.entry), ''],
-    [t('position.mark'), formatPrice(position.mark), ''],
-    [ret ? ret.label : t('position.change'), ret ? formatPercent(ret.value) : '—', pnlClass(position.pnl)],
-    [t('position.stopLossFull'), position.stopLoss ? formatPrice(position.stopLoss) : t('position.notSet'), position.stopLoss ? 'sl' : 'dim'],
-    // TP longu je prodej (červeně), TP shortu nákup (zeleně) — barva = směr příkazu.
-    [t('position.takeProfitFull'), position.takeProfit ? formatPrice(position.takeProfit) : t('position.notSet'),
-      position.takeProfit ? (position.side === 'Sell' ? 'nakup' : 'prodej') : 'dim'],
-    [t('position.liquidation'), liqText, distance !== null && Math.abs(distance) < 10 ? 'liq near' : 'liq'],
-  ];
-
-  dom.chartInfo.replaceChildren(...cells.map(([label, value, cls]) => cell(label, value, cls)));
+  const kus = (text, trida = '') => {
+    const s = document.createElement('span');
+    s.className = `ci ${trida}`.trim();
+    s.textContent = text;
+    return s;
+  };
+  const casti = [];
+  if (burza) {
+    const b = kus(burza, 'ci-burza');
+    const tecka = document.createElement('i');
+    tecka.className = 'ci-tecka';
+    b.prepend(tecka);
+    casti.push(b);
+  }
+  casti.push(kus(hide ? MASK : `${formatSize(position.size)} ${mena} · ${formatUsd(position.value)} USDT`));
+  if (margin) casti.push(kus(`${t('position.margin')} ${hide ? MASK : formatUsd(margin)}`));
+  casti.push(kus(`${t('position.liqShort')} ${position.liq ? formatPrice(position.liq) : '—'}`,
+    distance !== null && Math.abs(distance) < 10 ? 'ci-liq near' : 'ci-liq'));
+  dom.chartInfo.replaceChildren(...casti);
 }
 
 export function showChartError(message) {

@@ -1617,18 +1617,24 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
    hodnoty, které graf sám píše na cenovou osu. */
 /* Údaje o pozici jsou nad grafem — ruka je má blíž a graf pod nimi zůstane
    souvislý až k timeframům. */
+/* Jeden tenký řádek (od 2026-10-03, dřív mřížka 3 × 3). */
 .chart-info {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 5px 10px;
-  padding: 7px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 12px;
+  padding: 4px 12px 6px;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
+  font-size: 0.74rem;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
 }
-
-.chart-info .pos-cell { min-width: 0; }
-.chart-info .value { font-size: 0.82rem; }
-.chart-info .label { font-size: 0.62rem; }
+.chart-info .ci { white-space: nowrap; }
+.chart-info .ci-burza { display: inline-flex; align-items: center; gap: 6px; color: var(--text); font-weight: 600; }
+.chart-info .ci-tecka { width: 7px; height: 7px; border-radius: 50%; background: #f0b90b; }
+.chart-info .ci-liq { color: #f0b90b; }
+.chart-info .ci-liq.near { color: var(--short); font-weight: 600; }
 
 .chart-error {
   padding: 10px 12px;

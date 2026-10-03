@@ -450,15 +450,16 @@ function registrovatZnackuPlneni() {
           ],
         },
         /*
-         * ⚠ Obtažení barvou pozadí není ozdoba. Zelený trojúhelník nákupu
-         * padne často přesně na zelenou svíčku a bez obrysu splyne — na
-         * zkušebním snímku byla ze tří značek vidět jen dvě.
+         * Obrys barvou pozadí býval kvůli značkám v barvě svíček. Od v0.31.0
+         * mají značky vlastní sytější barvy a obrys uživatel nechtěl.
          */
         styles: {
           style: 'stroke_fill',
           color: d.stary ? pruhledne(d.color, 0.55) : d.color,
-          borderColor: BARVY.pozadi,
-          borderSize: d.stary ? 1 : 2,
+          // Bez obrysu (2026-10-03, přání uživatele) — barvy značek jsou
+          // jiné než svíčky, takže na nich nezmizí.
+          borderColor: d.color,
+          borderSize: 0,
         },
       }];
 
@@ -762,12 +763,17 @@ function registrovatLinkuPnl() {
       ctx.shadowColor = BARVY.pozadi;
       ctx.shadowBlur = 4;
       const znamenko = zisk >= 0 ? '+' : '−';
-      const desetin = chart.getSymbol()?.pricePrecision ?? 4;
-      const popis = `${znamenko}${Math.abs(zisk).toFixed(2)} USDT | `
-        + `${znamenko}${Math.abs(procenta).toFixed(2)} % · avg ${Number(vstup).toFixed(desetin)}`;
+      // Nad čarou zisk | procenta, pod čarou celá velikost pozice v coinech
+      // (2026-10-03, přání uživatele; průměr je u osy jako zub se štítkem).
+      const usdt = pnlInfo.skryt ? '••••' : `${znamenko}${Math.abs(zisk).toFixed(2)}`;
+      const popis = `${usdt} USDT | ${znamenko}${Math.abs(procenta).toFixed(2)} %`;
+      const velikost = pnlInfo.skryt ? '••••' : `${Number(size).toLocaleString('en-US', { maximumFractionDigits: 8 })} ${pnlInfo.mena || ''}`;
       // Třikrát přes sebe: jeden průchod dá závoj příliš slabý na to,
       // aby tmavé pozadí přebilo svíčku.
       for (let i = 0; i < 3; i += 1) ctx.fillText(popis, bounding.width - 6, y - 3);
+      ctx.font = '10px sans-serif';
+      ctx.textBaseline = 'top';
+      for (let i = 0; i < 3; i += 1) ctx.fillText(velikost.trim(), bounding.width - 6, y + 3);
       ctx.restore();
       return true;
     },

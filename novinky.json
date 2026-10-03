@@ -1,13 +1,17 @@
 {
-  "verze": "0.30.2",
+  "verze": "0.31.0",
   "novinky": [
     {
-      "en": "Cleaner chart: the average entry is now a short mark by the price scale, and the average price is shown in the profit line.",
-      "cs": "Čistší graf: průměrný vstup je jen krátká značka u cenové osy a průměrná cena stojí v textu linky zisku."
+      "en": "Compact chart header: exchange and account type, size, margin and liquidation in one thin line — more room for the chart.",
+      "cs": "Kompaktní hlavička grafu: burza a typ účtu, velikost, margin a likvidace v jednom tenkém řádku — víc místa pro graf."
     },
     {
-      "en": "Fill markers: trades of your open position are big and bright, older closed trades are small and faded. Stop-losses show amount and value like take-profits.",
-      "cs": "Značky plnění: obchody otevřené pozice jsou velké a syté, starší zavřené obchody malé a tlumené. Stop-lossy ukazují množství a hodnotu jako take-profity."
+      "en": "Order lines show the order type as on the exchange with the amount, and the USDT value below. The profit line shows your position size below it.",
+      "cs": "Čáry příkazů ukazují typ příkazu jako na burze s množstvím a pod čarou hodnotu v USDT. Linka zisku ukazuje pod sebou velikost pozice."
+    },
+    {
+      "en": "Your whole trading history on the pair: all past buys and sells are marked on the chart (small), the open position's fills stand out.",
+      "cs": "Celá historie obchodů na páru: všechny minulé nákupy a prodeje jsou v grafu vyznačené (malé), plnění otevřené pozice vyniknou."
     }
   ],
   "opravy": [

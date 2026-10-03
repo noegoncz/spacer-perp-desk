@@ -381,6 +381,20 @@ plnění nákup `#7dffb8`, prodej `#ff8a9a` (světlejší než svíčky), větš
 **v0.30.2:** plnění za 7 dní — ta **otevřené pozice** velká a sytá (nákup
 `#4dff88`, prodej `#ff6b4a`), **starší zavřené obchody malé a tlumené**
 (`stary`); bez pozice jsou všechna malá. Šipka podle směru: nákup ▲, prodej ▼.
+**v0.31.0 (2026-10-03):**
+- **Popisky čar:** nad čarou typ příkazu **jako na burze** (`TYP_PRIKAZU`:
+  Take Profit, Partial TP, Stop Loss, Partial SL, Trailing Stop, Limit Buy/
+  Sell, Liquidation — anglicky i v češtině) a množství v coinu, **pod čarou
+  hodnota v USDT**. Zrušené TP1/TP2 a podíly v % — zabíraly šířku a lezly
+  do grafu.
+- **Linka zisku:** nad čarou `PnL USDT | %`, pod čarou velikost pozice
+  v coinech (avg z linky zmizel, průměr je zub u osy).
+- **Značky plnění bez obrysu** a **celá historie na páru**: plnění se
+  dotahují zpětně po 7denních oknech až k začátku načtených svíček
+  (`dotahniPlneni`, cache `plneniPary` po dobu běhu, strop 60 oken).
+- **Hlavička grafu:** mřížka 3 × 3 nahrazena jedním řádkem: „● Bybit ·
+  Unified/Classic" (typ účtu z `client.typUctu`), velikost v coinu
+  a USDT, margin, likvidace; ROE vedle PnL v horním řádku.
 | aktuální cena (PNLLINE) | **plná**, přes celou šířku | zelená `#3ee6a4` / červená podle zisku |
 
 Plné jsou jen dvě čáry, které ukazují **fakt** (kde jsem nakoupil, kde je
