@@ -95,7 +95,9 @@ const BARVA_CARY = {
  */
 const BARVA_PLNENI = {
   nakup: '#7dffb8',
-  prodej: '#ff9f43',
+  // Prodej světle červeně (2026-10-03: prodeje červeně, nákupy zeleně) —
+  // pořád světlejší než červená svíčka, aby na ní nezmizel.
+  prodej: '#ff8a9a',
 };
 
 const CARKOVANI = {
@@ -2035,7 +2037,8 @@ async function otevriProhlidku(obchod) {
           time: p.time,
           price: p.price,
           vstup,
-          color: vstup ? BARVA_CARY.vstup : (obchod.pnl >= 0 ? BARVA_CARY.tp : BARVA_CARY.likvidace),
+          // Barva podle směru: nákup zeleně, prodej červeně (jako v živém grafu).
+          color: p.buy ? BARVA_PLNENI.nakup : BARVA_PLNENI.prodej,
           title: t(vstup ? 'trade.entry' : 'trade.exit'),
         };
       }),
@@ -2810,8 +2813,11 @@ function buildChartLines(position, orders) {
   const objem = (qty, price) => (hideAmounts
     ? MASK_CARY
     : `${formatSize(qty)} ${mena} · ${formatUsd(qty * price)} USDT`);
+  // Barva podle směru příkazu: TP longu prodává (červeně), TP shortu
+  // nakupuje (zeleně). Totéž limitky — prodej červeně, nákup zeleně.
+  const barvaTp = position.side === 'Sell' ? BARVA_CARY.nakup : BARVA_CARY.prodej;
   if (position.takeProfit) {
-    lines.push({ price: position.takeProfit, color: BARVA_CARY.tp,
+    lines.push({ price: position.takeProfit, color: barvaTp,
                  title: t('line.takeProfit'), dash: CARKOVANI.tp,
                  pod: objem(position.size, position.takeProfit) });
   }
@@ -2852,7 +2858,7 @@ function buildChartLines(position, orders) {
   tp.sort(podleVzdalenosti).forEach((o, i) => {
     lines.push({
       price: o.price,
-      color: BARVA_CARY.tp,
+      color: barvaTp,
       title: popisek(t('line.takeProfitN', { n: i + 1 }), o),
       dash: CARKOVANI.tp,
       pod: o.qty > 0 ? objem(o.qty, o.price) : '',

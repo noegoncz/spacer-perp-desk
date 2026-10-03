@@ -1044,6 +1044,9 @@ main {
 .pos-funding .dostavas { color: var(--long); }
 .value.sl { color: var(--warn); }
 .value.tp { color: var(--long); }
+/* Barva podle směru příkazu: prodej červeně, nákup zeleně (2026-10-03). */
+.value.prodej { color: var(--short); }
+.value.nakup { color: var(--long); }
 .value.dim { color: var(--text-dim); }
 
 /* ---------- prázdný stav ---------- */

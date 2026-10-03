@@ -373,6 +373,10 @@ k poslední svíčce, kde se nakoupilo** (`chartPosledniVstup` z plnění),
 popisek vlevo, čára tlumená — dřív od první nákupní svíčky doprava.
 Alarmy byly výrazně tyrkysové, teď světle šedé (alarm z kresby si dál
 drží barvu kresby).
+**Barva = směr příkazu (v0.30.1):** prodej červeně, nákup zeleně — TP
+longu červeně, TP shortu zeleně, v grafu i v panelu nad ním; trojúhelníky
+plnění nákup `#7dffb8`, prodej `#ff8a9a` (světlejší než svíčky), větší
+(6×12 px) s obrysem 2 px — uživatel je přehlížel. SL zůstává oranžový.
 | aktuální cena (PNLLINE) | **plná**, přes celou šířku | zelená `#3ee6a4` / červená podle zisku |
 
 Plné jsou jen dvě čáry, které ukazují **fakt** (kde jsem nakoupil, kde je

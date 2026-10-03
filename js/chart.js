@@ -425,8 +425,10 @@ function registrovatZnackuPlneni() {
       const d = overlay.extendData || {};
       const { x, y } = coordinates[0];
       const smer = d.vstup ? 1 : -1;
-      const sirka = d.maly ? 4 : 6;
-      const vyska = d.maly ? 9 : 13;
+      // Výraznější (2026-10-03, uživatel je v grafu přehlížel): větší
+      // trojúhelník a silnější obrys barvou pozadí.
+      const sirka = d.maly ? 6 : 7;
+      const vyska = d.maly ? 12 : 14;
       const zaklad = y + smer * vyska;
 
       const figury = [{
@@ -447,7 +449,7 @@ function registrovatZnackuPlneni() {
           style: 'stroke_fill',
           color: d.color,
           borderColor: BARVY.pozadi,
-          borderSize: 1,
+          borderSize: 2,
         },
       }];
 

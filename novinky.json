@@ -1,9 +1,9 @@
 {
-  "verze": "0.30.0",
+  "verze": "0.30.1",
   "novinky": [
     {
-      "en": "Clearer order lines on the chart: take-profits in red and buy limits in green, each showing the amount and its USDT value.",
-      "cs": "Přehlednější příkazy v grafu: take-profity červeně, nákupní limitky zeleně, u každé čáry množství a hodnota v USDT."
+      "en": "Colours by direction everywhere: sells (take-profits, sell limits, sell fills) in red, buys in green. Fill markers on the chart are bigger and easier to spot.",
+      "cs": "Barvy podle směru všude: prodeje (take-profity, prodejní limitky, prodejní plnění) červeně, nákupy zeleně. Značky plnění v grafu jsou větší a lépe vidět."
     },
     {
       "en": "Calmer chart: alerts are light grey (switched-off ones darker with a crossed-out bell) and the entry line is subtler.",

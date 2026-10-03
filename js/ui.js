@@ -977,7 +977,9 @@ export function renderChartInfo(position, hide) {
     [t('position.mark'), formatPrice(position.mark), ''],
     [ret ? ret.label : t('position.change'), ret ? formatPercent(ret.value) : '—', pnlClass(position.pnl)],
     [t('position.stopLossFull'), position.stopLoss ? formatPrice(position.stopLoss) : t('position.notSet'), position.stopLoss ? 'sl' : 'dim'],
-    [t('position.takeProfitFull'), position.takeProfit ? formatPrice(position.takeProfit) : t('position.notSet'), position.takeProfit ? 'tp' : 'dim'],
+    // TP longu je prodej (červeně), TP shortu nákup (zeleně) — barva = směr příkazu.
+    [t('position.takeProfitFull'), position.takeProfit ? formatPrice(position.takeProfit) : t('position.notSet'),
+      position.takeProfit ? (position.side === 'Sell' ? 'nakup' : 'prodej') : 'dim'],
     [t('position.liquidation'), liqText, distance !== null && Math.abs(distance) < 10 ? 'liq near' : 'liq'],
   ];
 
