@@ -3140,7 +3140,8 @@ async function nabidniObnovuPoPrihlaseni(me) {
     lists: s.seznamy, drawings: s.kresby, alarms: s.alarmy,
   };
   const mistni = ucet.maMistniData();
-  const obnovit = confirm(t(mistni ? 'account.offerRestoreReplace' : 'account.offerRestore', parametry));
+  // Prázdný telefon (po odhlášení se vše maže) dostane data účtu bez ptaní.
+  const obnovit = !mistni || confirm(t('account.offerRestoreReplace', parametry));
   if (obnovit) {
     zaloha.obnov(z);
     zpravaUctu(t('backup.restored'));
@@ -3204,11 +3205,28 @@ async function obnovZUctu() {
   }
 }
 
+/**
+ * Odhlášení smaže z telefonu všechna data (rozhodnutí uživatele
+ * 2026-10-03): jinak by je viděl a do svého cloudu zazálohoval další
+ * přihlášený účet. Nejdřív se ale pošlou poslední změny do zálohy —
+ * když to nejde, uživatel rozhodne, jestli se odhlásit i tak.
+ */
 async function odhlasUcet() {
   if (!confirm(t('account.confirmSignOut'))) return;
+  zpravaUctu(t('account.signingOut'));
+  try {
+    await ucet.zalohujTed();
+  } catch (e) {
+    if (!confirm(t('account.signOutBackupFailed', { why: duvod(e) }))) {
+      zpravaUctu('');
+      return;
+    }
+  }
   await alarmyServer.odhlasZarizeni();
   await ucet.odhlas();
-  zpravaUctu('');
+  client.stop();
+  zaloha.vymazMistniData();
+  location.reload();
 }
 
 async function smazUcet() {
@@ -3216,7 +3234,11 @@ async function smazUcet() {
   try {
     await alarmyServer.odhlasZarizeni();
     await ucet.smazUcet();
+    // Účet i jeho zálohy jsou pryč — data v telefonu už nepatří nikomu.
+    client.stop();
+    zaloha.vymazMistniData();
     zpravaUctu(t('account.deleted'));
+    setTimeout(() => location.reload(), 800);
   } catch (e) {
     zpravaUctu(t('account.failed', { why: duvod(e) }), false);
   }

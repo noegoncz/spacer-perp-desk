@@ -1,15 +1,15 @@
 {
-  "verze": "0.28.1",
+  "verze": "0.29.0",
   "novinky": [
     {
-      "en": "Invite friends: share your personal link from the Invite button on your positions. Every friend who actively uses PerpyX earns you bonus Pro time once PerpyX goes paid.",
-      "cs": "Pozvi přátele: svůj osobní odkaz pošleš tlačítkem Pozvat na přehledu pozic. Za každého přítele, který PerpyX aktivně používá, získáš bonusový čas Pro, až bude PerpyX placený."
+      "en": "Signing out now removes all PerpyX data from this phone. Everything you created is saved in your account and comes back when you sign in; only your exchange API key needs to be entered again.",
+      "cs": "Odhlášení teď z telefonu smaže všechna data PerpyX. Vše, co jsi vytvořil, je uložené v účtu a po přihlášení se vrátí; znovu zadáš jen API klíč k burze."
     }
   ],
   "opravy": [
     {
-      "en": "Shared invites no longer contain the link twice.",
-      "cs": "Sdílená pozvánka už neobsahuje odkaz dvakrát."
+      "en": "Small fixes and polish.",
+      "cs": "Drobné opravy a vylepšení."
     }
   ]
 }

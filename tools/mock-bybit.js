@@ -11,13 +11,17 @@ window.__chyby = [];
 window.addEventListener('error', (e) => window.__chyby.push('error: ' + e.message));
 window.addEventListener('unhandledrejection', (e) => window.__chyby.push(
   'rejection: ' + ((e.reason && e.reason.message) || e.reason)));
-if (!sessionStorage.getItem('__bezUctu')) {
+// Podstrčí se jen jednou za test (příznak mimo perpdesk.*): odhlášení
+// v aplikaci data maže a přenačte stránku — mock je nesmí vrátit zpátky.
+if (!sessionStorage.getItem('__bezUctu') && !sessionStorage.getItem('__mockUcet')) {
   localStorage.setItem('perpdesk.session', JSON.stringify({ token: '0'.repeat(64), email: 'test@example.com' }));
+  sessionStorage.setItem('__mockUcet', '1');
 }
 // '__bezKlice' — telefon bez připojené burzy (test úvodní obrazovky).
-if (!sessionStorage.getItem('__bezKlice')) {
+if (!sessionStorage.getItem('__bezKlice') && !sessionStorage.getItem('__mockKlic')) {
   localStorage.setItem('perpdesk.apiKey','FAKEKEY1234567890ab');
   localStorage.setItem('perpdesk.apiSecret','FAKESECRET1234567890abcdef');
+  sessionStorage.setItem('__mockKlic', '1');
 }
 window.WebSocket = function(){this.readyState=0;this.send=()=>{};this.close=()=>{};};
 window.WebSocket.OPEN = 1;

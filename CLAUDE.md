@@ -1216,6 +1216,16 @@ uživatelů, měření používání a později předplatné i push alarmy. Zat�
   verze znovu neukládá. Verze se drží **30 dní**, poslední vždycky.
 - **Po přihlášení na novém telefonu** se nabídne obnova; když má telefon
   vlastní data, volí se, která platí (OK = cloud, Zrušit = telefon).
+  **Prázdný telefon** (po odhlášení) dostane data z cloudu bez ptaní.
+- ⚠ **Odhlášení i smazání účtu smaže z telefonu všechna data PerpyX**
+  (v0.29.0, rozhodnutí uživatele 2026-10-03; `zaloha.vymazMistniData()`):
+  API klíč, kresby, seznamy, alarmy, nastavení, zámek. Zůstane jen jazyk,
+  kategorie coinů a přečtené upozornění. Dřív data v telefonu zůstávala
+  a další přihlášený účet je viděl i zálohoval do svého cloudu. Před
+  smazáním se pošle poslední záloha; když selže, uživatel rozhodne.
+  API klíč se po přihlášení zadává znovu (do cloudu nejde).
+  ⚠ `mock-bybit.js` proto podstrčí účet a klíč jen jednou za test
+  (`sessionStorage.__mockUcet/__mockKlic`). Test: `tools/test-odhlaseni.py`.
 - **Denní aktivita** (jeden řádek na účet a den + verze aplikace) —
   z toho denně / měsíčně aktivní uživatelé a retence. Nic víc.
 - ⚠ **API klíče na server nikdy** — záloha je stejná jako soubor zálohy

@@ -39,6 +39,35 @@ function klice() {
   return vse.sort();
 }
 
+/**
+ * Co po odhlášení v telefonu zůstává: jen věci zařízení, ne účtu —
+ * jazyk (ať úvodní obrazovka mluví stejně), stažené kategorie coinů
+ * (veřejná data) a přečtené upozornění.
+ */
+const PO_ODHLASENI_ZUSTAVA = new Set([
+  'perpdesk.language',
+  'perpdesk.coinCategories',
+  'perpdesk.disclaimerSeen',
+]);
+
+/**
+ * Smaže z telefonu všechna data PerpyX kromě věcí zařízení: API klíč,
+ * kresby, seznamy, alarmy, nastavení, zámek, přihlášení. Volá se po
+ * odhlášení a smazání účtu (rozhodnutí uživatele 2026-10-03): data patří
+ * účtu, ne telefonu — po přihlášení se vrátí z cloudové zálohy, API klíč
+ * se zadá znovu (do cloudu schválně nejde).
+ */
+export function vymazMistniData() {
+  try {
+    const smazat = [];
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(PREDPONA) && !PO_ODHLASENI_ZUSTAVA.has(k)) smazat.push(k);
+    }
+    smazat.forEach((k) => localStorage.removeItem(k));
+  } catch { /* úložiště zakázané */ }
+}
+
 export function sestavZalohu() {
   const data = {};
   for (const k of klice()) data[k] = localStorage.getItem(k);
