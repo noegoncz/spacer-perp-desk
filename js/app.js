@@ -10,7 +10,10 @@ import {
   popisekPole, popisekSekce, omez,
 } from './indikatory.js';
 import { t, setLanguage, applyStaticTexts, JAZYKY, getLocale, getLanguage } from './i18n.js';
-import { priceDecimals, formatPrice, formatPercent, liquidationDistance } from './format.js';
+import { priceDecimals, formatPrice, formatPercent, formatSize, formatUsd, liquidationDistance } from './format.js';
+
+/** Skryté částky (oko) i v popiscích čar v grafu. */
+const MASK_CARY = '••••';
 import * as alarmy from './alarmy.js';
 import * as sestavy from './sestavy.js';
 import * as zaloha from './zaloha.js';
@@ -72,10 +75,15 @@ const sltpPosledni = new Map();
  * aby nepřebíjely svíčky.
  */
 const BARVA_CARY = {
-  vstup: '#a78bfa',
+  // Vstup tlumeně (2026-10-03, přání uživatele: „ať není moc vidět").
+  vstup: 'rgba(167, 139, 250, 0.5)',
+  vstupOsa: '#a78bfa',
   likvidace: '#ea3943',
   sl: '#f0b90b',
-  tp: '#16c784',
+  // TP prodává → červená (2026-10-03); nákupní limitka → zelená.
+  tp: '#f6465d',
+  nakup: '#2ebd85',
+  prodej: '#f6465d',
   prikaz: '#8b9bb0',
 };
 
@@ -96,7 +104,9 @@ const CARKOVANI = {
   // barva a popisek (TP vs. TP1 (29 %)), ne délka čárky.
   uroven: [14, 6],
   castecna: [14, 6],
-  prikaz: [1, 4],        // limitky, nejjemnější
+  tp: [20, 7],           // TP celé i částečné: delší čárky (2026-10-03)
+  limitka: [8, 5],       // nákupní / prodejní limitky
+  prikaz: [1, 4],        // příkazy bez pozice, nejjemnější
 };
 
 let chart = null;          // instance se drží i po zavření, ať se otevírá svižně
@@ -387,6 +397,13 @@ async function znackyPlneni(position) {
     if (chartSymbol !== symbol || prohlizenyObchod) return;
 
     const long = position.side !== 'Sell';
+    // Čára vstupu vede od levého okraje k poslední svíčce, kde se nakoupilo.
+    const vstupy = plneni.filter((f) => f.buy === long).map((f) => f.time);
+    const posledni = vstupy.length ? Math.max(...vstupy) : null;
+    if (posledni !== chartPosledniVstup) {
+      chartPosledniVstup = posledni;
+      applyChartLines(true);
+    }
     chart.setTradeMarks(plneni.map((f) => {
       // U longu je vstup nákup, u shortu prodej.
       const vstup = f.buy === long;
@@ -1030,6 +1047,7 @@ async function otevriGraf(symbol, position, trh) {
   chartSymbol = symbol;
   chartPosition = position;
   chartOtevreno = null;
+  chartPosledniVstup = null;
   chartTrh = trh;
   chartOrders = [];
   chartLineKey = '';
@@ -1565,6 +1583,8 @@ let obchody = [];
 let prohlizenyObchod = null;  // když se graf otevřel z historie
 /** Kdy se otevřela pozice v grafu — odsud začíná čára vstupu. */
 let chartOtevreno = null;
+/** Čas posledního plnění, které pozici otevřelo či přikoupilo (konec čáry vstupu). */
+let chartPosledniVstup = null;
 
 let trhy = [];
 let hledani = '';
@@ -2767,9 +2787,14 @@ function buildChartLines(position, orders) {
    * zůstaly, ale samotné trojúhelníky neřeknou, kde je průměr, se kterým
    * se počítá zisk.)
    */
+  /*
+   * Od 2026-10-03 obráceně (přání uživatele): od **levého okraje** k poslední
+   * svíčce, kde se nakoupilo (`chartPosledniVstup`), popisek vlevo a čára
+   * tlumená. Dokud plnění nedorazí, vede přes celou šířku.
+   */
   if (position.entry) {
-    lines.push({ price: position.entry, color: BARVA_CARY.vstup,
-                 title: t('line.entry'), plna: true, odCasu: chartOtevreno });
+    lines.push({ price: position.entry, color: BARVA_CARY.vstup, barvaOsy: BARVA_CARY.vstupOsa,
+                 title: t('line.entry'), plna: true, doCasu: chartPosledniVstup, vlevo: true });
   }
   if (position.liq) {
     lines.push({ price: position.liq, color: BARVA_CARY.likvidace,
@@ -2780,9 +2805,15 @@ function buildChartLines(position, orders) {
     lines.push({ price: position.stopLoss, color: BARVA_CARY.sl,
                  title: t('line.stopLoss'), dash: CARKOVANI.uroven });
   }
+  // Pod čarou množství a hodnota: „3 SOL · 360.00 USDT".
+  const mena = String(position.symbol || '').replace(/USDT$|USDC$/, '');
+  const objem = (qty, price) => (hideAmounts
+    ? MASK_CARY
+    : `${formatSize(qty)} ${mena} · ${formatUsd(qty * price)} USDT`);
   if (position.takeProfit) {
     lines.push({ price: position.takeProfit, color: BARVA_CARY.tp,
-                 title: t('line.takeProfit'), dash: CARKOVANI.uroven });
+                 title: t('line.takeProfit'), dash: CARKOVANI.tp,
+                 pod: objem(position.size, position.takeProfit) });
   }
 
   const tp = [];
@@ -2801,7 +2832,7 @@ function buildChartLines(position, orders) {
 
     const strana = orderSide(order, position);
     const cil = strana === 'tp' ? tp : strana === 'sl' ? sl : limitky;
-    cil.push({ price, qty: order.qty, side: order.side });
+    cil.push({ price, qty: order.qty, side: order.side, buy: order.side === 'Buy' });
   }
 
   // Číslují se v pořadí, v jakém je cena zasáhne — nejblíž vstupu je první.
@@ -2823,7 +2854,8 @@ function buildChartLines(position, orders) {
       price: o.price,
       color: BARVA_CARY.tp,
       title: popisek(t('line.takeProfitN', { n: i + 1 }), o),
-      dash: CARKOVANI.castecna,
+      dash: CARKOVANI.tp,
+      pod: o.qty > 0 ? objem(o.qty, o.price) : '',
     });
   });
 
@@ -2838,9 +2870,11 @@ function buildChartLines(position, orders) {
 
   limitky.forEach((o) => {
     // Limitky bez cenovky na ose — u přikupování jich bývá víc a osa by se
-    // zaplnila štítky. SL, TP a likvidace ji mají.
-    lines.push({ price: o.price, color: BARVA_CARY.prikaz, bezCenovky: true,
-                 title: t('line.limit'), dash: CARKOVANI.prikaz });
+    // zaplnila štítky. SL, TP a likvidace ji mají. Nákup zeleně, prodej
+    // červeně; pod čarou kolik a za kolik (2026-10-03).
+    lines.push({ price: o.price, color: o.buy ? BARVA_CARY.nakup : BARVA_CARY.prodej, bezCenovky: true,
+                 title: t('line.limit'), dash: CARKOVANI.limitka,
+                 pod: o.qty > 0 ? objem(o.qty, o.price) : '' });
   });
 
   return lines;
@@ -2856,7 +2890,7 @@ function applyChartLines(force = false) {
   const lines = buildChartLines(chartPosition, chartOrders);
   // Čas začátku je v klíči taky: čára vstupu se po dopočtu otevření musí
   // překreslit, i když se cena nezměnila.
-  const key = lines.map((l) => `${l.title}@${l.price}@${l.odCasu || ''}`).join('|');
+  const key = lines.map((l) => `${l.title}@${l.price}@${l.odCasu || ''}@${l.doCasu || ''}@${l.pod || ''}`).join('|');
   if (!force && key === chartLineKey) return;
 
   chartLineKey = key;

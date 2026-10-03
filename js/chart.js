@@ -151,8 +151,10 @@ const SKUPINA_MERENI = 'mereni';
  * pozice: tyrkysová (jinou barvu nic jiného nemá), čerchovaná a s ikonou
  * budíku u popisku. Vypnutý alarm zešedne, ale zůstane vidět.
  */
-export const BARVA_ALARMU = '#22d3ee';
-const BARVA_ALARMU_VYPNUTY = '#5a6a7d';
+// Alarmy v grafu (2026-10-03, přání uživatele): zapnutý světle šedá lehká
+// linka, vypnutý tmavě šedá s přeškrtnutým zvonkem. Dřív výrazná tyrkysová.
+export const BARVA_ALARMU = 'rgba(205, 214, 226, 0.75)';
+const BARVA_ALARMU_VYPNUTY = '#465263';
 const CARKOVANI_ALARMU = [6, 3, 2, 3];
 
 let zaregistrovano = false;
@@ -174,16 +176,30 @@ function registrovatCaruPozice() {
     createPointFigures: ({ overlay, coordinates, bounding }) => {
       const d = overlay.extendData || {};
       const y = coordinates[0].y;
-      // Čára vstupu začíná u svíčky, kde se poprvé nakoupilo (bod má čas);
-      // ostatní úrovně vedou přes celou šířku. Když je začátek mimo obraz
-      // vlevo, vede čára od okraje.
-      const x0 = d.odCasu && Number.isFinite(coordinates[0].x)
-        ? Math.min(bounding.width, Math.max(0, coordinates[0].x))
-        : 0;
+      // Čára s časem (bod má čas): `odCasu` začíná u té svíčky a vede doprava,
+      // `doCasu` vede od levého okraje k té svíčce (vstup: k poslednímu
+      // nákupu). Ostatní úrovně přes celou šířku.
+      const xBodu = Number.isFinite(coordinates[0].x)
+        ? Math.min(bounding.width, Math.max(0, coordinates[0].x)) : null;
+      const x0 = d.odCasu && xBodu !== null ? xBodu : 0;
+      const x1 = d.doCasu && xBodu !== null ? xBodu : bounding.width;
+      const styl = {
+        color: d.color, size: 11, family: 'sans-serif', backgroundColor: 'transparent',
+        borderSize: 0, paddingLeft: 0, paddingRight: 0, paddingTop: 0, paddingBottom: 0,
+      };
+      const xTextu = d.vlevo ? 5 : bounding.width - 5;
+      const zarovnani = d.vlevo ? 'left' : 'right';
+      // Pod čarou množství a hodnota příkazu („3 SOL · 360.00 USDT").
+      const podCarou = d.pod ? [{
+        type: 'text',
+        attrs: { x: xTextu, y: y + 3, text: d.pod, align: zarovnani, baseline: 'top' },
+        styles: { ...styl, size: 10 },
+      }] : [];
       return [
+        ...podCarou,
         {
           type: 'line',
-          attrs: { coordinates: [{ x: x0, y }, { x: bounding.width, y }] },
+          attrs: { coordinates: [{ x: x0, y }, { x: x1, y }] },
           // Všechny čáry stejně tenké. Rozlišuje je barva a typ čárkování,
           // ne tloušťka — jinak graf působí jako změť různých linek.
           // Vstup je jediná plná: je to průměr, ne příkaz, který čeká.
@@ -200,24 +216,8 @@ function registrovatCaruPozice() {
           // Popisek u pravého okraje, vedle cenové osy. Bez podkladu —
           // barevný blok za textem ujídá pohled na svíčky.
           type: 'text',
-          attrs: {
-            x: bounding.width - 5,
-            y: y - 3,
-            text: d.title || '',
-            align: 'right',
-            baseline: 'bottom',
-          },
-          styles: {
-            color: d.color,
-            size: 11,
-            family: 'sans-serif',
-            backgroundColor: 'transparent',
-            borderSize: 0,
-            paddingLeft: 0,
-            paddingRight: 0,
-            paddingTop: 0,
-            paddingBottom: 0,
-          },
+          attrs: { x: xTextu, y: y - 3, text: d.title || '', align: zarovnani, baseline: 'bottom' },
+          styles: styl,
         },
       ];
     },
@@ -233,13 +233,16 @@ function registrovatCaruPozice() {
       const d = overlay.extendData || {};
       const cena = overlay.points?.[0]?.value;
       if (d.bezCenovky || !Number.isFinite(cena)) return [];
-      return [cenovkaNaOse(chart, cena, coordinates[0].y, d.color)];
+      return [cenovkaNaOse(chart, cena, coordinates[0].y, d.barvaOsy || d.color)];
     },
   });
 }
 
-/** Ikonka budíku z figur knihovny — ciferník, ručičky a dvě ouška. */
-function budik(stred, barva) {
+/**
+ * Ikonka budíku z figur knihovny — ciferník, ručičky a dvě ouška.
+ * `preskrtnuty` = vypnutý alarm: přes budík šikmá čára.
+ */
+function budik(stred, barva, preskrtnuty = false) {
   const { x, y } = stred;
   const cara = (souradnice) => ({
     type: 'line',
@@ -256,18 +259,19 @@ function budik(stred, barva) {
     cara([{ x, y }, { x: x + 2.2, y }]),
     cara([{ x: x - 3.4, y: y - 3.4 }, { x: x - 5.4, y: y - 5.4 }]),
     cara([{ x: x + 3.4, y: y - 3.4 }, { x: x + 5.4, y: y - 5.4 }]),
+    ...(preskrtnuty ? [cara([{ x: x - 6.5, y: y + 6.5 }, { x: x + 6.5, y: y - 6.5 }])] : []),
   ];
 }
 
 /** Popisek alarmu u pravého okraje; budík stojí vlevo od něj. */
-function popisAlarmu(text, x, y, barva) {
+function popisAlarmu(text, x, y, barva, vypnuty = false) {
   /*
    * Šířku vykresleného textu knihovna neprozradí, takže se odhaduje —
    * budík stojí kousek vlevo od popisku a pár pixelů sem tam nevadí.
    */
   const stred = { x: x - 8 - text.length * 6.2, y: y - 7 };
   return [
-    ...budik(stred, barva),
+    ...budik(stred, barva, vypnuty),
     {
       type: 'text',
       attrs: { x, y: y - 3, text, align: 'right', baseline: 'bottom' },
@@ -293,8 +297,9 @@ const caraAlarmu = (souradnice, barva) => ({
 });
 
 /**
- * Vypnutý alarm zešedne. Zapnutý si drží barvu, se kterou vznikl — alarm
- * z kresby zůstává v barvě té kresby, ostatní jsou tyrkysové.
+ * Vypnutý alarm ztmavne (a zvonek se přeškrtne). Zapnutý si drží barvu, se
+ * kterou vznikl — alarm z kresby zůstává v barvě té kresby, ostatní jsou
+ * světle šedé.
  */
 const barvaAlarmu = (d) =>
   (d.aktivni === false ? BARVA_ALARMU_VYPNUTY : (d.color || BARVA_ALARMU));
@@ -321,7 +326,7 @@ function registrovatCaryAlarmu() {
       const barva = barvaAlarmu(d);
       return [
         caraAlarmu([{ x: 0, y }, { x: bounding.width, y }], barva),
-        ...popisAlarmu(d.title || '', bounding.width - 5, y, barva),
+        ...popisAlarmu(d.title || '', bounding.width - 5, y, barva, d.aktivni === false),
       ];
     },
   });
@@ -343,7 +348,7 @@ function registrovatCaryAlarmu() {
       const konec = a.x >= b.x ? a : b;
       return [
         caraAlarmu([a, b], barva),
-        ...budik({ x: konec.x + 9, y: konec.y }, barva),
+        ...budik({ x: konec.x + 9, y: konec.y }, barva, d.aktivni === false),
         {
           type: 'text',
           attrs: {
@@ -379,7 +384,7 @@ function registrovatCaryAlarmu() {
       const barva = barvaAlarmu(d);
       return [
         caraAlarmu([{ x, y: 0 }, { x, y: bounding.height }], barva),
-        ...budik({ x, y: 12 }, barva),
+        ...budik({ x, y: 12 }, barva, d.aktivni === false),
         {
           type: 'text',
           attrs: { x: x + 8, y: 12, text: d.title || '', align: 'left', baseline: 'middle' },
@@ -1179,12 +1184,12 @@ export function createPriceChart(container, layer, handlers = {}) {
         groupId: SKUPINA_POZICE,
         // Čára s časem začátku (vstup) má bod i s časem, aby šla převést
         // na pixel svíčky; ostatní jen cenu.
-        points: [l.odCasu ? { timestamp: l.odCasu, value: l.price } : { value: l.price }],
+        points: [(l.odCasu || l.doCasu) ? { timestamp: l.odCasu || l.doCasu, value: l.price } : { value: l.price }],
         lock: true,
         visible: vrstvy.obchod,
         extendData: {
           color: l.color, title: l.title, dash: l.dash, bezCenovky: l.bezCenovky,
-          plna: l.plna, odCasu: l.odCasu,
+          plna: l.plna, odCasu: l.odCasu, doCasu: l.doCasu, vlevo: l.vlevo, pod: l.pod, barvaOsy: l.barvaOsy,
         },
       }),
     );

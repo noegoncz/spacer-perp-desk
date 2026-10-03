@@ -359,10 +359,20 @@ U SL, TP a likvidace nese barva informaci, tam se vyplatí.
 
 | čára | čárkování | barva |
 |---|---|---|
-| vstup (průměrný) | **plná**, od první nákupní svíčky | fialová `#a78bfa` |
+| vstup (průměrný) | **plná, tlumená**, od levého okraje k poslednímu nákupu, popisek vlevo | fialová s 50 % průhledností |
 | likvidace | `12-5` dlouhá | červená |
-| SL / TP, celé i částečné | `14-6` dlouhá | oranžová / zelená |
-| limitky | `1-4` tečkovaná | šedá |
+| SL, celé i částečné | `14-6` dlouhá | oranžová |
+| TP, celé i částečné | `20-7` delší | **červená** `#f6465d` (prodej) |
+| limitky | `8-5` čárkovaná | nákup **zelená** `#2ebd85`, prodej červená |
+| alarm | `6-3-2-3` | **světle šedá**; vypnutý tmavě šedá s **přeškrtnutým zvonkem** |
+
+**Změna 2026-10-03 (v0.30.0, přání uživatele):** TP a limitky mají **pod
+čarou vpravo množství a hodnotu** („500 JUP · 142.50 USDT"; se skrytými
+částkami ••••), nad čarou zůstává popisek. Vstup vede **od levého okraje
+k poslední svíčce, kde se nakoupilo** (`chartPosledniVstup` z plnění),
+popisek vlevo, čára tlumená — dřív od první nákupní svíčky doprava.
+Alarmy byly výrazně tyrkysové, teď světle šedé (alarm z kresby si dál
+drží barvu kresby).
 | aktuální cena (PNLLINE) | **plná**, přes celou šířku | zelená `#3ee6a4` / červená podle zisku |
 
 Plné jsou jen dvě čáry, které ukazují **fakt** (kde jsem nakoupil, kde je

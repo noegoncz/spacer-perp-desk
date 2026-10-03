@@ -1,9 +1,13 @@
 {
-  "verze": "0.29.0",
+  "verze": "0.30.0",
   "novinky": [
     {
-      "en": "Signing out now removes all PerpyX data from this phone. Everything you created is saved in your account and comes back when you sign in; only your exchange API key needs to be entered again.",
-      "cs": "Odhlášení teď z telefonu smaže všechna data PerpyX. Vše, co jsi vytvořil, je uložené v účtu a po přihlášení se vrátí; znovu zadáš jen API klíč k burze."
+      "en": "Clearer order lines on the chart: take-profits in red and buy limits in green, each showing the amount and its USDT value.",
+      "cs": "Přehlednější příkazy v grafu: take-profity červeně, nákupní limitky zeleně, u každé čáry množství a hodnota v USDT."
+    },
+    {
+      "en": "Calmer chart: alerts are light grey (switched-off ones darker with a crossed-out bell) and the entry line is subtler.",
+      "cs": "Klidnější graf: alarmy světle šedé (vypnuté tmavší s přeškrtnutým zvonkem) a čára vstupu méně výrazná."
     }
   ],
   "opravy": [
