@@ -78,6 +78,8 @@ export const en = {
   'lists.noCategory': 'No category',
   'lists.catEmpty': 'No pair in this watchlist belongs to {cat}.',
   'history.loading': 'Loading trades…',
+  'history.loadingMore': 'Loading older trades…',
+  'history.end': 'That\'s all — Bybit keeps trade history for 2 years.',
   'history.none': 'No closed trades yet.',
   'history.failed': 'Could not load trade history.',
   'history.needKeys': 'Add your API key to see your trade history.',

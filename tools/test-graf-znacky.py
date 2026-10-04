@@ -194,63 +194,57 @@ cary = json.loads(ev("""JSON.stringify(
     .map((o) => ({ title: o.extendData.title, dash: o.extendData.dash })))""") or '[]')
 print('čáry pozice:', cary)
 
-# ---- čára vstupu: tenká plná fialová od první nákupní svíčky ----
+# ---- vstup: od v0.31.1 jen štítek ceny na ose, v grafu žádná čára ----
 vstup = json.loads(ev("""(() => {
-  const g = window.__graf;
-  const o = g.getOverlays().find((x) => x.name === 'positionLine' && x.extendData.title === 'Entry');
+  const o = window.__graf.getOverlays().find((x) => x.name === 'positionLine' && x.extendData.title === 'Entry');
   if (!o) return 'null';
-  const b = g.convertToPixel({ timestamp: o.extendData.odCasu, value: o.points[0].value },
-                             { paneId: 'candle_pane' });
-  const bod = Array.isArray(b) ? b[0] : b;
-  return JSON.stringify({ plna: !!o.extendData.plna, barva: o.extendData.color,
-    odCasu: o.extendData.odCasu, cena: o.points[0].value, x: Math.round(bod.x),
-    hodinZpet: Math.round((Date.now() - o.extendData.odCasu) / 3600e3) });
+  return JSON.stringify({ jenOsa: !!o.extendData.jenOsa, barva: o.extendData.color, cena: o.points[0].value });
 })()""") or 'null')
-print('čára vstupu:', vstup)
+print('vstup:', vstup)
 if not vstup:
-    chyby.append('čára vstupu chybí')
+    chyby.append('štítek vstupu chybí')
 else:
-    if not vstup['plna']:
-        chyby.append('čára vstupu má být plná, ne čárkovaná')
-    if vstup['barva'] != '#a78bfa':
-        chyby.append(f"čára vstupu nemá fialovou: {vstup['barva']}")
+    if not vstup['jenOsa']:
+        chyby.append('vstup má být jen štítek na ose, bez čáry v grafu')
     if vstup['cena'] != 0.30135:
-        chyby.append(f"čára vstupu neleží na průměrném vstupu: {vstup['cena']}")
-    # Pozici otevřel nákup před 40 hodinami (viz mock) — odtud má čára vést.
-    if vstup['hodinZpet'] != 40:
-        chyby.append(f"čára vstupu nezačíná u prvního nákupu (před {vstup['hodinZpet']} h)")
-    if vstup['x'] <= 5:
-        chyby.append('čára vstupu vede od levého okraje, ne od první nákupní svíčky')
+        chyby.append(f"vstup neleží na průměrném vstupu: {vstup['cena']}")
 for c in cary:
-    if c['title'].startswith('SL') or c['title'].startswith('TP'):
-        if c['dash'] != [14, 6]:
-            chyby.append(f"{c['title']} nemá dlouhou přerušovanou čáru: {c['dash']}")
-if not any(c['title'].startswith('TP') for c in cary):
+    if c['title'].startswith('Stop Loss') and c['dash'] != [14, 6]:
+        chyby.append(f"{c['title']} nemá čárkování SL: {c['dash']}")
+    if c['title'].startswith('Take Profit') and c['dash'] != [20, 7]:
+        chyby.append(f"{c['title']} nemá čárkování TP: {c['dash']}")
+if not any(c['title'].startswith('Take Profit') for c in cary):
     chyby.append('v grafu chybí take profit')
-if not any(c['title'].startswith('SL') for c in cary):
+if not any(c['title'].startswith('Stop Loss') for c in cary):
     chyby.append('v grafu chybí stop loss')
 
 znacky = json.loads(ev("""JSON.stringify(
   window.__graf.getOverlays().filter((o) => o.name === 'tradeMark')
-    .map((o) => ({ vstup: o.extendData.vstup, maly: o.extendData.maly,
-                   barva: o.extendData.color, popis: o.extendData.title || '' })))""") or '[]')
+    .map((o) => ({ vstup: o.extendData.vstup, maly: o.extendData.maly, stary: !!o.extendData.stary,
+                   barva: o.extendData.color, popis: o.extendData.title || '',
+                   cena: o.points[0].value })))""") or '[]')
 print('značky plnění:', znacky)
-# Mock má dva nákupy (vstup do longu) a jeden prodej (výstup).
-if len(znacky) != 3:
-    chyby.append(f'čekaly se 3 značky plnění, je jich {len(znacky)}')
-if sum(1 for z in znacky if z['vstup']) != 2:
+soucasne = [z for z in znacky if not z['stary']]
+stare = [z for z in znacky if z['stary']]
+# Současná pozice: dva nákupy a jeden prodej (viz mock).
+if len(soucasne) != 3:
+    chyby.append(f'čekaly se 3 značky současné pozice, je jich {len(soucasne)}')
+if sum(1 for z in soucasne if z['vstup']) != 2:
     chyby.append('vstupy nesedí — mají být dva nákupy')
+# Starší obchod B má zavírací příkaz b3 ve dvou plněních → jedna značka
+# (v0.31.2: jeden trojúhelník = jeden příkaz, ne jedno plnění).
+b3 = [z for z in stare if not z['vstup'] and 0.2949 < z['cena'] < 0.2952]
+if len(b3) != 1:
+    chyby.append(f'plnění jednoho příkazu mají být jedna značka, jsou {len(b3)}')
 if not all(z['maly'] for z in znacky):
-    chyby.append('značky plnění mají být malé, bez popisku')
+    chyby.append('značky plnění v živém grafu mají být malé')
 if any(z['popis'] for z in znacky):
     chyby.append('malé značky nemají mít popisek')
-zelene = {z['barva'] for z in znacky if z['vstup']}
-cervene = {z['barva'] for z in znacky if not z['vstup']}
-print('barvy — vstupy:', zelene, ' výstupy:', cervene)
-# ⚠ Schválně **jiné barvy než svíčky** (#16c784 / #ea3943) — značka
-# v barvě svíčky, na které leží, není vidět.
-if zelene != {'#7dffb8'} or cervene != {'#ff9f43'}:
-    chyby.append('nákupy mají mít světlou zelenou a prodeje oranžovou')
+zelene = {z['barva'] for z in soucasne if z['vstup']}
+cervene = {z['barva'] for z in soucasne if not z['vstup']}
+print('barvy — nákupy:', zelene, ' prodeje:', cervene)
+if zelene != {'#4dff88'} or cervene != {'#ff6b4a'}:
+    chyby.append('nákupy mají mít sytou zelenou a prodeje červenooranžovou')
 if zelene & {'#16c784'} or cervene & {'#ea3943'}:
     chyby.append('značky mají barvu svíček, ve kterých splynou')
 

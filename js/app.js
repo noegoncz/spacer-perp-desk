@@ -429,6 +429,29 @@ async function dotahniPlneni(symbol, od) {
   return [...z.plneni.values()].sort((a, b) => a.time - b.time);
 }
 
+/*
+ * Jeden trojúhelník = jeden **příkaz**, ne jedno plnění (2026-10-04).
+ * Burza tržní příkaz často vyplní po kouscích — jeden nákup pak dělal na
+ * svíčce sloupec dvaceti trojúhelníků. Plnění téhož příkazu se slijí do
+ * jednoho: čas prvního plnění, průměrná cena vážená množstvím.
+ */
+function sloucitPodlePrikazu(plneni) {
+  const prikazy = new Map();
+  plneni.forEach((f) => {
+    const klic = f.orderId || `${f.time}|${f.buy}`;
+    const p = prikazy.get(klic);
+    if (!p) {
+      prikazy.set(klic, { ...f });
+      return;
+    }
+    const qty = p.qty + f.qty;
+    if (qty > 0) p.price = (p.price * p.qty + f.price * f.qty) / qty;
+    p.qty = qty;
+    p.time = Math.min(p.time, f.time);
+  });
+  return [...prikazy.values()].sort((a, b) => a.time - b.time);
+}
+
 let pozadavekPlneni = 0;
 
 async function znackyPlneni(position, od = Date.now() - OKNO_PLNENI) {
@@ -451,7 +474,7 @@ async function znackyPlneni(position, od = Date.now() - OKNO_PLNENI) {
     // Bez známého otevření (klíč bez práva, limit) se za současná berou plnění posledního týdne.
     const hranice = otevreno ?? (Date.now() - OKNO_PLNENI);
     const soucasne = (f) => Boolean(position) && f.time >= hranice;
-    chart.setTradeMarks(plneni.map((f) => ({
+    chart.setTradeMarks(sloucitPodlePrikazu(plneni).map((f) => ({
       time: f.time,
       price: f.price,
       vstup: f.buy,             // nákup ▲ pod cenou, prodej ▼ nad ní
@@ -2015,27 +2038,98 @@ function intervalProObchod(trvaniMs) {
   return 'D';
 }
 
+/*
+ * Historie se načítá po 30 dnech (2026-10-04): napoprvé posledních 30 dní,
+ * další měsíc až když uživatel doscrolluje ke konci seznamu. Bybit drží
+ * uzavřené obchody 2 roky a dává je jen po týdnech, takže stáhnout všechno
+ * najednou by znamenalo stovku dotazů.
+ */
+const HISTORIE_BLOK = 30 * 86400e3;
+const HISTORIE_MAX = 730 * 86400e3;
+let historieOd = 0;          // nejstarší načtený okamžik (0 = nic načteno)
+let historieNacita = false;
+let historieHlidac = null;
+
+function klicObchodu(o) {
+  return `${o.id}|${o.closedAt}`;
+}
+
+function slucObchody(nove) {
+  const mapa = new Map(obchody.map((o) => [klicObchodu(o), o]));
+  nove.forEach((o) => mapa.set(klicObchodu(o), o));
+  obchody = [...mapa.values()].sort((a, b) => b.closedAt - a.closedAt);
+}
+
+function historieNaKonci() {
+  return historieOd && Date.now() - historieOd >= HISTORIE_MAX;
+}
+
+function popisekHistorie() {
+  if (historieNacita) return t(obchody.length ? 'history.loadingMore' : 'history.loading');
+  if (historieNaKonci()) return t(obchody.length ? 'history.end' : 'history.none');
+  return '';
+}
+
+/** Načte další blok do minulosti; dokud je konec seznamu vidět, pokračuje. */
+async function nactiStarsiHistorii() {
+  if (historieNacita || historieNaKonci() || !client.hasCredentials()) return;
+  historieNacita = true;
+  ui.showHistoryNote(popisekHistorie());
+  const doKdy = historieOd || Date.now();
+  const od = Math.max(doKdy - HISTORIE_BLOK, Date.now() - HISTORIE_MAX);
+  try {
+    slucObchody(await client.getClosedTrades(od, doKdy));
+    historieOd = od;
+  } catch (err) {
+    historieNacita = false;
+    ui.showHistoryNote(err.message || t('history.failed'));
+    return;
+  }
+  historieNacita = false;
+  ui.renderHistory(obchody, hideAmounts, otevriProhlidku);
+  ui.showHistoryNote(popisekHistorie());
+  // Prázdný měsíc konec seznamu neodsune — hlídač by se znovu neozval.
+  requestAnimationFrame(() => {
+    if (konecHistorieVidet()) nactiStarsiHistorii();
+  });
+}
+
+function konecHistorieVidet() {
+  const pozn = el('historyNote');
+  if (!pozn || el('viewHistory')?.hidden) return false;
+  const r = pozn.getBoundingClientRect();
+  return r.top < window.innerHeight + 300;
+}
+
+function hlidejKonecHistorie() {
+  if (historieHlidac || !('IntersectionObserver' in window) || !el('historyNote')) return;
+  historieHlidac = new IntersectionObserver((zaznamy) => {
+    if (zaznamy.some((z) => z.isIntersecting)) nactiStarsiHistorii();
+  }, { rootMargin: '0px 0px 300px 0px' });
+  historieHlidac.observe(el('historyNote'));
+}
+
 async function nactiHistorii() {
   if (!client.hasCredentials()) {
     ui.renderHistory([], hideAmounts, () => {});
     ui.showHistoryNote(t('history.needKeys'));
     return;
   }
-  if (obchody.length) {
-    ui.renderHistory(obchody, hideAmounts, otevriProhlidku);
-    ui.showHistoryNote('');
-    return;
-  }
-
-  ui.showHistoryNote(t('history.loading'));
-  try {
-    obchody = await client.getClosedTrades(50);
-  } catch (err) {
-    ui.showHistoryNote(err.message || t('history.failed'));
+  hlidejKonecHistorie();
+  if (!historieOd) {
+    await nactiStarsiHistorii();
     return;
   }
   ui.renderHistory(obchody, hideAmounts, otevriProhlidku);
-  ui.showHistoryNote(obchody.length ? '' : t('history.none'));
+  ui.showHistoryNote(popisekHistorie());
+  // Při návratu na záložku dotáhnout obchody zavřené mezitím.
+  try {
+    const ted = Date.now();
+    slucObchody(await client.getClosedTrades(ted - 7 * 86400e3, ted));
+    ui.renderHistory(obchody, hideAmounts, otevriProhlidku);
+  } catch {
+    /* starší seznam zůstává, nová data přijdou příště */
+  }
 }
 
 /**
@@ -2083,7 +2177,7 @@ async function otevriProhlidku(obchod) {
 
   try {
     chart.setTradeMarks(
-      plneni.map((p) => {
+      sloucitPodlePrikazu(plneni).map((p) => {
         const vstup = p.buy === long;
         return {
           time: p.time,

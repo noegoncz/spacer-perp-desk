@@ -62,9 +62,11 @@ znacky = json.loads(ev("""JSON.stringify(window.__graf.getOverlays()
   .map((o) => ({ vstup: o.extendData.vstup, cena: o.points[0].value,
                  dnu: Math.round((Date.now() - o.points[0].timestamp) / 864e5) })))""") or '[]')
 print('značky v grafu obchodu:', znacky)
-ceny = sorted(z['cena'] for z in znacky)
-# Obchod B: nákupy 0.2800 a 0.2850, zavírací prodej ve dvou plněních 0.2950 a 0.2951.
-if ceny != [0.28, 0.285, 0.295, 0.2951]:
+ceny = sorted(round(z['cena'], 5) for z in znacky)
+# Obchod B: nákupy 0.2800 a 0.2850, zavírací prodej ve dvou plněních 0.2950
+# a 0.2951. Plnění jednoho příkazu jsou od v0.31.2 jeden trojúhelník
+# (vážený průměr 0.29504), ne sloupec značek.
+if ceny != [0.28, 0.285, 0.29504]:
     chyby.append(f'v grafu nejsou přesně plnění obchodu B: {ceny}')
 if sum(1 for z in znacky if z['vstup']) != 2:
     chyby.append('obchod B má mít dva vstupy')

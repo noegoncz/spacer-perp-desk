@@ -1220,18 +1220,58 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
   border-bottom: 1px solid var(--border);
 }
 
+/* Logo na obrazovce grafu: značka vždy, nápis jen na širokém displeji —
+   na zavřeném Foldu by vytlačil název páru a PnL. */
+.chart-brand {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+  padding-right: 10px;
+  border-right: 1px solid var(--border);
+}
+.chart-brand .brand-mark { width: 20px; height: 20px; }
+.chart-brand-text {
+  display: none;
+  font-size: 1.02rem;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+@media (min-width: 560px) {
+  .chart-brand-text { display: inline; }
+}
+
+/* Pár a odznak v jednom řádku; když se nevejdou, pár se ořízne, nelomí. */
 .chart-title {
   flex: 1;
   min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
   font-size: 1.05rem;
   font-weight: 650;
 }
+#chartSymbol { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.chart-title .badge { flex: none; white-space: nowrap; }
 
 .chart-pnl {
+  display: flex;
+  gap: 8px;
   font-size: 0.95rem;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+.chart-pnl span:empty { display: none; }
+
+/* Zavřený displej Foldu: s logem se hlavička nevejde do řádku — PnL
+   a procenta pod sebe, menší mezery (2026-10-04). */
+@media (max-width: 420px) {
+  .chart-head { gap: 8px; padding-inline: 6px 10px; }
+  .chart-brand { padding-right: 8px; }
+  .chart-title { font-size: 0.98rem; gap: 6px; }
+  .chart-pnl { flex-direction: column; align-items: flex-end; gap: 0; font-size: 0.85rem; line-height: 1.2; }
 }
 
 /* Lišty kolem grafu drží stejné pozadí a dělí je jen tenká linka, ať to

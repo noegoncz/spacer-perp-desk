@@ -603,12 +603,42 @@ export class BybitClient {
    * z cen a zisku, což je samo o sobě konzistentní: když se vydělalo
    * a výstup byl výš než vstup, šlo o long.
    */
-  async getClosedTrades(limit = 50) {
-    const result = await this.signedGet('/v5/position/closed-pnl', {
-      category: 'linear',
-      limit: String(limit),
+  async getClosedTrades(startTime, endTime) {
+    /*
+     * ⚠ Bez zadaného období vrací Bybit jen **posledních 7 dní** a jedno
+     * okno smí být nejvýš 7 dní dlouhé (historie sahá 2 roky zpět). Dřív
+     * se ptalo bez období — v Historii pak byly jen 3 obchody a vypadalo
+     * to jako chyba zobrazení (2026-10-04). Proto se jde po týdnech od
+     * konce k začátku, v každém okně se stránkuje.
+     */
+    const TYDEN = 7 * 86400e3;
+    const radky = [];
+    for (let konec = endTime; konec > startTime; konec -= TYDEN) {
+      const zacatek = Math.max(startTime, konec - TYDEN);
+      let cursor = '';
+      for (let stranka = 0; stranka < 5; stranka += 1) {
+        const result = await this.signedGet('/v5/position/closed-pnl', {
+          category: 'linear',
+          startTime: String(Math.floor(zacatek)),
+          endTime: String(Math.ceil(konec)),
+          limit: '100',
+          ...(cursor ? { cursor } : {}),
+        });
+        const list = result?.list ?? [];
+        radky.push(...list);
+        cursor = result?.nextPageCursor || '';
+        if (!cursor || !list.length) break;
+      }
+    }
+    // Okna se dotýkají hranou — záznam na hraně by přišel dvakrát.
+    const videne = new Set();
+    const jedinecne = radky.filter((r) => {
+      const klic = `${r.orderId}|${r.updatedTime}`;
+      if (videne.has(klic)) return false;
+      videne.add(klic);
+      return true;
     });
-    return (result?.list ?? []).map((r) => {
+    return jedinecne.map((r) => {
       const entry = num(r.avgEntryPrice);
       const exit = num(r.avgExitPrice);
       const pnl = num(r.closedPnl);
@@ -626,7 +656,7 @@ export class BybitClient {
         openedAt: Number(r.createdTime),
         closedAt: Number(r.updatedTime),
       };
-    });
+    }).sort((a, b) => b.closedAt - a.closedAt);
   }
 
   /**

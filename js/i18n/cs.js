@@ -74,6 +74,8 @@ export const cs = {
   'lists.noCategory': 'Bez kategorie',
   'lists.catEmpty': 'Žádný pár v seznamu nepatří do kategorie {cat}.',
   'history.loading': 'Načítám obchody…',
+  'history.loadingMore': 'Načítám starší obchody…',
+  'history.end': 'To je vše — Bybit drží historii obchodů 2 roky.',
   'history.none': 'Zatím žádné uzavřené obchody.',
   'history.failed': 'Historii obchodů se nepodařilo načíst.',
   'history.needKeys': 'Pro historii obchodů zadej API klíč.',

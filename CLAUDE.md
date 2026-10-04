@@ -401,6 +401,14 @@ plnění nákup `#7dffb8`, prodej `#ff8a9a` (světlejší než svíčky), větš
 cenu plnění (tam se ztrácely ve svíčce). Víc plnění téže strany na jedné
 svíčce se řadí za sebe (`umisteniZnacky` v chart.js, svíčka podle času
 plnění v aktuálním timeframu, výsledek v cache do změny dat či značek).
+
+**v0.31.2 (2026-10-04): jeden trojúhelník = jeden příkaz** (`sloucitPodlePrikazu`
+v app.js, podle `orderId`; čas prvního plnění, cena vážená množstvím). Tržní
+příkaz burza vyplní klidně ve dvaceti kusech a na denní svíčce pak stál
+sloupec dvaceti trojúhelníků (snímek z telefonu). Platí i pro prohlídku
+z Historie. **Všechny značky v živém grafu jsou malé** (3,5 × 7 px) —
+běžící obchod se od starých liší jen sytou barvou, staré jsou tlumené.
+Velké s popiskem zůstaly jen pro obchod prohlížený z Historie.
 | aktuální cena (PNLLINE) | **plná**, přes celou šířku | zelená `#3ee6a4` / červená podle zisku |
 
 Plné jsou jen dvě čáry, které ukazují **fakt** (kde jsem nakoupil, kde je
@@ -935,8 +943,14 @@ tam by to sebralo dotyk vodorovně posuvným lištám.
 
 #### Rozvržení obrazovky grafu
 
-Shora dolů: **hlavička** (zpět, pár, PnL, celá obrazovka) → **údaje o pozici**
+Shora dolů: **hlavička** (zpět, **logo**, pár, PnL) → **údaje o pozici**
 → **kreslicí lišta** → **graf** → **timeframy**.
+
+**Logo v hlavičce grafu (v0.31.2, přání uživatele: logo na každé
+obrazovce):** značka tkaného X s vlastním přechodem (`brandGradChart`),
+nápis „PerpyX" jen od šířky 560 px. Na zavřeném displeji (≤ 420 px) jdou
+PnL a procenta pod sebe a pár se ořízne, nelomí — jinak se odznak
+„LONG 10×" rozpadl na dva řádky.
 
 Údaje o pozici jsou nahoře schválně: pod nimi zůstane graf souvislý až
 k timeframům. V celé obrazovce ustoupí, nástroje zůstávají.
@@ -1346,6 +1360,17 @@ pozice zavíraná po částech má záznamů víc).
 dlouhá pozice se zavírá prodejem. Směr se proto odvozuje z cen a zisku:
 když se vydělalo a výstup byl výš než vstup, šlo o long. Je to samo o sobě
 konzistentní a nezávisí to na výkladu cizího pole.
+
+⚠ **Uzavřené obchody jdou jen po 7denních oknech** (v0.31.2). Bez
+`startTime`/`endTime` vrací `closed-pnl` jen **posledních 7 dní** — Historie
+pak ukazovala 3 obchody a vypadalo to jako omezení zobrazení. Teď
+`getClosedTrades(od, do)` jde po týdnech (stránkuje, odstraní duplicity
+na hranách oken) a aplikace načte napoprvé **30 dní**, další měsíc až po
+doscrollování ke konci seznamu (`nactiStarsiHistorii`, IntersectionObserver
+na `#historyNote`; prázdný měsíc konec neodsune, proto se po vykreslení
+zkontroluje znovu). Strop 2 roky (tolik Bybit drží). Při návratu na záložku
+se dotáhne posledních 7 dní. Mock napodobuje omezení Bybitu; test
+`tools/test-historie-strankovani.py` (`__mnohoObchodu`), na starém kódu padá.
 
 Klepnutí na obchod otevře graf z jeho doby se značkami plnění (trojúhelník
 ve směru obchodu + popisek). **Interval se volí podle délky obchodu** — na

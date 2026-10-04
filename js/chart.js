@@ -477,8 +477,11 @@ function registrovatZnackuPlneni() {
       const { x } = coordinates[0];
       const smer = d.vstup ? 1 : -1;
       // Plnění starších, už zavřených obchodů (`stary`) jsou malá a tlumená.
-      const sirka = d.stary ? 3.5 : 7;
-      const vyska = d.stary ? 7 : 14;
+      // Malé jsou všechny značky v živém grafu (2026-10-04: velké byly
+      // moc velké); běžící obchod se od starých liší jen sytou barvou.
+      // Velké s popiskem zůstávají pro prohlížený obchod z Historie.
+      const sirka = d.maly ? 3.5 : 7;
+      const vyska = d.maly ? 7 : 14;
       /*
        * Jako v TabTraderu (2026-10-04): trojúhelník **přiléhá ke svíčce** —
        * nákup pod její spodní knot, prodej nad horní — ne na přesnou cenu

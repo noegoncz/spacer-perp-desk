@@ -149,10 +149,24 @@ window.fetch = function (vstup, volby) {
       cumEntryValue:String(vstup * 1000), leverage:'10',
       createdTime:String(zavreno), updatedTime:String(zavreno + 19),
     });
-    return ok({retCode:0, result:{list:[
+    // Jako Bybit: bez období jen posledních 7 dní, okno nejvýš 7 dní.
+    const q = new URL(u, location.origin).searchParams;
+    const od = Number(q.get('startTime')) || Date.now() - 7*d;
+    const doKdy = Number(q.get('endTime')) || Date.now();
+    if (doKdy - od > 7*d + 1000)
+      return ok({retCode:10001, retMsg:'The time range between startTime and endTime cannot exceed 7 days', result:{}});
+    window.__dotazyClosedPnl = (window.__dotazyClosedPnl || 0) + 1;
+    const vse = [
       zaznam('b3', ZACATEK - 3*d + 800, 0.281, 0.29504, 14.04),
       zaznam('a2', ZACATEK - 9*d, 0.27, 0.26, -10),
-    ]}});
+    ];
+    // Test stránkování historie: obchod každé 2 dny po dobu 120 dní.
+    if (sessionStorage.getItem('__mnohoObchodu'))
+      for (let i = 1; i <= 60; i += 1) vse.push(zaznam('m' + i, ZACATEK - i*2*d - 5000, 0.3, 0.31, i));
+    return ok({retCode:0, result:{list: vse.filter((r) => {
+      const t = Number(r.updatedTime);
+      return t >= od && t <= doKdy;
+    })}});
   }
   // Transakcni denik — z nej se scita zaplaceny funding.
   //

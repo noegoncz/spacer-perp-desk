@@ -950,8 +950,12 @@ export function renderChartHeader(symbol, position, hide, trh = null) {
   dom.chartPnl.className = `chart-pnl ${pnlClass(position.pnl)}`;
   // PnL a vedle ROE (2026-10-03: mřížka údajů nad grafem zmizela).
   const ret = returnPercent(position);
-  dom.chartPnl.textContent = (hide ? MASK : `${formatSignedUsd(position.pnl)} USDT`)
-    + (ret ? `  ${formatPercent(ret.value)}` : '');
+  // Dvě části, aby se na úzkém displeji mohly dát pod sebe (CSS).
+  const castka = document.createElement('span');
+  castka.textContent = hide ? MASK : `${formatSignedUsd(position.pnl)} USDT`;
+  const procenta = document.createElement('span');
+  procenta.textContent = ret ? formatPercent(ret.value) : '';
+  dom.chartPnl.replaceChildren(castka, procenta);
 }
 
 /**

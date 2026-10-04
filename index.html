@@ -165,6 +165,29 @@
   <section id="viewChart" class="chart-view" hidden>
     <header class="chart-head">
       <button type="button" id="chartBackBtn" class="icon-btn" data-i18n-aria="action.back">←</button>
+      <!-- Značka jako v hlavičce přehledu (2026-10-04: logo má být na každé
+           obrazovce). Vlastní přechod — <use> by gradient z jiného SVG
+           nevzal spolehlivě. Nápis jen tam, kde je místo (CSS). -->
+      <div class="chart-brand" aria-hidden="true">
+        <svg class="brand-mark" viewBox="0 0 100 100">
+          <defs>
+            <linearGradient id="brandGradChart" x1="8" y1="8" x2="92" y2="92" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#22d3ee"/>
+              <stop offset="100%" stop-color="#7c5cff"/>
+            </linearGradient>
+          </defs>
+          <g transform="translate(50,50)">
+            <g transform="rotate(-45)">
+              <rect x="-32" y="-8" width="22" height="16" rx="4" fill="url(#brandGradChart)"/>
+              <rect x="10" y="-8" width="22" height="16" rx="4" fill="url(#brandGradChart)"/>
+            </g>
+            <g transform="rotate(45)">
+              <rect x="-32" y="-8" width="64" height="16" rx="4" fill="url(#brandGradChart)"/>
+            </g>
+          </g>
+        </svg>
+        <span class="chart-brand-text">PerpyX</span>
+      </div>
       <div class="chart-title">
         <span id="chartSymbol">—</span>
         <span id="chartBadge" class="badge"></span>
