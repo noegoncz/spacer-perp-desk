@@ -1210,6 +1210,14 @@ aktivní sestavu → přejmenovat / smazat.
   (česky „seznam"). Výchozí „Favourites" se přejmenoval na
   „My watchlist" — uživatel: oblíbené ztratily smysl, každý seznam je
   vlastní výběr.
+- **Pořadí seznamů (v0.31.3, přání uživatele):** vlastní seznamy
+  a **„All" až na konci**, před `+ New` (`sestavy.poradi()`). Přejetí
+  z Pozic do Trhů otevře **první vlastní seznam**, z Historie „All"
+  (sousední strana, jako vnořené stránky). Klepnutí na záložku Trhy
+  nechá naposledy otevřený seznam. Nová instalace začíná na „My watchlist".
+- **Řádek trhu se nelomí** (v0.31.3): pár i obrat jsou `nowrap` s trojtečkou;
+  na ≤ 420 px užší pevné sloupce (hvězdička 26, změna 62, graf 46 px).
+  Dřív se „BTCUSDT" na zavřeném Foldu lámal na „BTCUS / DT".
 - **Přepnutí seznamu vždy ukáže všechno** — filtr kategorie i hledání se
   zruší (uživatel: nesmí zůstat schované coiny z filtru jiného seznamu).
 - **Řazení** tlačítkem vedle hledání: objem 24h (výchozí), změna 24h,

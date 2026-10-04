@@ -1,17 +1,13 @@
 {
-  "verze": "0.31.2",
+  "verze": "0.31.3",
   "novinky": [
     {
-      "en": "History now shows your trades from the last 30 days, and older ones load as you scroll down.",
-      "cs": "Historie teď ukazuje obchody za posledních 30 dní a starší se načtou při posouvání dolů."
+      "en": "Markets open on your first watchlist. \"All\" is now the last list, right before \"+ New\".",
+      "cs": "Trhy se otevírají na prvním vlastním seznamu. „All“ je teď poslední, hned před „+ New“."
     },
     {
-      "en": "One marker per order on the chart — an order filled in many parts no longer stacks a column of triangles. All markers are small; your open trade has brighter colours.",
-      "cs": "V grafu je jedna značka na příkaz — příkaz vyplněný po částech už nedělá sloupec trojúhelníků. Všechny značky jsou malé, běžící obchod má sytější barvy."
-    },
-    {
-      "en": "The PerpyX logo is now in the chart header too.",
-      "cs": "Logo PerpyX je teď i v hlavičce grafu."
+      "en": "On the narrow screen pair names stay on one line.",
+      "cs": "Na úzkém displeji zůstává název páru na jednom řádku."
     }
   ],
   "opravy": [

@@ -58,7 +58,7 @@ function nactiSestavy() {
     const oblibene = loadFavourites();
     stav = {
       verze: 1,
-      aktivni: VSE,
+      aktivni: 'fav',
       seznamy: [{ id: 'fav', nazev: t('lists.favourites'), polozky: oblibene.map((s) => polozka(s)) }],
     };
     saveJson(KLIC_SESTAVY, stav);
@@ -90,9 +90,13 @@ export function nastavAktivni(id) {
   uloz();
 }
 
-/** Pořadí pro přejíždění: všechny páry a pak vlastní sestavy. */
+/**
+ * Pořadí pro přejíždění i v liště: vlastní sestavy a **„All" až na konci**
+ * (2026-10-04, přání uživatele — do Trhů se chodí hlavně za vlastním
+ * seznamem, všechny páry jsou až poslední volba před „+ New").
+ */
 export function poradi() {
-  return [VSE, ...seznamy().map((x) => x.id)];
+  return [...seznamy().map((x) => x.id), VSE];
 }
 
 export function najdi(id) {

@@ -12,6 +12,8 @@ Ověřuje:
     ruční oprava kategorie,
   * přejíždění **skutečným dotykem**: v Trzích přepíná sestavy, za
     poslední sestavou pokračuje na záložku Historie, před první na Pozice,
+  * pořadí (v0.31.3): vlastní seznamy, „All" až na konci před „+ New";
+    přejetí z Pozic otevře první seznam, z Historie „All",
   * všechno přežije přenačtení stránky.
 
 Spuštění: python tools/test-sestavy.py http://localhost:8075/index.html
@@ -113,11 +115,14 @@ time.sleep(1.5)
 print('1) první spuštění')
 l = listy()
 print('   lišta:', l)
-over(l and l[0] == 'All*' and l[1] == 'My watchlist' and l[-1] == '+ New', 'lišta: All (aktivní), My watchlist, + New')
+over(l == ['My watchlist*', 'All', '+ New'], 'lišta: My watchlist (aktivní), All, + New')
 fav = ev("JSON.parse(localStorage.getItem('perpdesk.lists')).seznamy[0].polozky")
 over(fav == ['bybit:BTCUSDT'], f'oblíbené převedené do sestavy jako burza:pár ({fav})')
 over(ev("!!document.querySelector('#watchCats .identify-btn')"), 'místo kategorií tlačítko Identify coins')
 over(ev("window.__stazeniKategorii") == 0, 'kategorie se samy nestahují')
+
+ev("document.querySelectorAll('#watchLists .chip')[1].click()")   # All
+time.sleep(0.4)
 
 print('2) identifikace coinů')
 klik('#watchCats .identify-btn')
@@ -161,9 +166,9 @@ ev("[...document.querySelectorAll('#watchCats .chip')].find((c) => c.textContent
 time.sleep(0.2)
 ev("const i = document.getElementById('watchSearch'); i.value = 'PEPE'; i.dispatchEvent(new Event('input'))")
 time.sleep(0.2)
-ev("document.querySelectorAll('#watchLists .chip')[1].click()")
-time.sleep(0.3)
 ev("document.querySelectorAll('#watchLists .chip')[0].click()")
+time.sleep(0.3)
+ev("document.querySelectorAll('#watchLists .chip')[1].click()")   # zpět na All
 time.sleep(0.3)
 over(len(radky() or []) == 7 and ev("document.getElementById('watchSearch').value") == '',
      'po přepnutí seznamu je vidět všechno (bez filtru a hledání)')
@@ -184,24 +189,38 @@ ev("document.getElementById('listName').value = 'Scalp'")
 klik('#listSaveBtn')
 time.sleep(0.4)
 l = listy()
-over(l and l[-2] == 'Scalp*', f'nová sestava Scalp je aktivní ({l})')
+over(l == ['My watchlist', 'Scalp*', 'All', '+ New'], f'nová sestava Scalp je aktivní, All zůstává na konci ({l})')
 over('empty' in (ev("document.getElementById('watchNote').textContent") or ''), 'prázdná sestava má nápovědu')
 
 print('5) přejíždění skutečným dotykem')
 y = ev("(() => { const r = document.getElementById('watchNote').getBoundingClientRect(); return r.top + 30; })()")
-prejed(340, 80, y)       # za poslední sestavou → Historie
-over(zalozka() == 'history', f'za poslední sestavou přejetí přepne na Historii ({zalozka()})')
-prejed(80, 340, 400)     # zpátky na Trhy (Scalp zůstává aktivní)
-over(zalozka() == 'watchlist', 'přejetím zpátky na Trhy')
-prejed(80, 340, 400)     # Scalp → Favourites
+prejed(340, 80, y)       # Scalp → All
 l = listy()
-over(l and l[1] == 'My watchlist*', f'přejetí doprava přepne na předchozí sestavu ({l})')
+over(l and l[2] == 'All*', f'přejetí doleva ze Scalp přepne na All ({l})')
+prejed(340, 80, 400)     # za All (poslední) → Historie
+over(zalozka() == 'history', f'za poslední sestavou přejetí přepne na Historii ({zalozka()})')
+prejed(80, 340, 400)     # zpátky na Trhy zprava → All
+over(zalozka() == 'watchlist', 'přejetím zpátky na Trhy')
+l = listy()
+over(l and l[2] == 'All*', f'přejetí z Historie otevře All ({l})')
+prejed(80, 340, 400)     # All → Scalp
+prejed(80, 340, 400)     # Scalp → My watchlist
+l = listy()
+over(l and l[0] == 'My watchlist*', f'přejetí doprava přepne na předchozí sestavu ({l})')
 r = radky()
 over(r == ['BTCUSDT', 'SOLUSDT'], f'My watchlist obsahuje BTC a SOL ({r})')
-prejed(80, 340, 400)     # Favourites → All
 prejed(80, 340, 400)     # před první → Pozice
 over(zalozka() == 'positions', f'před první sestavou přejetí přepne na Pozice ({zalozka()})')
-klik('.tab[data-tab=watchlist]')
+ev("document.querySelectorAll('#watchLists .chip')[2].click()")   # All (Trhy jsou skryté)
+prejed(340, 80, 400)     # z Pozic do Trhů → první seznam, ne naposledy otevřený
+l = listy()
+over(zalozka() == 'watchlist' and l and l[0] == 'My watchlist*',
+     f'přejetí z Pozic otevře první vlastní seznam ({l})')
+# Po přejetí aplikace spolkne první klepnutí (skutečný dotyk příznak smaže,
+# syntetický klik ne) — proto dvakrát.
+ev("document.querySelectorAll('#watchLists .chip')[2].click()")   # All
+time.sleep(0.2)
+ev("document.querySelectorAll('#watchLists .chip')[2].click()")
 time.sleep(0.8)
 
 print('6) ruční oprava kategorie')
@@ -221,7 +240,7 @@ time.sleep(5)
 klik('.tab[data-tab=watchlist]')
 time.sleep(1.5)
 l = listy()
-over(l and l[0] == 'All*' and any(x.startswith('Scalp') for x in l), f'sestavy přežily přenačtení ({l})')
+over(l == ['My watchlist', 'Scalp', 'All*', '+ New'], f'sestavy přežily přenačtení ({l})')
 over(ev("!document.querySelector('#watchCats .identify-btn')") and ev("window.__stazeniKategorii") == 0,
      'kategorie jsou uložené, znovu se nestahují')
 

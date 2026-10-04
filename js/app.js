@@ -1696,8 +1696,8 @@ async function nactiTrhy() {
 function vykresliListu() {
   ui.renderListBar({
     polozky: [
-      { id: sestavy.VSE, nazev: t('lists.all') },
       ...sestavy.seznamy().map((x) => ({ id: x.id, nazev: x.nazev, pocet: x.polozky.length })),
+      { id: sestavy.VSE, nazev: t('lists.all') },
     ],
     aktivni: sestavy.aktivni(),
     onSelect: vyberSestavu,
@@ -2011,6 +2011,20 @@ function zapojPrejeti() {
     if (kam < 0 || kam >= ZALOZKY.length) return;
 
     prejeto = true;
+    /*
+     * Do Trhů přejetím zleva (z Pozic) → první vlastní seznam, zprava
+     * (z Historie) → poslední, tedy „All". Jako vnořené stránky: přijde se
+     * na tu, která na té straně sousedí (2026-10-04, přání uživatele).
+     */
+    if (ZALOZKY[kam] === 'watchlist') {
+      const poradi = sestavy.poradi();
+      sestavy.nastavAktivni(dx < 0 ? poradi[0] : poradi[poradi.length - 1]);
+      filtrKategorie = null;
+      hledani = '';
+      const pole = el('watchSearch');
+      if (pole) pole.value = '';
+      ukazPrvek('watchClearBtn', false);
+    }
     prepniZalozku(ZALOZKY[kam]);
   }, { passive: true });
 
