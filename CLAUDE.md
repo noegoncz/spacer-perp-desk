@@ -359,7 +359,7 @@ U SL, TP a likvidace nese barva informaci, tam se vyplatí.
 
 | čára | čárkování | barva |
 |---|---|---|
-| vstup (průměrný) | jen **krátký zub u osy** (44 px) + štítek; průměr i v textu linky zisku („· avg …“) | fialová |
+| vstup (průměrný) | **jen štítek ceny na ose**, v grafu nic (`jenOsa`, v0.31.1 — čára i zub vadily) | fialová |
 | likvidace | `12-5` dlouhá | červená |
 | SL, celé i částečné | `14-6` dlouhá | oranžová |
 | TP, celé i částečné | `20-7` delší | **červená** `#f6465d` (prodej) |
@@ -395,6 +395,12 @@ plnění nákup `#7dffb8`, prodej `#ff8a9a` (světlejší než svíčky), větš
 - **Hlavička grafu:** mřížka 3 × 3 nahrazena jedním řádkem: „● Bybit ·
   Unified/Classic" (typ účtu z `client.typUctu`), velikost v coinu
   a USDT, margin, likvidace; ROE vedle PnL v horním řádku.
+
+**v0.31.1 (2026-10-04): značky plnění přiléhají ke svíčce** jako v TabTraderu
+— nákup ▲ těsně pod spodní knot, prodej ▼ nad horní knot, ne na přesnou
+cenu plnění (tam se ztrácely ve svíčce). Víc plnění téže strany na jedné
+svíčce se řadí za sebe (`umisteniZnacky` v chart.js, svíčka podle času
+plnění v aktuálním timeframu, výsledek v cache do změny dat či značek).
 | aktuální cena (PNLLINE) | **plná**, přes celou šířku | zelená `#3ee6a4` / červená podle zisku |
 
 Plné jsou jen dvě čáry, které ukazují **fakt** (kde jsem nakoupil, kde je

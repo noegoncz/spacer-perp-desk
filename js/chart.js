@@ -176,6 +176,8 @@ function registrovatCaruPozice() {
     createPointFigures: ({ overlay, coordinates, bounding }) => {
       const d = overlay.extendData || {};
       const y = coordinates[0].y;
+      // `jenOsa`: v grafu nic, jen štítek ceny na ose (průměrný vstup).
+      if (d.jenOsa) return [];
       // Čára s časem (bod má čas): `odCasu` začíná u té svíčky a vede doprava,
       // `doCasu` vede od levého okraje k té svíčce (vstup: k poslednímu
       // nákupu). Ostatní úrovně přes celou šířku.
@@ -237,6 +239,47 @@ function registrovatCaruPozice() {
       return [cenovkaNaOse(chart, cena, coordinates[0].y, d.barvaOsy || d.color)];
     },
   });
+}
+
+/*
+ * Kam patří značka plnění: svíčka, ve které plnění leží, a pořadí mezi
+ * značkami téže strany na stejné svíčce (pro řazení za sebe). Spočítá se
+ * jednou pro všechny značky a drží, dokud se nezmění data ani značky.
+ */
+let umisteniCache = { klic: '', mapa: new Map() };
+
+function umisteniZnacky(chart, overlay) {
+  const data = chart.getDataList();
+  if (!data.length) return null;
+  const znacky = chart.getOverlays({ groupId: 'znacky' });
+  const klic = `${data.length}|${data[0].timestamp}|${data[data.length - 1].timestamp}|${znacky.length}`;
+  if (klic !== umisteniCache.klic) {
+    const mapa = new Map();
+    const pocty = new Map();
+    // Svíčka = poslední s časem ≤ čas plnění (binární hledání).
+    const index = (cas) => {
+      let lo = 0;
+      let hi = data.length - 1;
+      if (cas < data[0].timestamp) return -1;
+      while (lo < hi) {
+        const mid = (lo + hi + 1) >> 1;
+        if (data[mid].timestamp <= cas) lo = mid; else hi = mid - 1;
+      }
+      return lo;
+    };
+    // Starší plnění blíž svíčce, novější dál — pořadí se řídí časem.
+    [...znacky].sort((a, b) => (a.points?.[0]?.timestamp ?? 0) - (b.points?.[0]?.timestamp ?? 0)).forEach((o) => {
+      const i = index(o.points?.[0]?.timestamp ?? 0);
+      if (i < 0) return;
+      const strana = o.extendData?.vstup ? 'b' : 's';
+      const k = `${i}${strana}`;
+      const poradi = pocty.get(k) || 0;
+      pocty.set(k, poradi + 1);
+      mapa.set(o.id, { svicka: data[i], poradi });
+    });
+    umisteniCache = { klic, mapa };
+  }
+  return umisteniCache.mapa.get(overlay.id) || null;
 }
 
 /** '#rrggbb' → rgba s průhledností (pro tlumené značky). */
@@ -429,22 +472,32 @@ function registrovatZnackuPlneni() {
     needDefaultPointFigure: false,
     needDefaultXAxisFigure: false,
     needDefaultYAxisFigure: false,
-    createPointFigures: ({ overlay, coordinates }) => {
+    createPointFigures: ({ chart, overlay, coordinates, yAxis }) => {
       const d = overlay.extendData || {};
-      const { x, y } = coordinates[0];
+      const { x } = coordinates[0];
       const smer = d.vstup ? 1 : -1;
-      // Výraznější (2026-10-03, uživatel je v grafu přehlížel): větší
-      // trojúhelník a silnější obrys barvou pozadí. Plnění starších, už
-      // zavřených obchodů (`stary`) jsou malá a tlumená — patří minulosti.
-      const sirka = d.stary ? 3.5 : d.maly ? 7 : 7;
-      const vyska = d.stary ? 7 : d.maly ? 14 : 14;
+      // Plnění starších, už zavřených obchodů (`stary`) jsou malá a tlumená.
+      const sirka = d.stary ? 3.5 : 7;
+      const vyska = d.stary ? 7 : 14;
+      /*
+       * Jako v TabTraderu (2026-10-04): trojúhelník **přiléhá ke svíčce** —
+       * nákup pod její spodní knot, prodej nad horní — ne na přesnou cenu
+       * plnění, kde se ztrácel ve svíčce. Víc plnění téže strany na jedné
+       * svíčce se řadí za sebe směrem od ní.
+       */
+      const umisteni = umisteniZnacky(chart, overlay);
+      let y = coordinates[0].y;
+      if (umisteni && yAxis) {
+        const okraj = yAxis.convertToPixel(d.vstup ? umisteni.svicka.low : umisteni.svicka.high);
+        if (Number.isFinite(okraj)) y = okraj + smer * (3 + umisteni.poradi * (vyska + 2));
+      }
       const zaklad = y + smer * vyska;
 
       const figury = [{
         type: 'polygon',
         attrs: {
           coordinates: [
-            { x, y: y + smer * 3 },
+            { x, y },
             { x: x - sirka, y: zaklad },
             { x: x + sirka, y: zaklad },
           ],
@@ -1208,7 +1261,7 @@ export function createPriceChart(container, layer, handlers = {}) {
         extendData: {
           color: l.color, title: l.title, dash: l.dash, bezCenovky: l.bezCenovky,
           plna: l.plna, odCasu: l.odCasu, doCasu: l.doCasu, vlevo: l.vlevo, pod: l.pod, barvaOsy: l.barvaOsy,
-          zub: l.zub,
+          zub: l.zub, jenOsa: l.jenOsa,
         },
       }),
     );

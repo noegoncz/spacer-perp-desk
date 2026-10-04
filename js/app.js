@@ -2838,9 +2838,10 @@ function buildChartLines(position, orders) {
    * fialová od první nákupní svíčky, pak od levého okraje k poslednímu
    * nákupu). Průměr stojí navíc v textu linky zisku („… · avg 0.30135").
    */
+  // 2026-10-04: ani zub nevyhovoval — vstup je už **jen štítek na ose**.
   if (position.entry) {
     lines.push({ price: position.entry, color: BARVA_CARY.vstupOsa, title: t('line.entry'),
-                 plna: true, zub: true });
+                 plna: true, jenOsa: true });
   }
   /*
    * Popisky (2026-10-03, přání uživatele — dřív zabíraly moc místa na šířku):

@@ -1,17 +1,13 @@
 {
-  "verze": "0.31.0",
+  "verze": "0.31.1",
   "novinky": [
     {
-      "en": "Compact chart header: exchange and account type, size, margin and liquidation in one thin line — more room for the chart.",
-      "cs": "Kompaktní hlavička grafu: burza a typ účtu, velikost, margin a likvidace v jednom tenkém řádku — víc místa pro graf."
+      "en": "Buy and sell markers now sit right below or above the candle, like in TabTrader, so they are easy to spot. Several fills on one candle stack up.",
+      "cs": "Značky nákupů a prodejů teď přiléhají ke svíčce zespodu nebo shora jako v TabTraderu, takže jsou dobře vidět. Víc plnění na jedné svíčce se řadí za sebe."
     },
     {
-      "en": "Order lines show the order type as on the exchange with the amount, and the USDT value below. The profit line shows your position size below it.",
-      "cs": "Čáry příkazů ukazují typ příkazu jako na burze s množstvím a pod čarou hodnotu v USDT. Linka zisku ukazuje pod sebou velikost pozice."
-    },
-    {
-      "en": "Your whole trading history on the pair: all past buys and sells are marked on the chart (small), the open position's fills stand out.",
-      "cs": "Celá historie obchodů na páru: všechny minulé nákupy a prodeje jsou v grafu vyznačené (malé), plnění otevřené pozice vyniknou."
+      "en": "Average entry is shown only as a price tag on the scale — no line in the chart.",
+      "cs": "Průměrný vstup je už jen štítek s cenou na ose — v grafu žádná čára."
     }
   ],
   "opravy": [
