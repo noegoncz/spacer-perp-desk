@@ -72,7 +72,7 @@ def over(podminka, popis):
 
 graf = lambda: json.loads(ev("""JSON.stringify({ otevreny: !document.getElementById('viewChart').hidden,
   par: document.getElementById('chartSymbol').textContent,
-  pozice: !document.getElementById('chartInfo').hidden })""") or '{}')
+  pozice: Boolean(document.getElementById('chartBadge').textContent.trim()) })""") or '{}')
 
 p.prikaz('Page.navigate', url=sys.argv[1])
 time.sleep(0.5)

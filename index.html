@@ -203,6 +203,12 @@
       <div id="drawLayer" class="draw-layer"></div>
 
 
+      <!-- Rychlý alarm po podržení prstu v grafu: klepnutí ho rovnou uloží. -->
+      <button type="button" id="quickAlarm" class="quick-alarm" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 15V10a6 6 0 10-12 0v5l-2 3h16z"/><path d="M10 21h4"/></svg>
+        <span id="quickAlarmText"></span>
+      </button>
+
       <!-- Vzhled vybrané kresby. Dole, aby nepřekrýval cenové dění nahoře. -->
       <div id="stylePanel" class="style-panel" hidden>
         <div class="style-group" id="styleColors" role="group" data-i18n-aria="style.color"></div>

@@ -784,6 +784,11 @@ function wireEvents() {
     otevriVrstvy();
   });
   naUdalost('alarmBtn', 'click', novyAlarmKrizem);
+  naUdalost('quickAlarm', 'click', potvrdRychlyAlarm);
+  // Jakýkoli další dotyk v grafu nabídku rychlého alarmu zavře.
+  el('chartBox')?.addEventListener('touchstart', () => {
+    if (rychlyAlarm?.cena) skryjRychlyAlarm();
+  }, { passive: true });
   naUdalost('alarmSaveBtn', 'click', ulozAlarm);
   naUdalost('alarmDeleteBtn', 'click', smazAlarm);
   naUdalost('settingsResetBtn', 'click', vratVychoziNastaveni);
@@ -1166,6 +1171,7 @@ async function otevriGraf(symbol, position, trh) {
       onStyleChanged: (styl) => store.saveDrawStyle(styl),
     });
     chart.setLastStyle(store.loadDrawStyle());
+    chart.onLongPress(ukazRychlyAlarm);
     chart.setLoader(nactiSvice);
     chart.setMagnet(magnetZapnut);
     // Vrstvy před indikátory — skryté indikátory se do grafu vůbec nevloží.
@@ -1199,6 +1205,7 @@ async function otevriGraf(symbol, position, trh) {
 }
 
 function closeChart() {
+  skryjRychlyAlarm();
   chart?.clearTradeMarks();
   prohlizenyObchod = null;
   /*
@@ -1270,6 +1277,7 @@ async function nactiSvice() {
  */
 async function zmenInterval(interval) {
   if (!interval) return; // pojistka: bez intervalu není co načítat
+  skryjRychlyAlarm();
   // Klepnutí na už aktivní timeframe nedělá nic, jako v TradingView. Dřív
   // shodilo kresby: knihovna na stejné období znovu nesáhne pro data, takže
   // se nezavolal `getBars`, ve kterém se kresby vracejí zpátky.
@@ -2479,6 +2487,49 @@ function vykresliAlarmy() {
     })),
   );
   prepniTridu('alarmBtn', 'ma-alarm', seznam.some((a) => a.aktivni));
+}
+
+/*
+ * Rychlý alarm (2026-10-06, podle TabTraderu): podržet prst v grafu, kříž
+ * s cenou posunout, pustit — u ceny se objeví tlačítko a jeho klepnutí
+ * alarm rovnou uloží a zapne, bez okna s nastavením (výchozí: oba směry,
+ * jednou, bez vypršení). Doladit ho jde klepnutím na čáru alarmu.
+ */
+let rychlyAlarm = null;   // { cena, casovac }
+
+function ukazRychlyAlarm(bod) {
+  const tl = el('quickAlarm');
+  if (!tl || !chartSymbol) return;
+  // Rozdělané kreslení, vybraná kresba nebo otevřená nabídka mají přednost.
+  if (chart?.hasSelection?.() || document.querySelector('.sheet:not([hidden])')) return;
+  const cena = zaokrouhliCenu(bod.value);
+  if (!(cena > 0)) return;
+  clearTimeout(rychlyAlarm?.casovac);
+  rychlyAlarm = { cena, casovac: setTimeout(skryjRychlyAlarm, 6000) };
+  tl.classList.remove('hotovo');
+  el('quickAlarmText').textContent = t('alarm.quickSet', { price: formatPrice(cena) });
+  tl.style.top = `${Math.max(24, bod.y)}px`;
+  tl.style.right = `${Math.max(0, bod.ose) + 8}px`;
+  tl.hidden = false;
+  navigator.vibrate?.(12);
+}
+
+function skryjRychlyAlarm() {
+  clearTimeout(rychlyAlarm?.casovac);
+  rychlyAlarm = null;
+  ukazPrvek('quickAlarm', false);
+}
+
+function potvrdRychlyAlarm() {
+  if (!rychlyAlarm || !chartSymbol) return;
+  const cena = rychlyAlarm.cena;
+  ukazVrstvu('alarmy');
+  alarmy.uloz({ ...alarmy.novy(chartSymbol, cena), aktivni: true });
+  vykresliAlarmy();
+  clearTimeout(rychlyAlarm.casovac);
+  el('quickAlarm').classList.add('hotovo');
+  el('quickAlarmText').textContent = t('alarm.quickDone', { price: formatPrice(cena) });
+  rychlyAlarm = { cena: null, casovac: setTimeout(skryjRychlyAlarm, 1400) };
 }
 
 /**

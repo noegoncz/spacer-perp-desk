@@ -1451,6 +1451,40 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
    Nástroje zůstávají — bez nich by celá obrazovka ztratila smysl. */
 .chart-view.cela-obrazovka .chart-info { display: none; }
 
+/* ---------- rychlý alarm po podržení prstu ---------- */
+
+.quick-alarm {
+  position: absolute;
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 14px 0 11px;
+  transform: translateY(-50%);
+  border: 1px solid var(--alarm);
+  border-radius: 20px;
+  background: rgba(13, 20, 32, 0.94);
+  color: var(--text);
+  font-size: 0.86rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+.quick-alarm svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: var(--alarm);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.quick-alarm.hotovo { border-color: var(--long); }
+.quick-alarm.hotovo svg { stroke: var(--long); }
+
 /* ---------- paleta vzhledu vybrané kresby ---------- */
 
 .style-panel {

@@ -1,10 +1,10 @@
 {
-  "verze": "0.32.1",
-  "novinky": [],
-  "opravy": [
+  "verze": "0.33.0",
+  "novinky": [
     {
-      "en": "Buy and sell markers stay below or above the live candle as it moves.",
-      "cs": "Značky nákupů a prodejů drží pod a nad živou svíčkou, i když se hýbe."
+      "en": "Quick alarm: hold your finger on the chart, move the crosshair, let go and tap \"Set alarm\". Done — no settings screen.",
+      "cs": "Rychlý alarm: podrž prst v grafu, posuň kříž, pusť a klepni na „Nastavit alarm“. Hotovo, bez okna s nastavením."
     }
-  ]
+  ],
+  "opravy": []
 }

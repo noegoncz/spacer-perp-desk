@@ -666,8 +666,20 @@ kreseb i zavření grafu. Tři typy podle toho, co hlídají:
 | `cara` | úroveň, která se mění s časem — přímka dvěma body, **platná jen po délku čáry** | šikmá čára **v původní délce a barvě kresby** (`alarmTrend`) |
 | `cas` | okamžik v budoucnosti, cena do toho nemluví | svislá čára (`alarmTime`) |
 
-**Dvě cesty, jak alarm vzniká** (kreslicí nástroj „cenový alarm" zmizel, obě
-ho nahradily):
+**Tři cesty, jak alarm vzniká** (kreslicí nástroj „cenový alarm" zmizel):
+
+0. **Rychlý alarm podržením prstu** (v0.33.0, podle TabTraderu): prst
+   podržet v ploše svíček (≥ 450 ms bez posunu), knihovna ukáže kříž,
+   ten jde posouvat; po puštění se u ceny objeví tlačítko „Set alarm at
+   …" (`#quickAlarm`). Klepnutí alarm **rovnou uloží a zapne** s výchozími
+   volbami (oba směry, jednou, bez vypršení) — bez okna s nastavením;
+   doladit jde klepnutím na čáru. Tlačítko zmizí po 6 s, dalším dotykem
+   v grafu, změnou timeframu a zavřením grafu. Krátké klepnutí, posun
+   grafu, dva prsty, stisk na cenové ose, vybraná kresba nebo otevřená
+   nabídka ho neukážou. Rozpoznání je v chart.js (`onLongPress`), alarm
+   v app.js (`ukazRychlyAlarm`). Test: `tools/test-rychly-alarm.py`
+   (skutečné dotyky).
+
 
 1. **Zvonek v ukotvené části kreslicí lišty** → přes graf se položí zaměřovací
    kříž, klepnutí určí hladinu a teprve pak se otevře nastavení. Ťukat cenu na

@@ -199,6 +199,8 @@ export const en = {
   'style.alarm': 'Turn this drawing into an alert',
 
   /* ---------- price alerts ---------- */
+  'alarm.quickSet': 'Set alarm at {price}',
+  'alarm.quickDone': 'Alarm set at {price}',
   'alarm.new': 'New alert',
   'invite.button': 'Invite',
   'invite.title': 'Invite friends',

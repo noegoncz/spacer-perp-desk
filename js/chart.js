@@ -1913,6 +1913,51 @@ export function createPriceChart(container, layer, handlers = {}) {
   }
   zapojZoomDvemaPrsty();
 
+  /*
+   * Podržení prstu v grafu (jako v TabTraderu, 2026-10-06): knihovna při
+   * dlouhém stisku ukáže kříž s cenou, který jde prstem posouvat. Po
+   * zvednutí prstu se ohlásí cena, kde kříž skončil — aplikace u ní nabídne
+   * rychlý alarm. Krátké klepnutí ani posun grafu se nepočítají; stisk musí
+   * začít v ploše svíček (ne na cenové ose) a jen jedním prstem.
+   */
+  const DLOUHY_STISK_MS = 450;
+  let naDlouhyStisk = null;
+  function zapojDlouhyStisk() {
+    let start = null;
+    container.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) { start = null; return; }
+      const r = container.getBoundingClientRect();
+      const plocha = chart.getSize(HLAVNI_PANEL, 'main');
+      const x = e.touches[0].clientX - r.left;
+      const y = e.touches[0].clientY - r.top;
+      if (!plocha || x < plocha.left || x > plocha.left + plocha.width
+          || y < plocha.top || y > plocha.top + plocha.height) { start = null; return; }
+      start = { cas: Date.now(), x: e.touches[0].clientX, y: e.touches[0].clientY, zruseno: false };
+    }, { passive: true });
+    container.addEventListener('touchmove', (e) => {
+      if (!start) return;
+      if (e.touches.length !== 1) { start.zruseno = true; return; }
+      // Pohyb před uplynutím dlouhého stisku = posun grafu, ne kříž.
+      const posun = Math.hypot(e.touches[0].clientX - start.x, e.touches[0].clientY - start.y);
+      if (posun > 10 && Date.now() - start.cas < DLOUHY_STISK_MS) start.zruseno = true;
+    }, { passive: true });
+    container.addEventListener('touchend', (e) => {
+      const s = start;
+      start = null;
+      if (!s || s.zruseno || e.touches.length || !naDlouhyStisk) return;
+      if (Date.now() - s.cas < DLOUHY_STISK_MS) return;
+      const r = container.getBoundingClientRect();
+      const plocha = chart.getSize(HLAVNI_PANEL, 'main');
+      const x = e.changedTouches[0].clientX - r.left;
+      const y = Math.min(Math.max(e.changedTouches[0].clientY - r.top, plocha.top), plocha.top + plocha.height);
+      const bod = chart.convertFromPixel([{ x: x - plocha.left, y: y - plocha.top }], { paneId: HLAVNI_PANEL });
+      const value = (Array.isArray(bod) ? bod[0] : bod)?.value;
+      if (Number.isFinite(value)) naDlouhyStisk({ value, y, ose: container.clientWidth - plocha.left - plocha.width });
+    }, { passive: true });
+    container.addEventListener('touchcancel', () => { start = null; }, { passive: true });
+  }
+  zapojDlouhyStisk();
+
   function oddelGestaOsy() {
     const osa = chart.getDom(HLAVNI_PANEL, 'yAxis');
     if (!osa) return;
@@ -2155,6 +2200,11 @@ export function createPriceChart(container, layer, handlers = {}) {
      * z něj nevznikne kresba, ale hodnota pro alarm. Číselník na telefonu
      * nikdo nechce vyťukávat.
      */
+    /** Po podržení prstu v grafu: { value, y, ose } (ose = šířka cenové osy). */
+    onLongPress(fn) {
+      naDlouhyStisk = fn;
+    },
+
     pickPrice(popis, hotovo) {
       rozdelanyNastroj = null;
       dodatekKresby = null;
