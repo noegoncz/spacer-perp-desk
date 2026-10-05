@@ -1,13 +1,17 @@
 {
-  "verze": "0.31.3",
+  "verze": "0.31.4",
   "novinky": [
     {
-      "en": "Markets open on your first watchlist. \"All\" is now the last list, right before \"+ New\".",
-      "cs": "Trhy se otevírají na prvním vlastním seznamu. „All“ je teď poslední, hned před „+ New“."
+      "en": "Drawing tools moved below the chart, right above the timeframes — everything within thumb reach.",
+      "cs": "Kreslicí nástroje jsou teď pod grafem, hned nad timeframy — všechno na dosah palce."
     },
     {
-      "en": "On the narrow screen pair names stay on one line.",
-      "cs": "Na úzkém displeji zůstává název páru na jednom řádku."
+      "en": "The big Back button shows the same arrow as the one at the top.",
+      "cs": "Velké tlačítko Zpět má stejnou šipku jako to nahoře."
+    },
+    {
+      "en": "Markers of past trades are more subtle, so your open trade stands out.",
+      "cs": "Značky starších obchodů jsou nenápadnější, ať vynikne běžící obchod."
     }
   ],
   "opravy": [

@@ -197,8 +197,37 @@
 
     <div id="chartInfo" class="chart-info"></div>
 
-    <!-- Kreslení: klepnutí nástroj zapne, pak se prstem posouvá kříž. -->
-    <!-- Kreslení: klepnutí nástroj zapne, pak se prstem posouvá kříž. -->
+    <div class="chart-area">
+      <div id="chartBox" class="chart-box"></div>
+      <!-- Vrstva pro zaměřovací kříž; sedne přesně na plochu se svíčkami. -->
+      <div id="drawLayer" class="draw-layer"></div>
+
+
+      <!-- Vzhled vybrané kresby. Dole, aby nepřekrýval cenové dění nahoře. -->
+      <div id="stylePanel" class="style-panel" hidden>
+        <div class="style-group" id="styleColors" role="group" data-i18n-aria="style.color"></div>
+        <div class="style-sep"></div>
+        <div class="style-group" id="styleWidths" role="group" data-i18n-aria="style.width"></div>
+        <div class="style-sep"></div>
+        <div class="style-group" id="styleOpacity" role="group" data-i18n-aria="style.opacity"></div>
+        <div class="style-sep"></div>
+        <div class="style-group">
+          <button type="button" class="style-btn" id="styleAlarmBtn"
+                  data-i18n-aria="style.alarm" data-i18n-title="style.alarm">
+            <svg viewBox="0 0 24 24" class="style-icon"><path d="M18 15V10a6 6 0 10-12 0v5l-2 3h16z"/><path d="M10 21h4"/></svg>
+          </button>
+          <button type="button" class="style-btn" id="styleDeleteBtn"
+                  data-i18n-aria="style.delete" data-i18n-title="style.delete">
+            <svg viewBox="0 0 24 24" class="style-icon danger"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Kreslení: klepnutí nástroj zapne, pak se prstem posouvá kříž.
+         Lišta je POD grafem, nad timeframy (2026-10-05, přání uživatele):
+         nástroje i timeframy jsou dole na palec, graf začíná hned pod
+         údaji o pozici. -->
     <div class="draw-toolbar" id="drawToolbar" role="toolbar" aria-label="Drawing">
       <!-- Nástroje se posouvají, pomocná tlačítka zůstávají vždy po ruce. -->
       <div class="tool-scroll">
@@ -285,33 +314,6 @@
       </div>
     </div>
 
-    <div class="chart-area">
-      <div id="chartBox" class="chart-box"></div>
-      <!-- Vrstva pro zaměřovací kříž; sedne přesně na plochu se svíčkami. -->
-      <div id="drawLayer" class="draw-layer"></div>
-
-
-      <!-- Vzhled vybrané kresby. Dole, aby nepřekrýval cenové dění nahoře. -->
-      <div id="stylePanel" class="style-panel" hidden>
-        <div class="style-group" id="styleColors" role="group" data-i18n-aria="style.color"></div>
-        <div class="style-sep"></div>
-        <div class="style-group" id="styleWidths" role="group" data-i18n-aria="style.width"></div>
-        <div class="style-sep"></div>
-        <div class="style-group" id="styleOpacity" role="group" data-i18n-aria="style.opacity"></div>
-        <div class="style-sep"></div>
-        <div class="style-group">
-          <button type="button" class="style-btn" id="styleAlarmBtn"
-                  data-i18n-aria="style.alarm" data-i18n-title="style.alarm">
-            <svg viewBox="0 0 24 24" class="style-icon"><path d="M18 15V10a6 6 0 10-12 0v5l-2 3h16z"/><path d="M10 21h4"/></svg>
-          </button>
-          <button type="button" class="style-btn" id="styleDeleteBtn"
-                  data-i18n-aria="style.delete" data-i18n-title="style.delete">
-            <svg viewBox="0 0 24 24" class="style-icon danger"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
-          </button>
-        </div>
-      </div>
-    </div>
-
     <div class="chart-tools">
       <div class="intervals" id="intervals" role="group" aria-label="Interval svíček">
         <button type="button" class="interval-btn" data-interval="1" data-i18n="interval.1m">1m</button>
@@ -328,7 +330,7 @@
            interval-btn: ta tlačítka se berou jako přepnutí timeframu. -->
       <button type="button" id="chartBackBtnDole" class="chart-back-big"
               data-i18n-aria="action.back" data-i18n-title="action.back">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg>
       </button>
     </div>
 

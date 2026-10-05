@@ -944,7 +944,10 @@ tam by to sebralo dotyk vodorovně posuvným lištám.
 #### Rozvržení obrazovky grafu
 
 Shora dolů: **hlavička** (zpět, **logo**, pár, PnL) → **údaje o pozici**
-→ **kreslicí lišta** → **graf** → **timeframy**.
+→ **graf** → **kreslicí lišta** → **timeframy**. Lišta s nástroji je pod
+grafem od v0.31.4 (přání uživatele 2026-10-05) — nástroje i timeframy jsou
+dole na palec. Velké tlačítko zpět dole má stejnou šipku „←" jako nahoře
+(dřív lomené „<"). Značky starších obchodů mají průhlednost 0,35 (dřív 0,55).
 
 **Logo v hlavičce grafu (v0.31.2, přání uživatele: logo na každé
 obrazovce):** značka tkaného X s vlastním přechodem (`brandGradChart`),

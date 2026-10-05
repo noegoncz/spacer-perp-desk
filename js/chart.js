@@ -511,7 +511,7 @@ function registrovatZnackuPlneni() {
          */
         styles: {
           style: 'stroke_fill',
-          color: d.stary ? pruhledne(d.color, 0.55) : d.color,
+          color: d.stary ? pruhledne(d.color, 0.35) : d.color,
           // Bez obrysu (2026-10-03, přání uživatele) — barvy značek jsou
           // jiné než svíčky, takže na nich nezmizí.
           borderColor: d.color,
