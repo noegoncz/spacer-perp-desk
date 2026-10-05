@@ -275,11 +275,18 @@ function umisteniZnacky(chart, overlay) {
       const k = `${i}${strana}`;
       const poradi = pocty.get(k) || 0;
       pocty.set(k, poradi + 1);
-      mapa.set(o.id, { svicka: data[i], poradi });
+      mapa.set(o.id, { index: i, poradi });
     });
     umisteniCache = { klic, mapa };
   }
-  return umisteniCache.mapa.get(overlay.id) || null;
+  /*
+   * ⚠ Svíčka se čte **při každém kreslení znovu**, v mezipaměti je jen její
+   * pořadí. Živá svíčka mění minimum a maximum s každým tickem — dřív se
+   * pamatovala svíčka z okamžiku výpočtu a když cena po nákupu klesla níž,
+   * trojúhelník zůstal u starého minima uvnitř svíčky (2026-10-06).
+   */
+  const u = umisteniCache.mapa.get(overlay.id);
+  return u && data[u.index] ? { svicka: data[u.index], poradi: u.poradi } : null;
 }
 
 /** '#rrggbb' → rgba s průhledností (pro tlumené značky). */

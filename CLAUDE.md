@@ -410,6 +410,10 @@ plnění nákup `#7dffb8`, prodej `#ff8a9a` (světlejší než svíčky), větš
 cenu plnění (tam se ztrácely ve svíčce). Víc plnění téže strany na jedné
 svíčce se řadí za sebe (`umisteniZnacky` v chart.js, svíčka podle času
 plnění v aktuálním timeframu, výsledek v cache do změny dat či značek).
+⚠ V cache je jen **index svíčky a pořadí**, svíčka se čte při každém
+kreslení znovu (v0.32.1): živá svíčka mění minimum s každým tickem
+a dřív zůstal trojúhelník u starého minima uvnitř svíčky. Test:
+`tools/test-znacka-ziva-svicka.py`, na starém kódu padá.
 
 **v0.31.2 (2026-10-04): jeden trojúhelník = jeden příkaz** (`sloucitPodlePrikazu`
 v app.js, podle `orderId`; čas prvního plnění, cena vážená množstvím). Tržní

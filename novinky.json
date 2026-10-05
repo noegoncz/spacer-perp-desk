@@ -1,23 +1,10 @@
 {
-  "verze": "0.32.0",
-  "novinky": [
-    {
-      "en": "Drawing tools now open in a clear menu with big icons and names. The toolbar fits any screen.",
-      "cs": "Kreslicí nástroje se otevírají v přehledné nabídce s velkými ikonami a názvy. Lišta se vejde na každý displej."
-    },
-    {
-      "en": "The selected timeframe always sits in the middle; the others rotate around it.",
-      "cs": "Zvolený timeframe je vždy uprostřed, ostatní se kolem něj točí."
-    },
-    {
-      "en": "Cleaner chart: no grey candle details at the top. 24h volume is shown in the row above the chart.",
-      "cs": "Čistší graf: nahoře už nejsou šedé údaje o svíčce. Objem za 24 h je v řádku nad grafem."
-    }
-  ],
+  "verze": "0.32.1",
+  "novinky": [],
   "opravy": [
     {
-      "en": "Small fixes and polish.",
-      "cs": "Drobné opravy a vylepšení."
+      "en": "Buy and sell markers stay below or above the live candle as it moves.",
+      "cs": "Značky nákupů a prodejů drží pod a nad živou svíčkou, i když se hýbe."
     }
   ]
 }
