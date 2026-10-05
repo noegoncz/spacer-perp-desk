@@ -236,8 +236,10 @@ def interakce():
     time.sleep(1.5)
     d['zavreni_grafu'] = doba("history.back();", "document.getElementById('viewChart').hidden")
     time.sleep(1)
+    # Trhy se od v0.31.3 otevírají na prvním vlastním seznamu (může být
+    # prázdný) — měří se doba do vykreslení záložky.
     d['zalozka_trhy'] = doba("document.querySelector('[data-tab=watchlist]').click();",
-        "document.querySelectorAll('.watch-row').length > 0")
+        "!document.getElementById('viewWatchlist').hidden && document.querySelectorAll('#watchLists .chip').length > 0")
     time.sleep(1)
     d['zalozka_pozice'] = doba("document.querySelector('[data-tab=positions]').click();",
         "!document.getElementById('viewPositions').hidden")

@@ -183,6 +183,8 @@ export const cs = {
   'source.high': 'Maximum',
   'source.low': 'Minimum',
   'chart.moreTools': 'Další nástroje',
+  'chart.vol24h': 'Objem 24h',
+  'chart.tools': 'Kreslicí nástroje',
   'chart.cursor': 'Kurzor',
   'chart.magnet': 'Přichytávat ke svíčkám',
   'chart.eraseDrawings': 'Smazat kresby',

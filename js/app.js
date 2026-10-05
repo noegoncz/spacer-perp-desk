@@ -131,6 +131,7 @@ let chart = null;          // instance se drží i po zavření, ať se otevír�
 let chartSymbol = null;    // null = graf je zavřený
 let chartPosition = null;  // null = pár bez otevřené pozice
 let chartTrh = null;       // poslední cena a změna, když pozice není
+let chartObrat = null;     // objem za 24 h v USDT (řádek nad grafem)
 let chartInterval = '240';  // 4h je pro přehled nejpoužitelnější
 /*
  * Timeframe, který si **uživatel zvolil sám**. ⚠ Prohlídka obchodu
@@ -721,7 +722,7 @@ function wireEvents() {
     if (obchody.length) ui.renderHistory(obchody, hideAmounts, otevriProhlidku);
     if (chartSymbol) {
       ui.renderChartHeader(chartSymbol, chartPosition, hideAmounts, chartTrh);
-      ui.renderChartInfo(chartPosition, hideAmounts, popisBurzy());
+      ui.renderChartInfo(chartPosition, hideAmounts, popisBurzy(), chartObrat);
     }
   });
 
@@ -793,8 +794,15 @@ function wireEvents() {
   naUdalost('styleAlarmBtn', 'click', alarmZKresby);
 
   document.querySelectorAll('.tool-btn[data-tool]').forEach((btn) => {
-    btn.addEventListener('click', () => vyberNastroj(btn.dataset.tool));
+    btn.addEventListener('click', () => {
+      vyberNastroj(btn.dataset.tool);
+      // Výběr v nabídce nástrojů ji zavře — kreslí se hned.
+      if (btn.classList.contains('tool-item')) zavriNabidky();
+    });
   });
+  naUdalost('toolsBtn', 'click', () => otevriNabidku('sheetTools'));
+  // Přeložení Foldu mění šířku lišty timeframů — aktivní zůstane uprostřed.
+  window.addEventListener('resize', () => ui.vycentrujInterval());
 
   naUdalost('magnetBtn', 'click', () => {
     magnetZapnut = !magnetZapnut;
@@ -963,7 +971,7 @@ function postavVyberJazyka() {
       postavNabidky();
       if (chartSymbol) {
         ui.renderChartHeader(chartSymbol, chartPosition, hideAmounts, chartTrh);
-        ui.renderChartInfo(chartPosition, hideAmounts, popisBurzy());
+        ui.renderChartInfo(chartPosition, hideAmounts, popisBurzy(), chartObrat);
         applyChartLines(true);
       }
     }
@@ -1122,14 +1130,25 @@ async function otevriGraf(symbol, position, trh) {
   chartPosition = position;
   chartOtevreno = null;
   chartTrh = trh;
+  chartObrat = trh?.turnover ?? null;
   chartOrders = [];
   chartLineKey = '';
+  // Graf otevřený z Pozic nebo z notifikace objem nemá — stáhne se zvlášť,
+  // mimo hlavní cestu (graf na něj nečeká).
+  if (!chartObrat) {
+    client.getTicker(symbol).then((tk) => {
+      if (chartSymbol !== symbol || !tk?.turnover) return;
+      chartObrat = tk.turnover;
+      ui.renderChartInfo(chartPosition, hideAmounts, popisBurzy(), chartObrat);
+    }).catch(() => { /* bez objemu se graf obejde */ });
+  }
 
   ui.renderChartHeader(symbol, position, hideAmounts, trh);
-  ui.renderChartInfo(position, hideAmounts, popisBurzy());
+  ui.renderChartInfo(position, hideAmounts, popisBurzy(), chartObrat);
   ui.setActiveInterval(chartInterval);
   ui.showChartError('');
   ui.showChart(true);
+  ui.vycentrujInterval();
 
   // Aby hardwarové tlačítko zpět zavřelo graf, a ne celou aplikaci.
   // (Graf nahrazující jiný otevřený graf záznam už má.)
@@ -1333,6 +1352,14 @@ function vyberNastroj(nastroj) {
   document.querySelectorAll('.tool-btn[data-tool]').forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.tool === nastroj);
   });
+  // Tlačítko nabídky nástrojů nese ikonu zvoleného nástroje.
+  const ikona = el('toolsBtnIcon');
+  if (ikona) {
+    if (!ikona.dataset.vychozi) ikona.dataset.vychozi = ikona.innerHTML;
+    const zvoleny = nastroj && document.querySelector(`.tool-item[data-tool="${nastroj}"] svg`);
+    ikona.innerHTML = zvoleny ? zvoleny.outerHTML : ikona.dataset.vychozi;
+    el('toolsBtn').classList.toggle('active', Boolean(zvoleny));
+  }
 
   if (nastroj) chart.startDrawing(nastroj);
 }
@@ -2875,7 +2902,7 @@ function zobrazPaletu(styl) {
   oznac('styleOpacity', 'opacity', styl.opacity);
 }
 
-const NABIDKY = ['sheetIndicators', 'sheetSettings', 'sheetAlarm', 'sheetLayers'];
+const NABIDKY = ['sheetIndicators', 'sheetSettings', 'sheetAlarm', 'sheetLayers', 'sheetTools'];
 
 /** Chybějící prvek se přeskočí, ať rozpadlá aktualizace nesestřelí graf. */
 function ukazPrvek(id, viditelny) {
@@ -3038,7 +3065,7 @@ function syncOpenChart(list) {
   chartPosition = fresh;
   ui.renderChartHeader(chartSymbol, fresh, hideAmounts);
   // Panel se překresluje pokaždé — mark, PnL i ROE se mění s každým tickem.
-  ui.renderChartInfo(fresh, hideAmounts, popisBurzy());
+  ui.renderChartInfo(fresh, hideAmounts, popisBurzy(), chartObrat);
   applyChartLines();
   // Průměrný vstup se mění při přikoupení, linka ho musí sledovat.
   nastavLinkuPnl();

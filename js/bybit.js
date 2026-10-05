@@ -605,6 +605,19 @@ export class BybitClient {
    * Všechny linear USDT páry se základními čísly, seřazené podle obratu.
    * Veřejné, nepotřebuje klíče — seznam jde ukázat i před přihlášením.
    */
+  /** Ticker jednoho páru — pro objem za 24 h v řádku nad grafem. */
+  async getTicker(symbol) {
+    const result = await this.publicGet('/v5/market/tickers', { category: 'linear', symbol });
+    const t = result?.list?.[0];
+    if (!t) return null;
+    return {
+      symbol: t.symbol,
+      last: num(t.lastPrice),
+      changePct: num(t.price24hPcnt) * 100,
+      turnover: num(t.turnover24h),
+    };
+  }
+
   async getTickers() {
     const result = await this.publicGet('/v5/market/tickers', { category: 'linear' });
     return (result?.list ?? [])

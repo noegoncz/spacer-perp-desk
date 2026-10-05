@@ -1,9 +1,17 @@
 {
-  "verze": "0.31.5",
+  "verze": "0.32.0",
   "novinky": [
     {
-      "en": "Coming back to the app after a long time in the background no longer flashes a clock warning — the connection recovers quietly.",
-      "cs": "Návrat do aplikace po dlouhé době na pozadí už neukáže varování o hodinách — spojení se obnoví potichu."
+      "en": "Drawing tools now open in a clear menu with big icons and names. The toolbar fits any screen.",
+      "cs": "Kreslicí nástroje se otevírají v přehledné nabídce s velkými ikonami a názvy. Lišta se vejde na každý displej."
+    },
+    {
+      "en": "The selected timeframe always sits in the middle; the others rotate around it.",
+      "cs": "Zvolený timeframe je vždy uprostřed, ostatní se kolem něj točí."
+    },
+    {
+      "en": "Cleaner chart: no grey candle details at the top. 24h volume is shown in the row above the chart.",
+      "cs": "Čistší graf: nahoře už nejsou šedé údaje o svíčce. Objem za 24 h je v řádku nad grafem."
     }
   ],
   "opravy": [

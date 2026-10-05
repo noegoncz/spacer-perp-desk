@@ -140,6 +140,9 @@ if ev("localStorage.getItem('perpdesk.drawings.JUPUSDT')") not in (None, '[]'):
 ev("document.getElementById('viewChart').hidden || history.back()")
 time.sleep(1.2)
 ev("document.querySelector('[data-tab=watchlist]').click()")
+# Trhy se od v0.31.3 otevírají na prvním vlastním seznamu — BTC je v „All".
+time.sleep(0.3)
+ev("[...document.querySelectorAll('#watchLists .chip')].find((c) => c.textContent.startsWith('All'))?.click()")
 time.sleep(3)
 ev("[...document.querySelectorAll('.watch-row')].find((r) => r.textContent.includes('BTCUSDT')).click()")
 time.sleep(0.35)  # svíčky BTC přijdou až za vteřinu

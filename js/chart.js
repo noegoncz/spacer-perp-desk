@@ -1110,7 +1110,13 @@ function styly() {
         upWickColor: BARVY.rust,
         downWickColor: BARVY.pokles,
       },
-      tooltip: { text: { color: BARVY.text, size: 11 } },
+      /*
+       * Legenda svíčky („JUPUSDT · 1H, Time, Open, High…") je vypnutá
+       * (2026-10-05, přání uživatele): zabírala horní část grafu a nic
+       * z toho při sledování pozice nepotřebuje. Objem za 24 h stojí
+       * v řádku nad grafem.
+       */
+      tooltip: { showRule: 'none', text: { color: BARVY.text, size: 11 } },
       // Značka poslední ceny a pod ní odpočet do uzavření svíčky.
       priceMark: {
         show: true,
@@ -1413,8 +1419,12 @@ export function createPriceChart(container, layer, handlers = {}) {
    * Vypnutí a zapnutí je vrátilo, jenže tím zase zmizela linka zisku.
    * Test: tools/test-indikatory-vrstveni.py.
    */
+  // Indikátory v hlavním panelu bez legendy („Vol MA 20", „EMA 6 12 20"…)
+  // — horní část grafu zůstane čistá (2026-10-05). Panely pod grafem
+  // (RSI, MACD) legendu s hodnotou mají dál.
+  const bezLegendy = () => ({ name: '', calcParamsText: '', legends: [] });
   const pridejDoHlavnihoPanelu = (nazev) =>
-    chart.createIndicator({ name: nazev, paneId: HLAVNI_PANEL }, true);
+    chart.createIndicator({ name: nazev, paneId: HLAVNI_PANEL, createTooltipDataSource: bezLegendy }, true);
   // Co je v grafu nakresleno — při změně intervalu se to na chvíli sundá
   // a vrátí až s novými svíčkami, aby nic nepřeskakovalo zvlášť.
   let posledniCary = [];

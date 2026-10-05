@@ -967,10 +967,28 @@ PnL a procenta pod sebe a pár se ořízne, nelomí — jinak se odznak
 Údaje o pozici jsou nahoře schválně: pod nimi zůstane graf souvislý až
 k timeframům. V celé obrazovce ustoupí, nástroje zůstávají.
 
-Kreslicí lišta ukazuje **všech 13 nástrojů** (s měřením) plus magnet, indikátory, koš
-a celou obrazovku (ta je vždy úplně vpravo), proto jsou tlačítka 34 px. Na
-rozevřeném Foldu se vejdou bez posouvání, na zavřeném displeji se lišta
-posouvá do strany.
+**Kreslicí nástroje jsou v nabídce** (v0.32.0, přání uživatele 2026-10-05,
+vzor TradingView): v liště je jen kurzor a tlačítko `#toolsBtn`, které
+otevře `#sheetTools` — mřížku 11 nástrojů s velkými ikonami a názvy.
+Výběr nabídku zavře a tlačítko pak nese ikonu zvoleného nástroje (svítí).
+Dřív se 13 nástrojů posouvalo v liště a na zavřeném displeji byly vidět
+dva. Vpravo zůstává alarm, magnet, vrstvy, indikátory, koš a celá
+obrazovka; tlačítka 38 px. Lišta se vejde i na 344 px bez posouvání.
+
+**Timeframy jako kolotoč** (v0.32.0): aktivní stojí vždy uprostřed
+(`setActiveInterval` přeskládá tlačítka dokola — za 1M následuje 1m)
+a lišta se posune, aby byl uprostřed viditelné části; znovu i při změně
+rozměrů (přeložení Foldu).
+
+**Horní část grafu je čistá** (v0.32.0): legenda svíčky (Time, Open,
+High…) je vypnutá (`candle.tooltip.showRule: 'none'`) a indikátory
+v hlavním panelu nemají legendu (`createTooltipDataSource` prázdný
+při vložení). Panely pod grafem (RSI, MACD) legendu s hodnotou mají.
+Řádek nad grafem: burza, velikost, margin a **objem za 24 h v USDT**
+(stejné číslo jako v Trzích, nemění se s timeframem; z Pozic se
+dotáhne `getTicker`). Likvidace z řádku zmizela — má čáru v grafu.
+Bez pozice zůstane řádek s burzou a objemem.
+Test: `tools/test-nastroje-a-timeframy.py`.
 
 Výchozí interval je **4h**.
 

@@ -962,18 +962,22 @@ export function renderChartHeader(symbol, position, hide, trh = null) {
  * Panel pod grafem. Nahradil legendu — ta jen opakovala hodnoty, které graf
  * sám píše na cenovou osu.
  */
-export function renderChartInfo(position, hide, burza = '') {
+export function renderChartInfo(position, hide, burza = '', obrat24h = null) {
   /*
    * Jeden tenký řádek místo mřížky 3 × 3 (2026-10-03, přání uživatele —
    * zabírala čtvrtinu výšky a vstup, mark, SL a TP stejně stojí v grafu):
-   * burza a typ účtu, velikost v coinu a v USDT, margin, likvidace.
+   * burza a typ účtu, velikost v coinu a v USDT, margin, objem za 24 h.
+   * Likvidace odsud zmizela (2026-10-05) — má čáru a cenovku v grafu.
+   * Objem je **za 24 h v USDT**, ne za svíčku: nemění se s timeframem
+   * a jde porovnat mezi páry (stejné číslo jako v Trzích). Bez pozice
+   * zůstane řádek s burzou a objemem.
    */
-  dom.chartInfo.hidden = !position;
-  if (!position) return;
+  const vol = Number.isFinite(obrat24h) && obrat24h > 0 ? obrat24h : null;
+  dom.chartInfo.hidden = !position && !vol;
+  if (dom.chartInfo.hidden) return;
 
-  const mena = String(position.symbol || '').replace(/USDT$|USDC$/, '');
-  const margin = position.leverage && position.value ? position.value / position.leverage : null;
-  const distance = liquidationDistance(position);
+  const mena = String(position?.symbol || '').replace(/USDT$|USDC$/, '');
+  const margin = position?.leverage && position?.value ? position.value / position.leverage : null;
   const kus = (text, trida = '') => {
     const s = document.createElement('span');
     s.className = `ci ${trida}`.trim();
@@ -988,10 +992,11 @@ export function renderChartInfo(position, hide, burza = '') {
     b.prepend(tecka);
     casti.push(b);
   }
-  casti.push(kus(hide ? MASK : `${formatSize(position.size)} ${mena} · ${formatUsd(position.value)} USDT`));
-  if (margin) casti.push(kus(`${t('position.margin')} ${hide ? MASK : formatUsd(margin)}`));
-  casti.push(kus(`${t('position.liqShort')} ${position.liq ? formatPrice(position.liq) : '—'}`,
-    distance !== null && Math.abs(distance) < 10 ? 'ci-liq near' : 'ci-liq'));
+  if (position) {
+    casti.push(kus(hide ? MASK : `${formatSize(position.size)} ${mena} · ${formatUsd(position.value)} USDT`));
+    if (margin) casti.push(kus(`${t('position.margin')} ${hide ? MASK : formatUsd(margin)}`));
+  }
+  if (vol) casti.push(kus(`${t('chart.vol24h')} ${zkratkaObratu(vol)}`, 'ci-vol'));
   dom.chartInfo.replaceChildren(...casti);
 }
 
@@ -1000,9 +1005,39 @@ export function showChartError(message) {
   if (message) dom.chartError.textContent = message;
 }
 
+/*
+ * Timeframy jako kolotoč (2026-10-05, přání uživatele): aktivní stojí vždy
+ * uprostřed lišty a ostatní se kolem něj točí dokola (za 1M následuje 1m).
+ * Pořadí se přeskládá v DOM, na úzkém displeji se lišta navíc posune, aby
+ * aktivní byl uprostřed viditelné části.
+ */
 export function setActiveInterval(interval) {
-  document.querySelectorAll('.interval-btn[data-interval]').forEach((btn) => {
+  const tlacitka = [...document.querySelectorAll('.interval-btn[data-interval]')];
+  tlacitka.forEach((btn, i) => {
+    if (btn.dataset.poradi === undefined) btn.dataset.poradi = String(i);
     btn.classList.toggle('active', btn.dataset.interval === interval);
+  });
+  const box = document.getElementById('intervals');
+  if (!box) return;
+  const kanon = tlacitka.sort((a, b) => Number(a.dataset.poradi) - Number(b.dataset.poradi));
+  const i = kanon.findIndex((b) => b.dataset.interval === interval);
+  if (i < 0) return;
+  const n = kanon.length;
+  const stred = Math.floor(n / 2);
+  box.append(...kanon.map((_, k) => kanon[(i - stred + k + n) % n]));
+  vycentrujInterval();
+}
+
+/** Posune lištu timeframů tak, aby aktivní byl uprostřed viditelné části. */
+export function vycentrujInterval() {
+  const box = document.getElementById('intervals');
+  const aktivni = box?.querySelector('.interval-btn.active');
+  if (!aktivni) return;
+  requestAnimationFrame(() => {
+    const r = box.getBoundingClientRect();
+    const a = aktivni.getBoundingClientRect();
+    if (!r.width) return;
+    box.scrollLeft += (a.left + a.width / 2) - (r.left + r.width / 2);
   });
 }
 

@@ -187,6 +187,8 @@ export const en = {
   'source.high': 'High',
   'source.low': 'Low',
   'chart.moreTools': 'More tools',
+  'chart.vol24h': 'Vol 24h',
+  'chart.tools': 'Drawing tools',
   'chart.cursor': 'Cursor',
   'chart.magnet': 'Snap to candles',
   'chart.eraseDrawings': 'Delete drawings',
