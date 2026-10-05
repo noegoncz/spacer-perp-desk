@@ -318,6 +318,15 @@ sign = HMAC_SHA256("GET/realtime" + expires, secret)  → hex
 Hodiny v telefonu se rozjíždějí, proto se při startu volá `/v5/market/time`
 a drží se offset vůči serveru. Bez toho padají podpisy na chybu 10002.
 
+⚠ **Po probuzení z pozadí 10002 i se správnými hodinami** (v0.31.5,
+2026-10-05): offset změřený před hodinami už neplatí a probouzející se
+síť požadavek pozdrží — v liště chyb na chvíli viselo „Clock mismatch".
+`signedGet` teď offset starší než 10 min obnoví před podpisem a na 10002
+změří čas znovu a dotaz **jednou potichu zopakuje**. Hláška zůstává jen
+při trvalém 10002 (hodiny telefonu opravdu mimo). Neúspěšné měření času
+se zkusí znovu nejdřív za minutu. Test: `tools/test-cas-po-spanku.py`,
+na starém kódu padá.
+
 ## Checkpointy
 
 ### ✅ 1) Připojení a seznam pozic

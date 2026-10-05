@@ -1,17 +1,9 @@
 {
-  "verze": "0.31.4",
+  "verze": "0.31.5",
   "novinky": [
     {
-      "en": "Drawing tools moved below the chart, right above the timeframes — everything within thumb reach.",
-      "cs": "Kreslicí nástroje jsou teď pod grafem, hned nad timeframy — všechno na dosah palce."
-    },
-    {
-      "en": "The big Back button shows the same arrow as the one at the top.",
-      "cs": "Velké tlačítko Zpět má stejnou šipku jako to nahoře."
-    },
-    {
-      "en": "Markers of past trades are more subtle, so your open trade stands out.",
-      "cs": "Značky starších obchodů jsou nenápadnější, ať vynikne běžící obchod."
+      "en": "Coming back to the app after a long time in the background no longer flashes a clock warning — the connection recovers quietly.",
+      "cs": "Návrat do aplikace po dlouhé době na pozadí už neukáže varování o hodinách — spojení se obnoví potichu."
     }
   ],
   "opravy": [

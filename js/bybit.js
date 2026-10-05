@@ -300,17 +300,49 @@ export class BybitClient {
     try {
       const json = await this.httpGet(`${REST_BASE}/v5/market/time`, {});
       const serverMs = Number(json?.result?.timeNano ?? 0) / 1e6 || Number(json?.time ?? 0);
-      if (serverMs > 0) this.timeOffset = Math.round(serverMs - Date.now());
+      if (serverMs > 0) {
+        this.timeOffset = Math.round(serverMs - Date.now());
+        this.casSynchronizace = Date.now();
+      }
     } catch (err) {
       // Běží se dál s offsetem 0, ale chyba se musí zaznamenat — dřív mizela
       // beze stopy a schovávala tím, že je čas serveru nedostupný.
       this.zapisDiag('čas serveru selhal', err.message || String(err));
+      // Bez sítě se nezkoušet před každým dotazem — znovu nejdřív za minutu.
+      this.casSynchronizace = Date.now() - 9 * 60e3;
     }
   }
 
   async signedGet(path, params) {
     if (!this.hasCredentials()) throw new Error(t('error.noKeys'));
 
+    /*
+     * ⚠ Po dlouhém spánku aplikace na pozadí hlásil Bybit 10002 (nesoulad
+     * času) a v liště chyb na chvíli viselo „Clock mismatch" — přestože
+     * hodiny telefonu byly v pořádku (2026-10-05). Rozdíl proti serveru
+     * změřený před hodinami už neplatí a probouzející se síť požadavek
+     * pozdrží. Proto: starý rozdíl (> 10 min) se před podpisem obnoví
+     * a na 10002 se čas změří znovu a požadavek **jednou potichu
+     * zopakuje**. Hláška zůstane jen tehdy, když to nepomůže — pak jsou
+     * hodiny telefonu opravdu mimo.
+     */
+    if (!this.casSynchronizace || Date.now() - this.casSynchronizace > 10 * 60e3) {
+      await this.syncTime();
+    }
+    let json = await this.podepsanyDotaz(path, params);
+    if (Number(json.retCode) === 10002) {
+      this.zapisDiag('10002, znovu čas serveru a opakování');
+      await this.syncTime();
+      json = await this.podepsanyDotaz(path, params);
+    }
+
+    if (Number(json.retCode) !== 0) {
+      throw new Error(describeError(json.retCode, json.retMsg));
+    }
+    return json.result;
+  }
+
+  async podepsanyDotaz(path, params) {
     // Podepisuje se přesně ten query string, který se odešle, ve stejném pořadí.
     const query = new URLSearchParams(params).toString();
     const timestamp = String(this.now());
@@ -319,17 +351,12 @@ export class BybitClient {
       timestamp + this.apiKey + RECV_WINDOW + query,
     );
 
-    const json = await this.httpGet(`${REST_BASE}${path}?${query}`, {
+    return this.httpGet(`${REST_BASE}${path}?${query}`, {
       'X-BAPI-API-KEY': this.apiKey,
       'X-BAPI-TIMESTAMP': timestamp,
       'X-BAPI-RECV-WINDOW': RECV_WINDOW,
       'X-BAPI-SIGN': sign,
     });
-
-    if (Number(json.retCode) !== 0) {
-      throw new Error(describeError(json.retCode, json.retMsg));
-    }
-    return json.result;
   }
 
   /** Načte otevřené linear USDT pozice a nahradí jimi celý stav. */
