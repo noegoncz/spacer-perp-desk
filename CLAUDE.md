@@ -183,6 +183,19 @@ nové a staré verze. Proto:
 - `fetch` handler stahuje s `{ cache: 'no-cache' }` (podmíněný požadavek,
   obvykle levné 304).
 
+⚠ **Od v0.34.0 servíruje worker všechno z cache své verze, bez sítě**
+(i `index.html`). Dřív šla navigace vždy nejdřív na server a ostatní
+soubory se při každém startu stahovaly na pozadí znovu: na mobilu to
+zdržovalo start (vteřina i víc před prvním vykreslením, ~25 požadavků
+proti prvním dotazům na burzu) a navíc to tahalo soubory **novější verze
+ze serveru do cache běžící verze** — právě ta míchanice, kvůli které je
+`cache: 'reload'` při instalaci. Nová verze se teď do telefonu dostane
+jen celou: nasazení změní `sw.js` (BUILD_ID) → nový worker si při
+instalaci stáhne celou sadu → po „Aktualizovat" se přepne. Ze sítě jde
+jen to, co v cache není (soubor mimo SHELL, úplně první spuštění).
+⚠ Nový soubor aplikace proto **musí být v `SHELL`**, jinak se poprvé
+stáhne ze sítě a pak zůstane v cache i přes další verze.
+
 Stalo se ve verzi 0.1.2: `version.js` se stáhl čerstvý a UI hlásilo novou
 verzi, ale `style.css` se vzal starý, takže oprava v CSS se do telefonu
 nedostala, přestože na serveru byla.
@@ -1139,6 +1152,17 @@ takže po otevření grafu pozice potichu smazala objem, EMA, Bollingera…:
 v nabídce svítily jako zapnuté a v grafu nebyly. Vypnutí a zapnutí je
 vrátilo, jenže tím zase zmizela linka zisku. Test:
 `tools/test-indikatory-vrstveni.py`, na starém kódu padá v osmi bodech.
+
+**Výška panelu tažením** (v0.34.0, přání uživatele): na hranici mezi
+grafem a panelem indikátoru (RSI, MACD…) je úchyt `.pane-uchyt` s madlem;
+tažení nahoru panel zvětší, dolů zmenší (40 px až 55 % plochy — svíčkám
+zbyde 45 %). Výška se uloží do nastavení indikátoru jako procento
+(`vyskaPanelu`), takže platí i po přeložení Foldu a restartu; v nastavení
+pak nemusí svítit žádná z pevných voleb. ⚠ Úchyt má z-index 21 — knihovna
+má na hranici vlastní 7px oddělovač se z-index 20, který by dotyk sebral.
+Úchyty se rozmisťují v `umistiVrstvu()` (běží po každé změně rozměrů,
+dat i indikátorů). Test: `tools/test-vyska-panelu-tazenim.py` (skutečné
+dotyky).
 
 **RSI nemá prázdné okraje nad 100 a pod 0.** Výchozí `gap` osy Y knihovny
 nechává nahoře 20 % a dole 10 % výšky panelu prázdných; u nízkého panelu
@@ -2391,6 +2415,32 @@ rozjíždí opakované dotahování **jako první**, ještě před prvním načt
 K tomu `hlidejTicheChyby()` v `app.js`: každá neodchycená chyba i zamítnutý
 slib se ukáží v chybové liště. Nic nesmí selhat potichu — zamrzlá obrazovka
 bez hlášky je to nejhorší, co uživatel může dostat.
+
+## Rychlý start (v0.34.0, 2026-10-07)
+
+Uživatel hlásil, že se start zpomalil a „vypadá divně". Měření:
+`tools/mereni-startu.py` (CPU 4×, síť 150 ms, Bybit +250 ms, druhé
+načtení přes service worker; vypíše časovou osu, soubory, dotazy na burzu,
+dlouhé úlohy a vlastní čas skriptů). Skripty samy start nebrzdily
+(žádná dlouhá úloha); zdržovala **síť v řadě za sebou**:
+
+1. **index.html vždy ze sítě** a ~25 souborů znovu na pozadí → teď vše
+   z cache verze (viz Verzování výš).
+2. **Čas serveru před pozicemi** — `/v5/market/time` a teprve pak
+   `/v5/position/list`, a znovu před každým 30s obnovením. Teď se čas
+   měří souběžně s prvním dotazem a jen když je starší než 10 min;
+   na 10002 se změří a dotaz zopakuje (`signedGet`).
+3. **Prázdná obrazovka, pak vše naráz, přehled účtu ještě později**
+   (stránka poskakovala). Teď se poslední známé pozice, přehled účtu
+   a příkazy ukládají (`perpdesk.startSnimek`, nejvýš jednou za 20 s)
+   a při startu se ukážou hned, **ztlumené** (`.zastarale`), dokud
+   nedorazí čerstvá data. Snímek je starý nejvýš 7 dní; nezálohuje se,
+   nespouští cloudovou zálohu (`BEZ_ZALOHY` ve store.js) a odhlášení
+   ho smaže. Obrysy karet zůstaly jen pro úplně první start.
+
+Výsledek měření: pozice vidět za ~0,33 s místo ~0,68 s (a bez obrysů),
+čerstvá data o jednu cestu na burzu dřív. Test:
+`tools/test-start-a-zpet.py` (obrysy při prvním startu, snímek při dalším).
 
 ## Diagnostika v aplikaci
 

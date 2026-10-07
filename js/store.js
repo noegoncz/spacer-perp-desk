@@ -29,7 +29,10 @@ function write(key, value) {
  * záloha (js/ucet.js). Klíče, relace a technické značky zálohu nespouští.
  */
 const BEZ_ZALOHY = new Set([KEY_API, KEY_SECRET, 'perpdesk.session', 'perpdesk.lastPing', 'perpdesk.lock',
-  'perpdesk.coinCategories']);
+  'perpdesk.coinCategories',
+  // Poslední známé pozice pro okamžitý start: zapisují se každých 20 s
+  // a do zálohy nepatří (js/app.js, ulozSnimek).
+  'perpdesk.startSnimek']);
 const posluchaci = new Set();
 
 export function naZmenuDat(fn) {

@@ -14,7 +14,7 @@
 import { createTouchDrawing } from './draw.js';
 import { formatPrice } from './format.js';
 import { t, getLocale } from './i18n.js';
-import { nactiNastaveni, parametryVypoctu, ZDROJE, TYPY_MA, vyhladit } from './indikatory.js';
+import { nactiNastaveni, ulozNastaveni, parametryVypoctu, ZDROJE, TYPY_MA, vyhladit } from './indikatory.js';
 
 /**
  * Datum a čas pro cenovku u kříže — stejné pásmo jako osa grafu. Volá se při
@@ -1483,6 +1483,103 @@ export function createPriceChart(container, layer, handlers = {}) {
     layer.style.top = `${b.top}px`;
     layer.style.width = `${b.width}px`;
     layer.style.height = `${b.height}px`;
+    umistiUchyty();
+  }
+
+  /*
+   * Úchyty na hranici panelů indikátorů (2026-10-07, přání uživatele):
+   * hranici mezi grafem a RSI (nebo jiným indikátorem pod grafem) jde
+   * chytit prstem a panel zvětšit či zmenšit. Vestavěné tažení oddělovače
+   * knihovny je na telefonu nepoužitelné (1px čára), proto vlastní úchyt
+   * s dotykovou plochou 26 px a viditelným „madlem". Výška se ukládá do
+   * nastavení indikátoru jako procento plochy (`vyskaPanelu`), takže platí
+   * dál i po přeložení Foldu a restartu.
+   */
+  const uchyty = new Map();   // paneId → prvek
+  let tahUchytu = null;
+
+  function umistiUchyty() {
+    const rodic = container.parentElement;
+    if (!rodic || tahUchytu) return;
+    const panely = new Map();
+    chart.getIndicators().forEach((i) => {
+      if (i.paneId && i.paneId !== HLAVNI_PANEL && !panely.has(i.paneId)) panely.set(i.paneId, i.name);
+    });
+    uchyty.forEach((u, id) => {
+      if (!panely.has(id)) {
+        u.remove();
+        uchyty.delete(id);
+      }
+    });
+    panely.forEach((nazev, paneId) => {
+      const b = chart.getSize(paneId);
+      if (!b || !b.height) return;
+      let u = uchyty.get(paneId);
+      if (!u) {
+        u = vytvorUchyt(paneId);
+        uchyty.set(paneId, u);
+        rodic.append(u);
+      }
+      u.dataset.nazev = nazev;
+      u.style.top = `${b.top}px`;
+    });
+  }
+
+  function vytvorUchyt(paneId) {
+    const u = document.createElement('div');
+    u.className = 'pane-uchyt';
+    u.dataset.pane = paneId;
+    const madlo = document.createElement('span');
+    madlo.className = 'pane-madlo';
+    u.append(madlo);
+
+    u.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) return;
+      e.preventDefault();
+      const b = chart.getSize(paneId);
+      if (!b) return;
+      tahUchytu = { paneId, nazev: u.dataset.nazev, y: e.touches[0].clientY, vyska: b.height,
+                    plocha: container.clientHeight, top: b.top };
+      u.classList.add('tahne');
+      chart.setScrollEnabled(false);
+      chart.setZoomEnabled(false);
+    }, { passive: false });
+
+    u.addEventListener('touchmove', (e) => {
+      if (!tahUchytu || e.touches.length !== 1) return;
+      e.preventDefault();
+      const posun = e.touches[0].clientY - tahUchytu.y;
+      const strop = tahUchytu.plocha * (1 - NEJMENE_PRO_SVICKY);
+      const vyska = Math.round(Math.min(strop, Math.max(40, tahUchytu.vyska - posun)));
+      tahUchytu.nova = vyska;
+      try {
+        chart.setPaneOptions({ id: paneId, height: vyska });
+      } catch { /* panel mezitím zmizel */ }
+      if (tahUchytu.nazev === 'RSI') osaRsiBezOkraju();
+      u.style.top = `${tahUchytu.top + (tahUchytu.vyska - vyska)}px`;
+      const b = chart.getSize(HLAVNI_PANEL, 'main');
+      if (b) layer.style.height = `${b.height}px`;
+    }, { passive: false });
+
+    const pust = () => {
+      if (!tahUchytu) return;
+      const { nazev, nova, plocha } = tahUchytu;
+      tahUchytu = null;
+      u.classList.remove('tahne');
+      chart.setScrollEnabled(true);
+      chart.setZoomEnabled(true);
+      if (nova && plocha) {
+        const n = nactiNastaveni(nazev);
+        if (n.vyskaPanelu !== undefined) {
+          ulozNastaveni(nazev, { ...n, vyskaPanelu: Math.max(5, Math.round((nova / plocha) * 100)) });
+        }
+      }
+      umistiVrstvu();
+      kresleni.redraw();
+    };
+    u.addEventListener('touchend', pust);
+    u.addEventListener('touchcancel', pust);
+    return u;
   }
 
   const toPixel = (bod) => {

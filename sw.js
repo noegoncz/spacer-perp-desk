@@ -87,40 +87,35 @@ self.addEventListener('fetch', (event) => {
   // parametr, takže by se cache jen zbytečně plnila).
   if (url.pathname.endsWith('/novinky.json')) return;
 
-  // Navigace: nejdřív síť, ať se nedrží stará index.html.
-  if (request.mode === 'navigate') {
-    event.respondWith(
-      (async () => {
-        try {
-          // no-cache = vždy ověřit u serveru (podmíněný požadavek, obvykle 304),
-          // ať se kvůli max-age=600 nedrží stará index.html.
-          const fresh = await fetch(request, { cache: 'no-cache' });
-          const cache = await caches.open(CACHE);
-          cache.put('./index.html', fresh.clone());
-          return fresh;
-        } catch {
-          const cached = await caches.match('./index.html');
-          return cached || Response.error();
-        }
-      })(),
-    );
-    return;
-  }
-
-  // Ostatní soubory: z cache hned, na pozadí se obnoví.
+  /*
+   * ⚠ Všechno z cache **této verze**, bez čekání na síť (v0.34.0).
+   *
+   * Dřív šla index.html vždy nejdřív na server (na mobilní síti klidně
+   * vteřina i víc, než se vůbec začalo něco kreslit) a ostatní soubory se
+   * při každém startu stahovaly znovu na pozadí — ~25 požadavků, které se
+   * na mobilu praly s prvními dotazy na burzu, a navíc do cache běžící
+   * verze tahaly soubory z novější verze na serveru (míchanice verzí).
+   *
+   * Nová verze se do telefonu dostává jinou cestou: každé nasazení mění
+   * sw.js (BUILD_ID), prohlížeč nainstaluje nový worker, ten si do své
+   * cache stáhne celou novou sadu souborů (install, cache: 'reload')
+   * a po „Aktualizovat" se přepne. Běžící verze tedy má vždy svou
+   * úplnou a konzistentní sadu.
+   */
   event.respondWith(
     (async () => {
       const cache = await caches.open(CACHE);
-      const cached = await cache.match(request);
-
-      const network = fetch(request, { cache: 'no-cache' })
-        .then((response) => {
-          if (response.ok) cache.put(request, response.clone());
-          return response;
-        })
-        .catch(() => null);
-
-      return cached || (await network) || Response.error();
+      const klic = request.mode === 'navigate' ? './index.html' : request;
+      const cached = await cache.match(klic, { ignoreSearch: request.mode === 'navigate' });
+      if (cached) return cached;
+      // Co v cache není (soubor mimo SHELL, první spuštění): ze sítě a uložit.
+      try {
+        const fresh = await fetch(request, { cache: 'no-cache' });
+        if (fresh.ok && request.mode !== 'navigate') cache.put(request, fresh.clone());
+        return fresh;
+      } catch {
+        return (await caches.match(klic, { ignoreSearch: true })) || Response.error();
+      }
     })(),
   );
 });

@@ -151,7 +151,9 @@ let poslednicCena = null;  // poslední cena z grafu — předvyplní hladinu al
 const client = new BybitClient({
   onPositions(list) {
     lastPositions = list;
+    skonciSnimek();
     naplanujVykresleniPozic();
+    ulozSnimek();
     if (grafZNotifikace) dokonciGrafZNotifikace();
     syncOpenChart(list);
     /*
@@ -668,6 +670,51 @@ function hlidejTicheChyby() {
   });
 }
 
+/*
+ * Okamžitý start (v0.34.0): poslední známé pozice, přehled účtu a příkazy
+ * se uloží do telefonu a při dalším startu se ukážou **hned**, ztlumené,
+ * dokud nedorazí čerstvá data z burzy (obvykle do vteřiny). Dřív se start
+ * díval na obrysy karet a pak vše naskočilo naráz a přehled účtu ještě
+ * později — stránka poskakovala. Neukládá se nic, co v telefonu už není
+ * (klíč tam je taky); do zálohy ani do cloudu to nejde a odhlášení to smaže.
+ */
+const KLIC_SNIMEK = 'perpdesk.startSnimek';
+const SNIMEK_PLATI = 7 * 86400e3;
+let snimekUlozen = 0;
+let zobrazenSnimek = false;
+
+function ulozSnimek() {
+  if (zobrazenSnimek || Date.now() - snimekUlozen < 20e3) return;
+  snimekUlozen = Date.now();
+  store.saveJson(KLIC_SNIMEK, {
+    cas: Date.now(),
+    pozice: lastPositions,
+    ucet: ucetStav.ucet,
+    prikazy: otevrenePrikazy,
+  });
+}
+
+function ukazSnimek() {
+  const s = store.loadJson(KLIC_SNIMEK, null);
+  if (!s || !Array.isArray(s.pozice) || Date.now() - s.cas > SNIMEK_PLATI) return false;
+  zobrazenSnimek = true;
+  lastPositions = s.pozice;
+  otevrenePrikazy = Array.isArray(s.prikazy) ? s.prikazy : [];
+  if (s.ucet) {
+    ucetStav = { ucet: s.ucet, chyba: null };
+    ui.renderAccount(s.ucet, null, hideAmounts);
+  }
+  el('positionList')?.classList.add('zastarale');
+  vykresliPozice();
+  return true;
+}
+
+function skonciSnimek() {
+  if (!zobrazenSnimek) return;
+  zobrazenSnimek = false;
+  el('positionList')?.classList.remove('zastarale');
+}
+
 async function connectIfPossible() {
   const { apiKey, apiSecret } = store.loadCredentials();
 
@@ -679,7 +726,7 @@ async function connectIfPossible() {
   }
 
   client.setCredentials(apiKey, apiSecret);
-  ui.showLoading();
+  if (!ukazSnimek()) ui.showLoading();
   zacatekNacitani = Date.now();
   ukazDiagnostiku();
   try {

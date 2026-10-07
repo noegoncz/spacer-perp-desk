@@ -1,10 +1,19 @@
 {
-  "verze": "0.33.0",
+  "verze": "0.34.0",
   "novinky": [
     {
-      "en": "Quick alarm: hold your finger on the chart, move the crosshair, let go and tap \"Set alarm\". Done — no settings screen.",
-      "cs": "Rychlý alarm: podrž prst v grafu, posuň kříž, pusť a klepni na „Nastavit alarm“. Hotovo, bez okna s nastavením."
+      "en": "Much faster start: your positions show up right away and refresh live a moment later.",
+      "cs": "Mnohem rychlejší start: pozice jsou vidět hned a za okamžik se obnoví živě."
+    },
+    {
+      "en": "Resize indicator panels like RSI by dragging the line between the panel and the chart.",
+      "cs": "Výšku panelu indikátoru (třeba RSI) změníš tažením hranice mezi panelem a grafem."
     }
   ],
-  "opravy": []
+  "opravy": [
+    {
+      "en": "Small fixes and polish.",
+      "cs": "Drobné opravy a vylepšení."
+    }
+  ]
 }

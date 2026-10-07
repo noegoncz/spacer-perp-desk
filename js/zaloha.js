@@ -26,6 +26,8 @@ const NEZALOHOVAT = new Set([
   // Zámek (PIN, otisk) patří k tomuhle telefonu.
   'perpdesk.lock',
   'perpdesk.pushToken',
+  // Poslední známé pozice pro okamžitý start — patří jen tomuto telefonu.
+  'perpdesk.startSnimek',
 ]);
 
 function klice() {

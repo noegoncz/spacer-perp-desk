@@ -326,13 +326,23 @@ export class BybitClient {
      * zopakuje**. Hláška zůstane jen tehdy, když to nepomůže — pak jsou
      * hodiny telefonu opravdu mimo.
      */
-    if (!this.casSynchronizace || Date.now() - this.casSynchronizace > 10 * 60e3) {
+    if (!this.casSynchronizace) {
+      /*
+       * Při startu se na čas serveru **nečeká** (v0.34.0): hodiny telefonu
+       * s automatickým časem sedí na vteřinu a okno podpisu je 10 s.
+       * Změří se souběžně s prvním dotazem; kdyby hodiny přece jen
+       * ujížděly, 10002 níž čas změří a dotaz zopakuje. Ušetří to jednu
+       * cestu na burzu před prvními pozicemi.
+       */
+      this.synchronizaceBezi ??= this.syncTime().finally(() => { this.synchronizaceBezi = null; });
+    } else if (Date.now() - this.casSynchronizace > 10 * 60e3) {
       await this.syncTime();
     }
     let json = await this.podepsanyDotaz(path, params);
     if (Number(json.retCode) === 10002) {
       this.zapisDiag('10002, znovu čas serveru a opakování');
-      await this.syncTime();
+      await (this.synchronizaceBezi || this.syncTime());
+      if (!this.casSynchronizace || Date.now() - this.casSynchronizace > 5000) await this.syncTime();
       json = await this.podepsanyDotaz(path, params);
     }
 
@@ -363,9 +373,9 @@ export class BybitClient {
   async refresh() {
     this.setStatus({ rest: 'loading' });
     this.diag.pokusu += 1;
-    this.zapisDiag('čas serveru');
     try {
-      await this.syncTime();
+      // Čas serveru si hlídá signedGet sám (stáří, 10002) — dřív se tu
+      // měřil před každým načtením pozic, tedy i každých 30 s navíc.
       this.zapisDiag('pozice');
       const result = await this.signedGet('/v5/position/list', {
         category: 'linear',

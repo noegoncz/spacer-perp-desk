@@ -1451,11 +1451,45 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
    Nástroje zůstávají — bez nich by celá obrazovka ztratila smysl. */
 .chart-view.cela-obrazovka .chart-info { display: none; }
 
+/* Úchyt na hranici panelu indikátoru — tažením se panel zvětší / zmenší. */
+/* ⚠ Nad oddělovačem knihovny (z-index 20, 7px pruh s vlastním tažením,
+   které na telefonu nejde trefit) — jinak by dotyk dostal on. */
+.pane-uchyt {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 21;
+  height: 26px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+}
+.pane-madlo {
+  width: 40px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(150, 165, 185, 0.5);
+}
+.pane-uchyt.tahne::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  border-top: 1px solid var(--accent);
+}
+.pane-uchyt.tahne .pane-madlo { background: var(--accent); }
+
+/* Poslední známý stav při startu, než dorazí čerstvá data z burzy. */
+.zastarale { opacity: 0.6; transition: opacity 0.25s; }
+
 /* ---------- rychlý alarm po podržení prstu ---------- */
 
 .quick-alarm {
   position: absolute;
-  z-index: 7;
+  z-index: 22;
   display: flex;
   align-items: center;
   gap: 7px;

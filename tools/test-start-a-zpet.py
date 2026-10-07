@@ -63,9 +63,11 @@ rozmery(344, 882)
 p.prikaz('Page.navigate', url=sys.argv[1])
 time.sleep(0.5)
 ev("sessionStorage.setItem('__pozice', 'pomalu')")
+# Úplně první start: žádný uložený snímek pozic → obrysy karet.
+ev("localStorage.removeItem('perpdesk.startSnimek')")
 p.prikaz('Page.reload')
 time.sleep(1.2)
-print('1) start')
+print('1) první start (bez uloženého stavu)')
 stav = ev("""JSON.stringify({
   nacitani: document.getElementById('placeholder').classList.contains('nacitani'),
   kostry: getComputedStyle(document.querySelector('.kostry')).display,
@@ -77,6 +79,21 @@ over(s.get('nacitani') and s.get('kostry') == 'grid', f'při načítání obrysy
 over(not s.get('text') and not s.get('retry') and not s.get('diag'), 'žádný text, Try again ani diagnostika')
 time.sleep(3)
 over(ev("document.querySelectorAll('.position').length") > 0, 'po načtení pozice')
+
+# Další start (v0.34.0): poslední známé pozice hned, ztlumené, dokud
+# nedorazí čerstvá data (mock je pozdrží o 2,5 s).
+print('1b) další start (uložený poslední stav)')
+over(bool(ev("localStorage.getItem('perpdesk.startSnimek')")), 'poslední stav pozic je uložený')
+p.prikaz('Page.reload')
+time.sleep(0.8)
+s = json.loads(ev("""JSON.stringify({ pozic: document.querySelectorAll('.position').length,
+  ztlumene: document.getElementById('positionList').classList.contains('zastarale'),
+  obrysy: document.getElementById('placeholder').classList.contains('nacitani') && !document.getElementById('placeholder').hidden })""") or '{}')
+over(s.get('pozic', 0) > 0 and s.get('ztlumene') and not s.get('obrysy'),
+     f'pozice hned z posledního stavu, ztlumené, bez obrysů ({s})')
+time.sleep(3)
+over(not ev("document.getElementById('positionList').classList.contains('zastarale')"),
+     'po příchodu čerstvých dat už nejsou ztlumené')
 
 print('2) když pozice nejdou')
 ev("sessionStorage.setItem('__pozice', 'visi')")
