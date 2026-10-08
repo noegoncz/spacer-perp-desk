@@ -800,6 +800,7 @@ function zkratkaObratu(hodnota) {
  * pod názvem páru stojí hodnota, podle které se řadí.
  */
 export function renderWatchlist(radky, veSestave, onSelect, onToggleFav, delic = null, popisek = null, metrika = 'volume') {
+  dom.watchList.classList.remove('tiles', 'siroke', 'mrizka');
   const prvky = [];
   const vytvorRadek = (trh) => {
     const radek = document.createElement('div');
@@ -868,6 +869,113 @@ export function renderWatchlist(radky, veSestave, onSelect, onToggleFav, delic =
 
   dom.watchList.replaceChildren(...prvky);
   return [...dom.watchList.querySelectorAll('.watch-row')];
+}
+
+/*
+ * Trhy jako dlaždice (v0.36.0, podle TabTraderu). Dvě rozložení:
+ * `mrizka` — dvě a víc dlaždic vedle sebe, `siroke` — přes celou šířku.
+ * Na dlaždici: burza, pár, metrika řazení / kategorie, mini-graf, cena,
+ * změna 24 h a vlevo dole hodnota otevřené pozice (když na páru je).
+ * `veSestave` + `onToggleFav` jen v „All" (záložka pro přidání do seznamu);
+ * ve vlastním seznamu se odebírá podržením dlaždice.
+ */
+export function renderTiles(trhy, volby) {
+  const { siroke, veSestave, onSelect, onToggleFav, popisek, metrika = 'volume', pozice, hide } = volby;
+  // Jen třídy rozložení — `lze-presouvat` nastavuje app.js a nesmí zmizet.
+  dom.watchList.classList.add('tiles');
+  dom.watchList.classList.toggle('siroke', Boolean(siroke));
+  dom.watchList.classList.toggle('mrizka', !siroke);
+  const div = (trida, text = '') => {
+    const e = document.createElement('div');
+    e.className = trida;
+    if (text) e.textContent = text;
+    return e;
+  };
+  const prvky = trhy.map((trh) => {
+    const d = div('tile');
+    d.dataset.symbol = trh.symbol;
+    const poz = pozice?.get(trh.symbol);
+    if (poz) d.classList.add(poz.side === 'Sell' ? 'tile-short' : 'tile-long');
+
+    const sub = [textMetriky(trh, metrika), popisek ? popisek(trh.symbol) : ''].filter(Boolean).join(' · ');
+    const spark = document.createElementNS(SVG_NS, 'svg');
+    spark.setAttribute('class', 'watch-spark tile-spark');
+    spark.setAttribute('viewBox', '0 0 58 24');
+    spark.setAttribute('preserveAspectRatio', 'none');
+    const zmena = div(`tile-zmena ${pnlClass(trh.changePct)}`, formatPercent(trh.changePct));
+    const hodnota = div(`tile-poz ${poz ? pnlClass(poz.pnl) : ''}`.trim(),
+      poz ? (hide ? MASK : `${formatUsd(poz.value)} USDT`) : '');
+
+    d.append(div('tile-burza', 'BYBIT'), div('tile-par', trh.symbol), div('tile-sub', sub),
+      spark, div('tile-cena', formatPrice(trh.last)), zmena, hodnota);
+
+    if (onToggleFav) {
+      const hvezda = document.createElement('button');
+      hvezda.type = 'button';
+      hvezda.className = `watch-star tile-star ${veSestave?.(trh.symbol) ? 'on' : ''}`.trim();
+      hvezda.setAttribute('aria-label', t('lists.addTo'));
+      const svg = document.createElementNS(SVG_NS, 'svg');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      const path = document.createElementNS(SVG_NS, 'path');
+      path.setAttribute('d', ZALOZKA);
+      svg.append(path);
+      if (!veSestave?.(trh.symbol)) {
+        const plus = document.createElementNS(SVG_NS, 'path');
+        plus.setAttribute('d', ZALOZKA_PLUS);
+        plus.setAttribute('class', 'plus');
+        svg.append(plus);
+      }
+      hvezda.append(svg);
+      hvezda.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onToggleFav(trh.symbol);
+      });
+      d.append(hvezda);
+    }
+    d.addEventListener('click', () => {
+      if (d.dataset.potlacKlik) { delete d.dataset.potlacKlik; return; }
+      onSelect(trh);
+    });
+    return d;
+  });
+  dom.watchList.replaceChildren(...prvky);
+  return prvky;
+}
+
+/**
+ * Výsledky hledání v nabídce „+" (přidání páru do seznamu): široké řádky
+ * s burzou, objemem, cenou a změnou; přidané páry mají fajfku.
+ */
+export function renderPairSearch(kontejner, trhy, { jeVSeznamu, onPick }) {
+  kontejner.replaceChildren(...trhy.map((trh) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `pair-hit ${jeVSeznamu(trh.symbol) ? 'pridano' : ''}`.trim();
+    b.dataset.symbol = trh.symbol;
+    const vlevo = document.createElement('div');
+    vlevo.className = 'pair-hit-vlevo';
+    const par = document.createElement('div');
+    par.className = 'pair-hit-par';
+    par.textContent = trh.symbol;
+    const sub = document.createElement('div');
+    sub.className = 'pair-hit-sub';
+    sub.textContent = `BYBIT · Perp · ${t('chart.vol24h')} ${zkratkaObratu(trh.turnover) || '—'}`;
+    vlevo.append(par, sub);
+    const vpravo = document.createElement('div');
+    vpravo.className = 'pair-hit-vpravo';
+    const cena = document.createElement('div');
+    cena.textContent = formatPrice(trh.last);
+    const zmena = document.createElement('div');
+    zmena.className = pnlClass(trh.changePct);
+    zmena.textContent = formatPercent(trh.changePct);
+    vpravo.append(cena, zmena);
+    const znak = document.createElement('span');
+    znak.className = 'pair-hit-znak';
+    znak.textContent = jeVSeznamu(trh.symbol) ? '✓' : '+';
+    b.append(vlevo, vpravo, znak);
+    b.addEventListener('click', () => onPick(trh, b));
+    return b;
+  }));
 }
 
 const SIPKA_DOLU = 'M6 9l6 6 6-6';

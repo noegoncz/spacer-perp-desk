@@ -444,7 +444,7 @@
     <!-- Kategorie z CoinGecko jako filtr; dokud nejsou coiny
          identifikované, stojí tu místo nich tlačítko. -->
     <div id="watchCats" class="watch-cats"></div>
-    <div class="watch-tools">
+    <div class="watch-tools" id="watchTools">
       <div class="watch-search-wrap">
         <input type="text" id="watchSearch" class="watch-search"
                data-i18n-ph="watchlist.searchPlaceholder" placeholder="e.g. BTC"
@@ -455,15 +455,40 @@
       <button type="button" id="sortBtn" class="sort-btn" data-i18n-aria="sort.title" data-i18n-title="sort.title"></button>
     </div>
 
-    <div class="watch-head">
-      <span></span>
-      <span data-i18n="watchlist.colPair">Perp pair</span>
-      <span data-i18n="watchlist.colPrice">Price</span>
-      <span data-i18n="watchlist.colChange">24h</span>
-      <span data-i18n="watchlist.colTrend">Trend</span>
+    <!-- Dlaždice (v0.36.0): počet / nápověda a přepínač rozložení. -->
+    <div class="watch-viewbar">
+      <span id="watchHint" class="watch-hint"></span>
+      <button type="button" id="layoutBtn" class="icon-btn layout-btn"
+              data-i18n-aria="lists.layout" data-i18n-title="lists.layout">
+        <svg viewBox="0 0 24 24" aria-hidden="true" id="layoutIcon"></svg>
+      </button>
     </div>
     <div id="watchList" class="watch-list"></div>
     <p id="watchNote" class="watch-note"></p>
+
+    <!-- Přidat pár do seznamu: plovoucí tlačítko vpravo dole (jen ve
+         vlastním seznamu) → vyhledávání. -->
+    <button type="button" id="addPairBtn" class="add-fab" hidden
+            data-i18n-aria="lists.addPair" data-i18n-title="lists.addPair">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+    <div id="sheetAddPair" class="sheet sheet-hledani" hidden>
+      <div class="sheet-head">
+        <span id="addPairTitle"></span>
+        <button type="button" class="icon-btn" id="addPairClose" data-i18n-aria="action.close">✕</button>
+      </div>
+      <input type="text" id="addPairSearch" class="watch-search" autocomplete="off" spellcheck="false"
+             data-i18n-ph="watchlist.searchPlaceholder" placeholder="e.g. BTC">
+      <div id="addPairToast" class="add-toast" hidden></div>
+      <div id="addPairResults" class="pair-hits"></div>
+    </div>
+
+    <!-- Nabídka po podržení dlaždice (bez pohybu): odebrat ze seznamu. -->
+    <div id="tileMenu" class="tile-menu" hidden>
+      <div id="tileMenuTitle" class="tile-menu-titulek"></div>
+      <button type="button" id="tileMenuRemove" class="quick-btn danger-btn"></button>
+      <button type="button" id="tileMenuLists" class="quick-btn" data-i18n="lists.addTo">Add to watchlist</button>
+    </div>
 
     <!-- Nabídka u hvězdičky: do kterých sestav pár patří a jeho kategorie. -->
     <div id="watchBackdrop" class="sheet-backdrop" hidden></div>

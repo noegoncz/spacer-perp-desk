@@ -144,6 +144,76 @@ export function prepni(id, symbol) {
   uloz();
 }
 
+/*
+ * Limity seznamů (rozhodnutí uživatele 2026-10-08): bezplatná úroveň
+ * jednou 10 párů na seznam a nejvýš 5 seznamů; vyšší úrovně předplatného
+ * víc. Zatím **vypnuté** (beta je zdarma) — zapne se `zapnuto: true`.
+ */
+export const LIMITY = { zapnuto: false, paru: 10, seznamu: 5 };
+
+export function jePlny(id) {
+  return LIMITY.zapnuto && (najdi(id)?.polozky.length ?? 0) >= LIMITY.paru;
+}
+
+export function lzeZalozit() {
+  return !LIMITY.zapnuto || seznamy().length < LIMITY.seznamu;
+}
+
+/** Přidá pár na konec seznamu (Trhy, tlačítko +). Vrací false, když už tam je nebo je plný. */
+export function pridej(id, symbol) {
+  const x = najdi(id);
+  const p = polozka(symbol);
+  if (!x || x.polozky.includes(p) || jePlny(id)) return false;
+  x.polozky.push(p);
+  uloz();
+  return true;
+}
+
+export function odeber(id, symbol) {
+  const x = najdi(id);
+  if (!x) return;
+  x.polozky = x.polozky.filter((q) => q !== polozka(symbol));
+  uloz();
+}
+
+/** Přesune pár na dané místo v seznamu (tažení dlaždice). */
+export function presun(id, symbol, naIndex) {
+  const x = najdi(id);
+  const p = polozka(symbol);
+  if (!x || !x.polozky.includes(p)) return;
+  const bez = x.polozky.filter((q) => q !== p);
+  bez.splice(Math.max(0, Math.min(naIndex, bez.length)), 0, p);
+  x.polozky = bez;
+  uloz();
+}
+
+/** Páry seznamu v pořadí, které si uživatel nastavil (jen naše burza). */
+export function paryVPoradi(id) {
+  const x = najdi(id);
+  if (!x) return [];
+  return x.polozky
+    .filter((p) => p.startsWith(`${BURZA}:`))
+    .map((p) => p.slice(BURZA.length + 1));
+}
+
+/*
+ * Rozložení dlaždic v Trzích: `mrizka` (dvě a víc vedle sebe, jako
+ * TabTrader) nebo `siroke` (přes celou šířku). Vlastní seznamy a „All"
+ * si ho pamatují zvlášť; All začíná na širokých (přání uživatele).
+ */
+const KLIC_ROZLOZENI = 'perpdesk.marketsLayout';
+
+export function rozlozeni(proVse) {
+  const r = loadJson(KLIC_ROZLOZENI, {});
+  return (proVse ? r.vse : r.seznam) || (proVse ? 'siroke' : 'mrizka');
+}
+
+export function nastavRozlozeni(proVse, hodnota) {
+  const r = loadJson(KLIC_ROZLOZENI, {});
+  r[proVse ? 'vse' : 'seznam'] = hodnota;
+  saveJson(KLIC_ROZLOZENI, r);
+}
+
 /** Páry sestavy na naší burze (položky jiných burz se zatím přeskočí). */
 export function paryVSestave(id) {
   const x = najdi(id);

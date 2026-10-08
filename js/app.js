@@ -22,6 +22,7 @@ import * as zamek from './zamek.js';
 import * as pozvanky from './pozvanky.js';
 import * as alarmyServer from './alarmy-server.js';
 import * as hlaseni from './hlaseni.js';
+import { zapojDlazdice } from './dlazdice.js';
 import * as store from './store.js';
 import * as ui from './ui.js';
 
@@ -807,7 +808,42 @@ function wireEvents() {
   });
 
   // Trhy: nabídka u hvězdičky a správa sestavy.
-  naUdalost('watchBackdrop', 'click', zavriNabidkyTrhu);
+  // Klepnutí, které po zvednutí prstu z podržené dlaždice dorazí, trefí
+  // právě ukázané pozadí — chvíli po otevření nabídky se ignoruje (stejně
+  // jako u okna alarmu, `otevrenaNabidkaV`).
+  naUdalost('watchBackdrop', 'click', () => {
+    if (Date.now() - menuOtevrenoV > 450) zavriNabidkyTrhu();
+  });
+  naUdalost('addPairBtn', 'click', otevriPridani);
+  naUdalost('addPairClose', 'click', zavriNabidkyTrhu);
+  naUdalost('addPairSearch', 'input', vykresliPridani);
+  naUdalost('layoutBtn', 'click', () => {
+    const proVse = sestavy.aktivni() === sestavy.VSE;
+    sestavy.nastavRozlozeni(proVse, sestavy.rozlozeni(proVse) === 'siroke' ? 'mrizka' : 'siroke');
+    vykresliTrhy();
+  });
+  naUdalost('tileMenuRemove', 'click', () => {
+    const id = sestavy.aktivni();
+    if (menuPar && id !== sestavy.VSE) sestavy.odeber(id, menuPar);
+    zavriNabidkyTrhu();
+    vykresliTrhy();
+  });
+  naUdalost('tileMenuLists', 'click', () => {
+    const s = menuPar;
+    zavriNabidkyTrhu();
+    if (s) otevriPar(s);
+  });
+  if (el('watchList')) {
+    zapojDlazdice(el('watchList'), {
+      onPresun: (symbol, naIndex) => {
+        const id = sestavy.aktivni();
+        if (id === sestavy.VSE) return;
+        sestavy.presun(id, symbol, naIndex);
+        vykresliTrhy();
+      },
+      onNabidka: otevriMenuDlazdice,
+    });
+  }
   naUdalost('sheetPairClose', 'click', zavriNabidkyTrhu);
   naUdalost('sheetListClose', 'click', zavriNabidkyTrhu);
   naUdalost('listSaveBtn', 'click', ulozSestavu);
@@ -1795,10 +1831,46 @@ function popisekKategorie(symbol) {
   return sestavy.kategorieCoinu(symbol).slice(0, 2).map(sestavy.nazevKategorie).join(', ');
 }
 
+/* Ikony přepínače rozložení: dvě dlaždice vedle sebe / široké pruhy. */
+const IKONA_MRIZKA = '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>';
+const IKONA_SIROKE = '<rect x="4" y="5" width="16" height="5" rx="1.5"/><rect x="4" y="14" width="16" height="5" rx="1.5"/>';
+
 function vykresliTrhy() {
   vykresliListu();
   const aktivni = sestavy.aktivni();
-  const vSestave = aktivni === sestavy.VSE ? null : sestavy.paryVSestave(aktivni);
+  const proVse = aktivni === sestavy.VSE;
+  /*
+   * Vlastní seznam (v0.36.0, podle TabTraderu): dlaždice v pořadí, které si
+   * uživatel nastaví tažením; bez hledání, řazení a kategorií — páry se
+   * přidávají tlačítkem + a odebírají podržením dlaždice. „All" má hledání,
+   * kategorie i řazení jako dřív, jen jako dlaždice.
+   */
+  ukazPrvek('watchTools', proVse);
+  ukazPrvek('watchCats', proVse);
+  ukazPrvek('addPairBtn', !proVse);
+  el('watchList')?.classList.toggle('lze-presouvat', !proVse);
+  const siroke = sestavy.rozlozeni(proVse) === 'siroke';
+  const ikona = el('layoutIcon');
+  // Ikona ukazuje, na co se klepnutím přepne.
+  if (ikona) ikona.innerHTML = siroke ? IKONA_MRIZKA : IKONA_SIROKE;
+  if (!proVse) {
+    const podleSymbolu = new Map(trhy.map((r) => [r.symbol, r]));
+    const seznam = sestavy.paryVPoradi(aktivni).map((s) => podleSymbolu.get(s)).filter(Boolean);
+    const dlazdice = ui.renderTiles(seznam, {
+      siroke,
+      onSelect: openChartSymbol,
+      metrika: 'volume',
+      popisek: popisekKategorie,
+      pozice: new Map(lastPositions.map((p) => [p.symbol, p])),
+      hide: hideAmounts,
+    });
+    sledujGrafy(dlazdice);
+    el('watchHint').textContent = seznam.length ? t('lists.tilesHint', { n: seznam.length }) : '';
+    ui.showWatchNote(trhy.length && !seznam.length ? t('lists.emptyTiles') : '');
+    return;
+  }
+  el('watchHint').textContent = '';
+  const vSestave = null;
   const razeni = sestavy.razeni();
   ui.renderSort({
     ...razeni,
@@ -1846,8 +1918,16 @@ function vykresliTrhy() {
   const orez = !vSestave && !filtrKategorie && !dotaz;
   const vysledek = orez ? seznam.slice(0, LIMIT_SEZNAMU) : seznam;
 
-  const radky = ui.renderWatchlist(vysledek, sestavy.jeVNejake, openChartSymbol, otevriPar, null,
-    popisekKategorie, razeni.klic);
+  const radky = ui.renderTiles(vysledek, {
+    siroke,
+    veSestave: sestavy.jeVNejake,
+    onSelect: openChartSymbol,
+    onToggleFav: otevriPar,
+    popisek: popisekKategorie,
+    metrika: razeni.klic,
+    pozice: new Map(lastPositions.map((p) => [p.symbol, p])),
+    hide: hideAmounts,
+  });
   sledujGrafy(radky);
 
   if (!trhy.length) return;
@@ -1860,6 +1940,86 @@ function vykresliTrhy() {
   } else {
     ui.showWatchNote(t('watchlist.shown', { shown: vysledek.length, total: trhy.length }));
   }
+}
+
+/* ---------- přidání páru (+) a nabídka dlaždice ---------- */
+
+let pridavaniDo = null;   // id seznamu, do kterého se přidává
+let toastCasovac = null;
+
+function otevriPridani() {
+  const id = sestavy.aktivni();
+  if (id === sestavy.VSE) return;
+  pridavaniDo = id;
+  el('addPairTitle').textContent = t('lists.addTitle', { list: sestavy.najdi(id)?.nazev || '' });
+  el('addPairSearch').value = '';
+  ukazPrvek('addPairToast', false);
+  vykresliPridani();
+  ukazPrvek('watchBackdrop', true);
+  ukazPrvek('sheetAddPair', true);
+  el('addPairSearch').focus();
+}
+
+function vykresliPridani() {
+  if (!pridavaniDo) return;
+  const dotaz = el('addPairSearch').value.trim().toUpperCase();
+  // Bez dotazu nejobchodovanější páry, s dotazem shody (nejvýš 50).
+  const shody = (dotaz ? trhy.filter((r) => r.symbol.includes(dotaz)) : trhy)
+    .slice().sort((a, b) => b.turnover - a.turnover).slice(0, dotaz ? 50 : 30);
+  ui.renderPairSearch(el('addPairResults'), shody, {
+    jeVSeznamu: (s) => sestavy.obsahuje(pridavaniDo, s),
+    onPick: vyberPridani,
+  });
+}
+
+function ukazToast(text, neutralni = false) {
+  const toast = el('addPairToast');
+  if (!toast) return;
+  toast.textContent = text;
+  toast.classList.toggle('neutralni', neutralni);
+  toast.hidden = false;
+  clearTimeout(toastCasovac);
+  toastCasovac = setTimeout(() => { toast.hidden = true; }, 1800);
+}
+
+function vyberPridani(trh) {
+  if (!pridavaniDo) return;
+  const nazev = sestavy.najdi(pridavaniDo)?.nazev || '';
+  if (sestavy.obsahuje(pridavaniDo, trh.symbol)) {
+    ukazToast(t('lists.already', { pair: trh.symbol, list: nazev }), true);
+  } else if (!sestavy.pridej(pridavaniDo, trh.symbol)) {
+    ukazToast(t('lists.full', { n: sestavy.LIMITY.paru }), true);
+  } else {
+    ukazToast(t('lists.added', { pair: trh.symbol, list: nazev }));
+    navigator.vibrate?.(12);
+    vykresliTrhy();
+  }
+  // Vyhledávání se vyprázdní, ať jde rovnou hledat další pár.
+  el('addPairSearch').value = '';
+  vykresliPridani();
+  el('addPairSearch').focus();
+}
+
+let menuPar = null;
+let menuOtevrenoV = 0;
+
+function otevriMenuDlazdice(symbol, dlazdice) {
+  const id = sestavy.aktivni();
+  if (id === sestavy.VSE) return;
+  menuPar = symbol;
+  el('tileMenuTitle').textContent = symbol;
+  el('tileMenuRemove').textContent = t('lists.removeFrom', { list: sestavy.najdi(id)?.nazev || '' });
+  const menu = el('tileMenu');
+  menu.hidden = false;
+  const r = dlazdice.getBoundingClientRect();
+  const sirka = menu.offsetWidth;
+  const vyska = menu.offsetHeight;
+  const left = Math.min(Math.max(8, r.left + r.width / 2 - sirka / 2), window.innerWidth - sirka - 8);
+  const top = r.bottom + 8 + vyska < window.innerHeight ? r.bottom + 8 : Math.max(8, r.top - vyska - 8);
+  menu.style.left = `${left}px`;
+  menu.style.top = `${top}px`;
+  menuOtevrenoV = Date.now();
+  ukazPrvek('watchBackdrop', true);
 }
 
 function vyberSestavu(id) {
@@ -1990,7 +2150,9 @@ function smazSestavu() {
 function zavriNabidkyTrhu() {
   rezimSestavy = null;
   otevrenyPar = null;
-  ['sheetPair', 'sheetList', 'sheetSort', 'watchBackdrop'].forEach((id) => ukazPrvek(id, false));
+  pridavaniDo = null;
+  menuPar = null;
+  ['sheetPair', 'sheetList', 'sheetSort', 'sheetAddPair', 'tileMenu', 'watchBackdrop'].forEach((id) => ukazPrvek(id, false));
 }
 
 const ZALOZKY = ['positions', 'watchlist', 'history'];
@@ -1999,6 +2161,7 @@ let aktivniZalozka = 'positions';
 function prepniZalozku(nazev) {
   aktivniZalozka = nazev;
   document.querySelector('.tabs')?.classList.toggle('s-podzalozkami', nazev === 'watchlist');
+  document.body.classList.toggle('na-trzich', nazev === 'watchlist');
   ui.showView(nazev);
   dokresliSeznamJeLiZastaraly();
   if (nazev === 'watchlist') nactiTrhy();

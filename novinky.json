@@ -1,17 +1,17 @@
 {
-  "verze": "0.35.0",
+  "verze": "0.36.0",
   "novinky": [
     {
-      "en": "Open a position while its chart is open and it shows up right away: lines, PnL and all.",
-      "cs": "Otevřeš pozici, zatímco máš otevřený její graf, a hned ji v něm vidíš: čáry, PnL i vše ostatní."
+      "en": "Markets got a new look: your watchlists are tiles, in two columns or wide — switch with one tap.",
+      "cs": "Trhy mají nový vzhled: seznamy jsou dlaždice, ve dvou sloupcích nebo široké — přepneš jedním klepnutím."
     },
     {
-      "en": "Hold your finger on the chart to see the distance from the current price in %. Let go to set an alarm or draw a horizontal line right there.",
-      "cs": "Podržením prstu v grafu vidíš vzdálenost od aktuální ceny v %. Po puštění rovnou nastavíš alarm nebo nakreslíš vodorovnou čáru."
+      "en": "Add pairs with the + button: search, tap, done — and search for the next one right away.",
+      "cs": "Páry přidáš tlačítkem +: najdi, klepni, hotovo — a rovnou hledej další."
     },
     {
-      "en": "Alarm levels now show their price on the price scale.",
-      "cs": "Hladiny alarmů mají cenu na cenové ose."
+      "en": "Hold a tile to drag it to a new spot, or to remove it from the list.",
+      "cs": "Podržením dlaždici přesuneš na jiné místo nebo ji odebereš ze seznamu."
     }
   ],
   "opravy": [

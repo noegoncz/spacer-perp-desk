@@ -144,7 +144,7 @@ ev("document.querySelector('[data-tab=watchlist]').click()")
 time.sleep(0.3)
 ev("[...document.querySelectorAll('#watchLists .chip')].find((c) => c.textContent.startsWith('All'))?.click()")
 time.sleep(3)
-ev("[...document.querySelectorAll('.watch-row')].find((r) => r.textContent.includes('BTCUSDT')).click()")
+ev("[...document.querySelectorAll('.tile')].find((r) => r.textContent.includes('BTCUSDT')).click()")
 time.sleep(0.35)  # svíčky BTC přijdou až za vteřinu
 behem = json.loads(ev("""JSON.stringify({
   viditelnost: getComputedStyle(document.getElementById('chartBox')).visibility,
@@ -164,7 +164,7 @@ if po.get('viditelnost') != 'visible' or not po.get('svicek'):
 # Návrat na stejný pár nic neschovává (data už jsou, nic se nenačítá navíc).
 ev("document.getElementById('viewChart').hidden || history.back()")
 time.sleep(1.2)
-ev("[...document.querySelectorAll('.watch-row')].find((r) => r.textContent.includes('BTCUSDT')).click()")
+ev("[...document.querySelectorAll('.tile')].find((r) => r.textContent.includes('BTCUSDT')).click()")
 time.sleep(0.2)
 stejny = ev("getComputedStyle(document.getElementById('chartBox')).visibility")
 print('znovu stejný pár, hned po otevření:', stejny)

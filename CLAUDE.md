@@ -1312,6 +1312,33 @@ aktivní sestavu → přejmenovat / smazat.
   Uživatel vybral tyto čtyři; nabídnuté a zatím nevybrané: volatilita
   24h, tržní kapitalizace (CoinGecko), nové listingy.
 - Test: `tools/test-sestavy.py` (skutečné dotyky pro přejíždění).
+- **Dlaždice místo řádků (v0.36.0, podle TabTraderu, rozhodnutí
+  uživatele 2026-10-08):**
+  - **Vlastní seznam** = dlaždice v pořadí uživatele (`paryVPoradi`),
+    bez hledání, řazení a kategorií. Rozložení `mrizka` (2 vedle sebe na
+    zavřeném Foldu, víc na rozevřeném) / `siroke`, přepínač vpravo nad
+    dlaždicemi, pamatuje se zvlášť pro seznamy a „All"
+    (`perpdesk.marketsLayout`); „All" začíná široké.
+  - Dlaždice: burza, pár, metrika / kategorie, mini-graf, cena, změna;
+    vlevo dole **hodnota otevřené pozice** a proužek vlevo ve směru
+    pozice (`renderTiles` v ui.js).
+  - **Plovoucí + vpravo dole** (jen ve vlastním seznamu) → vyhledávání
+    (`#sheetAddPair`): bez dotazu 30 nejobchodovanějších, s dotazem
+    shody podle objemu; výběr páru přidá na konec seznamu, ukáže krátké
+    potvrzení, **vyprázdní pole a nechá v něm kurzor** pro další pár;
+    přidané mají fajfku, podruhé → „už je v seznamu". Bublina hlášení
+    v Trzích uhne nad + (`body.na-trzich`).
+  - **Podržet dlaždici** (`js/dlazdice.js`, dotykové události): táhnout →
+    přesun na místo dlaždice pod prstem (`sestavy.presun`); pustit bez
+    pohybu → nabídka (odebrat ze seznamu / do jiného seznamu). ⚠ Klepnutí
+    po zvednutí prstu by trefilo právě ukázané pozadí a nabídku zavřelo —
+    450 ms po otevření se klik na pozadí ignoruje (`menuOtevrenoV`).
+  - ⚠ `renderTiles` mění jen třídy rozložení; `lze-presouvat` nastavuje
+    app.js před vykreslením a přepsání `className` ho dřív smazalo.
+  - **Limity** (10 párů na seznam, 5 seznamů — budoucí bezplatná úroveň)
+    jsou připravené v `sestavy.LIMITY`, zatím `zapnuto: false`.
+  - Test: `tools/test-dlazdice.py` (skutečné dotyky: +, hledání, přesun,
+    nabídka, rozložení).
 - ⚠ Magnet v grafu dřív v obsluze klepnutí sahal na tlačítko filtru
   oblíbených (zbloudilý řádek) — se zrušeným tlačítkem by spadl. Odstraněno.
 

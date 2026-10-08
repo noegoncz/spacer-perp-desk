@@ -90,7 +90,7 @@ def listy():
 
 
 def radky():
-    return ev("[...document.querySelectorAll('#watchList .watch-row')].map((r) => r.dataset.symbol)")
+    return ev("[...document.querySelectorAll('#watchList .tile')].map((r) => r.dataset.symbol)")
 
 
 def prejed(x1, x2, y):
@@ -118,11 +118,13 @@ print('   lišta:', l)
 over(l == ['My watchlist*', 'All', '+ New'], 'lišta: My watchlist (aktivní), All, + New')
 fav = ev("JSON.parse(localStorage.getItem('perpdesk.lists')).seznamy[0].polozky")
 over(fav == ['bybit:BTCUSDT'], f'oblíbené převedené do sestavy jako burza:pár ({fav})')
-over(ev("!!document.querySelector('#watchCats .identify-btn')"), 'místo kategorií tlačítko Identify coins')
 over(ev("window.__stazeniKategorii") == 0, 'kategorie se samy nestahují')
+# Kategorie (a tlačítko Identify coins) jsou od v0.36.0 jen v „All".
+over(ev("document.getElementById('watchCats').hidden"), 've vlastním seznamu nejsou kategorie')
 
 ev("document.querySelectorAll('#watchLists .chip')[1].click()")   # All
 time.sleep(0.4)
+over(ev("!!document.querySelector('#watchCats .identify-btn')"), 'v All je místo kategorií tlačítko Identify coins')
 
 print('2) identifikace coinů')
 klik('#watchCats .identify-btn')
@@ -130,7 +132,7 @@ time.sleep(1)
 cipy = ev("[...document.querySelectorAll('#watchCats .chip')].map((c) => c.textContent)")
 print('   čipy:', cipy)
 over(cipy and any(c.startswith('Meme') for c in cipy), 'po identifikaci jsou čipy kategorií')
-pepe = ev("document.querySelector('.watch-row[data-symbol=\"1000PEPEUSDT\"] .watch-turnover')?.textContent")
+pepe = ev("document.querySelector('.tile[data-symbol=\"1000PEPEUSDT\"] .tile-sub')?.textContent")
 over(pepe and 'Meme' in pepe, f'1000PEPEUSDT je Meme ({pepe})')
 
 print('3) filtr kategorie')
@@ -174,14 +176,14 @@ over(len(radky() or []) == 7 and ev("document.getElementById('watchSearch').valu
      'po přepnutí seznamu je vidět všechno (bez filtru a hledání)')
 
 print('4) hvězdička a sestavy')
-klik('.watch-row[data-symbol="SOLUSDT"] .watch-star')
+klik('.tile[data-symbol="SOLUSDT"] .watch-star')
 time.sleep(0.3)
 over(ev("!document.getElementById('sheetPair').hidden"), 'hvězdička otevře nabídku páru')
 ev("[...document.querySelectorAll('#sheetPairLists .sheet-check')].find((b) => b.textContent.includes('My watchlist')).click()")
 time.sleep(0.3)
 klik('#sheetPairClose')
 time.sleep(0.3)
-over(ev("document.querySelector('.watch-row[data-symbol=\"SOLUSDT\"] .watch-star').classList.contains('on')"),
+over(ev("document.querySelector('.tile[data-symbol=\"SOLUSDT\"] .watch-star').classList.contains('on')"),
      'SOL má plnou hvězdičku')
 klik('#watchLists .list-new')
 time.sleep(0.3)
@@ -224,14 +226,14 @@ ev("document.querySelectorAll('#watchLists .chip')[2].click()")
 time.sleep(0.8)
 
 print('6) ruční oprava kategorie')
-klik('.watch-row[data-symbol="1000PEPEUSDT"] .watch-star')
+klik('.tile[data-symbol="1000PEPEUSDT"] .watch-star')
 time.sleep(0.3)
 ev("[...document.querySelectorAll('#sheetPairCats .chip')].find((c) => c.textContent === 'AI').click()")
 time.sleep(0.3)
 over(ev("!document.getElementById('sheetPairReset').hidden"), 'po opravě je vidět tlačítko Reset')
 klik('#sheetPairClose')
 time.sleep(0.3)
-pepe = ev("document.querySelector('.watch-row[data-symbol=\"1000PEPEUSDT\"] .watch-turnover')?.textContent")
+pepe = ev("document.querySelector('.tile[data-symbol=\"1000PEPEUSDT\"] .tile-sub')?.textContent")
 over(pepe and 'AI' in pepe, f'PEPE má po opravě AI ({pepe})')
 
 print('7) po přenačtení')
@@ -245,7 +247,7 @@ over(ev("!document.querySelector('#watchCats .identify-btn')") and ev("window.__
      'kategorie jsou uložené, znovu se nestahují')
 
 # magnet v grafu dřív sahal na zrušené tlačítko filtru oblíbených
-ev("document.querySelector('.watch-row').click()")
+ev("document.querySelector('.tile').click()")
 time.sleep(2.5)
 klik('#magnetBtn')
 time.sleep(0.3)
