@@ -387,6 +387,13 @@ function registrovatCaryAlarmu() {
         ...popisAlarmu(d.title || '', bounding.width - 5, y, barva, d.aktivni === false),
       ];
     },
+    // Hladina alarmu i na cenové ose (2026-10-08) — jako vodorovná kresba,
+    // ať je hodnota vidět, dokud alarm nesmažeš.
+    createYAxisFigures: ({ chart, overlay, coordinates }) => {
+      const cena = overlay.points?.[0]?.value;
+      if (!Number.isFinite(cena) || !coordinates?.[0]) return [];
+      return [cenovkaNaOse(chart, cena, coordinates[0].y, barvaAlarmu(overlay.extendData || {}))];
+    },
   });
 
   /*
@@ -2019,9 +2026,45 @@ export function createPriceChart(container, layer, handlers = {}) {
    */
   const DLOUHY_STISK_MS = 450;
   let naDlouhyStisk = null;
+  /*
+   * Během podržení ukazuje štítek u ceny kříže vzdálenost od aktuální ceny
+   * v procentech (2026-10-08) — nahoru plus, dolů minus. Stojí vlevo
+   * od cenovky kříže na ose a zmizí s puštěním prstu.
+   */
+  let stitekProcent = null;
+  const bodPodPrstem = (clientX, clientY) => {
+    const r = container.getBoundingClientRect();
+    const plocha = chart.getSize(HLAVNI_PANEL, 'main');
+    if (!plocha) return null;
+    const x = clientX - r.left;
+    const y = Math.min(Math.max(clientY - r.top, plocha.top), plocha.top + plocha.height);
+    const bod = chart.convertFromPixel([{ x: x - plocha.left, y: y - plocha.top }], { paneId: HLAVNI_PANEL });
+    const value = (Array.isArray(bod) ? bod[0] : bod)?.value;
+    return Number.isFinite(value)
+      ? { value, x, y, ose: container.clientWidth - plocha.left - plocha.width }
+      : null;
+  };
+  function ukazProcenta(bod) {
+    const posledni = chart.getDataList().slice(-1)[0]?.close;
+    if (!bod || !(posledni > 0)) return;
+    if (!stitekProcent) {
+      stitekProcent = document.createElement('div');
+      stitekProcent.className = 'krizek-procenta';
+      container.parentElement?.append(stitekProcent);
+    }
+    const pct = (bod.value / posledni - 1) * 100;
+    stitekProcent.textContent = `${pct >= 0 ? '+' : '−'}${Math.abs(pct).toFixed(2)} %`;
+    stitekProcent.classList.toggle('dolu', pct < 0);
+    stitekProcent.style.top = `${bod.y}px`;
+    stitekProcent.style.right = `${bod.ose + 4}px`;
+    stitekProcent.hidden = false;
+  }
+  const skryjProcenta = () => { if (stitekProcent) stitekProcent.hidden = true; };
+
   function zapojDlouhyStisk() {
     let start = null;
     container.addEventListener('touchstart', (e) => {
+      clearTimeout(start?.casovac);
       if (e.touches.length !== 1) { start = null; return; }
       const r = container.getBoundingClientRect();
       const plocha = chart.getSize(HLAVNI_PANEL, 'main');
@@ -2029,29 +2072,43 @@ export function createPriceChart(container, layer, handlers = {}) {
       const y = e.touches[0].clientY - r.top;
       if (!plocha || x < plocha.left || x > plocha.left + plocha.width
           || y < plocha.top || y > plocha.top + plocha.height) { start = null; return; }
-      start = { cas: Date.now(), x: e.touches[0].clientX, y: e.touches[0].clientY, zruseno: false };
+      const s = { cas: Date.now(), x: e.touches[0].clientX, y: e.touches[0].clientY, zruseno: false,
+                  aktivni: false, posledni: { x: e.touches[0].clientX, y: e.touches[0].clientY } };
+      // Po uplynutí dlouhého stisku bez posunu je to kříž — ukázat procenta.
+      s.casovac = setTimeout(() => {
+        if (start !== s || s.zruseno) return;
+        s.aktivni = true;
+        ukazProcenta(bodPodPrstem(s.posledni.x, s.posledni.y));
+      }, DLOUHY_STISK_MS);
+      start = s;
     }, { passive: true });
     container.addEventListener('touchmove', (e) => {
       if (!start) return;
-      if (e.touches.length !== 1) { start.zruseno = true; return; }
+      if (e.touches.length !== 1) { start.zruseno = true; skryjProcenta(); return; }
+      start.posledni = { x: e.touches[0].clientX, y: e.touches[0].clientY };
       // Pohyb před uplynutím dlouhého stisku = posun grafu, ne kříž.
       const posun = Math.hypot(e.touches[0].clientX - start.x, e.touches[0].clientY - start.y);
       if (posun > 10 && Date.now() - start.cas < DLOUHY_STISK_MS) start.zruseno = true;
+      if (start.aktivni && !start.zruseno) ukazProcenta(bodPodPrstem(start.posledni.x, start.posledni.y));
     }, { passive: true });
     container.addEventListener('touchend', (e) => {
       const s = start;
       start = null;
+      skryjProcenta();
+      if (s) clearTimeout(s.casovac);
       if (!s || s.zruseno || e.touches.length || !naDlouhyStisk) return;
       if (Date.now() - s.cas < DLOUHY_STISK_MS) return;
-      const r = container.getBoundingClientRect();
-      const plocha = chart.getSize(HLAVNI_PANEL, 'main');
-      const x = e.changedTouches[0].clientX - r.left;
-      const y = Math.min(Math.max(e.changedTouches[0].clientY - r.top, plocha.top), plocha.top + plocha.height);
-      const bod = chart.convertFromPixel([{ x: x - plocha.left, y: y - plocha.top }], { paneId: HLAVNI_PANEL });
-      const value = (Array.isArray(bod) ? bod[0] : bod)?.value;
-      if (Number.isFinite(value)) naDlouhyStisk({ value, y, ose: container.clientWidth - plocha.left - plocha.width });
+      const bod = bodPodPrstem(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+      if (bod) {
+        const posledni = chart.getDataList().slice(-1)[0]?.close;
+        naDlouhyStisk({ ...bod, pct: posledni > 0 ? (bod.value / posledni - 1) * 100 : null });
+      }
     }, { passive: true });
-    container.addEventListener('touchcancel', () => { start = null; }, { passive: true });
+    container.addEventListener('touchcancel', () => {
+      clearTimeout(start?.casovac);
+      start = null;
+      skryjProcenta();
+    }, { passive: true });
   }
   zapojDlouhyStisk();
 
@@ -2343,6 +2400,23 @@ export function createPriceChart(container, layer, handlers = {}) {
       handlers.onSelectionChanged?.(null);
       // Tady je prázdný seznam správný výsledek, uživatel si o to řekl.
       handlers.onDrawingsChanged?.();
+    },
+
+    /** Vodorovná čára na dané ceně (rychlá nabídka po podržení prstu). */
+    addHorizontalLine(cena) {
+      const posledni = chart.getDataList().slice(-1)[0];
+      if (!posledni || !Number.isFinite(cena)) return false;
+      chart.createOverlay({
+        name: 'horizontalStraightLine',
+        groupId: SKUPINA_KRESBY,
+        points: [{ timestamp: posledni.timestamp, value: cena }],
+        lock: true,
+        visible: vrstvy.kresby,
+        extendData: { ...posledniStyl },
+        styles: stylKresby(posledniStyl),
+      });
+      ohlasZmenu();
+      return true;
     },
 
     /** Smaže jen kresbu, kterou má uživatel zrovna v úpravách. */

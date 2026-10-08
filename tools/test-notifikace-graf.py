@@ -77,6 +77,8 @@ graf = lambda: json.loads(ev("""JSON.stringify({ otevreny: !document.getElementB
 p.prikaz('Page.navigate', url=sys.argv[1])
 time.sleep(0.5)
 ev("sessionStorage.setItem('__pomalu', '1')")
+# Bez uloženého posledního stavu (v0.34.0) — test ověřuje čekání na pozice.
+ev("localStorage.removeItem('perpdesk.startSnimek')")
 p.prikaz('Page.reload')
 print('1) studený start, pozice přijdou za 2 s')
 for _ in range(40):

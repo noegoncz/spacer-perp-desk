@@ -683,8 +683,15 @@ kreseb i zavření grafu. Tři typy podle toho, co hlídají:
 
 0. **Rychlý alarm podržením prstu** (v0.33.0, podle TabTraderu): prst
    podržet v ploše svíček (≥ 450 ms bez posunu), knihovna ukáže kříž,
-   ten jde posouvat; po puštění se u ceny objeví tlačítko „Set alarm at
-   …" (`#quickAlarm`). Klepnutí alarm **rovnou uloží a zapne** s výchozími
+   ten jde posouvat. **Během podržení** stojí u ceny kříže (vlevo od
+   cenové osy) štítek se vzdáleností od aktuální ceny v % (`.krizek-procenta`,
+   nahoru zeleně +, dolů červeně −; v0.35.0). Po puštění se **v místě
+   prstu** (nad ním, když nahoře není místo, pod ním) objeví nabídka
+   `#quickMenu`: cena s procenty a dvě volby — **Set alarm** a
+   **Horizontal line** (vodorovná kresba na té ceně, `addHorizontalLine`
+   v chart.js, uloží se mezi kresby páru). Obě mají cenovku na ose,
+   dokud je nesmažeš (`alarmLine` má od v0.35.0 `createYAxisFigures`).
+   Původní popis: Klepnutí alarm **rovnou uloží a zapne** s výchozími
    volbami (oba směry, jednou, bez vypršení) — bez okna s nastavením;
    doladit jde klepnutím na čáru. Tlačítko zmizí po 6 s, dalším dotykem
    v grafu, změnou timeframu a zavřením grafu. Krátké klepnutí, posun
@@ -1229,6 +1236,15 @@ instance je pak v `window.__graf`).
 Ve vnořeném rozvržení se jinak ukotví k rodiči a skončí uprostřed obrazovky,
 kde je uživatel nehledá. Nabídka indikátorů má v každém řádku ikonku, zkratku
 a stručný popis, a po výběru se sama zavře.
+
+**Pozice otevřená při otevřeném grafu** (v0.35.0, jako v TabTraderu):
+`syncOpenChart` při každé dávce pozic zkontroluje, jestli se na páru
+otevřeného grafu (dosud bez pozice) neobjevila pozice — pak ji převezme
+(hlavička, řádek nad grafem, čáry, příkazy, značky plnění, linka zisku).
+Stojí to nic navíc: pozice chodí privátním streamem tak jako tak, práce
+se dělá jen jednou při přechodu. Zavření pozice graf vrátí do režimu bez
+pozice a limitky na páru znovu načte. Test: `tools/test-nova-pozice-v-grafu.py`
+(na starém kódu padá).
 
 Klepnutí na pár otevře graf. Proto graf nově funguje **i bez otevřené pozice**:
 `chartSymbol` je zdroj pravdy o tom, co se kreslí, `chartPosition` může být

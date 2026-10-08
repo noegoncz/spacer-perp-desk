@@ -1,13 +1,17 @@
 {
-  "verze": "0.34.0",
+  "verze": "0.35.0",
   "novinky": [
     {
-      "en": "Much faster start: your positions show up right away and refresh live a moment later.",
-      "cs": "Mnohem rychlejší start: pozice jsou vidět hned a za okamžik se obnoví živě."
+      "en": "Open a position while its chart is open and it shows up right away: lines, PnL and all.",
+      "cs": "Otevřeš pozici, zatímco máš otevřený její graf, a hned ji v něm vidíš: čáry, PnL i vše ostatní."
     },
     {
-      "en": "Resize indicator panels like RSI by dragging the line between the panel and the chart.",
-      "cs": "Výšku panelu indikátoru (třeba RSI) změníš tažením hranice mezi panelem a grafem."
+      "en": "Hold your finger on the chart to see the distance from the current price in %. Let go to set an alarm or draw a horizontal line right there.",
+      "cs": "Podržením prstu v grafu vidíš vzdálenost od aktuální ceny v %. Po puštění rovnou nastavíš alarm nebo nakreslíš vodorovnou čáru."
+    },
+    {
+      "en": "Alarm levels now show their price on the price scale.",
+      "cs": "Hladiny alarmů mají cenu na cenové ose."
     }
   ],
   "opravy": [

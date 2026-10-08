@@ -195,6 +195,8 @@ export const cs = {
   'style.alarm': 'Udělat z kresby alarm',
 
   /* ---------- cenové alarmy ---------- */
+  'alarm.quickSetShort': 'Nastavit alarm',
+  'chart.lineAdded': 'Čára přidána',
   'alarm.quickSet': 'Nastavit alarm na {price}',
   'alarm.quickDone': 'Alarm nastaven na {price}',
   'alarm.new': 'Nový alarm',

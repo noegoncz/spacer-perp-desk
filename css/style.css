@@ -1487,37 +1487,71 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
 
 /* ---------- rychlý alarm po podržení prstu ---------- */
 
-.quick-alarm {
+.quick-menu {
   position: absolute;
   z-index: 22;
   display: flex;
-  align-items: center;
-  gap: 7px;
-  min-height: 40px;
-  padding: 0 14px 0 11px;
-  transform: translateY(-50%);
-  border: 1px solid var(--alarm);
-  border-radius: 20px;
-  background: rgba(13, 20, 32, 0.94);
-  color: var(--text);
-  font-size: 0.86rem;
-  font-weight: 600;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 170px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(13, 20, 32, 0.96);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+}
+.quick-menu-cena {
+  padding: 2px 6px 4px;
+  font-size: 0.78rem;
+  color: var(--text-dim);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+}
+.quick-btn {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 42px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 9px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 600;
+  white-space: nowrap;
   cursor: pointer;
 }
-.quick-alarm svg {
+.quick-btn:active { background: var(--border); }
+.quick-btn svg {
   width: 18px;
   height: 18px;
   fill: none;
-  stroke: var(--alarm);
+  stroke: currentColor;
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.quick-alarm.hotovo { border-color: var(--long); }
-.quick-alarm.hotovo svg { stroke: var(--long); }
+#quickAlarm svg { stroke: var(--alarm); }
+.quick-menu.hotovo .quick-btn:not(.potvrzeno) { display: none; }
+.quick-btn.potvrzeno { color: var(--long); }
+.quick-btn.potvrzeno svg { stroke: var(--long); }
+
+/* Vzdálenost kříže od aktuální ceny během podržení prstu. */
+.krizek-procenta {
+  position: absolute;
+  z-index: 22;
+  transform: translateY(-50%);
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(46, 189, 133, 0.92);
+  color: #04130c;
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.krizek-procenta.dolu { background: rgba(246, 70, 93, 0.92); color: #fff; }
 
 /* ---------- paleta vzhledu vybrané kresby ---------- */
 

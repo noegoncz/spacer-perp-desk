@@ -61,7 +61,7 @@ x = plocha['x'] + plocha['w'] * 0.5
 y1 = plocha['y'] + plocha['h'] * 0.4
 y2 = plocha['y'] + plocha['h'] * 0.55
 pocet_pred = ev("JSON.parse(localStorage.getItem('perpdesk.alarms') || '[]').length")
-viditelne = lambda: ev("!document.getElementById('quickAlarm').hidden")
+viditelne = lambda: ev("!document.getElementById('quickMenu').hidden")
 
 print('1) krátké klepnutí')
 dotyk('touchStart', x, y1); time.sleep(0.1); dotyk('touchEnd', x, y1); time.sleep(0.5)
@@ -81,19 +81,43 @@ time.sleep(0.8)
 for i in range(1, 7):
     dotyk('touchMove', x, y1 + (y2 - y1) * i / 6); time.sleep(0.05)
 time.sleep(0.2)
+# Během podržení: štítek s procenty od aktuální ceny u ceny kříže.
+stitek = json.loads(ev("""(() => { const e = document.querySelector('.krizek-procenta');
+  if (!e || e.hidden) return '{}';
+  const b = e.getBoundingClientRect(); const box = document.getElementById('chartBox').getBoundingClientRect();
+  const s = window.__graf.getSize('candle_pane', 'main');
+  return JSON.stringify({ text: e.textContent, stred: b.top + b.height / 2, prave: b.right,
+    osa: box.left + s.left + s.width }); })()""") or '{}')
+posledni = ev("window.__graf.getDataList().slice(-1)[0].close")
+print('   štítek během podržení:', stitek)
+over(bool(stitek.get('text')), 'během podržení je u kříže štítek s procenty')
+if stitek.get('text'):
+    cena_prstu = ev("""(() => { const r = document.getElementById('chartBox').getBoundingClientRect();
+      const s = window.__graf.getSize('candle_pane', 'main');
+      const b = window.__graf.convertFromPixel([{ x: %f - r.left - s.left, y: %f - r.top - s.top }], { paneId: 'candle_pane' });
+      return (Array.isArray(b) ? b[0] : b).value; })()""" % (x, y2))
+    pct = (cena_prstu / posledni - 1) * 100
+    ocek = f"{'+' if pct >= 0 else '−'}{abs(pct):.2f} %"
+    over(stitek['text'] == ocek, f"procenta od aktuální ceny ({stitek['text']} vs {ocek})")
+    over(abs(stitek['stred'] - y2) < 4 and stitek['prave'] <= stitek['osa'] + 1,
+         'štítek stojí u ceny kříže vlevo od cenové osy')
 dotyk('touchEnd', x, y2)
 time.sleep(0.6)
+over(ev("document.querySelector('.krizek-procenta').hidden"), 'po puštění štítek s procenty zmizí')
 over(viditelne(), 'po puštění je u ceny nabídka alarmu')
-text = ev("document.getElementById('quickAlarmText').textContent") or ''
-print('   nabídka:', text)
+text = ev("document.getElementById('quickMenuPrice').textContent") or ''
+volby = ev("[...document.querySelectorAll('#quickMenu .quick-btn span')].map((s) => s.textContent)")
+print('   nabídka:', text, volby)
 ocekavana = ev("""(() => { const r = document.getElementById('chartBox').getBoundingClientRect();
   const s = window.__graf.getSize('candle_pane', 'main');
   const b = window.__graf.convertFromPixel([{ x: %f - r.left - s.left, y: %f - r.top - s.top }], { paneId: 'candle_pane' });
   return (Array.isArray(b) ? b[0] : b).value; })()""" % (x, y2))
-over(text.startswith('Set alarm at'), 'text nabídky „Set alarm at …“')
-poloha = json.loads(ev("""(() => { const b = document.getElementById('quickAlarm').getBoundingClientRect();
-  return JSON.stringify({ stred: b.top + b.height / 2 }); })()""") or '{}')
-over(abs(poloha.get('stred', 0) - y2) < 6, f"nabídka stojí u místa, kde skončil prst ({poloha.get('stred')} vs {y2:.0f})")
+over(volby == ['Set alarm', 'Horizontal line'], f'nabídka: alarm a vodorovná čára ({volby})')
+over('%' in text, f'nabídka ukazuje cenu a procenta ({text})')
+poloha = json.loads(ev("""(() => { const b = document.getElementById('quickMenu').getBoundingClientRect();
+  return JSON.stringify({ l: b.left, r: b.right, t: b.top, b: b.bottom }); })()""") or '{}')
+over(poloha['l'] - 2 <= x <= poloha['r'] + 2 and (0 < y2 - poloha['b'] < 60 or 0 < poloha['t'] - y2 < 60),
+     f"nabídka stojí v místě, kde skončil prst ({poloha} vs {x:.0f},{y2:.0f})")
 
 r = p.prikaz('Page.captureScreenshot', format='png')
 cesta = os.path.join(os.environ.get('TEMP', '.'), 'rychly-alarm.png')
@@ -118,6 +142,27 @@ over('Alarm set' in (ev("document.getElementById('quickAlarmText').textContent")
 time.sleep(1.8)
 over(not viditelne(), 'potvrzení samo zmizí')
 over(ev("window.__graf.getOverlays().filter((o) => o.name === 'alarmLine').length") >= 1, 'čára alarmu je v grafu')
+
+print('5) vodorovná čára z nabídky')
+y3 = plocha['y'] + plocha['h'] * 0.3
+dotyk('touchStart', x, y3); time.sleep(0.8)
+dotyk('touchMove', x, y3 + 5); time.sleep(0.1)
+dotyk('touchEnd', x, y3 + 5); time.sleep(0.6)
+over(viditelne(), 'nabídka se ukáže znovu')
+kresby_pred = ev("window.__graf.getOverlays({ groupId: 'kresby' }).length")
+b = json.loads(ev("""(() => { const b = document.getElementById('quickLine').getBoundingClientRect();
+  return JSON.stringify({ x: b.left + b.width / 2, y: b.top + b.height / 2 }); })()"""))
+dotyk('touchStart', b['x'], b['y']); time.sleep(0.08); dotyk('touchEnd', b['x'], b['y'])
+time.sleep(0.8)
+cary = json.loads(ev("""JSON.stringify(window.__graf.getOverlays({ groupId: 'kresby' })
+  .filter((o) => o.name === 'horizontalStraightLine').map((o) => o.points[0].value))""") or '[]')
+print('   vodorovné čáry:', cary)
+over(ev("window.__graf.getOverlays({ groupId: 'kresby' }).length") == kresby_pred + 1, 'přibyla vodorovná čára')
+ulozene = json.loads(ev("localStorage.getItem('perpdesk.drawings.JUPUSDT') || '[]'") or '[]')
+over(any(k.get('name') == 'horizontalStraightLine' for k in ulozene), 'čára se uložila mezi kresby páru')
+over('Line added' in (ev("document.getElementById('quickLineText').textContent") or ''), 'nabídka potvrdí „Line added“')
+over(ev("JSON.parse(localStorage.getItem('perpdesk.alarms') || '[]').length") == len(seznam), 'čára nevytvořila alarm')
+
 
 konzole = ev('(window.__chyby||[]).join(" | ")') or ''
 over(not konzole, f'bez chyb v konzoli ({konzole})')

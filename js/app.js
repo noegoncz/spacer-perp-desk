@@ -832,6 +832,7 @@ function wireEvents() {
   });
   naUdalost('alarmBtn', 'click', novyAlarmKrizem);
   naUdalost('quickAlarm', 'click', potvrdRychlyAlarm);
+  naUdalost('quickLine', 'click', potvrdRychlouCaru);
   // Jakýkoli další dotyk v grafu nabídku rychlého alarmu zavře.
   el('chartBox')?.addEventListener('touchstart', () => {
     if (rychlyAlarm?.cena) skryjRychlyAlarm();
@@ -2544,39 +2545,68 @@ function vykresliAlarmy() {
  */
 let rychlyAlarm = null;   // { cena, casovac }
 
+/*
+ * Nabídka se ukáže v místě, kde prst skončil (2026-10-08): nad prstem,
+ * a když nahoře není místo, pod ním; vodorovně se drží v ploše grafu.
+ */
 function ukazRychlyAlarm(bod) {
-  const tl = el('quickAlarm');
-  if (!tl || !chartSymbol) return;
-  // Rozdělané kreslení, vybraná kresba nebo otevřená nabídka mají přednost.
+  const menu = el('quickMenu');
+  if (!menu || !chartSymbol) return;
+  // Vybraná kresba nebo otevřená nabídka mají přednost.
   if (chart?.hasSelection?.() || document.querySelector('.sheet:not([hidden])')) return;
   const cena = zaokrouhliCenu(bod.value);
   if (!(cena > 0)) return;
   clearTimeout(rychlyAlarm?.casovac);
   rychlyAlarm = { cena, casovac: setTimeout(skryjRychlyAlarm, 6000) };
-  tl.classList.remove('hotovo');
-  el('quickAlarmText').textContent = t('alarm.quickSet', { price: formatPrice(cena) });
-  tl.style.top = `${Math.max(24, bod.y)}px`;
-  tl.style.right = `${Math.max(0, bod.ose) + 8}px`;
-  tl.hidden = false;
+  menu.classList.remove('hotovo');
+  menu.querySelectorAll('.quick-btn').forEach((b) => b.classList.remove('potvrzeno'));
+  el('quickAlarmText').textContent = t('alarm.quickSetShort');
+  el('quickLineText').textContent = t('tool.horizontalStraightLine');
+  const pct = Number.isFinite(bod.pct) ? `  ${bod.pct >= 0 ? '+' : '−'}${Math.abs(bod.pct).toFixed(2)} %` : '';
+  el('quickMenuPrice').textContent = `${formatPrice(cena)}${pct}`;
+
+  menu.style.left = '0px';
+  menu.style.top = '0px';
+  menu.hidden = false;
+  const oblast = menu.parentElement.getBoundingClientRect();
+  const sirka = menu.offsetWidth;
+  const vyska = menu.offsetHeight;
+  const left = Math.min(Math.max(8, bod.x - sirka / 2), oblast.width - sirka - 8);
+  const nad = bod.y - vyska - 24;
+  const top = nad >= 8 ? nad : Math.min(bod.y + 24, oblast.height - vyska - 8);
+  menu.style.left = `${left}px`;
+  menu.style.top = `${top}px`;
   navigator.vibrate?.(12);
 }
 
 function skryjRychlyAlarm() {
   clearTimeout(rychlyAlarm?.casovac);
   rychlyAlarm = null;
-  ukazPrvek('quickAlarm', false);
+  ukazPrvek('quickMenu', false);
+}
+
+function potvrdRychle(tlacitko, text) {
+  el('quickMenu').classList.add('hotovo');
+  tlacitko.classList.add('potvrzeno');
+  tlacitko.querySelector('span').textContent = text;
+  clearTimeout(rychlyAlarm?.casovac);
+  rychlyAlarm = { cena: null, casovac: setTimeout(skryjRychlyAlarm, 1400) };
 }
 
 function potvrdRychlyAlarm() {
-  if (!rychlyAlarm || !chartSymbol) return;
+  if (!rychlyAlarm?.cena || !chartSymbol) return;
   const cena = rychlyAlarm.cena;
   ukazVrstvu('alarmy');
   alarmy.uloz({ ...alarmy.novy(chartSymbol, cena), aktivni: true });
   vykresliAlarmy();
-  clearTimeout(rychlyAlarm.casovac);
-  el('quickAlarm').classList.add('hotovo');
-  el('quickAlarmText').textContent = t('alarm.quickDone', { price: formatPrice(cena) });
-  rychlyAlarm = { cena: null, casovac: setTimeout(skryjRychlyAlarm, 1400) };
+  potvrdRychle(el('quickAlarm'), t('alarm.quickDone', { price: formatPrice(cena) }));
+}
+
+function potvrdRychlouCaru() {
+  if (!rychlyAlarm?.cena || !chart) return;
+  ukazVrstvu('kresby');
+  if (!chart.addHorizontalLine(rychlyAlarm.cena)) return;
+  potvrdRychle(el('quickLine'), t('chart.lineAdded'));
 }
 
 /**
@@ -3146,7 +3176,31 @@ function applyChartLines(force = false) {
 
 /** Pozice se mění za běhu — graf musí držet krok s PnL, SL/TP i likvidací. */
 function syncOpenChart(list) {
-  if (!chartPosition || !chartSymbol) return;
+  if (!chartSymbol) return;
+
+  /*
+   * Pozice otevřená na páru, jehož graf je zrovna otevřený (2026-10-08,
+   * jako v TabTraderu): uživatel kouká na graf, vstoupí přes burzu a po
+   * návratu chce vidět pozici hned, ne až po zavření a otevření grafu.
+   * Pozice chodí živě privátním streamem tak jako tak — tady se jen
+   * jednou, při přechodu „bez pozice → s pozicí", dokreslí její čáry,
+   * příkazy a značky. Běžné ticky nestojí nic navíc.
+   */
+  if (!chartPosition) {
+    if (prohlizenyObchod) return;
+    const nova = list.find((p) => p.symbol === chartSymbol);
+    if (!nova) return;
+    chartPosition = nova;
+    chartOtevreno = null;
+    ui.renderChartHeader(chartSymbol, nova, hideAmounts);
+    ui.renderChartInfo(nova, hideAmounts, popisBurzy(), chartObrat);
+    applyChartLines();
+    nastavLinkuPnl();
+    refreshChartOrders();
+    znackyPlneni(nova);
+    nactiOtevreni(nova);
+    return;
+  }
 
   const fresh = list.find(
     (p) => p.symbol === chartPosition.symbol && p.positionIdx === chartPosition.positionIdx,
@@ -3157,6 +3211,11 @@ function syncOpenChart(list) {
     chartPosition = null;
     // A bez linky zisku; nemá se z čeho počítat.
     nastavLinkuPnl();
+    applyChartLines();
+    ui.renderChartHeader(chartSymbol, null, hideAmounts, chartTrh);
+    ui.renderChartInfo(null, hideAmounts, popisBurzy(), chartObrat);
+    // Příkazy na páru (limitky) mohly pozici přežít — načíst znovu.
+    refreshChartOrders();
     return;
   }
 

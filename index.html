@@ -203,11 +203,19 @@
       <div id="drawLayer" class="draw-layer"></div>
 
 
-      <!-- Rychlý alarm po podržení prstu v grafu: klepnutí ho rovnou uloží. -->
-      <button type="button" id="quickAlarm" class="quick-alarm" hidden>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 15V10a6 6 0 10-12 0v5l-2 3h16z"/><path d="M10 21h4"/></svg>
-        <span id="quickAlarmText"></span>
-      </button>
+      <!-- Rychlá nabídka po podržení prstu v grafu (v místě puštění prstu):
+           alarm, nebo vodorovná čára na té ceně. Obojí jedním klepnutím. -->
+      <div id="quickMenu" class="quick-menu" hidden>
+        <div class="quick-menu-cena" id="quickMenuPrice"></div>
+        <button type="button" id="quickAlarm" class="quick-btn">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 15V10a6 6 0 10-12 0v5l-2 3h16z"/><path d="M10 21h4"/></svg>
+          <span id="quickAlarmText" data-i18n="alarm.quickSetShort">Set alarm</span>
+        </button>
+        <button type="button" id="quickLine" class="quick-btn">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h18"/><circle cx="12" cy="12" r="2"/></svg>
+          <span id="quickLineText" data-i18n="tool.horizontalStraightLine">Horizontal line</span>
+        </button>
+      </div>
 
       <!-- Vzhled vybrané kresby. Dole, aby nepřekrýval cenové dění nahoře. -->
       <div id="stylePanel" class="style-panel" hidden>

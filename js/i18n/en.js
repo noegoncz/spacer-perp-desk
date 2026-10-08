@@ -199,6 +199,8 @@ export const en = {
   'style.alarm': 'Turn this drawing into an alert',
 
   /* ---------- price alerts ---------- */
+  'alarm.quickSetShort': 'Set alarm',
+  'chart.lineAdded': 'Line added',
   'alarm.quickSet': 'Set alarm at {price}',
   'alarm.quickDone': 'Alarm set at {price}',
   'alarm.new': 'New alert',
