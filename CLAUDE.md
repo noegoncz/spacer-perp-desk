@@ -1328,8 +1328,11 @@ aktivní sestavu → přejmenovat / smazat.
     potvrzení, **vyprázdní pole a nechá v něm kurzor** pro další pár;
     přidané mají fajfku, podruhé → „už je v seznamu". Bublina hlášení
     v Trzích uhne nad + (`body.na-trzich`).
+  - Záložka se od v0.36.1 jmenuje **Watchlists** (česky Seznamy). Mřížka
+    má vždy **2 sloupce**, široké **1** — na zavřeném i rozevřeném Foldu
+    (jako TabTrader); na rozevřeném jsou dlaždice jen širší.
   - **Podržet dlaždici** (`js/dlazdice.js`, dotykové události): táhnout →
-    přesun na místo dlaždice pod prstem (`sestavy.presun`); pustit bez
+    **výměna místa** s dlaždicí pod prstem (`sestavy.prohod`, v0.36.1); pustit bez
     pohybu → nabídka (odebrat ze seznamu / do jiného seznamu). ⚠ Klepnutí
     po zvednutí prstu by trefilo právě ukázané pozadí a nabídku zavřelo —
     450 ms po otevření se klik na pozadí ignoruje (`menuOtevrenoV`).

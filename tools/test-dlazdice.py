@@ -141,8 +141,8 @@ dotyk('touchStart', a['x'], a['y']); time.sleep(0.7)
 for i in range(1, 11):
     dotyk('touchMove', a['x'] + (b['x'] - a['x']) * i / 10, a['y'] + (b['y'] - a['y']) * i / 10); time.sleep(0.03)
 dotyk('touchEnd', b['x'], b['y']); time.sleep(0.8)
-print('   po přesunu BTC na místo JUP:', poradi())
-over(poradi() == ['SOLUSDT', 'JUPUSDT', 'BTCUSDT', 'ETHUSDT'], 'BTC je na místě JUP')
+print('   po přesunu BTC na JUP:', poradi())
+over(poradi() == ['JUPUSDT', 'SOLUSDT', 'BTCUSDT', 'ETHUSDT'], 'BTC a JUP si vyměnily místa')
 over([x.split(':')[1] for x in ulozene()] == poradi(), 'nové pořadí se uložilo')
 over(ev("!document.getElementById('viewChart').hidden") is False, 'přesun neotevřel graf')
 
@@ -154,6 +154,9 @@ over('Remove from Myspot' in (ev("document.getElementById('tileMenuRemove').text
 over(ev("document.getElementById('viewChart').hidden"), 'podržení neotevřelo graf')
 klepni('#tileMenuRemove')
 over(poradi() == ['JUPUSDT', 'BTCUSDT', 'ETHUSDT'], f'SOL odebrán ({poradi()})')
+sloupce = ev("""(() => { const t = [...document.querySelectorAll('#watchList .tile')].map((e) => Math.round(e.getBoundingClientRect().top));
+  return new Set(t.slice(0, 2)).size === 1 && t[2] !== t[0]; })()""")
+over(sloupce, 'mřížka má přesně dva sloupce')
 
 print('5) klepnutí otevře graf, All je široké')
 klepni('.tile[data-symbol=BTCUSDT]')

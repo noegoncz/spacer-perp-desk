@@ -835,10 +835,10 @@ function wireEvents() {
   });
   if (el('watchList')) {
     zapojDlazdice(el('watchList'), {
-      onPresun: (symbol, naIndex) => {
+      onPresun: (symbol, cil) => {
         const id = sestavy.aktivni();
         if (id === sestavy.VSE) return;
-        sestavy.presun(id, symbol, naIndex);
+        sestavy.prohod(id, symbol, cil);
         vykresliTrhy();
       },
       onNabidka: otevriMenuDlazdice,

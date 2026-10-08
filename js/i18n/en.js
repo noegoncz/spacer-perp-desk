@@ -24,7 +24,7 @@ export const en = {
   'action.openSettings': 'Open settings',
 
   'tabs.positions': 'Positions',
-  'tabs.watchlist': 'Markets',
+  'tabs.watchlist': 'Watchlists',
   'tabs.history': 'History',
   'watchlist.search': 'Search pairs',
   'watchlist.searchPlaceholder': 'e.g. BTC',

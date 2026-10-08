@@ -2407,10 +2407,10 @@ details.advanced { margin-top: 14px; }
 .layout-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.6; }
 
 .watch-list.tiles { display: grid; gap: 8px; }
-/* Zavřený Fold: dvě vedle sebe, rozevřený: tři až čtyři. */
-.watch-list.tiles.mrizka { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
-/* Široké: přes celou šířku, na rozevřeném Foldu dvě vedle sebe. */
-.watch-list.tiles.siroke { grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); }
+/* Mřížka vždy dva sloupce, široké vždy jeden — na zavřeném i rozevřeném
+   Foldu stejně (v0.36.1, jako TabTrader); na rozevřeném jsou jen širší. */
+.watch-list.tiles.mrizka { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.watch-list.tiles.siroke { grid-template-columns: minmax(0, 1fr); }
 
 .tile {
   position: relative;

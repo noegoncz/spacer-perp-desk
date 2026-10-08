@@ -1,7 +1,7 @@
 /**
  * Podržení dlaždice ve vlastním seznamu v Trzích (jako v TabTraderu):
- *  - podržet a táhnout → dlaždice se přesune na místo té, nad kterou se
- *    prst pustí,
+ *  - podržet a táhnout → dlaždice si **vymění místo** s tou, nad kterou
+ *    se prst pustí,
  *  - podržet a pustit bez pohybu → nabídka (odebrat ze seznamu).
  *
  * Krátké klepnutí otevírá graf (to obsluhuje dlaždice sama), pohyb prstu
@@ -78,8 +78,7 @@ export function zapojDlazdice(kontejner, { onPresun, onNabidka }) {
     setTimeout(() => { delete st.tile.dataset.potlacKlik; }, 450);
     if (zruseno) return;
     if (st.pohnuto && st.cil) {
-      const dlazdice = [...kontejner.querySelectorAll('.tile')];
-      onPresun(st.tile.dataset.symbol, dlazdice.indexOf(st.cil));
+      onPresun(st.tile.dataset.symbol, st.cil.dataset.symbol);
     } else if (!st.pohnuto) {
       onNabidka(st.tile.dataset.symbol, st.tile);
     }

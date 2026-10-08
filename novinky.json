@@ -1,23 +1,14 @@
 {
-  "verze": "0.36.0",
+  "verze": "0.36.1",
   "novinky": [
     {
-      "en": "Markets got a new look: your watchlists are tiles, in two columns or wide — switch with one tap.",
-      "cs": "Trhy mají nový vzhled: seznamy jsou dlaždice, ve dvou sloupcích nebo široké — přepneš jedním klepnutím."
+      "en": "Markets is now called Watchlists.",
+      "cs": "Záložka Trhy se teď jmenuje Seznamy."
     },
     {
-      "en": "Add pairs with the + button: search, tap, done — and search for the next one right away.",
-      "cs": "Páry přidáš tlačítkem +: najdi, klepni, hotovo — a rovnou hledej další."
-    },
-    {
-      "en": "Hold a tile to drag it to a new spot, or to remove it from the list.",
-      "cs": "Podržením dlaždici přesuneš na jiné místo nebo ji odebereš ze seznamu."
+      "en": "Dragging a tile onto another swaps their places. Tiles keep two columns (or one wide) on any screen.",
+      "cs": "Přetažení dlaždice na jinou je prohodí. Dlaždice mají na každém displeji dva sloupce (nebo jeden široký)."
     }
   ],
-  "opravy": [
-    {
-      "en": "Small fixes and polish.",
-      "cs": "Drobné opravy a vylepšení."
-    }
-  ]
+  "opravy": []
 }

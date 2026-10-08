@@ -20,7 +20,7 @@ export const cs = {
   'action.openSettings': 'Otevřít nastavení',
 
   'tabs.positions': 'Pozice',
-  'tabs.watchlist': 'Trhy',
+  'tabs.watchlist': 'Seznamy',
   'tabs.history': 'Historie',
   'watchlist.search': 'Hledat páry',
   'watchlist.searchPlaceholder': 'např. BTC',

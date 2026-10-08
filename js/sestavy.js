@@ -176,7 +176,21 @@ export function odeber(id, symbol) {
   uloz();
 }
 
-/** Přesune pár na dané místo v seznamu (tažení dlaždice). */
+/**
+ * Prohodí dva páry v seznamu (tažení dlaždice na jinou, v0.36.1 — přání
+ * uživatele: dlaždice, na kterou se pustí, se objeví na místě přesouvané).
+ */
+export function prohod(id, symbolA, symbolB) {
+  const x = najdi(id);
+  if (!x) return;
+  const a = x.polozky.indexOf(polozka(symbolA));
+  const b = x.polozky.indexOf(polozka(symbolB));
+  if (a < 0 || b < 0 || a === b) return;
+  [x.polozky[a], x.polozky[b]] = [x.polozky[b], x.polozky[a]];
+  uloz();
+}
+
+/** Přesune pár na dané místo v seznamu. */
 export function presun(id, symbol, naIndex) {
   const x = najdi(id);
   const p = polozka(symbol);
