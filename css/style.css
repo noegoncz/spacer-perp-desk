@@ -1313,13 +1313,22 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
 /* Intervaly se posouvají, tlačítka nástrojů zůstávají vždy vidět. */
 .intervals {
   display: flex;
-  /* Jen na šířku svých tlačítek (na úzkém displeji se zúží a posouvá);
-     zbylé místo dostane tlačítko zpět. */
-  flex: 0 1 auto;
+  /* Vyplní místo vlevo od tlačítka zpět a posouvá se (v0.37.0) — vybraný
+     timeframe se vystředí v téhle ploše. */
+  flex: 1 1 0;
   min-width: 0;
   gap: 6px;
   overflow-x: auto;
   scrollbar-width: none;
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
+}
+/* Mezery na koncích, aby šel vystředit i první (1m) a poslední (1M)
+   timeframe — polovina lišty minus polovina tlačítka. */
+.intervals::before,
+.intervals::after {
+  content: '';
+  flex: 0 0 calc(50% - 30px);
 }
 .intervals::-webkit-scrollbar { display: none; }
 
@@ -1330,8 +1339,8 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
   /* Vyplní místo mezi posledním timeframem a pravým okrajem (rozevřený
      Fold), na úzkém displeji aspoň dvojnásobná šířka. Odstup od kraje:
      dlaň ho u samé hrany mačkala omylem. */
-  flex: 1 0 104px;
-  max-width: 260px;
+  /* Pevná šířka (v0.37.0): zbytek řádku patří posuvné liště timeframů. */
+  flex: 0 0 clamp(104px, 26vw, 200px);
   margin-left: auto;
   margin-right: 10px;
   display: grid;

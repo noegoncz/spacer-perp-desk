@@ -75,16 +75,20 @@ def poradi():
 def stred():
     return ev("""(() => { const box = document.getElementById('intervals').getBoundingClientRect();
       const a = document.querySelector('#intervals .interval-btn.active').getBoundingClientRect();
-      return Math.round((a.left + a.width / 2) - (box.left + box.width / 2)); })()""")
+      return Math.round((a.left + a.width / 2) - (box.left + box.width / 2)) || 0; })()""")
+# v0.37.0: pevné pořadí (žádný kolotoč), volné posouvání, vybraný vystředěný.
 print('   pořadí:', poradi(), ' odchylka od středu:', stred(), 'px')
-over(poradi()[4] == '240*', 'aktivní 4h je uprostřed pořadí')
-over(abs(stred()) <= 30, 'aktivní 4h je uprostřed viditelné lišty')
-ev("document.querySelector('.interval-btn[data-interval=\"1\"]').click()")
-time.sleep(2)
-o = poradi()
-print('   po 1m:', o, ' odchylka:', stred(), 'px')
-over(o[4] == '1*' and o[3] == 'M' and o[5] == '5', 'po 1m se lišta otočí (1M | 1m | 5m)')
-over(abs(stred()) <= 30, 'aktivní 1m je uprostřed viditelné lišty')
+over([x.rstrip('*') for x in poradi()] == ['1', '5', '15', '30', '60', '240', 'D', 'W', 'M'],
+     'pevné pořadí 1m → 1M včetně 30m')
+over(abs(stred()) <= 3, 'aktivní 4h je uprostřed lišty')
+for iv in ('1', 'M', '30'):
+    ev("document.querySelector('.interval-btn[data-interval=\"%s\"]').click()" % iv)
+    time.sleep(2)
+    print(f'   po {iv}: odchylka', stred(), 'px')
+    over(abs(stred()) <= 3, f'vybraný {iv} je uprostřed lišty (i krajní)')
+over([x.rstrip('*') for x in poradi()][0] == '1', 'pořadí se výběrem nemění')
+posun = ev("""(() => { const b = document.getElementById('intervals'); return b.scrollWidth > b.clientWidth; })()""")
+over(posun, 'lišta timeframů se dá posouvat')
 
 print('3) horní část grafu')
 over(ev("window.__graf.getStyles().candle.tooltip.showRule") == 'none', 'legenda svíčky (Time, Open…) je vypnutá')

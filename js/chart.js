@@ -59,7 +59,7 @@ const BARVA_ZISKU = '#3ee6a4';
 
 /** Délka jedné svíčky v ms — pro odpočet do jejího uzavření. */
 const DELKA_OBDOBI = {
-  1: 60e3, 5: 300e3, 15: 900e3, 60: 3600e3, 240: 14400e3,
+  1: 60e3, 5: 300e3, 15: 900e3, 30: 1800e3, 60: 3600e3, 240: 14400e3,
   D: 86400e3, W: 604800e3, M: 2592000e3,
 };
 
@@ -78,6 +78,7 @@ const OBDOBI = {
   1: { type: 'minute', span: 1 },
   5: { type: 'minute', span: 5 },
   15: { type: 'minute', span: 15 },
+  30: { type: 'minute', span: 30 },
   60: { type: 'hour', span: 1 },
   240: { type: 'hour', span: 4 },
   D: { type: 'day', span: 1 },
@@ -239,54 +240,6 @@ function registrovatCaruPozice() {
       return [cenovkaNaOse(chart, cena, coordinates[0].y, d.barvaOsy || d.color)];
     },
   });
-}
-
-/*
- * Kam patří značka plnění: svíčka, ve které plnění leží, a pořadí mezi
- * značkami téže strany na stejné svíčce (pro řazení za sebe). Spočítá se
- * jednou pro všechny značky a drží, dokud se nezmění data ani značky.
- */
-let umisteniCache = { klic: '', mapa: new Map() };
-
-function umisteniZnacky(chart, overlay) {
-  const data = chart.getDataList();
-  if (!data.length) return null;
-  const znacky = chart.getOverlays({ groupId: 'znacky' });
-  const klic = `${data.length}|${data[0].timestamp}|${data[data.length - 1].timestamp}|${znacky.length}`;
-  if (klic !== umisteniCache.klic) {
-    const mapa = new Map();
-    const pocty = new Map();
-    // Svíčka = poslední s časem ≤ čas plnění (binární hledání).
-    const index = (cas) => {
-      let lo = 0;
-      let hi = data.length - 1;
-      if (cas < data[0].timestamp) return -1;
-      while (lo < hi) {
-        const mid = (lo + hi + 1) >> 1;
-        if (data[mid].timestamp <= cas) lo = mid; else hi = mid - 1;
-      }
-      return lo;
-    };
-    // Starší plnění blíž svíčce, novější dál — pořadí se řídí časem.
-    [...znacky].sort((a, b) => (a.points?.[0]?.timestamp ?? 0) - (b.points?.[0]?.timestamp ?? 0)).forEach((o) => {
-      const i = index(o.points?.[0]?.timestamp ?? 0);
-      if (i < 0) return;
-      const strana = o.extendData?.vstup ? 'b' : 's';
-      const k = `${i}${strana}`;
-      const poradi = pocty.get(k) || 0;
-      pocty.set(k, poradi + 1);
-      mapa.set(o.id, { index: i, poradi });
-    });
-    umisteniCache = { klic, mapa };
-  }
-  /*
-   * ⚠ Svíčka se čte **při každém kreslení znovu**, v mezipaměti je jen její
-   * pořadí. Živá svíčka mění minimum a maximum s každým tickem — dřív se
-   * pamatovala svíčka z okamžiku výpočtu a když cena po nákupu klesla níž,
-   * trojúhelník zůstal u starého minima uvnitř svíčky (2026-10-06).
-   */
-  const u = umisteniCache.mapa.get(overlay.id);
-  return u && data[u.index] ? { svicka: data[u.index], poradi: u.poradi } : null;
 }
 
 /** '#rrggbb' → rgba s průhledností (pro tlumené značky). */
@@ -486,9 +439,9 @@ function registrovatZnackuPlneni() {
     needDefaultPointFigure: false,
     needDefaultXAxisFigure: false,
     needDefaultYAxisFigure: false,
-    createPointFigures: ({ chart, overlay, coordinates, yAxis }) => {
+    createPointFigures: ({ overlay, coordinates }) => {
       const d = overlay.extendData || {};
-      const { x } = coordinates[0];
+      const { x, y } = coordinates[0];
       const smer = d.vstup ? 1 : -1;
       // Plnění starších, už zavřených obchodů (`stary`) jsou malá a tlumená.
       // Malé jsou všechny značky v živém grafu (2026-10-04: velké byly
@@ -497,17 +450,11 @@ function registrovatZnackuPlneni() {
       const sirka = d.maly ? 3.5 : 7;
       const vyska = d.maly ? 7 : 14;
       /*
-       * Jako v TabTraderu (2026-10-04): trojúhelník **přiléhá ke svíčce** —
-       * nákup pod její spodní knot, prodej nad horní — ne na přesnou cenu
-       * plnění, kde se ztrácel ve svíčce. Víc plnění téže strany na jedné
-       * svíčce se řadí za sebe směrem od ní.
+       * Špička trojúhelníku leží **přesně na ceně plnění**, na všech
+       * timeframech (v0.37.0, přání uživatele — jako v TabTraderu).
+       * Krátce (v0.31.1–0.36) se přikládal ke knotu svíčky; to ale
+       * ukazovalo, kde svíčka skončila, ne kde se opravdu obchodovalo.
        */
-      const umisteni = umisteniZnacky(chart, overlay);
-      let y = coordinates[0].y;
-      if (umisteni && yAxis) {
-        const okraj = yAxis.convertToPixel(d.vstup ? umisteni.svicka.low : umisteni.svicka.high);
-        if (Number.isFinite(okraj)) y = okraj + smer * (3 + umisteni.poradi * (vyska + 2));
-      }
       const zaklad = y + smer * vyska;
 
       const figury = [{

@@ -1,13 +1,17 @@
 {
-  "verze": "0.36.1",
+  "verze": "0.37.0",
   "novinky": [
     {
-      "en": "Markets is now called Watchlists.",
-      "cs": "Záložka Trhy se teď jmenuje Seznamy."
+      "en": "Buy and sell markers sit exactly at the price where the order was filled, on every timeframe.",
+      "cs": "Značky nákupů a prodejů leží přesně na ceně, kde se příkaz vyplnil, na každém timeframu."
     },
     {
-      "en": "Dragging a tile onto another swaps their places. Tiles keep two columns (or one wide) on any screen.",
-      "cs": "Přetažení dlaždice na jinou je prohodí. Dlaždice mají na každém displeji dva sloupce (nebo jeden široký)."
+      "en": "New 30m timeframe.",
+      "cs": "Nový timeframe 30m."
+    },
+    {
+      "en": "The timeframe bar scrolls freely again; the selected one is always centered.",
+      "cs": "Lišta timeframů se zase volně posouvá a vybraný je vždy uprostřed."
     }
   ],
   "opravy": []

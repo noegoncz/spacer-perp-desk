@@ -58,8 +58,8 @@ window.fetch = function (vstup, volby) {
   if (u.includes('/v5/market/kline')) {
     const m = /interval=([^&]+)/.exec(u); const iv = m && decodeURIComponent(m[1]);
     (window.__ivl = window.__ivl || []).push(String(iv));
-    const platny = ['1','5','15','60','240','D','W','M'].includes(iv);
-    const krok = { '1':60e3,'5':300e3,'15':900e3,'60':3600e3,'240':14400e3,
+    const platny = ['1','5','15','30','60','240','D','W','M'].includes(iv);
+    const krok = { '1':60e3,'5':300e3,'15':900e3,'30':1800e3,'60':3600e3,'240':14400e3,
                    D:86400e3, W:604800e3, M:2592000e3 }[iv] || 14400e3;
     // Časy musí sedět na skutečné hranice svíček, jinak živá svíčka z burzy
     // vyjde „starší" než naše poslední a knihovna ji právem zahodí.

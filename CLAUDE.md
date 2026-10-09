@@ -418,7 +418,13 @@ plnění nákup `#7dffb8`, prodej `#ff8a9a` (světlejší než svíčky), větš
   Unified/Classic" (typ účtu z `client.typUctu`), velikost v coinu
   a USDT, margin, likvidace; ROE vedle PnL v horním řádku.
 
-**v0.31.1 (2026-10-04): značky plnění přiléhají ke svíčce** jako v TabTraderu
+**v0.37.0 (2026-10-09): značky plnění zase přesně na ceně plnění**, na
+všech timeframech — uživatel si spletl, jak to měl TabTrader (měl je na
+ceně, jen s tlumenějšími svíčkami). Přikládání ke knotu (níž, v0.31.1)
+je zrušené i s `umisteniZnacky` a testem `test-znacka-ziva-svicka.py`.
+Jedna značka na příkaz (v0.31.2) zůstává.
+
+~~**v0.31.1 (2026-10-04): značky plnění přiléhají ke svíčce**~~ (zrušeno) jako v TabTraderu
 — nákup ▲ těsně pod spodní knot, prodej ▼ nad horní knot, ne na přesnou
 cenu plnění (tam se ztrácely ve svíčce). Víc plnění téže strany na jedné
 svíčce se řadí za sebe (`umisteniZnacky` v chart.js, svíčka podle času
@@ -1011,10 +1017,12 @@ Dřív se 13 nástrojů posouvalo v liště a na zavřeném displeji byly vidět
 dva. Vpravo zůstává alarm, magnet, vrstvy, indikátory, koš a celá
 obrazovka; tlačítka 38 px. Lišta se vejde i na 344 px bez posouvání.
 
-**Timeframy jako kolotoč** (v0.32.0): aktivní stojí vždy uprostřed
-(`setActiveInterval` přeskládá tlačítka dokola — za 1M následuje 1m)
-a lišta se posune, aby byl uprostřed viditelné části; znovu i při změně
-rozměrů (přeložení Foldu).
+**Timeframy** (v0.37.0): 1m, 5m, 15m, **30m**, 1h, 4h, 1D, 1W, 1M v pevném
+pořadí. Lišta vyplní místo vlevo od tlačítka zpět (to má pevnou šířku
+`clamp(104px, 26vw, 200px)`), volně se posouvá a vybraný timeframe se
+plynule vystředí (`vycentrujInterval`), i krajní 1m a 1M díky mezerám na
+koncích (`::before/::after`). Kolotoč z v0.32.0 (přeskládávání dokola)
+je zrušený — lišta se nedala rozumně posouvat.
 
 **Horní část grafu je čistá** (v0.32.0): legenda svíčky (Time, Open,
 High…) je vypnutá (`candle.tooltip.showRule: 'none'`) a indikátory

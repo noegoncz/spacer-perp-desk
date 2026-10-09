@@ -1114,30 +1114,21 @@ export function showChartError(message) {
 }
 
 /*
- * Timeframy jako kolotoč (2026-10-05, přání uživatele): aktivní stojí vždy
- * uprostřed lišty a ostatní se kolem něj točí dokola (za 1M následuje 1m).
- * Pořadí se přeskládá v DOM, na úzkém displeji se lišta navíc posune, aby
- * aktivní byl uprostřed viditelné části.
+ * Timeframy (v0.37.0, přání uživatele): lišta se volně posouvá prstem
+ * v pevném pořadí 1m → 1M a vybraný timeframe se vystředí v ploše mezi
+ * levým okrajem a tlačítkem zpět. Mezery na koncích lišty (CSS) dovolí
+ * vystředit i první a poslední. (Kolotoč s přeskládáváním z v0.32.0
+ * zrušen — za 1M následovalo 1m a lišta se nedala rozumně posouvat.)
  */
 export function setActiveInterval(interval) {
-  const tlacitka = [...document.querySelectorAll('.interval-btn[data-interval]')];
-  tlacitka.forEach((btn, i) => {
-    if (btn.dataset.poradi === undefined) btn.dataset.poradi = String(i);
+  document.querySelectorAll('.interval-btn[data-interval]').forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.interval === interval);
   });
-  const box = document.getElementById('intervals');
-  if (!box) return;
-  const kanon = tlacitka.sort((a, b) => Number(a.dataset.poradi) - Number(b.dataset.poradi));
-  const i = kanon.findIndex((b) => b.dataset.interval === interval);
-  if (i < 0) return;
-  const n = kanon.length;
-  const stred = Math.floor(n / 2);
-  box.append(...kanon.map((_, k) => kanon[(i - stred + k + n) % n]));
-  vycentrujInterval();
+  vycentrujInterval(true);
 }
 
 /** Posune lištu timeframů tak, aby aktivní byl uprostřed viditelné části. */
-export function vycentrujInterval() {
+export function vycentrujInterval(plynule = false) {
   const box = document.getElementById('intervals');
   const aktivni = box?.querySelector('.interval-btn.active');
   if (!aktivni) return;
@@ -1145,7 +1136,8 @@ export function vycentrujInterval() {
     const r = box.getBoundingClientRect();
     const a = aktivni.getBoundingClientRect();
     if (!r.width) return;
-    box.scrollLeft += (a.left + a.width / 2) - (r.left + r.width / 2);
+    box.scrollTo({ left: box.scrollLeft + (a.left + a.width / 2) - (r.left + r.width / 2),
+                   behavior: plynule ? 'smooth' : 'auto' });
   });
 }
 

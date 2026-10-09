@@ -307,6 +307,7 @@ export const en = {
   'interval.1m': '1m',
   'interval.5m': '5m',
   'interval.15m': '15m',
+  'interval.30m': '30m',
   'interval.1h': '1h',
   'interval.4h': '4h',
   'interval.1d': '1D',
