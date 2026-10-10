@@ -1,14 +1,15 @@
 {
-  "verze": "0.41.0",
+  "verze": "0.41.1",
   "novinky": [
     {
-      "en": "Alerts look like in TabTrader: a thin grey line, a bell and the price on the scale.",
-      "cs": "Alarmy vypadají jako v TabTraderu: tenká šedá čára, zvonek a cena na ose."
-    },
-    {
-      "en": "The chart looks the same wherever you open it from — positions show up even when you open it from Watchlists.",
-      "cs": "Graf vypadá stejně, ať ho otevřeš odkudkoli — pozice je vidět i při otevření z Watchlists."
+      "en": "Trade review in History: calm I1, I2… / O1, O2… labels above and below the candles.",
+      "cs": "Prohlídka obchodu v Historii: klidné popisky I1, I2… / O1, O2… nad a pod svíčkami."
     }
   ],
-  "opravy": []
+  "opravy": [
+    {
+      "en": "Trade review opens right on the trade, with full price precision.",
+      "cs": "Prohlídka obchodu se otevře přímo na obchodu a s plnou přesností cen."
+    }
+  ]
 }

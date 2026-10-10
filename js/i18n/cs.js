@@ -103,8 +103,6 @@ export const cs = {
   'history.exitAvg': 'Průměrný výstup',
   'history.review': 'Prohlédnout v grafu',
   'history.fills': 'plnění: {count}',
-  'trade.entry': 'VSTUP',
-  'trade.exit': 'VÝSTUP',
   'history.soon': 'Historie obchodů přijde v dalším kroku.',
 
   /* ---------- stav spojení ---------- */

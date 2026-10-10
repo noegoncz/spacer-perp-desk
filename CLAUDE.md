@@ -1581,6 +1581,15 @@ záznamy) a **plnění po párech** (`plneni:SYMBOL`).
 - Test: `test-rychle-z-telefonu.py` (burza zdržená o 3 s, funding
   i trojúhelníky musí být hned), na starém kódu padá.
 
+**Prohlídka obchodu z Historie (v0.41.1):** popisky značek I1, I2… (vstupy)
+a O1, O2… (výstupy) v pořadí času, **tlumené** (tmavý průhledný podklad,
+jemnější barva — výchozí rámeček knihovny byl křiklavý) a **nad / pod
+svíčkou** (`mistoPopisku`); trojúhelník zůstává na ceně plnění. Posun na
+obchod čeká na svíčky (`cilPohledu` v chart.js — dřív padal na „reading
+'timestamp'"), osa má přesnost podle vstupu obchodu a dnešní příkazy na
+páru se v prohlídce nekreslí. Otevřený obchod z Historie zatím ukazuje
+živý graf i s příkazy (uživatel: nechat).
+
 **Barvy jako TabTrader (v0.38.0):** svíčky tlumené `#60a868` / `#e05858`
 (`BARVY.svickaRust/svickaPokles`), trojúhelníky plnění jasné `#00e020` /
 `#f84840` — odebrané z uživatelova screenshotu TT. Syté `rust`/`pokles`
@@ -2051,6 +2060,12 @@ seznamem (na serveru) · přehled pro provozovatele (zájemci, účty,
 aktivita, stav hlídače) · Google Play (uzavřený test 12 testerů / 14 dní,
 kód zabalený v APK, kanály beta/stabilní) · předplatné (Play Billing) ·
 passkey místo kódu (před placenou verzí).
+
+**Nápad na později (uživatel 2026-10-10, zatím jen brainstorm):** k obchodům
+v Historii (i k otevřenému) komentáře a **confluence** — kolik a jaké
+podmínky vstupu obchod měl — a podle toho vyhodnocování úspěšnosti
+(win rate, průměrné R podle typu confluence). Nenavrhovat sám dřív,
+než se k tomu uživatel vrátí.
 
 **Drobné dluhy:** e-mail před smazáním neaktivního účtu a automatické
 mazání zájemců po 24 měsících (slíbeno v zásadách, hoří 09/2027) ·

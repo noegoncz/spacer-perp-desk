@@ -64,6 +64,17 @@ znacky = json.loads(ev("""JSON.stringify(window.__graf.getOverlays()
   .map((o) => ({ vstup: o.extendData.vstup, cena: o.points[0].value,
                  dnu: Math.round((Date.now() - o.points[0].timestamp) / 864e5) })))""") or '[]')
 print('značky v grafu obchodu:', znacky)
+# v0.41.1: popisky I1, I2… / O1…, žádná chyba posunu na obchod („reading
+# 'timestamp'") a v prohlídce nejsou dnešní příkazy na páru.
+popisky = json.loads(ev("""JSON.stringify(window.__graf.getOverlays()
+  .filter((o) => o.name === 'tradeMark').map((o) => o.extendData.title))""") or '[]')
+print('popisky:', popisky)
+if sorted(popisky) != ['I1', 'I2', 'O1']:
+    chyby.append(f'popisky značek mají být I1, I2, O1: {popisky}')
+if not ev("document.getElementById('chartError').hidden"):
+    chyby.append('graf prohlídky hlásí chybu: ' + str(ev("document.getElementById('chartError').textContent")))
+if ev("window.__graf.getOverlays().filter((o) => o.name === 'positionLine').length"):
+    chyby.append('v prohlídce uzavřeného obchodu jsou dnešní příkazy')
 ceny = sorted(round(z['cena'], 5) for z in znacky)
 # Obchod B: nákupy 0.2800 a 0.2850, zavírací prodej ve dvou plněních 0.2950
 # a 0.2951. Plnění jednoho příkazu jsou od v0.31.2 jeden trojúhelník

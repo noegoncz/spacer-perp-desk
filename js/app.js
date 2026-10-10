@@ -1383,7 +1383,9 @@ async function otevriGraf(symbol, position, trh) {
     postavPaletu();
   }
 
-  chart.setSymbol(symbol, priceDecimals(position?.entry ?? trh?.last ?? 0));
+  // Přesnost cen na ose: z pozice, z trhu, u prohlídky obchodu z jeho vstupu
+  // (bez toho psala osa jen dvě desetinná místa — 0.30, 0.29, 0.29).
+  chart.setSymbol(symbol, priceDecimals(position?.entry ?? trh?.last ?? prohlizenyObchod?.entry ?? 0));
   chart.setInterval(chartInterval); // knihovna si data vyžádá sama
   client.setKlineSubscription(symbol, chartInterval);
   chart.restoreDrawings(store.loadDrawings(symbol));
@@ -1512,6 +1514,12 @@ async function refreshChartOrders() {
   const symbol = chartSymbol;
   // Bez klíčů příkazy nenačteme; graf samotný je veřejný a běží dál.
   if (!symbol || !client.hasCredentials()) return;
+  // Prohlídka uzavřeného obchodu: dnešní příkazy s ním nesouvisí.
+  if (prohlizenyObchod) {
+    chartOrders = [];
+    applyChartLines(true);
+    return;
+  }
   try {
     const orders = await client.getOpenOrders(symbol);
     if (chartSymbol !== symbol) return;
@@ -2690,6 +2698,9 @@ async function otevriProhlidku(obchod) {
   const long = otevreno !== null && plneni.length ? plneni[0].buy : obchod.long;
 
   try {
+    // Vstupy I1, I2…, výstupy O1, O2… v pořadí času (v0.41.1).
+    let vstupu = 0;
+    let vystupu = 0;
     chart.setTradeMarks(
       sloucitPodlePrikazu(plneni).map((p) => {
         const vstup = p.buy === long;
@@ -2699,7 +2710,7 @@ async function otevriProhlidku(obchod) {
           vstup: p.buy,             // nákup ▲, prodej ▼ — stejně jako v živém grafu
           // Barva podle směru: nákup zeleně, prodej červeně (jako v živém grafu).
           color: p.buy ? BARVA_PLNENI.nakup : BARVA_PLNENI.prodej,
-          title: t(vstup ? 'trade.entry' : 'trade.exit'),
+          title: vstup ? `I${++vstupu}` : `O${++vystupu}`,
         };
       }),
     );

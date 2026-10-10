@@ -249,6 +249,32 @@ function registrovatCaruPozice() {
   });
 }
 
+/**
+ * Svíčka, ve které značka s popiskem leží, a pořadí popisků téže strany
+ * na téže svíčce (pro řazení za sebe). Jen pro prohlídku obchodu — značek
+ * s popiskem je pár, takže se počítá rovnou.
+ */
+function mistoPopisku(chart, overlay) {
+  const data = chart.getDataList();
+  const cas = overlay.points?.[0]?.timestamp;
+  if (!data.length || !Number.isFinite(cas) || cas < data[0].timestamp) return null;
+  const index = (t) => {
+    let lo = 0;
+    let hi = data.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (data[mid].timestamp <= t) lo = mid; else hi = mid - 1;
+    }
+    return lo;
+  };
+  const i = index(cas);
+  const vstup = overlay.extendData?.vstup;
+  const poradi = chart.getOverlays({ groupId: 'znacky' })
+    .filter((o) => o.extendData?.title && o.extendData?.vstup === vstup && o.id !== overlay.id)
+    .filter((o) => index(o.points[0].timestamp) === i && o.points[0].timestamp < cas).length;
+  return { svicka: data[i], poradi };
+}
+
 /** '#rrggbb' → rgba s průhledností (pro tlumené značky). */
 function pruhledne(hex, alfa) {
   const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(hex));
@@ -493,7 +519,7 @@ function registrovatZnackuPlneni() {
     needDefaultPointFigure: false,
     needDefaultXAxisFigure: false,
     needDefaultYAxisFigure: false,
-    createPointFigures: ({ overlay, coordinates }) => {
+    createPointFigures: ({ chart, overlay, coordinates, yAxis }) => {
       const d = overlay.extendData || {};
       const { x, y } = coordinates[0];
       const smer = d.vstup ? 1 : -1;
@@ -534,17 +560,42 @@ function registrovatZnackuPlneni() {
         },
       }];
 
+      /*
+       * Popisek prohlídky obchodu (I1, I2… / O1, O2…, v0.41.1): trojúhelník
+       * zůstává na ceně plnění, ale popisek stojí **pod / nad svíčkou** —
+       * u ceny překrýval graf. Nákup pod minimem, prodej nad maximem; víc
+       * popisků na jedné svíčce se řadí za sebe. Tlumený: tmavý průhledný
+       * podklad a jemnější barva, ne výchozí křiklavý rámeček knihovny.
+       */
       if (!d.maly && d.title) {
+        let yPopisku = zaklad + (d.vstup ? 2 : -2);
+        const misto = mistoPopisku(chart, overlay);
+        if (misto && yAxis) {
+          const okraj = yAxis.convertToPixel(d.vstup ? misto.svicka.low : misto.svicka.high);
+          if (Number.isFinite(okraj)) yPopisku = okraj + (d.vstup ? 6 : -6) + (d.vstup ? 1 : -1) * misto.poradi * 17;
+        }
         figury.push({
           type: 'text',
           attrs: {
             x,
-            y: zaklad + (d.vstup ? 2 : -2),
+            y: yPopisku,
             text: d.title,
             align: 'center',
             baseline: d.vstup ? 'top' : 'bottom',
           },
-          styles: { color: d.color, size: 10, family: 'sans-serif' },
+          styles: {
+            color: d.vstup ? '#8fd9a4' : '#e8968f',
+            size: 10,
+            family: 'sans-serif',
+            backgroundColor: 'rgba(13, 20, 32, 0.72)',
+            borderColor: 'transparent',
+            borderSize: 0,
+            borderRadius: 3,
+            paddingLeft: 4,
+            paddingRight: 4,
+            paddingTop: 2,
+            paddingBottom: 2,
+          },
         });
       }
       return figury;
@@ -1348,9 +1399,28 @@ export function createPriceChart(container, layer, handlers = {}) {
    * a přiblížení z minula — uživatel pak po otevření hledal, kde vůbec jsou
    * aktuální svíčky.
    */
+  /*
+   * Cíl pohledu (prohlídka obchodu z Historie): čas, na který se má graf
+   * posunout místo nejnovějších svíček. ⚠ Posun knihovny na čas, pro který
+   * ještě nejsou svíčky, spadne („reading 'timestamp'") — proto se cíl
+   * uloží a použije až po doručení dat (v0.41.1).
+   */
+  let cilPohledu = null;
+  function posunNaCil() {
+    const data = chart.getDataList();
+    if (!cilPohledu || !data.length) return false;
+    if (cilPohledu < data[0].timestamp || cilPohledu > data[data.length - 1].timestamp + 1) return false;
+    try {
+      chart.scrollToTimestamp(cilPohledu, 0);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   function srovnejPohled() {
     chart.setBarSpace(VYCHOZI_SIRKA_SVICE);
-    chart.scrollToRealTime(0);
+    if (!posunNaCil()) chart.scrollToRealTime(0);
   }
 
   /*
@@ -2187,6 +2257,8 @@ export function createPriceChart(container, layer, handlers = {}) {
     },
 
     setSymbol(ticker, pricePrecision) {
+      // Nový graf začíná u nejnovějších svíček; cíl prohlídky se nastaví znovu.
+      cilPohledu = null;
       /*
        * ⚠ Instance grafu se mezi otevřeními recykluje, takže do příchodu
        * svíček nového páru ukazovala **graf předchozího páru** — na telefonu
@@ -2334,7 +2406,8 @@ export function createPriceChart(container, layer, handlers = {}) {
 
     /** Posune pohled na dobu obchodu. */
     scrollToTime(timestamp) {
-      chart.scrollToTimestamp(timestamp, 0);
+      cilPohledu = timestamp;
+      posunNaCil();
     },
 
     /** `dodatek` doplní vlastnosti nové kresby, např. rovnou zapnutý alarm. */

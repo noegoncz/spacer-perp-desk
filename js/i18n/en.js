@@ -107,8 +107,6 @@ export const en = {
   'history.exitAvg': 'Avg exit',
   'history.review': 'Review on chart',
   'history.fills': '{count} fills',
-  'trade.entry': 'IN',
-  'trade.exit': 'OUT',
   'history.soon': 'Trade history is coming in the next step.',
 
   /* ---------- connection status ---------- */
