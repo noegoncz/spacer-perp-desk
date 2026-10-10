@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Štítky vpravo se nepřekrývají (v0.43.0).
+Cenovky na ose se nepřekrývají (v0.43.0), štítky v grafu stojí na čáře
+a štítek zisku je navrchu (v0.44.0).
 
 Alarmy schválně těsně u SL a u vstupu: štítky v grafu i cenovky na ose
 se musí rozestoupit nad / pod sebe (aspoň výška štítku od sebe), aktuální
@@ -68,6 +69,14 @@ print('aktuální cena y:', round(cena or 0))
 over(all(not (cena - 8 - 8 < v < cena + 26 + 8) for k, v in mapa.items() if k != '__cena'),
      'nic nezasahuje do cenovky aktuální ceny a odpočtu')
 over(abs(mapa.get('__cena', cena + 9) - (cena + 9)) < 0.5, 'cenovka aktuální ceny se nehýbe')
+
+# v0.44.0: v grafu štítky na čáře, navrch PnL, pak příkazy, pak alarmy.
+vrstvy = json.loads(ev("""JSON.stringify((() => { const g = window.__graf; const z = (n) =>
+  [...new Set(g.getOverlays().filter((o) => o.name === n).map((o) => o.zLevel))];
+  return { pnl: z('pnlStitek'), pozice: z('positionLine'), alarmy: z('alarmLine') }; })())""") or '{}')
+print('zLevel:', vrstvy)
+over(vrstvy.get('pnl') == [3], 'štítek zisku je overlay navrchu')
+over(vrstvy.get('pozice') == [2] and vrstvy.get('alarmy') == [1], 'příkazy nad alarmy')
 
 konzole = ev('(window.__chyby||[]).join(" | ")') or ''
 over(not konzole, f'bez chyb v konzoli ({konzole})')

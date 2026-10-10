@@ -192,24 +192,12 @@ function registrovatCaruPozice() {
     createPointFigures: ({ chart, overlay, coordinates, bounding }) => {
       const d = overlay.extendData || {};
       const y = coordinates[0].y;
-      // Štítek může uhnout sousednímu (rozmístění), čára zůstává na ceně.
-      const ys = yStitku(chart, overlay, y);
-      const stitek = (text, barva, x, alfa = 0.72) => ({
-        type: 'text',
-        attrs: { x, y: ys, text, align: 'right', baseline: 'middle' },
-        styles: {
-          color: svetlaBarva(barva) ? BARVY.pozadi : '#ffffff',
-          size: 10,
-          family: 'sans-serif',
-          backgroundColor: sAlfou(barva, alfa),
-          borderSize: 0,
-          borderRadius: 2,
-          paddingLeft: 5,
-          paddingRight: 5,
-          paddingTop: 2,
-          paddingBottom: 2,
-        },
-      });
+      /*
+       * Štítek v grafu stojí **vždy přesně na čáře** (v0.44.0, přání
+       * uživatele) — u blízkých úrovní se smí překrýt, navrch je PnL, pak
+       * příkazy, pak alarmy (`zLevel`). Skládají se jen cenovky na ose.
+       */
+      const stitek = (text, barva, x, alfa = 0.72) => stitekNaCare(text, barva, x, y, alfa);
       if (d.jenOsa) {
         /*
          * Průměrný vstup: průsvitný fialový štítek „Entry" u cenovky a od
@@ -348,9 +336,9 @@ function popisAlarmu(text, x, y, barva, vypnuty = false) {
 }
 
 /*
- * Rozmístění štítků vpravo (v0.43.0, přání uživatele: „nikdy se nesmí
- * překrývat"). Štítky v grafu i cenovky na ose u čar pozice, alarmů
- * a vodorovných kreseb se seřadí podle ceny a kde by se překryly, rozestoupí
+ * Rozmístění cenovek na ose (v0.43.0, přání uživatele: „nikdy se nesmí
+ * překrývat"; od v0.44.0 jen osa — štítky v grafu stojí na čáře).
+ * Cenovky čar pozice, alarmů a vodorovných kreseb se seřadí podle ceny a kde by se překryly, rozestoupí
  * se nad / pod sebe co nejblíž svým cenám. Aktuální cena (štítek knihovny
  * s odpočtem) se nehýbe — ostatní jí uhnou. Čára sama zůstává na své ceně.
  */
@@ -399,6 +387,26 @@ function yStitku(chart, overlay, y) {
     globalThis.__stitkyVpravo = Object.fromEntries(rozmisteni.mapa);
   }
   return rozmisteni.mapa.get(overlay.id) ?? y;
+}
+
+/** Štítek vyplněný barvou čáry s kontrastním textem, na výšce `y`. */
+function stitekNaCare(text, barva, x, y, alfa = 0.72) {
+  return {
+    type: 'text',
+    attrs: { x, y, text, align: 'right', baseline: 'middle' },
+    styles: {
+      color: svetlaBarva(barva) ? BARVY.pozadi : '#ffffff',
+      size: 10,
+      family: 'sans-serif',
+      backgroundColor: sAlfou(barva, alfa),
+      borderSize: 0,
+      borderRadius: 2,
+      paddingLeft: 5,
+      paddingRight: 5,
+      paddingTop: 2,
+      paddingBottom: 2,
+    },
+  };
 }
 
 /** Barva s průhledností — hex i rgba (jen hex se umí převést). */
@@ -472,7 +480,7 @@ function registrovatCaryAlarmu() {
     createPointFigures: ({ chart, overlay, coordinates, bounding }) => {
       const d = overlay.extendData || {};
       const y = coordinates[0].y;
-      const ys = yStitku(chart, overlay, y);
+      const ys = y; // v grafu přesně na čáře (v0.44.0), skládá se jen osa
       const barva = d.aktivni === false ? 'rgba(110, 122, 138, 0.45)' : (d.color || 'rgba(176, 186, 200, 0.6)');
       const vypnuty = d.aktivni === false;
       /*
@@ -508,7 +516,7 @@ function registrovatCaryAlarmu() {
             color: vypnuty ? '#8b96a5' : '#ffffff',
             size: 11,
             family: 'sans-serif',
-            backgroundColor: vypnuty ? '#2b333e' : (d.color ? rgba(d.color, 0.8) : 'rgba(86, 96, 110, 0.85)'),
+            backgroundColor: vypnuty ? '#2b333e' : (d.color ? namichat(d.color, 0.8) : '#4f5865'),
             borderRadius: 2,
             borderSize: 0,
             paddingLeft: 3,
@@ -914,6 +922,38 @@ let pnlInfo = null;
  * a pokračuje k pravému okraji. Přes celý graf jen překážela svíčkám.
  */
 function registrovatLinkuPnl() {
+  /*
+   * Štítek zisku na lince aktuální ceny (v0.44.0, přání uživatele): stejný
+   * styl jako ostatní čáry — vyplněný barvou zisku / ztráty, přesně na
+   * lince, vždy v USDT (přepínač coin / USDT se ho netýká). Je to overlay,
+   * ne text indikátoru, aby ležel **navrch** nad štítky příkazů a alarmů
+   * (indikátory se kreslí pod overlayi).
+   */
+  K().registerOverlay({
+    name: 'pnlStitek',
+    totalStep: 1,
+    needDefaultPointFigure: false,
+    needDefaultXAxisFigure: false,
+    needDefaultYAxisFigure: false,
+    createPointFigures: ({ chart, bounding }) => {
+      if (!pnlInfo) return [];
+      const data = chart.getDataList();
+      const cena = Number(data[data.length - 1]?.close);
+      if (!Number.isFinite(cena)) return [];
+      const bod = chart.convertToPixel({ value: cena }, { paneId: HLAVNI_PANEL });
+      const y = (Array.isArray(bod) ? bod[0] : bod)?.y;
+      if (!Number.isFinite(y)) return [];
+      const { vstup, size, long } = pnlInfo;
+      const smer = long ? 1 : -1;
+      const zisk = (cena - vstup) * size * smer;
+      const procenta = vstup ? ((cena - vstup) / vstup) * 100 * smer : 0;
+      const znamenko = zisk >= 0 ? '+' : '−';
+      const usdt = pnlInfo.skryt ? '••••' : `${znamenko}${Math.abs(zisk).toFixed(2)}`;
+      const text = `${usdt} USDT | ${znamenko}${Math.abs(procenta).toFixed(2)} %`;
+      return [stitekNaCare(text, zisk >= 0 ? BARVA_ZISKU : BARVY.pokles, bounding.width - 4, Math.round(y) + 0.5, 0.85)];
+    },
+  });
+
   K().registerIndicator({
     name: 'PNLLINE',
     shortName: '',
@@ -966,31 +1006,7 @@ function registrovatLinkuPnl() {
       ctx.lineTo(bounding.width, y);
       ctx.stroke();
 
-      ctx.setLineDash([]);
-      ctx.fillStyle = barva;
-      ctx.font = '11px sans-serif';
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'bottom';
-      /*
-       * Podklad ani rámeček text nemá (stejně jako popisky čar pozice —
-       * blok za textem jen ujídá pohled na svíčky). Aby přesto šel přečíst
-       * i přes svíčku, obtáhne se barvou pozadí. Měřeno: bez toho z „−3,44"
-       * zbylo na snímku „−,44", číslici spolkla svíčka pod ní.
-       */
-      ctx.shadowColor = BARVY.pozadi;
-      ctx.shadowBlur = 4;
-      const znamenko = zisk >= 0 ? '+' : '−';
-      // Nad čarou zisk | procenta, pod čarou celá velikost pozice v coinech
-      // (2026-10-03, přání uživatele; průměr je u osy jako zub se štítkem).
-      const usdt = pnlInfo.skryt ? '••••' : `${znamenko}${Math.abs(zisk).toFixed(2)}`;
-      const popis = `${usdt} USDT | ${znamenko}${Math.abs(procenta).toFixed(2)} %`;
-      const velikost = pnlInfo.skryt ? '••••' : `${Number(size).toLocaleString('en-US', { maximumFractionDigits: 8 })} ${pnlInfo.mena || ''}`;
-      // Třikrát přes sebe: jeden průchod dá závoj příliš slabý na to,
-      // aby tmavé pozadí přebilo svíčku.
-      for (let i = 0; i < 3; i += 1) ctx.fillText(popis, bounding.width - 6, y - 3);
-      ctx.font = '10px sans-serif';
-      ctx.textBaseline = 'top';
-      for (let i = 0; i < 3; i += 1) ctx.fillText(velikost.trim(), bounding.width - 6, y + 3);
+      // Zisk píše štítek `pnlStitek` (overlay navrchu, v0.44.0).
       ctx.restore();
       return true;
     },
@@ -1362,7 +1378,11 @@ function cenovkaNaOse(chart, cena, y, barva, pruhlednost = 1) {
       color: svetlaBarva(barva) ? BARVY.pozadi : '#ffffff',
       size: 11,
       family: 'sans-serif',
-      backgroundColor: pruhlednost < 1 ? rgba(barva, pruhlednost) : barva,
+      /*
+       * Tlumená, ale **neprůhledná** (v0.44.0): přes průhlednou cenovku
+       * prosvítalo číslo mřížky osy („0.35610" přes „0.35600").
+       */
+      backgroundColor: pruhlednost < 1 ? namichat(barva, pruhlednost) : barva,
       borderRadius: 2,
       borderSize: 0,
       paddingLeft: 3,
@@ -1371,6 +1391,15 @@ function cenovkaNaOse(chart, cena, y, barva, pruhlednost = 1) {
       paddingBottom: 2,
     },
   };
+}
+
+/** '#rrggbb' s průhledností položená na pozadí grafu → neprůhledná barva. */
+function namichat(hex, alfa) {
+  const n = parseInt(String(hex || '').slice(1), 16);
+  const p = parseInt(BARVY.pozadi.slice(1), 16);
+  if (!/^#[0-9a-f]{6}$/i.test(String(hex)) || !Number.isFinite(p)) return hex;
+  const slozka = (posun) => Math.round(((n >> posun) & 255) * alfa + ((p >> posun) & 255) * (1 - alfa));
+  return `rgb(${slozka(16)}, ${slozka(8)}, ${slozka(0)})`;
 }
 
 /** Je barva natolik světlá, že na ní bílé písmo zanikne? */
@@ -1423,6 +1452,7 @@ export function createPriceChart(container, layer, handlers = {}) {
       chart.createOverlay({
         name: 'positionLine',
         groupId: SKUPINA_POZICE,
+        zLevel: 2, // nad alarmy, pod štítkem PnL
         // Čára s časem začátku (vstup) má bod i s časem, aby šla převést
         // na pixel svíčky; ostatní jen cenu.
         points: [(l.odCasu || l.doCasu) ? { timestamp: l.odCasu || l.doCasu, value: l.price } : { value: l.price }],
@@ -1453,6 +1483,7 @@ export function createPriceChart(container, layer, handlers = {}) {
       chart.createOverlay({
         ...tvar,
         groupId: SKUPINA_ALARMY,
+        zLevel: 1,
         lock: true, // alarm se mění v jeho nastavení, ne taháním po grafu
         visible: vrstvy.alarmy,
         extendData: {
@@ -2462,6 +2493,15 @@ export function createPriceChart(container, layer, handlers = {}) {
       } else if (!ukazat && linkaPnlZapnuta) {
         chart.removeIndicator({ name: 'PNLLINE' });
         linkaPnlZapnuta = false;
+      }
+      // Štítek zisku navrchu (overlay, viz registrovatLinkuPnl).
+      chart.removeOverlay({ groupId: 'pnl' });
+      if (ukazat) {
+        const posledni = chart.getDataList().slice(-1)[0];
+        chart.createOverlay({
+          name: 'pnlStitek', groupId: 'pnl', zLevel: 3, lock: true,
+          points: [{ value: Number(posledni?.close) || info.vstup }],
+        });
       }
 
       // Vestavěná čára poslední ceny jde přes celou šířku. S vlastní linkou

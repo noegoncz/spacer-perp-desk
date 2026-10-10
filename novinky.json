@@ -1,18 +1,19 @@
 {
-  "verze": "0.43.0",
+  "verze": "0.44.0",
   "novinky": [
     {
-      "en": "Labels on the right never overlap: when levels are close, they stack neatly above and below each other.",
-      "cs": "Štítky vpravo se nikdy nepřekrývají: u blízkých úrovní se úhledně seřadí nad a pod sebe."
+      "en": "Labels in the chart sit exactly on their lines; only the prices on the axis stack neatly so they never overlap.",
+      "cs": "Štítky v grafu stojí přesně na svých čarách; skládají se jen ceny na ose, aby se nikdy nepřekrývaly."
     },
     {
-      "en": "Calmer chart: lighter order lines, one dash style, a softer Entry with a fading line.",
-      "cs": "Klidnější graf: jemnější čáry příkazů, jedno čárkování, decentnější Entry s mizející linkou."
-    },
-    {
-      "en": "Trade review opens instantly and uses the same small markers as the live chart.",
-      "cs": "Prohlídka obchodu se otevře hned a má stejné malé značky jako živý graf."
+      "en": "Profit on the price line has a filled label like the other lines and always stays on top.",
+      "cs": "Zisk na lince ceny má vyplněný štítek jako ostatní čáry a je vždy navrchu."
     }
   ],
-  "opravy": []
+  "opravy": [
+    {
+      "en": "Price tags on the axis are no longer see-through.",
+      "cs": "Cenovky na ose už nejsou průsvitné."
+    }
+  ]
 }

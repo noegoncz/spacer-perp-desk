@@ -1245,6 +1245,21 @@ Ve vnořeném rozvržení se jinak ukotví k rodiči a skončí uprostřed obraz
 kde je uživatel nehledá. Nabídka indikátorů má v každém řádku ikonku, zkratku
 a stručný popis, a po výběru se sama zavře.
 
+**Štítky v grafu na čáře, skládá se jen osa (v0.44.0, přání uživatele):**
+- Vlevo od svislice osy (v grafu) stojí štítky **vždy přesně na čáře**
+  a smí se překrýt; pořadí přes sebe řídí `zLevel`: **štítek zisku 3,
+  čáry pozice a příkazů 2, alarmy 1**. Vpravo (cenovky na ose) se dál
+  skládají podle ceny (`yStitku`, jen osa).
+- **Štítek zisku** je overlay `pnlStitek` (skupina `pnl`, zakládá ho
+  `setPnlInfo`), vyplněný barvou zisku / ztráty, přesně na lince, vždy
+  v USDT. Indikátor PNLLINE kreslí už jen linku — overlaye leží nad
+  indikátory, text v indikátoru by byl pod štítky příkazů. Řádek
+  s velikostí pozice pod linkou zmizel (je v řádku nad grafem).
+- Cenovky na ose jsou tlumené, ale **neprůhledné** (`namichat` — barva
+  smíchaná s pozadím): přes průhlednou prosvítalo číslo mřížky osy.
+- Test: `test-stitky-bez-prekryvu.py` (rozšířený o pořadí vrstev),
+  `test-graf-osa-a-zpet.py` hledá smíchanou barvu.
+
 **Štítky vpravo bez překryvu a klidnější graf (v0.43.0, přání uživatele):**
 - `yStitku` (chart.js) rozmístí štítky v grafu i cenovky na ose u čar
   pozice, alarmů a vodorovných kreseb: seřadí podle ceny a kde by se

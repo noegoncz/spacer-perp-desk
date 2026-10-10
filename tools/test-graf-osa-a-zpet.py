@@ -52,7 +52,10 @@ vysledek = json.loads(ev("""(() => {
   const osy = platna.filter((c) => c.width < 120 && c.height > 200);
   const vzorek = (y, hex) => {
     const n = parseInt(hex.slice(1), 16);
-    const cil = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+    // Cenovka je tlumená a neprůhledná (v0.44.0): barva čáry na 0,85
+    // smíchaná s pozadím grafu #0b0f14.
+    const pozadi = [11, 15, 20];
+    const cil = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v, i) => v * 0.85 + pozadi[i] * 0.15);
     let zasahu = 0;
     for (const c of osy) {
       const d = c.getContext('2d').getImageData(0, Math.max(0, Math.round(y) - 3), c.width, 7).data;
