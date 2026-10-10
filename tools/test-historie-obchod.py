@@ -60,6 +60,7 @@ if not all(k['kdy'].count('.') == 4 and '→' in k['kdy'] for k in uzavrene):
 # takže se při otevření z burzy nestahují.
 ev("""(() => { window.__plneniDotazu = 0; const f = window.fetch;
   window.fetch = function (v, o) { if (String(v && v.url ? v.url : v).includes('/v5/execution/list')) window.__plneniDotazu += 1;
+    if (String(v && v.url ? v.url : v).includes('/v5/market/kline')) (window.__svice = window.__svice || []).push(String(v && v.url ? v.url : v));
     return f(v, o); }; })()""")
 ev("[...document.querySelectorAll('.trade')].find((k) => !k.classList.contains('otevreny')).click()")
 time.sleep(6)
@@ -96,6 +97,22 @@ if sum(1 for z in znacky if z['vstup']) != 2:
     chyby.append('obchod B má mít dva vstupy')
 if any(z['cena'] in (0.27, 0.26, 0.299, 0.305, 0.31) for z in znacky):
     chyby.append('do grafu se připletla plnění jiného obchodu')
+
+# v0.45.0: okno obchodu ztlumí okolí a celý obchod je ve výřezu grafu.
+okno = json.loads(ev("""JSON.stringify((() => { const g = window.__graf;
+  const o = g.getOverlays().find((x) => x.name === 'oknoObchodu'); if (!o) return null;
+  const d = g.getDataList(); const r = g.getVisibleRange();
+  return { od: o.points[0].timestamp, do: o.points[1].timestamp,
+           vidim: [d[Math.max(0, r.from)].timestamp, d[Math.min(d.length - 1, r.to - 1)].timestamp] }; })())""") or 'null')
+print('okno obchodu:', okno)
+# ⚠ Svíčky z doby obchodu (`end`), ne nejnovější — jinak na 1m starý obchod
+# v datech vůbec není (ZRO na telefonu 2026-10-10). Mock `end` neřeší.
+if not all('end=' in u for u in (ev('window.__svice || []') or ['-'])):
+    chyby.append('prohlídka stahuje svíčky bez parametru end')
+if not okno:
+    chyby.append('prohlídka nemá ztlumené okolí (overlay oknoObchodu)')
+elif not (okno['vidim'][0] <= okno['od'] and okno['do'] <= okno['vidim'][1]):
+    chyby.append('obchod není celý ve výřezu grafu')
 
 interval = ev("document.querySelector('.interval-btn.active')?.dataset.interval")
 print('zvolený interval:', interval)

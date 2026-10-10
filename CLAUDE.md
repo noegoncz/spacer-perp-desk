@@ -1634,6 +1634,24 @@ obchod čeká na svíčky (`cilPohledu` v chart.js — dřív padal na „readin
 páru se v prohlídce nekreslí. Otevřený obchod z Historie zatím ukazuje
 živý graf i s příkazy (uživatel: nechat).
 
+**Prohlídka obchodu: okno a jedno pravidlo (v0.45.0, přání uživatele):**
+- **Interval = nejkratší, na kterém má obchod nejvýš 24 svíček**
+  (`intervalProObchod`, `DELKA_INTERVALU` v app.js). Graf obchod roztáhne
+  šířkou svíčky zhruba na **polovinu šířky, uprostřed** (`showTradeWindow`
+  → `posunNaOkno` v chart.js), okolí z obou stran.
+- **Svíčky před otevřením a po zavření ztlumené** závojem (overlay
+  `oknoObchodu`, skupina `okno`, `zLevel: -1` — pod značkami, přes svíčky
+  a objem; průhlednost 0,75).
+- ⚠ **Svíčky z doby obchodu, s `end`** (`konecSvicProhlidky`: zavření +
+  150 svíček, nejvýš teď). Bez něj přišlo nejnovějších 500 a na 1m byl
+  obchod ze včerejška mimo data — graf ukázal dnešek bez značek (ZRO na
+  telefonu 2026-10-10). Živá svíčka se u starého obchodu neodebírá
+  (`odebiratZiveSvice`), jinak by se dnešek přilepil za jeho svíčky.
+  Mock `end` neřeší, test jen hlídá, že se posílá.
+- ⚠ `-webkit-tap-highlight-color: transparent` na html/body: WebView
+  nechal po klepnutí na kartu přes otevřený graf modrý obdélník.
+- Test: `test-historie-obchod.py` (okno, výřez, `end`), na starém kódu padá.
+
 **Barvy jako TabTrader (v0.38.0):** svíčky tlumené `#60a868` / `#e05858`
 (`BARVY.svickaRust/svickaPokles`), trojúhelníky plnění jasné `#00e020` /
 `#f84840` — odebrané z uživatelova screenshotu TT. Syté `rust`/`pokles`
@@ -1643,7 +1661,7 @@ Klepnutí na obchod otevře graf z jeho doby se značkami plnění (trojúhelní
 ve směru obchodu + popisek). **Interval se volí podle délky obchodu** — na
 hodinový obchod je denní svíčka k ničemu a na dvouměsíční zase minutová.
 Kline se načítá s parametrem `end`, jinak by Bybit vrátil nejnovější svíčky
-místo těch z doby obchodu.
+místo těch z doby obchodu (mezitím se to ztratilo, vráceno ve v0.45.0).
 
 ### ✅ 7) Rozšířená data o účtu
 

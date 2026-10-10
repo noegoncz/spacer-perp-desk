@@ -1,19 +1,23 @@
 {
-  "verze": "0.44.0",
+  "verze": "0.45.0",
   "novinky": [
     {
-      "en": "Labels in the chart sit exactly on their lines; only the prices on the axis stack neatly so they never overlap.",
-      "cs": "Štítky v grafu stojí přesně na svých čarách; skládají se jen ceny na ose, aby se nikdy nepřekrývaly."
+      "en": "Trade review from History: the trade fills about half the chart in the middle, candles before and after it are dimmed.",
+      "cs": "Prohlídka obchodu z Historie: obchod zabere zhruba polovinu grafu uprostřed, svíčky před ním a po něm jsou ztlumené."
     },
     {
-      "en": "Profit on the price line has a filled label like the other lines and always stays on top.",
-      "cs": "Zisk na lince ceny má vyplněný štítek jako ostatní čáry a je vždy navrchu."
+      "en": "One rule for the timeframe: the shortest one where the whole trade fits in about 24 candles.",
+      "cs": "Jedno pravidlo pro timeframe: nejkratší, na kterém se celý obchod vejde zhruba do 24 svíček."
     }
   ],
   "opravy": [
     {
-      "en": "Price tags on the axis are no longer see-through.",
-      "cs": "Cenovky na ose už nejsou průsvitné."
+      "en": "Older trades on short timeframes opened today's chart instead of the trade.",
+      "cs": "Starší obchody na krátkém timeframu otevřely dnešní graf místo obchodu."
+    },
+    {
+      "en": "No more blue flash when opening a trade.",
+      "cs": "Při otevření obchodu už nebliká modrý obdélník."
     }
   ]
 }

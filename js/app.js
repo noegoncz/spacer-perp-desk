@@ -1397,8 +1397,9 @@ async function otevriGraf(symbol, position, trh) {
   // Přesnost cen na ose: z pozice, z trhu, u prohlídky obchodu z jeho vstupu
   // (bez toho psala osa jen dvě desetinná místa — 0.30, 0.29, 0.29).
   chart.setSymbol(symbol, priceDecimals(position?.entry ?? trh?.last ?? prohlizenyObchod?.entry ?? 0));
+  if (prohlizenyObchod?.okno) chart.showTradeWindow(prohlizenyObchod.okno.od, prohlizenyObchod.okno.do);
   chart.setInterval(chartInterval); // knihovna si data vyžádá sama
-  client.setKlineSubscription(symbol, chartInterval);
+  odebiratZiveSvice(symbol, chartInterval);
   chart.restoreDrawings(store.loadDrawings(symbol));
   vykresliAlarmy();
   nastavLinkuPnl();
@@ -1444,8 +1445,21 @@ function closeChart() {
   dokresliSeznamJeLiZastaraly();
 }
 
+/*
+ * Živá svíčka jen tam, kde graf končí dneškem. U prohlídky starého obchodu
+ * by se dnešní svíčka přilepila za svíčky z jeho doby.
+ */
+function odebiratZiveSvice(symbol, interval) {
+  const konec = konecSvicProhlidky(interval);
+  if (konec !== null && konec < Date.now()) client.setKlineSubscription(null, null);
+  else client.setKlineSubscription(symbol, interval);
+}
+
 async function nactiSviceProInterval(interval) {
-  const bars = await client.getKlines(chartSymbol, interval);
+  // ⚠ Prohlídka starého obchodu potřebuje svíčky **z jeho doby** (`end`).
+  // Bez něj přišlo nejnovějších 500 — na 1m pár hodin — a obchod ze
+  // včerejška v datech vůbec nebyl: graf ukázal dnešek bez značek (v0.45.0).
+  const bars = await client.getKlines(chartSymbol, interval, 500, konecSvicProhlidky(interval));
   return bars.map((b) => ({
     timestamp: b.time,
     open: b.open,
@@ -1518,7 +1532,7 @@ async function zmenInterval(interval) {
   // Volba timeframu při prohlídce obchodu z Historie je jen pro tu prohlídku.
   if (!prohlizenyObchod) intervalUzivatele = interval;
   chart.setInterval(interval);
-  client.setKlineSubscription(chartSymbol, interval);
+  odebiratZiveSvice(chartSymbol, interval);
 }
 
 async function refreshChartOrders() {
@@ -2432,15 +2446,30 @@ function zapojPrejeti() {
 
 /* ---------- historie obchodů ---------- */
 
-/** Interval podle délky obchodu, ať je v grafu vidět, co se dělo kolem. */
+/** Délka svíčky intervalu v ms. */
+const DELKA_INTERVALU = {
+  1: 60e3, 5: 300e3, 15: 900e3, 30: 1800e3, 60: 3600e3, 240: 14400e3, D: 86400e3, W: 604800e3,
+};
+
+/*
+ * Interval prohlídky obchodu (v0.45.0, jedno pravidlo): **nejkratší, na
+ * kterém má obchod nejvýš 24 svíček**. Graf pak obchod roztáhne zhruba na
+ * polovinu šířky (`showTradeWindow`) a okolí ztlumí. Dřív tabulka podle
+ * hodin, která skákala mezi 1m, 5m, 15m… a obchod zabíral jednou proužek,
+ * jindy půl grafu.
+ */
 function intervalProObchod(trvaniMs) {
-  const hodiny = trvaniMs / 3600e3;
-  if (hodiny <= 2) return '1';
-  if (hodiny <= 8) return '5';
-  if (hodiny <= 36) return '15';
-  if (hodiny <= 144) return '60';
-  if (hodiny <= 720) return '240';
-  return 'D';
+  for (const [interval, ms] of Object.entries(DELKA_INTERVALU)) {
+    if (trvaniMs / ms <= 24) return interval;
+  }
+  return 'W';
+}
+
+/** Konec svíček pro prohlídku: kus po zavření obchodu (okolí), nejvýš teď. */
+function konecSvicProhlidky(interval) {
+  const okno = prohlizenyObchod?.okno;
+  if (!okno) return null;
+  return Math.min(Date.now(), okno.do + 150 * (DELKA_INTERVALU[interval] || 3600e3));
 }
 
 /*
@@ -2727,6 +2756,7 @@ async function otevriProhlidku(obchod) {
 
   const od = otevreno ?? plneni[0]?.time ?? obchod.openedAt;
   chartInterval = intervalProObchod(obchod.closedAt - od);
+  obchod.okno = { od: Math.min(od, obchod.closedAt), do: obchod.closedAt };
   await otevriGraf(obchod.symbol, null, null);
   if (prohlizenyObchod !== obchod) return;
 
@@ -2759,7 +2789,6 @@ async function otevriProhlidku(obchod) {
         };
       }),
     );
-    chart.scrollToTime(obchod.closedAt);
     if (plneni.length) ui.showChartError('');
   } catch (err) {
     ui.showChartError(err.message || String(err));

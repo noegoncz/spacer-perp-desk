@@ -613,6 +613,32 @@ function registrovatCaryAlarmu() {
  * zůstává pro prohlížení uzavřeného obchodu z historie.
  */
 function registrovatZnackuPlneni() {
+  /*
+   * Ztlumení svíček mimo prohlížený obchod (v0.45.0): tmavý průsvitný závoj
+   * před otevřením a po zavření. Kreslí se **pod** značky obchodu
+   * (`zLevel: -1` při vložení), přes svíčky a objem.
+   */
+  K().registerOverlay({
+    name: 'oknoObchodu',
+    totalStep: 3,
+    needDefaultPointFigure: false,
+    needDefaultXAxisFigure: false,
+    needDefaultYAxisFigure: false,
+    createPointFigures: ({ chart, coordinates, bounding }) => {
+      if (coordinates.length < 2) return [];
+      const pul = (chart.getBarSpace?.()?.bar ?? 8) / 2 + 1;
+      const x1 = Math.max(0, coordinates[0].x - pul);
+      const x2 = Math.min(bounding.width, coordinates[1].x + pul);
+      const zavoj = (x, w) => ({
+        type: 'rect',
+        attrs: { x, y: 0, width: Math.max(0, w), height: bounding.height },
+        styles: { style: 'fill', color: 'rgba(11, 15, 20, 0.75)' },
+        ignoreEvent: true,
+      });
+      return [zavoj(0, x1), zavoj(x2, bounding.width - x2)];
+    },
+  });
+
   K().registerOverlay({
     name: 'tradeMark',
     totalStep: 1,
@@ -1532,7 +1558,42 @@ export function createPriceChart(container, layer, handlers = {}) {
    * uloží a použije až po doručení dat (v0.41.1).
    */
   let cilPohledu = null;
+  /*
+   * Okno prohlíženého obchodu (v0.45.0): obchod zabere zhruba **polovinu
+   * šířky grafu** a stojí uprostřed, po obou stranách okolí. Šířka svíčky
+   * se dopočítá, interval vybírá app.js (obchod má nejvýš ~24 svíček).
+   */
+  let oknoObchodu = null;
+  function posunNaOkno() {
+    const data = chart.getDataList();
+    if (!oknoObchodu || !data.length) return false;
+    const index = (t) => {
+      let lo = 0;
+      let hi = data.length - 1;
+      while (lo < hi) {
+        const mid = (lo + hi + 1) >> 1;
+        if (data[mid].timestamp <= t) lo = mid; else hi = mid - 1;
+      }
+      return lo;
+    };
+    if (oknoObchodu.do < data[0].timestamp) return false;
+    const i0 = index(oknoObchodu.od);
+    const i1 = index(oknoObchodu.do);
+    const pocet = Math.max(1, i1 - i0 + 1);
+    const sirka = chart.getSize('candle_pane', 'main')?.width || container.clientWidth || 360;
+    const mezera = Math.min(24, Math.max(3, (sirka * 0.5) / pocet));
+    chart.setBarSpace(mezera);
+    const vidno = sirka / mezera;
+    const cil = Math.min(data.length - 1, i1 + Math.round((vidno - pocet) / 2));
+    try {
+      chart.scrollToDataIndex(cil, 0);
+      return true;
+    } catch {
+      return false;
+    }
+  }
   function posunNaCil() {
+    if (oknoObchodu) return posunNaOkno();
     const data = chart.getDataList();
     if (!cilPohledu || !data.length) return false;
     if (cilPohledu < data[0].timestamp || cilPohledu > data[data.length - 1].timestamp + 1) return false;
@@ -2385,6 +2446,8 @@ export function createPriceChart(container, layer, handlers = {}) {
     setSymbol(ticker, pricePrecision) {
       // Nový graf začíná u nejnovějších svíček; cíl prohlídky se nastaví znovu.
       cilPohledu = null;
+      oknoObchodu = null;
+      chart.removeOverlay({ groupId: 'okno' });
       /*
        * ⚠ Instance grafu se mezi otevřeními recykluje, takže do příchodu
        * svíček nového páru ukazovala **graf předchozího páru** — na telefonu
@@ -2537,6 +2600,22 @@ export function createPriceChart(container, layer, handlers = {}) {
 
     clearTradeMarks() {
       chart.removeOverlay({ groupId: SKUPINA_ZNACKY });
+    },
+
+    /**
+     * Prohlídka obchodu: pohled na okno od otevření po zavření a svíčky
+     * mimo něj ztlumené (v0.45.0, přání uživatele — ať je obchod jasně
+     * vidět). Volá se hned po `setSymbol`, ještě před daty.
+     */
+    showTradeWindow(od, doCasu) {
+      oknoObchodu = { od, do: doCasu };
+      chart.removeOverlay({ groupId: 'okno' });
+      chart.createOverlay({
+        name: 'oknoObchodu', groupId: 'okno', lock: true, zLevel: -1,
+        points: [{ timestamp: od }, { timestamp: doCasu }],
+        visible: vrstvy.obchod,
+      });
+      posunNaCil();
     },
 
     /** Posune pohled na dobu obchodu. */
