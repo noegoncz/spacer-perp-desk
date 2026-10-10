@@ -1518,9 +1518,11 @@ se dotáhne posledních 7 dní. Mock napodobuje omezení Bybitu; test
   klepnutí otevře graf živé pozice. Uzavřený → prohlídka od otevření po
   poslední zavírací příkaz. Bez práva na plnění zůstane každý záznam
   samostatně.
-- **Karta:** hlavička (pár, směr, Open), „Opened … → closed …", pod ní
-  řádek na každý výstup ve dvou linkách (datum · doba držení … PnL;
-  velikost v coinu · USDT … vstup → výstup (%)), dole podtržený součet.
+- **Karta (zjednodušeno v0.38.1 — „moc textu"):** hlavička (pár, směr,
+  Open), pod ní jen data `24.12.2026 → 26.12.2026` (nebo `→ Open`) bez
+  doprovodného textu, pak **jeden řádek na výstup** podle vzoru uživatele
+  `1,000 JUP (336 USD) → 0.335 (+3.1 %) ..... +20.40` (bez data výstupu),
+  dole podtržený součet. Datum i v řádku nad seznamem jako den.měsíc.rok.
 - ⚠ Plnění se rozlišují podle `execId` (getExecutions ho vrací); mock
   má pro plnění současné pozice pevný čas `TED_MOCKU`, jinak opakované
   stažení vyrábělo duplikáty a součet velikosti nikdy nevyšel na nulu.

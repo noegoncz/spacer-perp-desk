@@ -701,20 +701,18 @@ function trvani(ms) {
   return `${zbytek} m`;
 }
 
-function datumCas(timestamp) {
-  return new Date(timestamp).toLocaleString(getLocale(), {
-    day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit',
-  });
-}
-
 /*
- * Obchod v Historii (v0.38.0): hlavička (pár, směr, otevřený / kdy
- * otevřeno a zavřeno), pod ní **jeden řádek na každý výstup** (částečné
- * i konečné zavření) a dole podtržený součet PnL. Řádek má dvě linky, aby
- * se vešel i na zavřený displej Foldu:
- *   datum výstupu · doba od otevření ............... PnL výstupu
- *   velikost v coinu · USDT ......... průměrný vstup → výstup (%)
+ * Obchod v Historii (v0.38.0, zjednodušeno v0.38.1 — bylo moc textu):
+ * hlavička (pár, směr, Open), pod ní jen data „24.12.2026 → 26.12.2026"
+ * (nebo „→ Open"), pak **jeden řádek na výstup**:
+ *   1,000 JUP (336 USD) → 0.335 (+3.1 %) ........ +20.40
+ * a dole podtržený součet.
  */
+const datum = (ts) => {
+  const d = new Date(ts);
+  return `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`;
+};
+
 export function renderHistory(skupiny, hide, onSelect) {
   const el2 = (tag, trida, text = '') => {
     const e = document.createElement(tag);
@@ -738,8 +736,7 @@ export function renderHistory(skupiny, hide, onSelect) {
 
       const mena = g.symbol.replace(/USDT$|USDC$/, '');
       const kdy = el2('div', 'trade-when',
-        [g.otevreno ? t('history.openedAt', { time: datumCas(g.otevreno) }) : '',
-          g.zavreno ? t('history.closedShort', { time: datumCas(g.zavreno) }) : t('history.stillOpen')]
+        [g.otevreno ? datum(g.otevreno) : '', g.zavreno ? datum(g.zavreno) : t('history.open')]
           .filter(Boolean).join('  →  '));
 
       const vystupy = el2('div', 'trade-vystupy');
@@ -747,13 +744,11 @@ export function renderHistory(skupiny, hide, onSelect) {
         const radek = el2('div', 'trade-vystup');
         const smer = g.long ? 1 : -1;
         const pct = z.entry ? ((z.exit / z.entry - 1) * 100 * smer) : null;
-        const drzeno = g.otevreno ? t('history.held', { d: trvani(z.closedAt - g.otevreno) }) : '';
+        const velikost = hide ? MASK : `${formatSize(z.qty)} ${mena} (${formatSize(Math.round(z.qty * z.exit))} USD)`;
         radek.append(
-          el2('span', 'tv-kdy', [datumCas(z.closedAt), drzeno].filter(Boolean).join(' · ')),
+          el2('span', 'tv-text', `${velikost} → ${formatPrice(z.exit)}`
+            + (pct !== null ? ` (${formatPercent(pct, 1)})` : '')),
           el2('span', `tv-pnl ${pnlClass(z.pnl)}`, hide ? MASK : formatSignedUsd(z.pnl)),
-          el2('span', 'tv-velikost', hide ? MASK : `${formatSize(z.qty)} ${mena} · ${formatUsd(z.qty * z.exit)} USDT`),
-          el2('span', 'tv-ceny', `${formatPrice(z.entry)} → ${formatPrice(z.exit)}`
-            + (pct !== null ? ` (${formatPercent(pct)})` : '')),
         );
         vystupy.append(radek);
       });

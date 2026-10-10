@@ -52,7 +52,7 @@ for k in karty:
 uzavrene = [k for k in karty if not k['otevreny']]
 if len(uzavrene) != 1:
     chyby.append(f'v posledních 7 dnech má být jeden uzavřený obchod (B), je jich {len(uzavrene)}')
-if not all('closed' in k['kdy'] and 'Opened' in k['kdy'] for k in uzavrene):
+if not all(k['kdy'].count('.') == 4 and '→' in k['kdy'] for k in uzavrene):
     chyby.append('uzavřený obchod neukazuje otevření a zavření')
 
 # Uzavřený obchod B (otevřený je současná pozice). Otevřít ho.

@@ -2605,19 +2605,19 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 .badge.trade-otevreny { background: rgba(76, 154, 255, 0.16); color: var(--accent); }
 .trade.otevreny { border-style: dashed; }
 .trade-vystupy { display: flex; flex-direction: column; margin-top: 6px; }
+/* Jeden řádek na výstup (v0.38.1) — na úzkém displeji se text zkrátí,
+   PnL vpravo zůstane vždy celé. */
 .trade-vystup {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 1px 10px;
-  padding: 6px 0;
+  gap: 10px;
+  padding: 5px 0;
   border-top: 1px solid var(--border);
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-variant-numeric: tabular-nums;
 }
-.tv-kdy { color: var(--text); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tv-pnl { justify-self: end; font-weight: 600; }
-.tv-velikost, .tv-ceny { color: var(--text-dim); font-size: 0.72rem; }
-.tv-ceny { justify-self: end; text-align: right; }
+.tv-text { min-width: 0; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tv-pnl { justify-self: end; font-weight: 600; white-space: nowrap; }
 .trade-soucet {
   display: flex;
   justify-content: space-between;

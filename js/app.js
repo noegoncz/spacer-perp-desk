@@ -2414,7 +2414,8 @@ function vykresliHistorii() {
   let text = '';
   if (historieNacita) text = t(obchody.length ? 'history.loadingMore' : 'history.loading');
   else if (od) text = t(skupinyObchodu.length ? 'history.since' : 'history.noneSince', {
-    date: od.toLocaleDateString(getLocale(), { day: 'numeric', month: 'numeric', year: 'numeric' }),
+    // Stejný formát jako na kartách obchodů: den.měsíc.rok.
+    date: `${od.getDate()}.${od.getMonth() + 1}.${od.getFullYear()}`,
   });
   ui.showHistoryNote(text);
   ukazPrvek('historyMore', Boolean(historieOd) && !historieNacita && !historieNaKonci());

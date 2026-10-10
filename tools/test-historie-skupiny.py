@@ -13,7 +13,7 @@ Historie po obchodech (v0.38.0).
 
 Spuštění: python tools/test-historie-skupiny.py http://localhost:8080/index.html
 """
-import os, sys, time, json, base64
+import os, re, sys, time, json, base64
 sys.stdout.reconfigure(errors='replace')
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from dotyk import Prohlizec
@@ -70,13 +70,17 @@ otevreny = next((k for k in karty if k['otevreny']), None)
 over(otevreny is not None, 'částečný výstup otevřené pozice je otevřený obchod')
 if otevreny:
     over('Open' in otevreny['hlava'], 'otevřený obchod má štítek Open')
-    over('Opened' in otevreny['kdy'] and 'still open' in otevreny['kdy'], f"otevřeno z plnění, ještě nezavřeno ({otevreny['kdy']})")
-    over(otevreny['vystupu'] == 1 and 'held' in otevreny['radky'][0], 'řádek výstupu s dobou držení')
+    # v0.38.1: jen „d.m.rrrr → Open", bez doprovodného textu.
+    over(re.fullmatch(r'\d{1,2}\.\d{1,2}\.\d{4}\s+→\s+Open', otevreny['kdy'].strip()) is not None,
+         f"datum otevření → Open ({otevreny['kdy']})")
+    over(otevreny['vystupu'] == 1 and re.fullmatch(r'1,000 JUP \(310 USD\) → 0\.31000 \(\+2\.9 %\)\+2\.20',
+                                                    otevreny['radky'][0]) is not None,
+         f"výstup na jednom řádku podle vzoru ({otevreny['radky'][0]})")
     over('Total' in otevreny['soucet'] and '+2.20' in otevreny['soucet'], f"podtržený součet ({otevreny['soucet']})")
 uzavreny = next((k for k in karty if not k['otevreny']), None)
 if uzavreny:
-    over('closed' in uzavreny['kdy'] and 'Opened' in uzavreny['kdy'], f"uzavřený obchod má otevření i zavření ({uzavreny['kdy']})")
-    over('→' in uzavreny['radky'][0] and '%' in uzavreny['radky'][0], 'řádek výstupu má vstup → výstup a procenta')
+    over(re.fullmatch(r'\d{1,2}\.\d{1,2}\.\d{4}\s+→\s+\d{1,2}\.\d{1,2}\.\d{4}', uzavreny['kdy'].strip()) is not None,
+         f"uzavřený obchod: datum otevření → zavření ({uzavreny['kdy']})")
 over(ev("!document.getElementById('historyMore').hidden"), 'pod seznamem tlačítko pro starší obchody')
 
 r = p.prikaz('Page.captureScreenshot', format='png')
