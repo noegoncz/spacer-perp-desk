@@ -1,17 +1,17 @@
 {
-  "verze": "0.37.0",
+  "verze": "0.38.0",
   "novinky": [
     {
-      "en": "Buy and sell markers sit exactly at the price where the order was filled, on every timeframe.",
-      "cs": "Značky nákupů a prodejů leží přesně na ceně, kde se příkaz vyplnil, na každém timeframu."
+      "en": "History loads much faster: the last 7 days right away, older trades 30 days at a time with a button.",
+      "cs": "Historie se načítá mnohem rychleji: posledních 7 dní hned, starší obchody po 30 dnech tlačítkem."
     },
     {
-      "en": "New 30m timeframe.",
-      "cs": "Nový timeframe 30m."
+      "en": "Partial exits now belong to one trade: every exit on its own line, total PnL at the bottom, and open trades marked as Open.",
+      "cs": "Částečné výstupy patří do jednoho obchodu: každý výstup na vlastním řádku, celkové PnL dole a otevřené obchody označené Open."
     },
     {
-      "en": "The timeframe bar scrolls freely again; the selected one is always centered.",
-      "cs": "Lišta timeframů se zase volně posouvá a vybraný je vždy uprostřed."
+      "en": "Calmer candles like in TabTrader, so your buy and sell markers stand out.",
+      "cs": "Klidnější svíčky jako v TabTraderu, aby vynikly značky nákupů a prodejů."
     }
   ],
   "opravy": []

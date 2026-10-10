@@ -707,58 +707,63 @@ function datumCas(timestamp) {
   });
 }
 
-export function renderHistory(obchody, hide, onSelect) {
+/*
+ * Obchod v Historii (v0.38.0): hlavička (pár, směr, otevřený / kdy
+ * otevřeno a zavřeno), pod ní **jeden řádek na každý výstup** (částečné
+ * i konečné zavření) a dole podtržený součet PnL. Řádek má dvě linky, aby
+ * se vešel i na zavřený displej Foldu:
+ *   datum výstupu · doba od otevření ............... PnL výstupu
+ *   velikost v coinu · USDT ......... průměrný vstup → výstup (%)
+ */
+export function renderHistory(skupiny, hide, onSelect) {
+  const el2 = (tag, trida, text = '') => {
+    const e = document.createElement(tag);
+    if (trida) e.className = trida;
+    if (text) e.textContent = text;
+    return e;
+  };
   dom.historyList.replaceChildren(
-    ...obchody.map((o) => {
-      const karta = document.createElement('article');
-      karta.className = `trade ${o.long ? 'long' : 'short'}`;
+    ...skupiny.map((g) => {
+      const karta = el2('article', `trade ${g.long ? 'long' : 'short'}${g.otevrena ? ' otevreny' : ''}`);
       karta.setAttribute('role', 'button');
       karta.tabIndex = 0;
 
-      const hlava = document.createElement('div');
-      hlava.className = 'trade-head';
+      const hlava = el2('div', 'trade-head');
+      const vlevo = el2('div', 'trade-titul');
+      const odznak = el2('span', `badge ${g.long ? 'long' : 'short'}`,
+        t(g.long ? 'position.long' : 'position.short') + (g.leverage ? ` ${formatSize(g.leverage)}×` : ''));
+      vlevo.append(el2('span', 'trade-symbol', g.symbol), odznak);
+      if (g.otevrena) vlevo.append(el2('span', 'badge trade-otevreny', t('history.open')));
+      hlava.append(vlevo);
 
-      const vlevo = document.createElement('div');
-      const symbol = document.createElement('span');
-      symbol.className = 'trade-symbol';
-      symbol.textContent = o.symbol;
-      const odznak = document.createElement('span');
-      odznak.className = `badge ${o.long ? 'long' : 'short'}`;
-      odznak.textContent = t(o.long ? 'position.long' : 'position.short');
-      if (o.leverage) odznak.textContent += ` ${formatSize(o.leverage)}×`;
-      vlevo.append(symbol, odznak);
+      const mena = g.symbol.replace(/USDT$|USDC$/, '');
+      const kdy = el2('div', 'trade-when',
+        [g.otevreno ? t('history.openedAt', { time: datumCas(g.otevreno) }) : '',
+          g.zavreno ? t('history.closedShort', { time: datumCas(g.zavreno) }) : t('history.stillOpen')]
+          .filter(Boolean).join('  →  '));
 
-      const pnl = document.createElement('div');
-      pnl.className = `trade-pnl ${pnlClass(o.pnl)}`;
-      pnl.textContent = hide ? MASK : `${formatSignedUsd(o.pnl)} USDT`;
+      const vystupy = el2('div', 'trade-vystupy');
+      g.vystupy.forEach((z) => {
+        const radek = el2('div', 'trade-vystup');
+        const smer = g.long ? 1 : -1;
+        const pct = z.entry ? ((z.exit / z.entry - 1) * 100 * smer) : null;
+        const drzeno = g.otevreno ? t('history.held', { d: trvani(z.closedAt - g.otevreno) }) : '';
+        radek.append(
+          el2('span', 'tv-kdy', [datumCas(z.closedAt), drzeno].filter(Boolean).join(' · ')),
+          el2('span', `tv-pnl ${pnlClass(z.pnl)}`, hide ? MASK : formatSignedUsd(z.pnl)),
+          el2('span', 'tv-velikost', hide ? MASK : `${formatSize(z.qty)} ${mena} · ${formatUsd(z.qty * z.exit)} USDT`),
+          el2('span', 'tv-ceny', `${formatPrice(z.entry)} → ${formatPrice(z.exit)}`
+            + (pct !== null ? ` (${formatPercent(pct)})` : '')),
+        );
+        vystupy.append(radek);
+      });
 
-      hlava.append(vlevo, pnl);
+      const soucet = el2('div', 'trade-soucet');
+      soucet.append(el2('span', '', t('history.total')),
+        el2('span', `trade-pnl ${pnlClass(g.pnl)}`, hide ? MASK : `${formatSignedUsd(g.pnl)} USDT`));
 
-      const mrizka = document.createElement('div');
-      mrizka.className = 'trade-grid';
-      mrizka.append(
-        cell(t('history.qty'), hide ? MASK : formatSize(o.qty)),
-        cell(t('history.entryAvg'), formatPrice(o.entry)),
-        cell(t('history.exitAvg'), formatPrice(o.exit)),
-      );
-
-      const kdy = document.createElement('div');
-      kdy.className = 'trade-when';
-      /*
-       * ⚠ `closed-pnl` nedává čas otevření — jeho `createdTime` je vznik
-       * záznamu, tedy skoro totéž co zavření. Rozsah „od → do" s délkou
-       * obchodu by pak ukazoval pár milisekund. Proto jen čas zavření; kdy
-       * obchod začal, se dopočítá z plnění až při jeho otevření v grafu.
-       * Kdyby Bybit čas otevření někdy začal posílat, ukáže se celý rozsah.
-       */
-      const smysluplny = o.closedAt - o.openedAt > 60000;
-      kdy.textContent = smysluplny
-        ? `${datumCas(o.openedAt)} → ${datumCas(o.closedAt)}`
-          + `  ·  ${t('history.duration')} ${trvani(o.closedAt - o.openedAt)}`
-        : t('history.closedAt', { time: datumCas(o.closedAt) });
-
-      karta.append(hlava, mrizka, kdy);
-      karta.addEventListener('click', () => onSelect(o));
+      karta.append(hlava, kdy, vystupy, soucet);
+      karta.addEventListener('click', () => onSelect(g));
       return karta;
     }),
   );

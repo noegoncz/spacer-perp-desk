@@ -2596,3 +2596,35 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 }
 .tile-menu-titulek { padding: 2px 6px 4px; font-size: 0.8rem; font-weight: 650; }
 .quick-btn.danger-btn { color: var(--short); }
+
+
+/* ---------- Historie: obchod s výstupy (v0.38.0) ---------- */
+.history-note { margin: 2px 0 8px; text-align: left; }
+.history-more { display: block; width: 100%; margin: 10px 0 4px; }
+.trade-titul { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.badge.trade-otevreny { background: rgba(76, 154, 255, 0.16); color: var(--accent); }
+.trade.otevreny { border-style: dashed; }
+.trade-vystupy { display: flex; flex-direction: column; margin-top: 6px; }
+.trade-vystup {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1px 10px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+.tv-kdy { color: var(--text); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tv-pnl { justify-self: end; font-weight: 600; }
+.tv-velikost, .tv-ceny { color: var(--text-dim); font-size: 0.72rem; }
+.tv-ceny { justify-self: end; text-align: right; }
+.trade-soucet {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-top: 6px;
+  border-top: 2px solid var(--text-dim);
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+.trade-soucet .trade-pnl { text-decoration: underline; text-underline-offset: 3px; }

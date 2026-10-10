@@ -49,6 +49,13 @@ const BARVY = {
   rust: '#16c784',
   pokles: '#ea3943',
   kresba: '#4c9aff',
+  /*
+   * Svíčky tlumené jako v TabTraderu (v0.38.0, barvy odebrané z jeho
+   * screenshotu): výrazné jsou pak trojúhelníky plnění, které leží přímo
+   * ve svíčkách. Syté `rust`/`pokles` zůstávají pro linku zisku a měření.
+   */
+  svickaRust: '#60a868',
+  svickaPokles: '#e05858',
 };
 
 /**
@@ -1063,13 +1070,13 @@ function styly() {
     },
     candle: {
       bar: {
-        upColor: BARVY.rust,
-        downColor: BARVY.pokles,
+        upColor: BARVY.svickaRust,
+        downColor: BARVY.svickaPokles,
         noChangeColor: BARVY.text,
-        upBorderColor: BARVY.rust,
-        downBorderColor: BARVY.pokles,
-        upWickColor: BARVY.rust,
-        downWickColor: BARVY.pokles,
+        upBorderColor: BARVY.svickaRust,
+        downBorderColor: BARVY.svickaPokles,
+        upWickColor: BARVY.svickaRust,
+        downWickColor: BARVY.svickaPokles,
       },
       /*
        * Legenda svíčky („JUPUSDT · 1H, Time, Open, High…") je vypnutá

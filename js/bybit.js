@@ -662,9 +662,14 @@ export class BybitClient {
      * konce k začátku, v každém okně se stránkuje.
      */
     const TYDEN = 7 * 86400e3;
-    const radky = [];
+    const okna = [];
     for (let konec = endTime; konec > startTime; konec -= TYDEN) {
-      const zacatek = Math.max(startTime, konec - TYDEN);
+      okna.push([Math.max(startTime, konec - TYDEN), konec]);
+    }
+    // Okna se stahují **souběžně** (v0.38.0) — dřív jedno po druhém a měsíc
+    // historie tak čekal na pět cest na burzu za sebou.
+    const vysledky = await Promise.all(okna.map(async ([zacatek, konec]) => {
+      const radky = [];
       let cursor = '';
       for (let stranka = 0; stranka < 5; stranka += 1) {
         const result = await this.signedGet('/v5/position/closed-pnl', {
@@ -679,7 +684,9 @@ export class BybitClient {
         cursor = result?.nextPageCursor || '';
         if (!cursor || !list.length) break;
       }
-    }
+      return radky;
+    }));
+    const radky = vysledky.flat();
     // Okna se dotýkají hranou — záznam na hraně by přišel dvakrát.
     const videne = new Set();
     const jedinecne = radky.filter((r) => {
@@ -745,6 +752,7 @@ export class BybitClient {
         qty: num(e.execQty),
         time: Number(e.execTime),
         orderId: e.orderId,
+        execId: e.execId,
       }))
       .sort((a, b) => a.time - b.time);
   }

@@ -41,20 +41,22 @@ chyby = []
 ev("document.querySelector('[data-tab=history]').click()")
 time.sleep(3)
 
+# Od v0.38.0 jsou karty obchody (skupiny výstupů) a čas otevření se
+# dopočítá z plnění — rozsah „Opened … → closed …" je tedy správně.
 karty = json.loads(ev("""JSON.stringify([...document.querySelectorAll('.trade')].map((k) => ({
-  pnl: k.querySelector('.trade-pnl').textContent,
+  otevreny: k.classList.contains('otevreny'),
+  pnl: k.querySelector('.trade-soucet .trade-pnl').textContent,
   kdy: k.querySelector('.trade-when').textContent })))""") or '[]')
 for k in karty:
     print('karta:', k['pnl'], '|', k['kdy'])
-if len(karty) != 2:
-    chyby.append(f'v historii mají být dva obchody, je jich {len(karty)}')
-if any('Duration' in k['kdy'] or '→' in k['kdy'] for k in karty):
-    chyby.append('karta ukazuje rozsah od → do, přestože čas otevření Bybit nedává')
-if not all(k['kdy'].startswith('closed ') for k in karty):
-    chyby.append('karta neukazuje čas zavření')
+uzavrene = [k for k in karty if not k['otevreny']]
+if len(uzavrene) != 1:
+    chyby.append(f'v posledních 7 dnech má být jeden uzavřený obchod (B), je jich {len(uzavrene)}')
+if not all('closed' in k['kdy'] and 'Opened' in k['kdy'] for k in uzavrene):
+    chyby.append('uzavřený obchod neukazuje otevření a zavření')
 
-# Obchod B je nahoře (novější). Otevřít ho.
-ev("document.querySelector('.trade').click()")
+# Uzavřený obchod B (otevřený je současná pozice). Otevřít ho.
+ev("[...document.querySelectorAll('.trade')].find((k) => !k.classList.contains('otevreny')).click()")
 time.sleep(6)
 
 znacky = json.loads(ev("""JSON.stringify(window.__graf.getOverlays()

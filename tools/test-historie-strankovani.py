@@ -5,7 +5,7 @@ Historie po 30 dnech (v0.31.2).
   * Bybit bez zadaného období vrací uzavřené obchody jen za posledních
     7 dní a okno smí mít nejvýš 7 dní (mock to napodobuje). Stará verze se
     ptala bez období — v Historii byly jen obchody posledního týdne.
-  * Napoprvé se načte 30 dní, další měsíc až po doscrollování na konec.
+  * Napoprvé se načte 7 dní, další měsíc tlačítkem (v0.38.0).
 
 Mock s `__mnohoObchodu` má obchod každé 2 dny po dobu 120 dní.
 
@@ -45,20 +45,26 @@ time.sleep(3)
 prvni = ev("document.querySelectorAll('.trade').length") or 0
 dotazy = ev("window.__dotazyClosedPnl || 0")
 print('po otevření:', prvni, 'obchodů,', dotazy, 'dotazů na closed-pnl')
-# 30 dní: b3, a2 a m1..m14 (každé 2 dny) = 16.
-if not 14 <= prvni <= 17:
-    chyby.append(f'napoprvé má být vidět obchody za 30 dní (~16), je jich {prvni}')
-if dotazy and dotazy > 8:
-    chyby.append(f'napoprvé se stahuje víc než měsíc ({dotazy} dotazů)')
+# v0.38.0: napoprvé 7 dní — c3 (otevřený obchod), b3 a m1..m3 = 5.
+if prvni != 5:
+    chyby.append(f'napoprvé mají být vidět obchody za 7 dní (5), je jich {prvni}')
+if dotazy != 1:
+    chyby.append(f'napoprvé se má stáhnout jen jedno 7denní okno ({dotazy} dotazů)')
 
-# Doscrollovat na konec seznamu → načte se další měsíc.
-for _ in range(3):
-    ev("window.scrollTo(0, document.body.scrollHeight)")
-    time.sleep(2.5)
+# Tlačítko → dalších 30 dní (5 oken souběžně).
+ev("document.getElementById('historyMore').click()")
+time.sleep(3)
 druhy = ev("document.querySelectorAll('.trade').length") or 0
-print('po scrollu na konec:', druhy, 'obchodů')
-if druhy <= prvni:
-    chyby.append('po doscrollování na konec nepřibyly starší obchody')
+print('po „Load 30 more days“:', druhy, 'obchodů,', ev("window.__dotazyClosedPnl"), 'dotazů')
+# + a2 a m4..m18 (do 37 dní) = 16 navíc.
+if druhy != prvni + 16:
+    chyby.append(f'po tlačítku nepřibylo 30 dní obchodů ({prvni} → {druhy})')
+ev("document.getElementById('historyMore').click()")
+time.sleep(3)
+treti = ev("document.querySelectorAll('.trade').length") or 0
+print('po dalším klepnutí:', treti)
+if treti <= druhy:
+    chyby.append('druhé klepnutí nepřidalo starší obchody')
 
 # Řazení od nejnovějšího.
 serazeno = ev("""(() => {

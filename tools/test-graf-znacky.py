@@ -243,7 +243,7 @@ if any(z['popis'] for z in znacky):
 zelene = {z['barva'] for z in soucasne if z['vstup']}
 cervene = {z['barva'] for z in soucasne if not z['vstup']}
 print('barvy — nákupy:', zelene, ' prodeje:', cervene)
-if zelene != {'#4dff88'} or cervene != {'#ff6b4a'}:
+if zelene != {'#00e020'} or cervene != {'#f84840'}:
     chyby.append('nákupy mají mít sytou zelenou a prodeje červenooranžovou')
 if zelene & {'#16c784'} or cervene & {'#ea3943'}:
     chyby.append('značky mají barvu svíček, ve kterých splynou')

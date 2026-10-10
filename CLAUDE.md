@@ -1504,6 +1504,34 @@ zkontroluje znovu). Strop 2 roky (tolik Bybit drží). Při návratu na záložk
 se dotáhne posledních 7 dní. Mock napodobuje omezení Bybitu; test
 `tools/test-historie-strankovani.py` (`__mnohoObchodu`), na starém kódu padá.
 
+**Historie po obchodech (v0.38.0, přání uživatele 2026-10-10):**
+- **Načítání:** napoprvé jen 7 dní (1 dotaz), starší po 30 dnech
+  tlačítkem `#historyMore`; nad seznamem „Trades closed since …".
+  Okna `closed-pnl` i plnění (`dotahniPlneni`) se stahují **souběžně** —
+  dřív jedno po druhém a měsíc trval několik vteřin. Automatické
+  načítání při scrollu je zrušené.
+- **Seskupení:** Bybit dělá záznam za každý zavírací příkaz, takže
+  pozice zavíraná po částech dávala víc „obchodů". `seskupObchody` (app.js)
+  přiřadí záznamy obchodům podle plnění páru: od současné velikosti
+  pozice dozadu, kde je nula, tam obchod začal. Obchod pozice, která dál
+  běží, je **otevřený** (štítek Open, čárkovaný rámeček, „still open"),
+  klepnutí otevře graf živé pozice. Uzavřený → prohlídka od otevření po
+  poslední zavírací příkaz. Bez práva na plnění zůstane každý záznam
+  samostatně.
+- **Karta:** hlavička (pár, směr, Open), „Opened … → closed …", pod ní
+  řádek na každý výstup ve dvou linkách (datum · doba držení … PnL;
+  velikost v coinu · USDT … vstup → výstup (%)), dole podtržený součet.
+- ⚠ Plnění se rozlišují podle `execId` (getExecutions ho vrací); mock
+  má pro plnění současné pozice pevný čas `TED_MOCKU`, jinak opakované
+  stažení vyrábělo duplikáty a součet velikosti nikdy nevyšel na nulu.
+- Testy: `test-historie-skupiny.py` (nový), `test-historie-strankovani.py`
+  (tlačítko), `test-historie-obchod.py`.
+
+**Barvy jako TabTrader (v0.38.0):** svíčky tlumené `#60a868` / `#e05858`
+(`BARVY.svickaRust/svickaPokles`), trojúhelníky plnění jasné `#00e020` /
+`#f84840` — odebrané z uživatelova screenshotu TT. Syté `rust`/`pokles`
+zůstávají pro linku zisku a měření.
+
 Klepnutí na obchod otevře graf z jeho doby se značkami plnění (trojúhelník
 ve směru obchodu + popisek). **Interval se volí podle délky obchodu** — na
 hodinový obchod je denní svíčka k ničemu a na dvouměsíční zase minutová.

@@ -532,8 +532,12 @@
 
   <!-- ===== Historie ===== -->
   <section id="viewHistory" hidden>
+    <p id="historyNote" class="watch-note history-note"></p>
     <div id="historyList" class="history-list"></div>
-    <p id="historyNote" class="watch-note"></p>
+    <!-- Starší obchody po 30 dnech (v0.38.0) — napoprvé jen 7 dní, ať je
+         Historie hned. -->
+    <button type="button" id="historyMore" class="secondary-btn history-more" hidden
+            data-i18n="history.more">Load 30 more days</button>
   </section>
 
   <!-- ===== Nastavení ===== -->

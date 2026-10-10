@@ -33,6 +33,9 @@ const OTEVRENO = Date.now() - 49 * 86400e3;
 // Kotva pro starší obchody: zaokrouhlená na hodinu, aby časy plnění
 // vycházely stejně při každém dotazu (Date.now() se mezi dotazy hýbe).
 const ZACATEK = Math.floor(Date.now() / 3600e3) * 3600e3;
+// Pevné „teď" pro plnění současné pozice — jinak by každý dotaz vrátil
+// jiné časy a opakované stažení by vyrobilo duplicitní plnění.
+const TED_MOCKU = Date.now();
 const pozice = { symbol:'JUPUSDT', side:'Buy', size:'2547', avgPrice:'0.30135',
   markPrice:'0.30580', unrealisedPnl:'11.34', liqPrice:'0.07233', leverage:'10',
   positionValue:'778.87', stopLoss:'0.295', takeProfit:'0.365', positionIdx:0,
@@ -127,11 +130,11 @@ window.fetch = function (vstup, volby) {
       // Současná pozice: 1500 + 1300 - 253 = 2547, tedy přesně velikost
       // pozice. Z toho se pozpátku dopočítá, že ji otevřel nákup před 40 h.
       {symbol:'JUPUSDT', side:'Buy', execType:'Trade', execPrice:'0.2990', orderId:'c1',
-       execQty:'1500', execTime:String(Date.now() - 40*3600e3)},
+       execQty:'1500', execTime:String(TED_MOCKU - 40*3600e3)},
       {symbol:'JUPUSDT', side:'Buy', execType:'Trade', execPrice:'0.3050', orderId:'c2',
-       execQty:'1300', execTime:String(Date.now() - 20*3600e3)},
+       execQty:'1300', execTime:String(TED_MOCKU - 20*3600e3)},
       {symbol:'JUPUSDT', side:'Sell', execType:'Trade', execPrice:'0.3100', orderId:'c3',
-       execQty:'253', execTime:String(Date.now() - 8*3600e3)},
+       execQty:'253', execTime:String(TED_MOCKU - 8*3600e3)},
     ];
     const q = new URL(u, location.origin).searchParams;
     const od = Number(q.get('startTime')) || 0;
@@ -158,6 +161,9 @@ window.fetch = function (vstup, volby) {
     window.__dotazyClosedPnl = (window.__dotazyClosedPnl || 0) + 1;
     const vse = [
       zaznam('b3', ZACATEK - 3*d + 800, 0.281, 0.29504, 14.04),
+      // Částečný výstup ze současné (otevřené) pozice — v Historii patří
+      // do otevřeného obchodu, ne jako samostatný obchod (v0.38.0).
+      zaznam('c3', TED_MOCKU - 8*3600e3 + 500, 0.30135, 0.31, 2.2),
       zaznam('a2', ZACATEK - 9*d, 0.27, 0.26, -10),
     ];
     // Test stránkování historie: obchod každé 2 dny po dobu 120 dní.
