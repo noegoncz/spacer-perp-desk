@@ -1973,10 +1973,8 @@ async function nactiTrhy() {
 
 function vykresliListu() {
   ui.renderListBar({
-    polozky: [
-      ...sestavy.seznamy().map((x) => ({ id: x.id, nazev: x.nazev, pocet: x.polozky.length })),
-      { id: sestavy.VSE, nazev: t('lists.all') },
-    ],
+    // Jen vlastní seznamy — „All" je od v0.46.0 zrušené.
+    polozky: sestavy.seznamy().map((x) => ({ id: x.id, nazev: x.nazev, pocet: x.polozky.length })),
     aktivni: sestavy.aktivni(),
     onSelect: vyberSestavu,
     onManage: spravujSestavu,
@@ -2417,9 +2415,9 @@ function zapojPrejeti() {
 
     prejeto = true;
     /*
-     * Do Trhů přejetím zleva (z Pozic) → první vlastní seznam, zprava
-     * (z Historie) → poslední, tedy „All". Jako vnořené stránky: přijde se
-     * na tu, která na té straně sousedí (2026-10-04, přání uživatele).
+     * Do Watchlists přejetím zleva (z Pozic) → první seznam, zprava
+     * (z Historie) → poslední. Jako vnořené stránky: přijde se na ten,
+     * který na té straně sousedí (2026-10-04, přání uživatele).
      */
     if (ZALOZKY[kam] === 'watchlist') {
       const poradi = sestavy.poradi();

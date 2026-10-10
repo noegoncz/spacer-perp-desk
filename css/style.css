@@ -327,12 +327,31 @@ main {
   background: var(--surface);
   border: 1px solid var(--border);
   border-top: none;
-  /* Okraje lišty se vytrácejí — napoví, že se dá posouvat do strany. */
+  /* v0.46.0: celá lišta se neposouvá — posouvá se jen pás seznamů,
+     „+ New" stojí napevno vpravo. */
+  overflow: visible;
+  align-items: flex-end;
+}
+.watch-lists-pas {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  /* Okraje pásu se vytrácejí — napoví, že se dá posouvat do strany. */
   -webkit-mask-image: linear-gradient(to right, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
           mask-image: linear-gradient(to right, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
-  padding-left: 12px;
-  padding-right: 12px;
 }
+.watch-lists-pas::-webkit-scrollbar { display: none; }
+/* Mezery na koncích: i první a poslední seznam dojede doprostřed. */
+.watch-lists-pas::before,
+.watch-lists-pas::after {
+  content: '';
+  flex: 0 0 60%;
+}
+.chip.list-new { flex: 0 0 auto; }
 .watch-cats {
   margin-bottom: 10px;
   padding: 7px 8px;

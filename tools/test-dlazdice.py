@@ -9,7 +9,7 @@ Trhy jako dlaždice (v0.36.0, podle TabTraderu) — skutečné dotyky přes CDP.
     stejný pár → „už je v seznamu",
   * podržet a táhnout dlaždici → přesun v seznamu,
   * podržet a pustit bez pohybu → nabídka, odebrat ze seznamu,
-  * klepnutí na dlaždici otevře graf, „All" je ve výchozím stavu široké.
+  * klepnutí na dlaždici otevře graf; záložka „All" není (v0.46.0).
 
 Spuštění: python tools/test-dlazdice.py http://localhost:8080/index.html
 """
@@ -158,20 +158,15 @@ sloupce = ev("""(() => { const t = [...document.querySelectorAll('#watchList .ti
   return new Set(t.slice(0, 2)).size === 1 && t[2] !== t[0]; })()""")
 over(sloupce, 'mřížka má přesně dva sloupce')
 
-print('5) klepnutí otevře graf, All je široké')
+print('5) klepnutí otevře graf, záložka All není (v0.46.0)')
 klepni('.tile[data-symbol=BTCUSDT]')
 time.sleep(1.5)
 over(ev("!document.getElementById('viewChart').hidden") and ev("document.getElementById('chartSymbol').textContent") == 'BTCUSDT',
      'klepnutí na dlaždici otevře graf')
 ev("history.back()")
 time.sleep(1)
-ev("[...document.querySelectorAll('#watchLists .chip')].find((c) => c.textContent.startsWith('All')).click()")
-time.sleep(0.6)
-ev("[...document.querySelectorAll('#watchLists .chip')].find((c) => c.textContent.startsWith('All')).click()")
-time.sleep(0.6)
-over(ev("document.getElementById('watchList').classList.contains('siroke')"), '„All“ je ve výchozím stavu široké')
-over(ev("document.getElementById('addPairBtn').hidden"), 'v „All“ není tlačítko +')
-over(ev("document.querySelectorAll('#watchList .tile .tile-star').length") == len(PARY), 'v „All“ má každá dlaždice záložku')
+over(not ev("[...document.querySelectorAll('#watchLists .chip')].some((c) => c.textContent.startsWith('All'))"),
+     've Watchlists není záložka „All“')
 
 konzole = ev('(window.__chyby||[]).join(" | ")') or ''
 over(not konzole, f'bez chyb v konzoli ({konzole})')

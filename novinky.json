@@ -1,23 +1,14 @@
 {
-  "verze": "0.45.0",
+  "verze": "0.46.0",
   "novinky": [
     {
-      "en": "Trade review from History: the trade fills about half the chart in the middle, candles before and after it are dimmed.",
-      "cs": "Prohlídka obchodu z Historie: obchod zabere zhruba polovinu grafu uprostřed, svíčky před ním a po něm jsou ztlumené."
+      "en": "Watchlists show only your own lists — the All tab is gone. Add any pair with the + button.",
+      "cs": "Seznamy ukazují jen tvoje vlastní seznamy — záložka All zmizela. Libovolný pár přidáš tlačítkem +."
     },
     {
-      "en": "One rule for the timeframe: the shortest one where the whole trade fits in about 24 candles.",
-      "cs": "Jedno pravidlo pro timeframe: nejkratší, na kterém se celý obchod vejde zhruba do 24 svíček."
+      "en": "The selected list always sits in the middle, + New stays on the right.",
+      "cs": "Vybraný seznam je vždy uprostřed, + New zůstává vpravo."
     }
   ],
-  "opravy": [
-    {
-      "en": "Older trades on short timeframes opened today's chart instead of the trade.",
-      "cs": "Starší obchody na krátkém timeframu otevřely dnešní graf místo obchodu."
-    },
-    {
-      "en": "No more blue flash when opening a trade.",
-      "cs": "Při otevření obchodu už nebliká modrý obdélník."
-    }
-  ]
+  "opravy": []
 }

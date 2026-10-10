@@ -1406,6 +1406,22 @@ aktivní sestavu → přejmenovat / smazat.
     jsou připravené v `sestavy.LIMITY`, zatím `zapnuto: false`.
   - Test: `tools/test-dlazdice.py` (skutečné dotyky: +, hledání, přesun,
     nabídka, rozložení).
+- **Záložka „All" zrušená (v0.46.0, přání uživatele):** ve Watchlists
+  jsou jen vlastní seznamy (`sestavy.poradi()` bez `VSE`); vždy aspoň
+  jeden existuje a je vybraný (`zajistiSeznam` — po smazání posledního
+  vznikne prázdný „My watchlist", uložené `aktivni: 'all'` se převede na
+  první seznam). Páry se přidávají jen tlačítkem + (hledání přes všechny
+  páry). Kód větve „All" ve `vykresliTrhy` (kategorie, řazení, hledání)
+  zůstal, jen je nedosažitelný — kdyby se uživatel k přehledu všech párů
+  vrátil. Rychlost: zrychlí to jen otevření té záložky (150 dlaždic
+  a grafů), start ani ceny ne — tickery jsou jeden dotaz pro všechny páry
+  a seznamy je potřebují stejně.
+- **Lišta seznamů (v0.46.0):** seznamy v posuvném pásu
+  `.watch-lists-pas`, vybraný se plynule posune **pod střed obrazovky**
+  (pod záložku Watchlists; počítá se z `getBoundingClientRect`,
+  `offsetLeft` se měří od jiného předka a vycházelo to o 39 px vedle),
+  mezery `::before/::after` dovolí vystředit i krajní. `+ New` stojí
+  mimo pás, napevno u pravého okraje. Test: `test-sestavy.py` (přepsaný).
 - ⚠ Magnet v grafu dřív v obsluze klepnutí sahal na tlačítko filtru
   oblíbených (zbloudilý řádek) — se zrušeným tlačítkem by spadl. Odstraněno.
 

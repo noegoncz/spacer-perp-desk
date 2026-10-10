@@ -70,7 +70,26 @@ function nactiSestavy() {
     prvni.nazev = t('lists.favourites');
     saveJson(KLIC_SESTAVY, stav);
   }
+  zajistiSeznam();
   return stav;
+}
+
+/*
+ * Záložka „All" je zrušená (v0.46.0, přání uživatele): ve Watchlists jsou
+ * jen vlastní seznamy. Vždy aspoň jeden existuje a jeden je vybraný —
+ * po smazání posledního vznikne prázdný „My watchlist".
+ */
+function zajistiSeznam() {
+  let zmena = false;
+  if (!stav.seznamy.length) {
+    stav.seznamy.push({ id: 'fav', nazev: t('lists.favourites'), polozky: [] });
+    zmena = true;
+  }
+  if (!stav.seznamy.some((x) => x.id === stav.aktivni)) {
+    stav.aktivni = stav.seznamy[0].id;
+    zmena = true;
+  }
+  if (zmena) saveJson(KLIC_SESTAVY, stav);
 }
 
 const uloz = () => saveJson(KLIC_SESTAVY, stav);
@@ -82,21 +101,19 @@ export function seznamy() {
 
 export function aktivni() {
   const s = nactiSestavy();
-  return s.aktivni === VSE || s.seznamy.some((x) => x.id === s.aktivni) ? s.aktivni : VSE;
+  return s.seznamy.some((x) => x.id === s.aktivni) ? s.aktivni : s.seznamy[0].id;
 }
 
 export function nastavAktivni(id) {
-  nactiSestavy().aktivni = id;
+  const s = nactiSestavy();
+  if (!s.seznamy.some((x) => x.id === id)) return;
+  s.aktivni = id;
   uloz();
 }
 
-/**
- * Pořadí pro přejíždění i v liště: vlastní sestavy a **„All" až na konci**
- * (2026-10-04, přání uživatele — do Trhů se chodí hlavně za vlastním
- * seznamem, všechny páry jsou až poslední volba před „+ New").
- */
+/** Pořadí pro přejíždění i v liště — jen vlastní seznamy (v0.46.0). */
 export function poradi() {
-  return [...seznamy().map((x) => x.id), VSE];
+  return seznamy().map((x) => x.id);
 }
 
 export function najdi(id) {
@@ -120,8 +137,12 @@ export function prejmenuj(id, nazev) {
 
 export function smaz(id) {
   const s = nactiSestavy();
-  s.seznamy = s.seznamy.filter((x) => x.id !== id);
-  if (s.aktivni === id) s.aktivni = VSE;
+  const i = s.seznamy.findIndex((x) => x.id === id);
+  if (i < 0) return;
+  s.seznamy.splice(i, 1);
+  // Vybraný se stane soused (předchozí, u prvního následující).
+  if (s.aktivni === id) s.aktivni = s.seznamy[Math.max(0, i - 1)]?.id ?? null;
+  zajistiSeznam();
   uloz();
 }
 

@@ -1,19 +1,18 @@
 # -*- coding: utf-8 -*-
 """
-Trhy: sestavy coinů, kategorie z CoinGecko a vnořené přejíždění.
+Watchlists: vlastní seznamy a vnořené přejíždění (od v0.46.0 bez „All").
 
 Ověřuje:
-  * dosavadní oblíbené (hvězdičky) se při prvním spuštění stanou sestavou
-    „Favourites",
-  * bez identifikovaných coinů je místo čipů tlačítko „Identify coins";
-    po klepnutí se stáhne soubor kategorií a u párů se objeví kategorie
-    (i u 1000PEPEUSDT → PEPE),
-  * filtr kategorie, přidání páru do sestavy hvězdičkou, nová sestava,
-    ruční oprava kategorie,
-  * přejíždění **skutečným dotykem**: v Trzích přepíná sestavy, za
-    poslední sestavou pokračuje na záložku Historie, před první na Pozice,
-  * pořadí (v0.31.3): vlastní seznamy, „All" až na konci před „+ New";
-    přejetí z Pozic otevře první seznam, z Historie „All",
+  * dosavadní oblíbené (hvězdičky) se při prvním spuštění stanou seznamem
+    „My watchlist"; v liště jsou jen seznamy, „+ New" stojí zvlášť
+    napevno u pravého okraje,
+  * uložený výběr „All" (starší verze) se převede na první seznam,
+  * nový seznam je vybraný a **vybraný stojí pod středem obrazovky**,
+    i když je seznamů víc, než se vejde,
+  * přejíždění **skutečným dotykem**: přepíná seznamy, za posledním
+    pokračuje na Historii, před prvním na Pozice; z Historie zpátky
+    přijde na poslední seznam,
+  * smazání všech seznamů nechá prázdný „My watchlist",
   * všechno přežije přenačtení stránky.
 
 Spuštění: python tools/test-sestavy.py http://localhost:8075/index.html
@@ -107,6 +106,22 @@ def zalozka():
     return ev("document.querySelector('.tab.active')?.dataset.tab")
 
 
+
+def stred_vybraneho():
+    return ev("""(() => { const a = document.querySelector('#watchLists .list-tab.active'); if (!a) return null;
+      const r = a.getBoundingClientRect(); return r.left + r.width / 2; })()""")
+
+
+def new_vpravo():
+    return ev("""(() => { const b = document.querySelector('#watchLists .list-new').getBoundingClientRect();
+      const l = document.getElementById('watchLists').getBoundingClientRect(); return Math.round(l.right - b.right); })()""")
+
+
+def listy():
+    return ev("[...document.querySelectorAll('#watchLists .watch-lists-pas .chip')].map((b) => b.firstChild.textContent + (b.classList.contains('active') ? '*' : ''))")
+
+
+SIRKA = 412
 p.prikaz('Page.navigate', url=sys.argv[1])
 time.sleep(5)
 klik('.tab[data-tab=watchlist]')
@@ -115,144 +130,80 @@ time.sleep(1.5)
 print('1) první spuštění')
 l = listy()
 print('   lišta:', l)
-over(l == ['My watchlist*', 'All', '+ New'], 'lišta: My watchlist (aktivní), All, + New')
+over(l == ['My watchlist*'], f'lišta: jen My watchlist, bez All ({l})')
+over(ev("!!document.querySelector('#watchLists > .list-new')"), '+ New je mimo posuvný pás')
+over((new_vpravo() or 99) < 10, f'+ New u pravého okraje ({new_vpravo()} px)')
 fav = ev("JSON.parse(localStorage.getItem('perpdesk.lists')).seznamy[0].polozky")
-over(fav == ['bybit:BTCUSDT'], f'oblíbené převedené do sestavy jako burza:pár ({fav})')
-over(ev("window.__stazeniKategorii") == 0, 'kategorie se samy nestahují')
-# Kategorie (a tlačítko Identify coins) jsou od v0.36.0 jen v „All".
-over(ev("document.getElementById('watchCats').hidden"), 've vlastním seznamu nejsou kategorie')
+over(fav == ['bybit:BTCUSDT'], f'oblíbené převedené do seznamu jako burza:pár ({fav})')
+over(ev("document.getElementById('watchCats').hidden") and ev("document.getElementById('watchTools').hidden"),
+     'bez kategorií a hledání (patřily k All)')
+over(radky() == ['BTCUSDT'], f'My watchlist ukazuje BTC ({radky()})')
 
-ev("document.querySelectorAll('#watchLists .chip')[1].click()")   # All
-time.sleep(0.4)
-over(ev("!!document.querySelector('#watchCats .identify-btn')"), 'v All je místo kategorií tlačítko Identify coins')
-
-print('2) identifikace coinů')
-klik('#watchCats .identify-btn')
-time.sleep(1)
-cipy = ev("[...document.querySelectorAll('#watchCats .chip')].map((c) => c.textContent)")
-print('   čipy:', cipy)
-over(cipy and any(c.startswith('Meme') for c in cipy), 'po identifikaci jsou čipy kategorií')
-pepe = ev("document.querySelector('.tile[data-symbol=\"1000PEPEUSDT\"] .tile-sub')?.textContent")
-over(pepe and 'Meme' in pepe, f'1000PEPEUSDT je Meme ({pepe})')
-
-print('3) filtr kategorie')
-ev("[...document.querySelectorAll('#watchCats .chip')].find((c) => c.textContent.startsWith('Meme')).click()")
-time.sleep(0.4)
-r = radky()
-over(r == ['1000PEPEUSDT', 'DOGEUSDT'], f'Meme ukazuje jen PEPE a DOGE ({r})')
-ev("[...document.querySelectorAll('#watchCats .chip')].find((c) => c.textContent.startsWith('No category')).click()")
-time.sleep(0.4)
-r = radky()
-over(r == ['XYZUSDT'], f'„No category" ukazuje páry, které CoinGecko nezná ({r})')
-ev("[...document.querySelectorAll('#watchCats .chip')].find((c) => c.textContent.startsWith('All')).click()")
-time.sleep(0.4)
-
-print('3b) řazení a přepnutí seznamu')
-over(ev("document.getElementById('sortBtn').textContent") == 'Vol ↓', 'výchozí řazení podle objemu')
-klik('#sortBtn')
-time.sleep(0.3)
-ev("[...document.querySelectorAll('#sortOptions .sheet-check')].find((b) => b.textContent.includes('Change')).click()")
-time.sleep(0.3)
-klik('#sortBtn')
-time.sleep(0.3)
-ev("[...document.querySelectorAll('#sortOptions .sheet-check')].find((b) => b.textContent.includes('Change')).click()")
-time.sleep(0.3)
-over(ev("document.getElementById('sortBtn').textContent") == '24h ↑', 'druhé klepnutí otočí směr')
-r = radky()
-over(r and r[0] == 'XYZUSDT', f'řazení podle změny vzestupně ({r[:3] if r else r})')
-klik('#sortBtn'); time.sleep(0.2)
-ev("[...document.querySelectorAll('#sortOptions .sheet-check')].find((b) => b.textContent.includes('Volume')).click()")
-time.sleep(0.3)
-# filtr kategorie a hledání se při přepnutí seznamu zruší
-ev("[...document.querySelectorAll('#watchCats .chip')].find((c) => c.textContent.startsWith('Meme')).click()")
-time.sleep(0.2)
-ev("const i = document.getElementById('watchSearch'); i.value = 'PEPE'; i.dispatchEvent(new Event('input'))")
-time.sleep(0.2)
-ev("document.querySelectorAll('#watchLists .chip')[0].click()")
-time.sleep(0.3)
-ev("document.querySelectorAll('#watchLists .chip')[1].click()")   # zpět na All
-time.sleep(0.3)
-over(len(radky() or []) == 7 and ev("document.getElementById('watchSearch').value") == '',
-     'po přepnutí seznamu je vidět všechno (bez filtru a hledání)')
-
-print('4) hvězdička a sestavy')
-klik('.tile[data-symbol="SOLUSDT"] .watch-star')
-time.sleep(0.3)
-over(ev("!document.getElementById('sheetPair').hidden"), 'hvězdička otevře nabídku páru')
-ev("[...document.querySelectorAll('#sheetPairLists .sheet-check')].find((b) => b.textContent.includes('My watchlist')).click()")
-time.sleep(0.3)
-klik('#sheetPairClose')
-time.sleep(0.3)
-over(ev("document.querySelector('.tile[data-symbol=\"SOLUSDT\"] .watch-star').classList.contains('on')"),
-     'SOL má plnou hvězdičku')
-klik('#watchLists .list-new')
-time.sleep(0.3)
-ev("document.getElementById('listName').value = 'Scalp'")
-klik('#listSaveBtn')
-time.sleep(0.4)
+print('2) víc seznamů, vybraný uprostřed')
+for nazev in ('Scalp', 'Swing', 'Long term', 'Memes', 'AI coins'):
+    klik('#watchLists .list-new')
+    time.sleep(0.3)
+    ev(f"document.getElementById('listName').value = {json.dumps(nazev)}")
+    klik('#listSaveBtn')
+    time.sleep(0.9)
 l = listy()
-over(l == ['My watchlist', 'Scalp*', 'All', '+ New'], f'nová sestava Scalp je aktivní, All zůstává na konci ({l})')
-over('empty' in (ev("document.getElementById('watchNote').textContent") or ''), 'prázdná sestava má nápovědu')
+print('   lišta:', l)
+over(l == ['My watchlist', 'Scalp', 'Swing', 'Long term', 'Memes', 'AI coins*'], f'nový seznam je vybraný ({l})')
+s = stred_vybraneho()
+over(s is not None and abs(s - SIRKA / 2) < 6, f'vybraný (poslední) je pod středem obrazovky ({s})')
+over((new_vpravo() or 99) < 10, f'+ New zůstává u pravého okraje ({new_vpravo()} px)')
+ev("[...document.querySelectorAll('#watchLists .list-tab')].find((b) => b.firstChild.textContent === 'My watchlist').click()")
+time.sleep(0.9)
+s = stred_vybraneho()
+over(s is not None and abs(s - SIRKA / 2) < 6, f'vybraný (první) je pod středem obrazovky ({s})')
+ev("[...document.querySelectorAll('#watchLists .list-tab')].find((b) => b.firstChild.textContent === 'Long term').click()")
+time.sleep(0.9)
+s = stred_vybraneho()
+over(s is not None and abs(s - SIRKA / 2) < 6, f'vybraný (prostřední) je pod středem obrazovky ({s})')
 
-print('5) přejíždění skutečným dotykem')
+print('3) přejíždění skutečným dotykem')
 y = ev("(() => { const r = document.getElementById('watchNote').getBoundingClientRect(); return r.top + 30; })()")
-prejed(340, 80, y)       # Scalp → All
+prejed(340, 80, y)       # Long term → Memes
+time.sleep(0.6)
 l = listy()
-over(l and l[2] == 'All*', f'přejetí doleva ze Scalp přepne na All ({l})')
-prejed(340, 80, 400)     # za All (poslední) → Historie
-over(zalozka() == 'history', f'za poslední sestavou přejetí přepne na Historii ({zalozka()})')
-prejed(80, 340, 400)     # zpátky na Trhy zprava → All
-over(zalozka() == 'watchlist', 'přejetím zpátky na Trhy')
+over(l and l[4] == 'Memes*', f'přejetí doleva přepne na další seznam ({l})')
+s = stred_vybraneho()
+over(s is not None and abs(s - SIRKA / 2) < 6, f'i po přejetí je vybraný uprostřed ({s})')
+prejed(340, 80, y)       # → AI coins
+prejed(340, 80, y)       # za posledním → Historie
+over(zalozka() == 'history', f'za posledním seznamem přejetí přepne na Historii ({zalozka()})')
+prejed(80, 340, 400)     # zpátky zprava → poslední seznam
 l = listy()
-over(l and l[2] == 'All*', f'přejetí z Historie otevře All ({l})')
-prejed(80, 340, 400)     # All → Scalp
-prejed(80, 340, 400)     # Scalp → My watchlist
+over(zalozka() == 'watchlist' and l and l[-1] == 'AI coins*', f'z Historie přijde na poslední seznam ({l})')
+for _ in range(5):
+    prejed(80, 340, y)   # až na My watchlist
 l = listy()
-over(l and l[0] == 'My watchlist*', f'přejetí doprava přepne na předchozí sestavu ({l})')
-r = radky()
-over(r == ['BTCUSDT', 'SOLUSDT'], f'My watchlist obsahuje BTC a SOL ({r})')
-prejed(80, 340, 400)     # před první → Pozice
-over(zalozka() == 'positions', f'před první sestavou přejetí přepne na Pozice ({zalozka()})')
-ev("document.querySelectorAll('#watchLists .chip')[2].click()")   # All (Trhy jsou skryté)
-prejed(340, 80, 400)     # z Pozic do Trhů → první seznam, ne naposledy otevřený
-l = listy()
-over(zalozka() == 'watchlist' and l and l[0] == 'My watchlist*',
-     f'přejetí z Pozic otevře první vlastní seznam ({l})')
-# Po přejetí aplikace spolkne první klepnutí (skutečný dotyk příznak smaže,
-# syntetický klik ne) — proto dvakrát.
-ev("document.querySelectorAll('#watchLists .chip')[2].click()")   # All
-time.sleep(0.2)
-ev("document.querySelectorAll('#watchLists .chip')[2].click()")
-time.sleep(0.8)
+over(l and l[0] == 'My watchlist*', f'přejetí doprava vede na první seznam ({l})')
+prejed(80, 340, y)       # před prvním → Pozice
+over(zalozka() == 'positions', f'před prvním seznamem přejetí přepne na Pozice ({zalozka()})')
 
-print('6) ruční oprava kategorie')
-klik('.tile[data-symbol="1000PEPEUSDT"] .watch-star')
-time.sleep(0.3)
-ev("[...document.querySelectorAll('#sheetPairCats .chip')].find((c) => c.textContent === 'AI').click()")
-time.sleep(0.3)
-over(ev("!document.getElementById('sheetPairReset').hidden"), 'po opravě je vidět tlačítko Reset')
-klik('#sheetPairClose')
-time.sleep(0.3)
-pepe = ev("document.querySelector('.tile[data-symbol=\"1000PEPEUSDT\"] .tile-sub')?.textContent")
-over(pepe and 'AI' in pepe, f'PEPE má po opravě AI ({pepe})')
-
-print('7) po přenačtení')
+print('4) starší uložené „All" a smazání všech seznamů')
+ev("""(() => { const s = JSON.parse(localStorage.getItem('perpdesk.lists')); s.aktivni = 'all';
+  localStorage.setItem('perpdesk.lists', JSON.stringify(s)); })()""")
 p.prikaz('Page.reload')
 time.sleep(5)
 klik('.tab[data-tab=watchlist]')
 time.sleep(1.5)
 l = listy()
-over(l == ['My watchlist', 'Scalp', 'All*', '+ New'], f'sestavy přežily přenačtení ({l})')
-over(ev("!document.querySelector('#watchCats .identify-btn')") and ev("window.__stazeniKategorii") == 0,
-     'kategorie jsou uložené, znovu se nestahují')
+over(l and l[0] == 'My watchlist*' and len(l) == 6, f'uložené All → první seznam, seznamy přežily přenačtení ({l})')
+ev("""(() => { const s = JSON.parse(localStorage.getItem('perpdesk.lists')); s.seznamy = []; s.aktivni = 'all';
+  localStorage.setItem('perpdesk.lists', JSON.stringify(s)); })()""")
+p.prikaz('Page.reload')
+time.sleep(5)
+klik('.tab[data-tab=watchlist]')
+time.sleep(1.5)
+l = listy()
+over(l == ['My watchlist*'], f'bez seznamů vznikne prázdný My watchlist ({l})')
+over(ev("!document.getElementById('addPairBtn').hidden"), 'tlačítko + na přidání páru je vidět')
 
-# magnet v grafu dřív sahal na zrušené tlačítko filtru oblíbených
-ev("document.querySelector('.tile').click()")
-time.sleep(2.5)
-klik('#magnetBtn')
-time.sleep(0.3)
 konzole = ev('(window.__chyby||[]).join(" | ")') or ''
 over(not konzole, f'bez chyb v konzoli ({konzole})')
 
 print()
 print('VÝSLEDEK:', 'VŠE V POŘÁDKU' if not chyby else f'!!! {len(chyby)} chyb')
+sys.exit(1 if chyby else 0)
