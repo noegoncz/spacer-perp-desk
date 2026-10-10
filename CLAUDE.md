@@ -1523,6 +1523,7 @@ se dotáhne posledních 7 dní. Mock napodobuje omezení Bybitu; test
   doprovodného textu, pak **jeden řádek na výstup** podle vzoru uživatele
   `1,000 JUP (336 USD) → 0.335 (+3.1 %) ..... +20.40` (bez data výstupu),
   dole podtržený součet. Datum i v řádku nad seznamem jako den.měsíc.rok.
+  Otevřené obchody jsou vždy nahoře (v0.38.2), pak od nejnovějšího výstupu.
 - ⚠ Plnění se rozlišují podle `execId` (getExecutions ho vrací); mock
   má pro plnění současné pozice pevný čas `TED_MOCKU`, jinak opakované
   stažení vyrábělo duplikáty a součet velikosti nikdy nevyšel na nulu.

@@ -93,6 +93,7 @@ time.sleep(3)
 karty2 = json.loads(ev(KARTY) or '[]')
 print('  po načtení dalších 30 dní:', len(karty2), 'obchodů, dotazů', ev("window.__dotazyClosedPnl"))
 over(len(karty2) == 3, 'přibyl starší obchod A (9 dní)')
+over(bool(karty2) and karty2[0]['otevreny'], 'otevřený obchod je nahoře')
 
 ev("[...document.querySelectorAll('#historyList .trade')].find((k) => k.classList.contains('otevreny')).click()")
 time.sleep(3)

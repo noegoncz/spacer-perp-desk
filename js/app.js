@@ -2380,7 +2380,8 @@ function seskupObchody(zaznamy, plneniPodleParu, pozice) {
     g.zavreno = g.otevrena ? null : g.vystupy[g.vystupy.length - 1].closedAt;
     g.posledni = g.vystupy[g.vystupy.length - 1].closedAt;
     return g;
-  }).sort((a, b) => b.posledni - a.posledni);
+  // Otevřené obchody vždy nahoře (v0.38.2), pak od nejnovějšího výstupu.
+  }).sort((a, b) => (b.otevrena - a.otevrena) || (b.posledni - a.posledni));
 }
 
 async function prepocitejSkupiny() {

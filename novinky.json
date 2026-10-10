@@ -1,9 +1,9 @@
 {
-  "verze": "0.38.1",
+  "verze": "0.38.2",
   "novinky": [
     {
-      "en": "Cleaner History: just the dates on each trade and one short line per exit.",
-      "cs": "Přehlednější Historie: u obchodu jen data a každý výstup na jednom krátkém řádku."
+      "en": "Open trades are always at the top of History.",
+      "cs": "Otevřené obchody jsou v Historii vždy nahoře."
     }
   ],
   "opravy": []
