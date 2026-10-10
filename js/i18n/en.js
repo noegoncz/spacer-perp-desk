@@ -200,6 +200,7 @@ export const en = {
   'source.low': 'Low',
   'chart.moreTools': 'More tools',
   'chart.vol24h': 'Vol 24h',
+  'chart.unit': 'Show values in coin or USDT',
   'chart.tools': 'Drawing tools',
   'chart.cursor': 'Cursor',
   'chart.magnet': 'Snap to candles',

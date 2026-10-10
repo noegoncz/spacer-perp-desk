@@ -97,6 +97,23 @@ print('   řádek:', info)
 over('Vol 24h' in info, 'v řádku je objem za 24 h')
 over('Liq' not in info, 'v řádku už není likvidace')
 
+print('4) hodnoty u čar v coinu / v USDT (v0.42.0)')
+tituly = lambda: ev("window.__graf.getOverlays().filter((o) => o.name === 'positionLine').map((o) => o.extendData.title)") or []
+print('   štítky:', tituly())
+over(ev("document.getElementById('unitBtnText').textContent") == 'JUP', 'přepínač ukazuje coin páru')
+over(any(t.startswith('Stop Loss 2,547 JUP') for t in tituly()), 'štítek SL v coinu')
+ev("document.getElementById('unitBtn').click()")
+time.sleep(0.5)
+print('   po přepnutí:', tituly())
+over(ev("document.getElementById('unitBtnText').textContent") == 'USDT', 'po klepnutí přepínač ukazuje USDT')
+over(any(t.startswith('Stop Loss') and t.endswith('USDT') for t in tituly()), 'štítek SL v USDT')
+over(any(t.startswith('Limit Buy') and t.endswith('USDT') for t in tituly()), 'štítek limitky v USDT')
+ev("document.getElementById('unitBtn').click()")
+time.sleep(0.3)
+over(any(t.startswith('Stop Loss 2,547 JUP') for t in tituly()), 'zpět na coin')
+over(ev("document.getElementById('drawToolbar').scrollWidth <= document.getElementById('drawToolbar').clientWidth + 1"),
+     's přepínačem se lišta pořád vejde na 344 px')
+
 konzole = ev('(window.__chyby||[]).join(" | ")') or ''
 over(not konzole, f'bez chyb v konzoli ({konzole})')
 

@@ -1245,6 +1245,19 @@ Ve vnořeném rozvržení se jinak ukotví k rodiči a skončí uprostřed obraz
 kde je uživatel nehledá. Nabídka indikátorů má v každém řádku ikonku, zkratku
 a stručný popis, a po výběru se sama zavře.
 
+**Štítky čar na úrovni čáry (v0.42.0, přání uživatele):** SL, TP,
+likvidace a limitky mají u pravého okraje štítek **přímo na čáře**,
+vyplněný barvou čáry (průhlednost 0,82, ať neřeže do očí) s kontrastním
+textem (`svetlaBarva`): typ příkazu a hodnota. Hodnota **v coinu nebo
+v USDT** podle přepínače v liště nástrojů (`#unitBtn`, ukazuje „JUP" /
+„USDT", `perpdesk.lineUnit`, `popisCary` v app.js). Hodnota pod čarou
+zmizela. Průměrný vstup: fialový štítek „Entry" vlevo od své cenovky na
+ose. Linka zisku (PNLLINE) beze změny. Alarm: zvonek v šedém štítku se
+šipkou doleva k čáře, navazuje na cenovku na ose (zvonek jedním plným
+mnohoúhelníkem — z čar a oblouků vypadal rozpadle). Popisky I/O v
+prohlídce mají orámování barvou textu. Na ≤ 420 px jsou tlačítka lišty
+34 px, aby se přepínač vešel. Test: `test-nastroje-a-timeframy.py`.
+
 **Jeden vzhled grafu odkudkoli** (v0.41.0, přání uživatele): `otevriGraf`
 si pozici na páru najde v `lastPositions` sám, ať se graf otevře z Pozic,
 z Watchlists, ze seznamu příkazů nebo z notifikace (jen prohlídka obchodu

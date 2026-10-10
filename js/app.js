@@ -979,6 +979,13 @@ function wireEvents() {
     });
   });
   naUdalost('toolsBtn', 'click', () => otevriNabidku('sheetTools'));
+  // Hodnoty u čar v coinu, nebo v USDT (v0.42.0).
+  naUdalost('unitBtn', 'click', () => {
+    hodnotyVUsdt = !hodnotyVUsdt;
+    store.saveJson('perpdesk.lineUnit', hodnotyVUsdt ? 'usdt' : 'coin');
+    oznacJednotku();
+    applyChartLines(true);
+  });
   // Přeložení Foldu mění šířku lišty timeframů — aktivní zůstane uprostřed.
   window.addEventListener('resize', () => ui.vycentrujInterval());
 
@@ -1354,6 +1361,7 @@ async function otevriGraf(symbol, position, trh) {
   ui.showChartError('');
   ui.showChart(true);
   ui.vycentrujInterval();
+  oznacJednotku();
 
   // Aby hardwarové tlačítko zpět zavřelo graf, a ne celou aplikaci.
   // (Graf nahrazující jiný otevřený graf záznam už má.)
@@ -3511,6 +3519,23 @@ function orderSide(order, position) {
   return above === long ? 'tp' : 'sl';
 }
 
+/*
+ * Text štítku čáry: typ příkazu a hodnota v coinu, nebo v USDT — podle
+ * přepínače v liště nástrojů (v0.42.0, `hodnotyVUsdt`).
+ */
+let hodnotyVUsdt = store.loadJson('perpdesk.lineUnit', 'coin') === 'usdt';
+function popisCary(typ, qty, price, mena) {
+  if (!(qty > 0)) return typ;
+  if (hideAmounts) return `${typ} ${MASK_CARY}`;
+  return hodnotyVUsdt ? `${typ} ${formatUsd(qty * price)} USDT` : `${typ} ${formatSize(qty)} ${mena}`;
+}
+
+function oznacJednotku() {
+  const mena = String(chartSymbol || '').replace(/USDT$|USDC$/, '') || 'COIN';
+  const text = el('unitBtnText');
+  if (text) text.textContent = hodnotyVUsdt ? 'USDT' : mena;
+}
+
 function buildChartLines(position, orders) {
   const lines = [];
 
@@ -3532,8 +3557,7 @@ function buildChartLines(position, orders) {
         color: buy ? BARVA_CARY.nakup : BARVA_CARY.prodej,
         bezCenovky: true,
         dash: CARKOVANI.limitka,
-        title: o.qty > 0 ? `${typ} ${hideAmounts ? MASK_CARY : formatSize(o.qty)} ${menaPar}` : typ,
-        pod: o.qty > 0 ? `${hideAmounts ? MASK_CARY : formatUsd(o.qty * price)} USDT` : '',
+        title: popisCary(typ, o.qty, price, menaPar),
       };
     }).filter(Boolean);
   }
@@ -3549,30 +3573,28 @@ function buildChartLines(position, orders) {
     lines.push({ price: position.entry, color: BARVA_CARY.vstupOsa, title: t('line.entry'),
                  plna: true, jenOsa: true });
   }
+
   /*
    * Popisky (2026-10-03, přání uživatele — dřív zabíraly moc místa na šířku):
    * nad čarou **typ příkazu jako na burze** a vedle množství v coinu, pod
    * čarou hodnota v USDT. Žádná čísla TP1/TP2 ani podíly v procentech.
    */
   const mena = String(position.symbol || '').replace(/USDT$|USDC$/, '');
-  const nad = (typ, qty) => (qty > 0 ? `${typ} ${hideAmounts ? MASK_CARY : formatSize(qty)} ${mena}` : typ);
-  const pod = (qty, price) => (qty > 0
-    ? `${hideAmounts ? MASK_CARY : formatUsd(qty * price)} USDT` : '');
 
   if (position.liq) {
     lines.push({ price: position.liq, color: BARVA_CARY.likvidace, dash: CARKOVANI.likvidace,
-                 title: nad(TYP_PRIKAZU.likvidace, position.size), pod: pod(position.size, position.liq) });
+                 title: popisCary(TYP_PRIKAZU.likvidace, position.size, position.liq, mena) });
   }
   if (position.stopLoss) {
     lines.push({ price: position.stopLoss, color: BARVA_CARY.sl, dash: CARKOVANI.uroven,
-                 title: nad(TYP_PRIKAZU.StopLoss, position.size), pod: pod(position.size, position.stopLoss) });
+                 title: popisCary(TYP_PRIKAZU.StopLoss, position.size, position.stopLoss, mena) });
   }
   // Barva podle směru příkazu: TP longu prodává (červeně), TP shortu
   // nakupuje (zeleně). Totéž limitky — prodej červeně, nákup zeleně.
   const barvaTp = position.side === 'Sell' ? BARVA_CARY.nakup : BARVA_CARY.prodej;
   if (position.takeProfit) {
     lines.push({ price: position.takeProfit, color: barvaTp, dash: CARKOVANI.tp,
-                 title: nad(TYP_PRIKAZU.TakeProfit, position.size), pod: pod(position.size, position.takeProfit) });
+                 title: popisCary(TYP_PRIKAZU.TakeProfit, position.size, position.takeProfit, mena) });
   }
 
   for (const order of orders) {
@@ -3586,14 +3608,14 @@ function buildChartLines(position, orders) {
     const buy = order.side === 'Buy';
     const typ = TYP_PRIKAZU[order.stopOrderType] || (buy ? TYP_PRIKAZU.limitBuy : TYP_PRIKAZU.limitSell);
     if (strana === 'tp') {
-      lines.push({ price, color: barvaTp, dash: CARKOVANI.tp, title: nad(typ, order.qty), pod: pod(order.qty, price) });
+      lines.push({ price, color: barvaTp, dash: CARKOVANI.tp, title: popisCary(typ, order.qty, price, mena) });
     } else if (strana === 'sl') {
-      lines.push({ price, color: BARVA_CARY.sl, dash: CARKOVANI.castecna, title: nad(typ, order.qty), pod: pod(order.qty, price) });
+      lines.push({ price, color: BARVA_CARY.sl, dash: CARKOVANI.castecna, title: popisCary(typ, order.qty, price, mena) });
     } else {
       // Limitky bez cenovky na ose — u přikupování jich bývá víc a osa by se
       // zaplnila štítky. Nákup zeleně, prodej červeně.
       lines.push({ price, color: buy ? BARVA_CARY.nakup : BARVA_CARY.prodej, bezCenovky: true,
-                   dash: CARKOVANI.limitka, title: nad(typ, order.qty), pod: pod(order.qty, price) });
+                   dash: CARKOVANI.limitka, title: popisCary(typ, order.qty, price, mena) });
     }
   }
 

@@ -181,55 +181,48 @@ function registrovatCaruPozice() {
     needDefaultPointFigure: false,
     needDefaultXAxisFigure: false,
     needDefaultYAxisFigure: false,
+    /*
+     * Štítek **na úrovni čáry** (v0.42.0, přání uživatele): u pravého okraje
+     * obdélník vyplněný barvou čáry (lehce průhledný, ať neřeže do očí)
+     * s kontrastním textem — typ příkazu a hodnota v coinu nebo v USDT
+     * (přepínač v liště nástrojů). Dřív text nad čarou a hodnota pod ní.
+     * Průměrný vstup (`jenOsa`) čáru nemá: jen fialový štítek „Entry"
+     * vlevo od své cenovky na ose.
+     */
     createPointFigures: ({ overlay, coordinates, bounding }) => {
       const d = overlay.extendData || {};
       const y = coordinates[0].y;
-      // `jenOsa`: v grafu nic, jen štítek ceny na ose (průměrný vstup).
-      if (d.jenOsa) return [];
-      // Čára s časem (bod má čas): `odCasu` začíná u té svíčky a vede doprava,
-      // `doCasu` vede od levého okraje k té svíčce (vstup: k poslednímu
-      // nákupu). Ostatní úrovně přes celou šířku.
+      const stitek = (text, barva, x) => ({
+        type: 'text',
+        attrs: { x, y, text, align: 'right', baseline: 'middle' },
+        styles: {
+          color: svetlaBarva(barva) ? BARVY.pozadi : '#ffffff',
+          size: 10,
+          family: 'sans-serif',
+          backgroundColor: rgba(barva, 0.82),
+          borderSize: 0,
+          borderRadius: 2,
+          paddingLeft: 5,
+          paddingRight: 5,
+          paddingTop: 2,
+          paddingBottom: 2,
+        },
+      });
+      if (d.jenOsa) return d.title ? [stitek(d.title, d.barvaOsy || d.color, bounding.width - 1)] : [];
       const xBodu = Number.isFinite(coordinates[0].x)
         ? Math.min(bounding.width, Math.max(0, coordinates[0].x)) : null;
-      // `zub`: jen krátký úsek u cenové osy (průměrný vstup, v0.30.2).
-      const x0 = d.zub ? Math.max(0, bounding.width - 44) : (d.odCasu && xBodu !== null ? xBodu : 0);
+      const x0 = d.odCasu && xBodu !== null ? xBodu : 0;
       const x1 = d.doCasu && xBodu !== null ? xBodu : bounding.width;
-      const styl = {
-        color: d.color, size: 11, family: 'sans-serif', backgroundColor: 'transparent',
-        borderSize: 0, paddingLeft: 0, paddingRight: 0, paddingTop: 0, paddingBottom: 0,
-      };
-      const xTextu = d.vlevo ? 5 : bounding.width - 5;
-      const zarovnani = d.vlevo ? 'left' : 'right';
-      // Pod čarou množství a hodnota příkazu („3 SOL · 360.00 USDT").
-      const podCarou = d.pod ? [{
-        type: 'text',
-        attrs: { x: xTextu, y: y + 3, text: d.pod, align: zarovnani, baseline: 'top' },
-        styles: { ...styl, size: 10 },
-      }] : [];
       return [
-        ...podCarou,
         {
           type: 'line',
           attrs: { coordinates: [{ x: x0, y }, { x: x1, y }] },
-          // Všechny čáry stejně tenké. Rozlišuje je barva a typ čárkování,
-          // ne tloušťka — jinak graf působí jako změť různých linek.
-          // Vstup je jediná plná: je to průměr, ne příkaz, který čeká.
+          // Všechny čáry stejně tenké; rozlišuje je barva a čárkování.
           styles: d.plna
             ? { color: d.color, size: 1, style: 'solid' }
-            : {
-              color: d.color,
-              size: 1,
-              style: 'dashed',
-              dashedValue: d.dash || [6, 4],
-            },
+            : { color: d.color, size: 1, style: 'dashed', dashedValue: d.dash || [6, 4] },
         },
-        {
-          // Popisek u pravého okraje, vedle cenové osy. Bez podkladu —
-          // barevný blok za textem ujídá pohled na svíčky.
-          type: 'text',
-          attrs: { x: xTextu, y: y - 3, text: d.title || '', align: zarovnani, baseline: 'bottom' },
-          styles: styl,
-        },
+        ...(d.title ? [stitek(d.title, d.color, bounding.width - 4)] : []),
       ];
     },
     /*
@@ -338,15 +331,26 @@ function popisAlarmu(text, x, y, barva, vypnuty = false) {
  * Zvonek pro cenovku alarmu na ose (v0.41.0, jako TabTrader): kopule,
  * boky, spodní hrana a srdce. `preskrtnuty` = vypnutý alarm.
  */
-function zvonek(x, y, barva, preskrtnuty = false) {
-  const cara = (a, b) => ({ type: 'line', attrs: { coordinates: [a, b] }, styles: { color: barva, size: 1 } });
+function zvonek(x, y, barva, preskrtnuty = false, pozadi = '#56606e') {
+  // Plný obrys zvonku jedním mnohoúhelníkem — z čar a oblouků vypadal
+  // na telefonu „rozpadeně" (v0.42.0).
+  const tvar = [
+    { x: x - 4.2, y: y + 3 }, { x: x - 3.4, y: y + 1.8 }, { x: x - 3.2, y: y - 1 },
+    { x: x - 2.3, y: y - 3.3 }, { x: x, y: y - 4.3 }, { x: x + 2.3, y: y - 3.3 },
+    { x: x + 3.2, y: y - 1 }, { x: x + 3.4, y: y + 1.8 }, { x: x + 4.2, y: y + 3 },
+  ];
   return [
-    { type: 'arc', attrs: { x, y: y - 1, r: 3, startAngle: Math.PI, endAngle: Math.PI * 2 }, styles: { color: barva, size: 1 } },
-    cara({ x: x - 3, y: y - 1 }, { x: x - 4, y: y + 3 }),
-    cara({ x: x + 3, y: y - 1 }, { x: x + 4, y: y + 3 }),
-    cara({ x: x - 4.5, y: y + 3 }, { x: x + 4.5, y: y + 3 }),
-    { type: 'arc', attrs: { x, y: y + 4.6, r: 1, startAngle: 0, endAngle: Math.PI * 2 }, styles: { color: barva, size: 1 } },
-    ...(preskrtnuty ? [cara({ x: x - 5, y: y + 5 }, { x: x + 5, y: y - 6 })] : []),
+    { type: 'polygon', attrs: { coordinates: tvar }, styles: { style: 'fill', color: barva } },
+    { type: 'rect', attrs: { x: x - 1.2, y: y + 3.6, width: 2.4, height: 1.6 }, styles: { style: 'fill', color: barva } },
+    ...(preskrtnuty ? [{
+      type: 'line',
+      attrs: { coordinates: [{ x: x - 5, y: y + 5 }, { x: x + 5, y: y - 5 }] },
+      styles: { color: pozadi, size: 2 },
+    }, {
+      type: 'line',
+      attrs: { coordinates: [{ x: x - 5, y: y + 5 }, { x: x + 5, y: y - 5 }] },
+      styles: { color: barva, size: 1 },
+    }] : []),
   ];
 }
 
@@ -391,14 +395,26 @@ function registrovatCaryAlarmu() {
       const y = coordinates[0].y;
       const barva = d.aktivni === false ? 'rgba(110, 122, 138, 0.45)' : (d.color || 'rgba(176, 186, 200, 0.6)');
       const vypnuty = d.aktivni === false;
-      // Zvonek na konci čáry, těsně u cenovky na ose (osa je na něj úzká).
+      /*
+       * Zvonek v šedém štítku, který navazuje na cenovku na ose a šipkou
+       * ukazuje doleva k čáře — jako v TabTraderu (v0.42.0). Osa je na
+       * zvonek úzká, proto stojí štítek těsně vlevo od ní.
+       */
+      const pozadi = vypnuty ? '#2b333e' : (d.color ? rgba(d.color, 0.85) : '#56606e');
+      const w = bounding.width;
       return [
         {
           type: 'line',
-          attrs: { coordinates: [{ x: 0, y }, { x: bounding.width - 16, y }] },
+          attrs: { coordinates: [{ x: 0, y }, { x: w - 26, y }] },
           styles: { color: barva, size: 1, style: 'solid' },
         },
-        ...zvonek(bounding.width - 8, y - 1, vypnuty ? '#8b96a5' : '#e6ebf2', vypnuty),
+        {
+          type: 'polygon',
+          attrs: { coordinates: [{ x: w - 20, y: y - 8 }, { x: w - 26, y }, { x: w - 20, y: y + 8 }] },
+          styles: { style: 'fill', color: pozadi },
+        },
+        { type: 'rect', attrs: { x: w - 20, y: y - 8, width: 20, height: 16 }, styles: { style: 'fill', color: pozadi } },
+        ...zvonek(w - 10, y, vypnuty ? '#8b96a5' : '#ffffff', vypnuty, pozadi),
       ];
     },
     createYAxisFigures: ({ chart, overlay, coordinates }) => {
@@ -587,9 +603,10 @@ function registrovatZnackuPlneni() {
             color: d.vstup ? '#8fd9a4' : '#e8968f',
             size: 10,
             family: 'sans-serif',
-            backgroundColor: 'rgba(13, 20, 32, 0.72)',
-            borderColor: 'transparent',
-            borderSize: 0,
+            backgroundColor: 'rgba(13, 20, 32, 0.8)',
+            // Orámování barvou textu (v0.42.0) — na tmavém pozadí splýval.
+            borderColor: d.vstup ? 'rgba(143, 217, 164, 0.7)' : 'rgba(232, 150, 143, 0.7)',
+            borderSize: 1,
             borderRadius: 3,
             paddingLeft: 4,
             paddingRight: 4,

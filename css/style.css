@@ -2636,3 +2636,14 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 /* Funding na kartě: krátké popisky a čísla (v0.40.0). */
 .pos-funding .fp { display: inline-flex; gap: 4px; white-space: nowrap; }
 .pos-funding .fp-popis { color: var(--text-dim); }
+
+/* Přepínač coin / USDT u čar v grafu (v0.42.0). */
+.tool-btn.tool-jednotka { width: auto; min-width: 38px; padding: 0 5px; }
+.tool-jednotka span { font-size: 0.66rem; font-weight: 700; letter-spacing: 0.02em; color: var(--text); }
+/* Zavřený Fold: o tlačítko víc v liště — o kousek užší, ať se vejde. */
+@media (max-width: 420px) {
+  .draw-toolbar .tool-btn { width: 34px; }
+  .draw-toolbar .tool-btn.tool-jednotka { width: auto; min-width: 34px; padding: 0 3px; }
+  .tool-pinned, .tool-main { gap: 0; }
+  .tool-pinned { padding-left: 4px; }
+}
