@@ -15,6 +15,8 @@ Checkpoint 8:
   * upozornění při protnutí SL/TP mark cenou,
   * volume profile jako vlastní indikátor.
 """
+import sys as _sys
+_sys.stdout.reconfigure(errors='replace')
 import os, sys, time, json
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from dotyk import Prohlizec
@@ -102,18 +104,18 @@ print('funding u longu (JUP): ', fundingLong or '(chybí)')
 print('funding u shortu (ETH):', fundingShort or '(chybí)')
 if 'Funding' not in (fundingLong or ''):
     chyby.append('funding na kartě chybí')
-# ⚠ Musí být vidět interval i denní částka. Samotná denní částka působila,
-# jako by se funding platil jednou za 24 h — platí se po 8 h.
-if 'every 8 h' not in (fundingLong or ''):
-    chyby.append('u fundingu chybí interval stržení (every 8 h)')
-if 'USDT/day' not in (fundingLong or ''):
+# ⚠ Musí být vidět interval i denní částka (v0.40.0 krátce: „/8 h", „Day").
+# Samotná denní částka působila, jako by se funding platil jednou za 24 h.
+if '/8 h' not in (fundingLong or ''):
+    chyby.append('u fundingu chybí interval stržení (/8 h)')
+if 'Day' not in (fundingLong or ''):
     chyby.append('u fundingu chybí denní částka')
-# Kladná sazba: long platí shortovi. Směr musí být na kartě vidět, ze
-# samotného „+0,01 %" ho nikdo nepozná.
-if 'you pay' not in (fundingLong or ''):
-    chyby.append('u longu s kladnou sazbou má stát „you pay"')
-if 'you receive' not in (fundingShort or ''):
-    chyby.append('u shortu s kladnou sazbou má stát „you receive"')
+# Kladná sazba: long platí shortovi. Směr ukazuje znaménko (v0.40.0):
+# mínus = platíš, plus = dostáváš.
+if 'Next−' not in (fundingLong or ''):
+    chyby.append('u longu s kladnou sazbou má být platba se znaménkem mínus')
+if 'Next+' not in (fundingShort or ''):
+    chyby.append('u shortu s kladnou sazbou má být příjem se znaménkem plus')
 
 # ---- příkazy: v kartě proužek, v seznamu jen páry bez pozice ----
 # Mock vrací dva příkazy na JUPUSDT, kde pozice je — ty patří do proužku

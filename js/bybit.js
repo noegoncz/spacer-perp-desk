@@ -248,6 +248,10 @@ export class BybitClient {
      * oknech. Maže se spolu s pozicí.
      */
     this.fundingSoucty = new Map();
+    // Uložené z minula (v0.40.0, `obnovUlozeneFundingy`): čas otevření
+    // a součet se jen ověří / doplní, nepočítají se znovu od začátku.
+    this.ulozeneOtevreni = new Map();   // symbol → { otevreno, overeno }
+    this.ulozeneSoucty = new Map();     // symbol → { otevreno, soucet }
 
     this.status = { ws: 'idle', rest: 'idle', lastUpdate: null };
 
@@ -430,6 +434,20 @@ export class BybitClient {
   }
 
   /**
+   * Funding z minulého spuštění (aplikace ho drží v telefonu). Karta ho
+   * ukáže hned a `refreshFunding` ho na pozadí obnoví: sazbu znovu, čas
+   * otevření jen ověří jedním dotazem a součet doplní o nová stržení.
+   */
+  obnovUlozeneFundingy(ulozene) {
+    for (const [symbol, z] of Object.entries(ulozene || {})) {
+      if (!z?.funding) continue;
+      if (!this.fundingCache.has(symbol)) this.fundingCache.set(symbol, { kdy: 0, funding: z.funding });
+      if (z.otevreno) this.ulozeneOtevreni.set(symbol, { otevreno: z.otevreno, overeno: z.overeno || 0 });
+      if (z.soucet && z.otevreno) this.ulozeneSoucty.set(symbol, { otevreno: z.otevreno, soucet: z.soucet });
+    }
+  }
+
+  /**
    * Funding pro páry s otevřenou pozicí. Sazba se hýbe po hodinách, takže
    * se drží deset minut v paměti — jinak by každý třicetisekundový poll
    * poslal na burzu dva dotazy na pár zbytečně.
@@ -463,6 +481,12 @@ export class BybitClient {
           // sedm dní — to je pořád lepší než neukázat nic.
           const otevreno = await this.otevreniPozice(pozice).catch(() => null);
           zaplaceno = await this.getFundingPaid(symbol, otevreno);
+          this.handlers.onFundingUlozit?.(symbol, {
+            funding: { ...funding, zaplaceno },
+            otevreno,
+            overeno: Date.now(),
+            soucet: this.fundingSoucty.get(symbol) || null,
+          });
         } catch (err) {
           // ⚠ Nepolykat potichu. Když součet chybí, musí jít zjistit proč —
           // jinak se hádá, jestli chybí oprávnění, nebo je chyba v kódu.
@@ -524,6 +548,25 @@ export class BybitClient {
   }
 
   async dohledejOtevreni(pozice) {
+    /*
+     * Čas otevření z minula (v0.40.0): stačí ověřit, že se pozice od té
+     * doby nezavřela a neotevřela znovu — jeden dotaz na plnění od
+     * posledního ověření místo procházení týdnů dozadu.
+     */
+    const ulozene = this.ulozeneOtevreni.get(pozice.symbol);
+    if (ulozene) {
+      this.ulozeneOtevreni.delete(pozice.symbol);
+      const long = pozice.side !== 'Sell';
+      const epsilon = Math.abs(pozice.size) * 1e-6;
+      const plneni = await this.getExecutions(pozice.symbol, Math.max(ulozene.overeno, ulozene.otevreno) - 3600e3, Date.now());
+      let zbyva = pozice.size;
+      for (let i = plneni.length - 1; i >= 0; i -= 1) {
+        zbyva -= (plneni[i].buy === long ? 1 : -1) * plneni[i].qty;
+        // Pozice se mezitím otevřela znovu — tohle je její nové otevření.
+        if (zbyva <= epsilon && plneni[i].time > ulozene.otevreno) return plneni[i].time;
+      }
+      return ulozene.otevreno;
+    }
 
     const OKNO = 7 * 86400000;
     const long = pozice.side !== 'Sell';
@@ -936,6 +979,14 @@ export class BybitClient {
      * Takhle je drahý jen první průchod; pak se přidává posledních pár
      * minut. Záznam se maže, až když pozice zmizí.
      */
+    // Součet z minula navazuje, jen když patří téže pozici (stejné otevření).
+    const minule = this.ulozeneSoucty.get(symbol);
+    if (minule) {
+      this.ulozeneSoucty.delete(symbol);
+      if (!this.fundingSoucty.has(symbol) && odKdy && minule.otevreno === odKdy && minule.soucet?.doKdy) {
+        this.fundingSoucty.set(symbol, minule.soucet);
+      }
+    }
     const ulozeny = this.fundingSoucty.get(symbol);
     const odkud = ulozeny ? ulozeny.doKdy : odKdy;
     const pridavek = await this.sectiZDeniku(symbol, odkud, ted, !ulozeny);
@@ -1276,6 +1327,7 @@ export class BybitClient {
         this.otevreniCache.delete(p.symbol);
         this.fundingCache.delete(p.symbol);
         this.fundingSoucty.delete(p.symbol);
+        this.handlers.onFundingUlozit?.(p.symbol, null);
       }
       changed = true;
     }

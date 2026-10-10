@@ -361,15 +361,10 @@ export const cs = {
   'account.unavailable': 'Přehled účtu potřebuje u klíče oprávnění Wallet.',
   'account.needsWallet': 'Přidej klíči na Bybitu oprávnění Wallet (čtení), ať je vidět equity a margin.',
 
+  'funding.nextShort': 'Další',
+  'funding.dayShort': 'Den',
+  'funding.totalShort': 'Celkem',
   'funding.label': 'Funding',
-  'funding.next': 'za {time}',
-  'funding.perInterval': '{amount} USDT/{interval}',
-  'funding.perDay': '{amount} USDT/den',
-  'funding.every': 'každých {interval}',
-  'funding.paidFor': 'celkem zaplaceno {amount} USDT za {time}',
-  'funding.earnedFor': 'celkem získáno {amount} USDT za {time}',
-  'funding.youPay': 'platíš',
-  'funding.youGet': 'dostáváš',
 
   'orders.title': 'Příkazy bez pozice',
   'orders.none': 'Žádné otevřené příkazy.',

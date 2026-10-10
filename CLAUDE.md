@@ -1551,6 +1551,24 @@ záznamy) a **plnění po párech** (`plneni:SYMBOL`).
 - Testy: `test-mezipamet.py` (rychlé zobrazení při pomalé burze, jen
   poslední úsek, ⟳, odpojení), `test-odhlaseni.py` (smazání při odhlášení).
 
+**Funding a trojúhelníky hned (v0.40.0):**
+- **Funding pozice v telefonu** (mezipaměť, klíč `funding`): sazba,
+  čas otevření pozice a mezisoučet zaplaceného. `bybit.js` o úložišti
+  neví — dostane je přes `obnovUlozeneFundingy` a nové hlásí
+  `onFundingUlozit`. Karta ukáže uložený funding s prvními pozicemi a na
+  pozadí se obnoví: čas otevření se jen **ověří jedním dotazem** na plnění
+  od posledního ověření (`dohledejOtevreni` — když se pozice mezitím
+  zavřela a otevřela znovu, vezme se nové otevření), součet navazuje,
+  jen když patří témuž otevření.
+- **Trojúhelníky** (`znackyPlneni`): nejdřív z uložených plnění, čas
+  otevření spočítaný z nich (`otevreniZPlneni`); pak doplnění z burzy.
+  `client.otevreniPozice` (víc dotazů) jen když plnění k otevření nesahají.
+- **Funding na kartě krátce** (přání uživatele — dlouhá věta):
+  `Funding +0.0050 %/4h  Next −0.09 (48 m)  Day −0.53  Total −1.41 (5 d)`;
+  směr peněz znaménkem a barvou (− červeně platíš, + zeleně dostáváš).
+- Test: `test-rychle-z-telefonu.py` (burza zdržená o 3 s, funding
+  i trojúhelníky musí být hned), na starém kódu padá.
+
 **Barvy jako TabTrader (v0.38.0):** svíčky tlumené `#60a868` / `#e05858`
 (`BARVY.svickaRust/svickaPokles`), trojúhelníky plnění jasné `#00e020` /
 `#f84840` — odebrané z uživatelova screenshotu TT. Syté `rust`/`pokles`

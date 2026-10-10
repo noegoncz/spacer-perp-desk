@@ -169,6 +169,13 @@ const client = new BybitClient({
     }
     zkontrolujSltp(list);
   },
+  // Stav fundingu pozice do telefonu (v0.40.0) — příští start ho ukáže hned.
+  onFundingUlozit(symbol, stav) {
+    if (stav) fundingyUlozene[symbol] = stav;
+    else delete fundingyUlozene[symbol];
+    clearTimeout(ulozFundingy.odklad);
+    ulozFundingy.odklad = setTimeout(ulozFundingy, 1000);
+  },
   onAccount(ucet, chyba) {
     ucetStav = { ucet, chyba };
     ui.renderAccount(ucet, chyba, hideAmounts);
@@ -489,34 +496,58 @@ function sloucitPodlePrikazu(plneni) {
 
 let pozadavekPlneni = 0;
 
+/**
+ * Čas otevření pozice z plnění, která už máme (bez sítě): od současné
+ * velikosti dozadu, kde je nula, tam pozice začala. `null`, když plnění
+ * k otevření nesahají.
+ */
+function otevreniZPlneni(plneni, position) {
+  if (!position || !(position.size > 0)) return null;
+  const long = position.side !== 'Sell';
+  const epsilon = position.size * 1e-6;
+  let zbyva = position.size;
+  for (let i = plneni.length - 1; i >= 0; i -= 1) {
+    zbyva -= (plneni[i].buy === long ? 1 : -1) * plneni[i].qty;
+    if (zbyva <= epsilon) return plneni[i].time;
+  }
+  return null;
+}
+
 async function znackyPlneni(position, od = Date.now() - OKNO_PLNENI) {
   if (!client.hasCredentials() || !chartSymbol) return;
   const symbol = chartSymbol;
   const cislo = ++pozadavekPlneni;
   /*
    * Plnění **otevřené pozice** (od jejího otevření) jsou velká a sytá,
-   * starší — už zavřené obchody na páru — malá a tlumená; na první pohled
-   * je vidět, co je součást běžícího obchodu. Bez pozice jsou všechna malá.
+   * starší — už zavřené obchody na páru — malá a tlumená.
    *
-   * ⚠ `openedAt` (createdTime) je čas, kdy na páru vznikla pozice **poprvé
-   * v historii**, ne ta současná. Skutečné otevření dopočítá klient z plnění.
+   * Rychle (v0.40.0, přání uživatele): nejdřív se značky nakreslí z plnění
+   * uložených v telefonu a čas otevření se spočítá z nich (žádné čekání na
+   * burzu); pak se doplní, co přibylo. Dopočet otevření z burzy
+   * (`client.otevreniPozice`, víc dotazů za sebou) jen když uložená plnění
+   * k otevření nesahají.
    */
-  const otevreno = position ? await client.otevreniPozice(position).catch(() => null) : null;
-  try {
-    const plneni = await dotahniPlneni(symbol, od);
-    // Uživatel mezitím mohl přepnout na jiný pár nebo spustit novější dotažení.
+  const kresli = (plneni, otevreno) => {
     if (chartSymbol !== symbol || prohlizenyObchod || cislo !== pozadavekPlneni) return;
-    // Bez známého otevření (klíč bez práva, limit) se za současná berou plnění posledního týdne.
+    // Bez známého otevření se za současná berou plnění posledního týdne.
     const hranice = otevreno ?? (Date.now() - OKNO_PLNENI);
     const soucasne = (f) => Boolean(position) && f.time >= hranice;
     chart.setTradeMarks(sloucitPodlePrikazu(plneni).map((f) => ({
       time: f.time,
       price: f.price,
-      vstup: f.buy,             // nákup ▲ pod cenou, prodej ▼ nad ní
+      vstup: f.buy,             // nákup ▲, prodej ▼
       maly: true,
       stary: !soucasne(f),
       color: f.buy ? BARVA_PLNENI.nakup : BARVA_PLNENI.prodej,
     })));
+  };
+  try {
+    const ulozena = await dotahniPlneni(symbol, od, true);
+    if (ulozena.length) kresli(ulozena, otevreniZPlneni(ulozena, position));
+    const plneni = await dotahniPlneni(symbol, od);
+    let otevreno = otevreniZPlneni(plneni, position);
+    if (otevreno === null && position) otevreno = await client.otevreniPozice(position).catch(() => null);
+    kresli(plneni, otevreno);
   } catch {
     /* značky jsou doplněk — bez nich graf funguje dál */
   }
@@ -747,6 +778,12 @@ function skonciSnimek() {
   el('positionList')?.classList.remove('zastarale');
 }
 
+/* Funding pozic z minulého spuštění (js/mezipamet.js, klíč `funding`). */
+let fundingyUlozene = {};
+function ulozFundingy() {
+  mezipamet.uloz('funding', fundingyUlozene);
+}
+
 async function connectIfPossible() {
   const { apiKey, apiSecret } = store.loadCredentials();
 
@@ -760,6 +797,12 @@ async function connectIfPossible() {
   client.setCredentials(apiKey, apiSecret);
   mezipamet.nastavVlastnika(apiKey);
   if (!ukazSnimek()) ui.showLoading();
+  // Uložený funding hned do klienta — karty ho ukážou s prvními pozicemi,
+  // obnoví se na pozadí. Čtení z telefonu trvá milisekundy.
+  try {
+    fundingyUlozene = (await mezipamet.nacti('funding')) || {};
+    client.obnovUlozeneFundingy(fundingyUlozene);
+  } catch { /* bez uloženého fundingu se jen počítá od začátku */ }
   zacatekNacitani = Date.now();
   ukazDiagnostiku();
   try {
@@ -1229,6 +1272,9 @@ function zapomenHistorii() {
   historieAktualizovano = 0;
   historieZTelefonu = false;
   plneniPary.clear();
+  fundingyUlozene = {};
+  client.ulozeneOtevreni.clear();
+  client.ulozeneSoucty.clear();
 }
 
 function clearCredentials() {

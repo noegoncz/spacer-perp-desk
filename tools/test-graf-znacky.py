@@ -20,6 +20,8 @@ Ověřuje, co si uživatel vyžádal:
 
 Spuštění: python tools/test-graf-znacky.py http://localhost:8080
 """
+import sys as _sys
+_sys.stdout.reconfigure(errors='replace')
 import os, sys, time, json
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from dotyk import Prohlizec
@@ -152,36 +154,30 @@ elif not (castky[0].startswith('−') and 'USDT' in castky[0]
           and castky[1].startswith('+') and 'USDT' in castky[1]):
     chyby.append(f'částky k SL a TP nesedí: {castky}')
 
-# ---- funding: pořadí údajů a součet od skutečného otevření ----
+# ---- funding: krátce čísly (v0.40.0) a součet od skutečného otevření ----
 casti = json.loads(ev("""JSON.stringify(
-  [...document.querySelectorAll('.pos-funding span')].map((e) => e.textContent))""") or '[]')
+  [...document.querySelectorAll('.pos-funding .fp')].map((e) => e.textContent))""") or '[]')
 print('patička po částech:', casti)
-# Pořadí: sazba → nejbližší stržení s částkou → součet. Nic jiného.
-if len(casti) != 3:
-    chyby.append(f'patička má mít tři části, má {len(casti)}')
+# Funding +0.0100 %/8 h · Next −0.08 (1 h 0 m) · Day −0.23 · Total −0.31 (1 d)
+if len(casti) != 4:
+    chyby.append(f'patička má mít čtyři části, má {len(casti)}')
 else:
-    if not casti[0].startswith('Funding'):
-        chyby.append(f'sazba nestojí první: {casti[0]}')
-    if not casti[1].startswith('in ') or 'you pay' not in casti[1]:
-        chyby.append(f'nejbližší stržení nestojí druhé i s částkou: {casti[1]}')
-    # ⚠ Interval musí být vypsaný slovem. Samotné „8 h" v závorce vypadalo
-    # jako cokoli — každý pár má přitom interval vlastní.
-    if 'every 8 h' not in casti[1]:
-        chyby.append(f'u částky chybí interval stržení slovem: {casti[1]}')
+    # ⚠ Interval stržení musí být vidět — každý pár má vlastní.
+    if not (casti[0].startswith('Funding') and casti[0].endswith('/8 h')):
+        chyby.append(f'sazba s intervalem nestojí první: {casti[0]}')
+    if not casti[1].startswith('Next−'):
+        chyby.append(f'nejbližší stržení (long platí → mínus) nestojí druhé: {casti[1]}')
+    if not casti[2].startswith('Day−'):
+        chyby.append(f'denní částka nestojí třetí: {casti[2]}')
 
 # ⚠ Tohle je ta chyba z telefonu: `createdTime` pozice je v mocku 49 dní
 # starý (u Bybitu je to první pozice na páru v historii, ne ta současná),
 # ale pozici otevřel nákup před 40 hodinami. Sčítat se smí jen odtud —
 # tedy pět stržení po 0,062 USDT, ne padesát dní cizího fundingu.
-print('součet fundingu:', casti[2] if len(casti) > 2 else '(chybí)')
-# U součtu stojí vždycky přesná doba, za kterou je — nikdy „celkem".
-# Doba se počítá od nejstaršího **započítaného stržení**, ne od otevření:
-# pozici otevřel nákup před 40 h, první stržení padlo na nejbližší osmou
-# hodinu po něm, takže vyjde něco přes den a půl.
-# ⚠ U součtu musí stát „total", jinak jde splést s částkou za jedno stržení
-# o kousek vlevo. Směr („paid"/„received") se řídí znaménkem součtu.
-if len(casti) > 2 and not casti[2].startswith('total paid 0.31 USDT in 1 d '):
-    chyby.append(f'součet fundingu nesedí na skutečné otevření pozice: {casti[2]}')
+# Doba u součtu je od nejstaršího započítaného stržení (něco přes den).
+print('součet fundingu:', casti[3] if len(casti) > 3 else '(chybí)')
+if len(casti) > 3 and casti[3] != 'Total−0.31 (1 d)':
+    chyby.append(f'součet fundingu nesedí na skutečné otevření pozice: {casti[3]}')
 
 # ---- graf ----
 print()
@@ -360,11 +356,11 @@ time.sleep(7)
 kratky = ev("""(() => { const f = document.querySelector('.pos-funding');
   return f ? f.textContent : ''; })()""")
 print('funding na kartě:', kratky or '(chybí)')
-if 'total paid' not in (kratky or ''):
+if 'Total' not in (kratky or ''):
     chyby.append('součet fundingu zmizel, když nejdou načíst plnění')
 # Bez plnění se smí sečíst jen posledních sedm dní a přesně to musí být
 # u součtu napsáno — ne 49 dní podle createdTime.
-elif ' in 6 d' not in kratky and ' in 7 d' not in kratky:
+elif '(6 d' not in kratky and '(7 d' not in kratky:
     chyby.append(f'součet nemá napsanou dobu posledních sedmi dní: {kratky}')
 
 print()

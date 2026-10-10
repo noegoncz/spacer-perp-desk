@@ -2632,3 +2632,7 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 /* ⟳ se točí, dokud obnovení běží. */
 #refreshBtn.toci { animation: toceni 0.8s linear infinite; }
 @keyframes toceni { to { transform: rotate(360deg); } }
+
+/* Funding na kartě: krátké popisky a čísla (v0.40.0). */
+.pos-funding .fp { display: inline-flex; gap: 4px; white-space: nowrap; }
+.pos-funding .fp-popis { color: var(--text-dim); }

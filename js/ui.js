@@ -133,71 +133,57 @@ function intervalPopis(minut) {
  * peníze tečou; ze samotného „0,01 %" to nikdo nepozná.
  */
 function patickaRow(p, hide) {
+  /*
+   * Krátce, čísly (v0.40.0, přání uživatele — dlouhá věta byla nečitelná):
+   *   Funding +0.0050 %/4h   Next −0.09 (48 m)   Day −0.53   Total −1.41 (5 d)
+   * Směr peněz říká **znaménko a barva** (− červeně = platíš, + zeleně =
+   * dostáváš), ne slova. Interval stržení stojí u sazby („/4h") — každý
+   * pár ho má vlastní. Součet za dobu držení s dobou v závorce; chybí, když
+   * klíč nemá oprávnění Wallet.
+   */
   const radek = document.createElement('div');
   radek.className = 'pos-funding';
 
   const f = p.funding;
-  if (f && Number.isFinite(f.rate)) {
-    const isLong = p.side !== 'Sell';
-    // Long platí při kladné sazbě, short při záporné.
-    const platiUzivatel = isLong ? f.rate > 0 : f.rate < 0;
-    const zaInterval = Math.abs(p.value * f.rate);
-    const zaDen = zaInterval * (1440 / (f.minut || 480));
+  if (!f || !Number.isFinite(f.rate)) return radek;
+  const isLong = p.side !== 'Sell';
+  // Long platí při kladné sazbě, short při záporné.
+  const platiUzivatel = isLong ? f.rate > 0 : f.rate < 0;
+  const zaInterval = Math.abs(p.value * f.rate);
+  const zaDen = zaInterval * (1440 / (f.minut || 480));
+  const znak = platiUzivatel ? '−' : '+';
+  const trida = `hodnota ${platiUzivatel ? 'platis' : 'dostavas'}`;
 
-    const popis = document.createElement('span');
-    popis.textContent = `${t('funding.label')} ${formatPercent(f.rate * 100, 4)}`;
-    radek.append(popis);
+  const polozka = (popisek, hodnota, tridaHodnoty = '') => {
+    const s = document.createElement('span');
+    s.className = 'fp';
+    const l = document.createElement('span');
+    l.className = 'fp-popis';
+    l.textContent = popisek;
+    const h = document.createElement('span');
+    if (tridaHodnoty) h.className = tridaHodnoty;
+    h.textContent = hodnota;
+    s.append(l, h);
+    return s;
+  };
 
-    /*
-     * Nejdřív nejbližší stržení: „za 4 h 47 m dostaneš 0,10 USDT". Odpočet
-     * a částka patří k sobě — dvě samostatné informace na opačných koncích
-     * řádku si musel uživatel spojovat sám. Denní částka zůstává drobně
-     * v závorce, jinak není poznat, kolik to dělá za den.
-     */
-    const zbyva = f.nextAt ? f.nextAt - Date.now() : 0;
-    const castka = document.createElement('span');
-    castka.className = `hodnota ${platiUzivatel ? 'platis' : 'dostavas'}`;
-    castka.textContent = hide
-      ? MASK
-      : (zbyva > 0 ? `${t('funding.next', { time: trvani(zbyva) })} ` : '')
-        + `${t(platiUzivatel ? 'funding.youPay' : 'funding.youGet')} `
-        + `${formatUsd(zaInterval)} USDT`
-        // V závorce, jak často se to strhává a kolik to dělá za den.
-        // ⚠ Interval musí být vidět a musí být poznat, že jde o interval:
-        // samotné „8 h" vypadalo jako cokoli. Každý pár ho má vlastní —
-        // u většiny osm hodin, u některých čtyři nebo jednu.
-        + ` (${t('funding.every', { interval: intervalPopis(f.minut) })}`
-        + ` · ${t('funding.perDay', { amount: formatUsd(zaDen) })})`;
-    radek.append(castka);
+  radek.append(polozka(t('funding.label'),
+    `${formatPercent(f.rate * 100, 4)}/${intervalPopis(f.minut)}`));
 
-    // Součet za dobu držení. Chybí, když klíč nemá oprávnění Wallet —
-    // to je v pořádku, zbytek řádku dává smysl i bez něj.
-    if (f.zaplaceno && Number.isFinite(f.zaplaceno.celkem) && f.zaplaceno.pocet > 0) {
-      const celkem = f.zaplaceno.celkem;
-      const soucet = document.createElement('span');
-      // Záporné = zaplaceno, kladné = přijato.
-      soucet.className = `hodnota ${celkem < 0 ? 'platis' : 'dostavas'}`;
-      /*
-       * ⚠ Vždycky **za jak dlouho** ten součet je, nikdy „celkem". Rozdíl
-       * mezi „celkem" a „za posledních pár dní" musel uživatel hlídat sám,
-       * a u pozice držené den je to stejně totéž číslo. Doba se bere od
-       * nejstaršího započítaného stržení, takže nelže ani v jednom případě.
-       */
-      const doba = f.zaplaceno.odKdy ? Date.now() - f.zaplaceno.odKdy : 0;
-      /*
-       * Slovo „total" tam patří: bez něj šlo číslo splést s částkou za jedno
-       * stržení o kousek vlevo. Směr se řídí **znaménkem součtu**, ne
-       * aktuální sazbou — sazba se v čase přehazuje, takže pozice, která
-       * teď dostává, mohla celkově zaplatit.
-       */
-      soucet.textContent = hide
-        ? MASK
-        : t(celkem < 0 ? 'funding.paidFor' : 'funding.earnedFor',
-            { amount: formatUsd(Math.abs(celkem)), time: trvani(doba) });
-      radek.append(soucet);
-    }
+  const zbyva = f.nextAt ? f.nextAt - Date.now() : 0;
+  radek.append(polozka(t('funding.nextShort'),
+    hide ? MASK : `${znak}${formatUsd(zaInterval)}${zbyva > 0 ? ` (${trvani(zbyva)})` : ''}`, trida));
+  radek.append(polozka(t('funding.dayShort'), hide ? MASK : `${znak}${formatUsd(zaDen)}`, trida));
+
+  if (f.zaplaceno && Number.isFinite(f.zaplaceno.celkem) && f.zaplaceno.pocet > 0) {
+    const celkem = f.zaplaceno.celkem;
+    // Doba od nejstaršího započítaného stržení — nesmí slibovat víc, než se stáhlo.
+    const doba = f.zaplaceno.odKdy ? Date.now() - f.zaplaceno.odKdy : 0;
+    const kratce = trvani(doba).split(' ').slice(0, 2).join(' ');
+    radek.append(polozka(t('funding.totalShort'),
+      hide ? MASK : `${celkem < 0 ? '−' : '+'}${formatUsd(Math.abs(celkem))} (${kratce})`,
+      `hodnota ${celkem < 0 ? 'platis' : 'dostavas'}`));
   }
-
   return radek;
 }
 

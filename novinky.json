@@ -1,13 +1,13 @@
 {
-  "verze": "0.39.0",
+  "verze": "0.40.0",
   "novinky": [
     {
-      "en": "History opens instantly: trades you've loaded are kept on your phone, and only new ones are fetched.",
-      "cs": "Historie se otevře hned: načtené obchody zůstávají v telefonu a stahují se jen nové."
+      "en": "Funding on position cards is shorter and shows right away when the app starts.",
+      "cs": "Funding na kartách pozic je kratší a při startu je vidět hned."
     },
     {
-      "en": "The ⟳ button now refreshes the screen you're on: positions, watchlist prices, or a full re-check of History.",
-      "cs": "Tlačítko ⟳ obnoví obrazovku, na které jsi: pozice, ceny ve Watchlists, nebo plnou kontrolu Historie."
+      "en": "Buy and sell markers appear on the chart instantly.",
+      "cs": "Značky nákupů a prodejů naskočí v grafu okamžitě."
     }
   ],
   "opravy": []

@@ -366,15 +366,10 @@ export const en = {
   'account.unavailable': 'Account overview needs the Wallet permission on your API key.',
   'account.needsWallet': 'Add the Wallet (read) permission on Bybit to see equity and margin.',
 
+  'funding.nextShort': 'Next',
+  'funding.dayShort': 'Day',
+  'funding.totalShort': 'Total',
   'funding.label': 'Funding',
-  'funding.next': 'in {time}',
-  'funding.perInterval': '{amount} USDT/{interval}',
-  'funding.perDay': '{amount} USDT/day',
-  'funding.every': 'every {interval}',
-  'funding.paidFor': 'total paid {amount} USDT in {time}',
-  'funding.earnedFor': 'total received {amount} USDT in {time}',
-  'funding.youPay': 'you pay',
-  'funding.youGet': 'you receive',
 
   'orders.title': 'Orders without a position',
   'orders.none': 'No open orders.',
