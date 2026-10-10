@@ -1321,6 +1321,16 @@ function nactiOtevreni(position) {
 }
 
 async function otevriGraf(symbol, position, trh) {
+  /*
+   * Jeden vzhled grafu, ať se otevře odkudkoli (v0.41.0, přání uživatele):
+   * z Watchlists, ze seznamu příkazů nebo z notifikace se dřív otevřel bez
+   * pozice, i když na páru běžela — pozice se dokreslila až s další dávkou
+   * dat a do té doby vypadal graf jinak (limitky bez množství a barvy).
+   * Prohlídka obchodu z Historie pozici záměrně nemá.
+   */
+  if (!position && !prohlizenyObchod) {
+    position = lastPositions.find((p) => p.symbol === symbol) || null;
+  }
   chartSymbol = symbol;
   chartPosition = position;
   chartOtevreno = null;
@@ -3493,13 +3503,28 @@ function orderSide(order, position) {
 function buildChartLines(position, orders) {
   const lines = [];
 
-  // Bez pozice nejde příkazy zařadit na stranu zisku či ztráty — chybí vstup.
+  /*
+   * Bez pozice nejde příkazy zařadit na stranu zisku či ztráty (chybí
+   * vstup), ale vypadají stejně jako u pozice (v0.41.0): typ jako na burze,
+   * množství, hodnota pod čarou, nákup zeleně, prodej červeně. Dřív jen
+   * šedé „Limit" — graf z Watchlists pak vypadal jinak než z Pozic.
+   */
   if (!position) {
-    return orders
-      .map((o) => o.trigger ?? o.price)
-      .filter(Boolean)
-      .map((price) => ({ price, color: BARVA_CARY.prikaz, bezCenovky: true,
-                         title: t('line.limit'), dash: CARKOVANI.prikaz }));
+    const menaPar = String(chartSymbol || '').replace(/USDT$|USDC$/, '');
+    return orders.map((o) => {
+      const price = o.trigger ?? o.price;
+      if (!price) return null;
+      const buy = o.side === 'Buy';
+      const typ = TYP_PRIKAZU[o.stopOrderType] || (buy ? TYP_PRIKAZU.limitBuy : TYP_PRIKAZU.limitSell);
+      return {
+        price,
+        color: buy ? BARVA_CARY.nakup : BARVA_CARY.prodej,
+        bezCenovky: true,
+        dash: CARKOVANI.limitka,
+        title: o.qty > 0 ? `${typ} ${hideAmounts ? MASK_CARY : formatSize(o.qty)} ${menaPar}` : typ,
+        pod: o.qty > 0 ? `${hideAmounts ? MASK_CARY : formatUsd(o.qty * price)} USDT` : '',
+      };
+    }).filter(Boolean);
   }
 
   /*

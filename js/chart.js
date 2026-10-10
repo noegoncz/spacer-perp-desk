@@ -308,6 +308,22 @@ function popisAlarmu(text, x, y, barva, vypnuty = false) {
   ];
 }
 
+/*
+ * Zvonek pro cenovku alarmu na ose (v0.41.0, jako TabTrader): kopule,
+ * boky, spodní hrana a srdce. `preskrtnuty` = vypnutý alarm.
+ */
+function zvonek(x, y, barva, preskrtnuty = false) {
+  const cara = (a, b) => ({ type: 'line', attrs: { coordinates: [a, b] }, styles: { color: barva, size: 1 } });
+  return [
+    { type: 'arc', attrs: { x, y: y - 1, r: 3, startAngle: Math.PI, endAngle: Math.PI * 2 }, styles: { color: barva, size: 1 } },
+    cara({ x: x - 3, y: y - 1 }, { x: x - 4, y: y + 3 }),
+    cara({ x: x + 3, y: y - 1 }, { x: x + 4, y: y + 3 }),
+    cara({ x: x - 4.5, y: y + 3 }, { x: x + 4.5, y: y + 3 }),
+    { type: 'arc', attrs: { x, y: y + 4.6, r: 1, startAngle: 0, endAngle: Math.PI * 2 }, styles: { color: barva, size: 1 } },
+    ...(preskrtnuty ? [cara({ x: x - 5, y: y + 5 }, { x: x + 5, y: y - 6 })] : []),
+  ];
+}
+
 const caraAlarmu = (souradnice, barva) => ({
   type: 'line',
   attrs: { coordinates: souradnice },
@@ -338,21 +354,52 @@ function registrovatCaryAlarmu() {
   K().registerOverlay({
     ...zaklad,
     name: 'alarmLine',
+    /*
+     * Jako v TabTraderu (v0.41.0, přání uživatele): tenká **plná** šedá
+     * čára přes graf, **bez popisku** — hodnota je na ose v šedé cenovce
+     * se zvonkem. Vypnutý alarm tmavší, zvonek přeškrtnutý. Alarm z kresby
+     * si drží barvu kresby.
+     */
     createPointFigures: ({ overlay, coordinates, bounding }) => {
       const d = overlay.extendData || {};
       const y = coordinates[0].y;
-      const barva = barvaAlarmu(d);
+      const barva = d.aktivni === false ? 'rgba(110, 122, 138, 0.45)' : (d.color || 'rgba(176, 186, 200, 0.6)');
+      const vypnuty = d.aktivni === false;
+      // Zvonek na konci čáry, těsně u cenovky na ose (osa je na něj úzká).
       return [
-        caraAlarmu([{ x: 0, y }, { x: bounding.width, y }], barva),
-        ...popisAlarmu(d.title || '', bounding.width - 5, y, barva, d.aktivni === false),
+        {
+          type: 'line',
+          attrs: { coordinates: [{ x: 0, y }, { x: bounding.width - 16, y }] },
+          styles: { color: barva, size: 1, style: 'solid' },
+        },
+        ...zvonek(bounding.width - 8, y - 1, vypnuty ? '#8b96a5' : '#e6ebf2', vypnuty),
       ];
     },
-    // Hladina alarmu i na cenové ose (2026-10-08) — jako vodorovná kresba,
-    // ať je hodnota vidět, dokud alarm nesmažeš.
     createYAxisFigures: ({ chart, overlay, coordinates }) => {
       const cena = overlay.points?.[0]?.value;
       if (!Number.isFinite(cena) || !coordinates?.[0]) return [];
-      return [cenovkaNaOse(chart, cena, coordinates[0].y, barvaAlarmu(overlay.extendData || {}))];
+      const d = overlay.extendData || {};
+      const vypnuty = d.aktivni === false;
+      const y = coordinates[0].y;
+      const text = cenaSPresnosti(chart, cena);
+      return [
+        {
+          type: 'text',
+          attrs: { x: 0, y, text, align: 'left', baseline: 'middle' },
+          styles: {
+            color: vypnuty ? '#8b96a5' : '#ffffff',
+            size: 11,
+            family: 'sans-serif',
+            backgroundColor: vypnuty ? '#2b333e' : (d.color ? rgba(d.color, 0.85) : '#56606e'),
+            borderRadius: 2,
+            borderSize: 0,
+            paddingLeft: 3,
+            paddingRight: 3,
+            paddingTop: 2,
+            paddingBottom: 2,
+          },
+        },
+      ];
     },
   });
 

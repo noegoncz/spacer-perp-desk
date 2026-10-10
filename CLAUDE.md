@@ -1245,6 +1245,18 @@ Ve vnořeném rozvržení se jinak ukotví k rodiči a skončí uprostřed obraz
 kde je uživatel nehledá. Nabídka indikátorů má v každém řádku ikonku, zkratku
 a stručný popis, a po výběru se sama zavře.
 
+**Jeden vzhled grafu odkudkoli** (v0.41.0, přání uživatele): `otevriGraf`
+si pozici na páru najde v `lastPositions` sám, ať se graf otevře z Pozic,
+z Watchlists, ze seznamu příkazů nebo z notifikace (jen prohlídka obchodu
+z Historie pozici záměrně nemá). A příkazy na páru bez pozice mají stejné
+popisky jako u pozice (typ jako na burze, množství, hodnota, nákup zeleně,
+prodej červeně) — dřív šedé „Limit". Test: `test-nova-pozice-v-grafu.py`.
+
+**Alarm jako v TabTraderu** (v0.41.0): vodorovná hladina (`alarmLine`) je
+tenká **plná** šedá čára bez popisku, na konci u osy zvonek (`zvonek`),
+na ose šedá cenovka. Vypnutý tmavší, zvonek přeškrtnutý. Alarm z kresby
+si drží barvu kresby. (Šikmý a časový alarm beze změny.)
+
 **Pozice otevřená při otevřeném grafu** (v0.35.0, jako v TabTraderu):
 `syncOpenChart` při každé dávce pozic zkontroluje, jestli se na páru
 otevřeného grafu (dosud bez pozice) neobjevila pozice — pak ji převezme

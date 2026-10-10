@@ -1,13 +1,13 @@
 {
-  "verze": "0.40.0",
+  "verze": "0.41.0",
   "novinky": [
     {
-      "en": "Funding on position cards is shorter and shows right away when the app starts.",
-      "cs": "Funding na kartách pozic je kratší a při startu je vidět hned."
+      "en": "Alerts look like in TabTrader: a thin grey line, a bell and the price on the scale.",
+      "cs": "Alarmy vypadají jako v TabTraderu: tenká šedá čára, zvonek a cena na ose."
     },
     {
-      "en": "Buy and sell markers appear on the chart instantly.",
-      "cs": "Značky nákupů a prodejů naskočí v grafu okamžitě."
+      "en": "The chart looks the same wherever you open it from — positions show up even when you open it from Watchlists.",
+      "cs": "Graf vypadá stejně, ať ho otevřeš odkudkoli — pozice je vidět i při otevření z Watchlists."
     }
   ],
   "opravy": []
