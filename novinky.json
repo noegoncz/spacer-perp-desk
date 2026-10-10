@@ -1,17 +1,17 @@
 {
-  "verze": "0.42.0",
+  "verze": "0.43.0",
   "novinky": [
     {
-      "en": "Order lines (SL, TP, limits, liquidation) have their label right on the line, in the line's colour.",
-      "cs": "Čáry příkazů (SL, TP, limitky, likvidace) mají štítek přímo na čáře, v její barvě."
+      "en": "Labels on the right never overlap: when levels are close, they stack neatly above and below each other.",
+      "cs": "Štítky vpravo se nikdy nepřekrývají: u blízkých úrovní se úhledně seřadí nad a pod sebe."
     },
     {
-      "en": "New button in the chart toolbar: show values in coin or in USDT.",
-      "cs": "Nové tlačítko v liště grafu: hodnoty v coinu, nebo v USDT."
+      "en": "Calmer chart: lighter order lines, one dash style, a softer Entry with a fading line.",
+      "cs": "Klidnější graf: jemnější čáry příkazů, jedno čárkování, decentnější Entry s mizející linkou."
     },
     {
-      "en": "Alerts get a bell tag next to the price, Entry is labelled on the scale.",
-      "cs": "Alarmy mají štítek se zvonkem u ceny, vstup je na ose označený Entry."
+      "en": "Trade review opens instantly and uses the same small markers as the live chart.",
+      "cs": "Prohlídka obchodu se otevře hned a má stejné malé značky jako živý graf."
     }
   ],
   "opravy": []

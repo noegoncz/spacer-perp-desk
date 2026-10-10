@@ -1245,6 +1245,22 @@ Ve vnořeném rozvržení se jinak ukotví k rodiči a skončí uprostřed obraz
 kde je uživatel nehledá. Nabídka indikátorů má v každém řádku ikonku, zkratku
 a stručný popis, a po výběru se sama zavře.
 
+**Štítky vpravo bez překryvu a klidnější graf (v0.43.0, přání uživatele):**
+- `yStitku` (chart.js) rozmístí štítky v grafu i cenovky na ose u čar
+  pozice, alarmů a vodorovných kreseb: seřadí podle ceny a kde by se
+  překryly (výška 17 px), rozestoupí je nad / pod sebe co nejblíž cenám.
+  Cenovka aktuální ceny s odpočtem (knihovna) je pevná překážka. Čáry
+  zůstávají na cenách, posouvají se jen štítky. Výsledek pro testy
+  v `globalThis.__stitkyVpravo`. Test: `test-stitky-bez-prekryvu.py`.
+- Jedno čárkování `[6, 4]` pro všechny čekající úrovně (`CARKA`), čáry
+  s průhledností 0,7, štítky 0,72, cenovky na ose 0,85.
+- Alarm: obdélníkový štítek se zvonkem bez šipky. Entry: průsvitný
+  štítek (0,45) a od něj do grafu mizející linka.
+- Prohlídka obchodu: malé trojúhelníky jako v živém grafu, popisky
+  I/O s rámečkem (⚠ knihovna kreslí rámeček textu jen se `style:
+  'stroke_fill'`), plnění obchodu nejdřív z telefonu
+  (`plneniObchoduZTelefonu`), z burzy jen když uložená nestačí.
+
 **Štítky čar na úrovni čáry (v0.42.0, přání uživatele):** SL, TP,
 likvidace a limitky mají u pravého okraje štítek **přímo na čáře**,
 vyplněný barvou čáry (průhlednost 0,82, ať neřeže do očí) s kontrastním

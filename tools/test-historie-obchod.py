@@ -56,8 +56,19 @@ if not all(k['kdy'].count('.') == 4 and '→' in k['kdy'] for k in uzavrene):
     chyby.append('uzavřený obchod neukazuje otevření a zavření')
 
 # Uzavřený obchod B (otevřený je současná pozice). Otevřít ho.
+# v0.43.0: plnění obchodu z telefonu (Historie je při seskupení stáhla),
+# takže se při otevření z burzy nestahují.
+ev("""(() => { window.__plneniDotazu = 0; const f = window.fetch;
+  window.fetch = function (v, o) { if (String(v && v.url ? v.url : v).includes('/v5/execution/list')) window.__plneniDotazu += 1;
+    return f(v, o); }; })()""")
 ev("[...document.querySelectorAll('.trade')].find((k) => !k.classList.contains('otevreny')).click()")
 time.sleep(6)
+print('dotazů na plnění při otevření:', ev("window.__plneniDotazu"))
+if (ev("window.__plneniDotazu") or 0) > 1:
+    chyby.append('prohlídka stahuje plnění z burzy, i když jsou v telefonu')
+male = ev("""window.__graf.getOverlays().filter((o) => o.name === 'tradeMark').every((o) => o.extendData.maly)""")
+if not male:
+    chyby.append('trojúhelníky v prohlídce mají být malé jako v živém grafu')
 
 znacky = json.loads(ev("""JSON.stringify(window.__graf.getOverlays()
   .filter((o) => o.name === 'tradeMark')

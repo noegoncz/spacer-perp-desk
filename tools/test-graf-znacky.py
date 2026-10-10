@@ -205,9 +205,10 @@ else:
     if vstup['cena'] != 0.30135:
         chyby.append(f"vstup neleží na průměrném vstupu: {vstup['cena']}")
 for c in cary:
-    if c['title'].startswith('Stop Loss') and c['dash'] != [14, 6]:
+    # v0.43.0: jedno čárkování pro všechny čekající úrovně.
+    if c['title'].startswith('Stop Loss') and c['dash'] != [6, 4]:
         chyby.append(f"{c['title']} nemá čárkování SL: {c['dash']}")
-    if c['title'].startswith('Take Profit') and c['dash'] != [20, 7]:
+    if c['title'].startswith('Take Profit') and c['dash'] != [6, 4]:
         chyby.append(f"{c['title']} nemá čárkování TP: {c['dash']}")
 if not any(c['title'].startswith('Take Profit') for c in cary):
     chyby.append('v grafu chybí take profit')

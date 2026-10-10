@@ -118,15 +118,18 @@ const TYP_PRIKAZU = {
   limitSell: 'Limit Sell',
 };
 
+/*
+ * Jedno čárkování pro všechny čekající úrovně (v0.43.0, přání uživatele —
+ * různé délky čárek působily neuspořádaně). Rozlišuje je barva a štítek.
+ */
+const CARKA = [6, 4];
 const CARKOVANI = {
-  likvidace: [12, 5],    // nejdelší mezery, nejvzdálenější a nejvážnější úroveň
-  // SL a TP mají dlouhé čárkování, celé i částečné stejně — rozlišuje je
-  // barva a popisek (TP vs. TP1 (29 %)), ne délka čárky.
-  uroven: [14, 6],
-  castecna: [14, 6],
-  tp: [20, 7],           // TP celé i částečné: delší čárky (2026-10-03)
-  limitka: [8, 5],       // nákupní / prodejní limitky
-  prikaz: [1, 4],        // příkazy bez pozice, nejjemnější
+  likvidace: CARKA,
+  uroven: CARKA,
+  castecna: CARKA,
+  tp: CARKA,
+  limitka: CARKA,
+  prikaz: CARKA,
 };
 
 let chart = null;          // instance se drží i po zavření, ať se otevírá svižně
@@ -2668,6 +2671,35 @@ async function nactiHistorii() {
  * průměr by dal jednu značku uprostřed ničeho, kdežto plnění mají přesné
  * časy, takže sednou na správné svíčky.
  */
+/**
+ * Plnění jednoho uzavřeného obchodu z plnění uložených v telefonu — stejný
+ * postup jako `client.plneniObchodu` (od zavíracího příkazu dozadu, dokud
+ * pozice není nulová). `null`, když uložená plnění na celý obchod nestačí.
+ */
+async function plneniObchoduZTelefonu(obchod) {
+  const vse = await dotahniPlneni(obchod.symbol, 0, true);
+  if (!vse.length) return null;
+  const konec = obchod.closedAt + 60000;
+  const podleId = Boolean(obchod.id) && vse.some((f) => f.orderId === obchod.id);
+  const epsilon = Math.max(1e-9, Math.abs(obchod.qty || 0) * 1e-6);
+  const obchodu = [];
+  let zbyva = 0;
+  let naselKonec = false;
+  for (let i = vse.length - 1; i >= 0; i -= 1) {
+    const f = vse[i];
+    if (f.time > konec) continue;
+    if (!naselKonec) {
+      const jeZaviraci = podleId ? f.orderId === obchod.id : f.time <= obchod.closedAt;
+      if (!jeZaviraci) continue;
+      naselKonec = true;
+    }
+    obchodu.push(f);
+    zbyva -= (f.buy ? 1 : -1) * f.qty;
+    if (Math.abs(zbyva) <= epsilon) return { plneni: obchodu.reverse(), otevreno: f.time };
+  }
+  return null;
+}
+
 async function otevriProhlidku(obchod) {
   prohlizenyObchod = obchod;
 
@@ -2683,7 +2715,10 @@ async function otevriProhlidku(obchod) {
   let chyba = null;
   ui.showHistoryNote(t('history.loadingTrade'));
   try {
-    ({ plneni, otevreno } = await client.plneniObchodu(obchod));
+    // Nejdřív z plnění v telefonu (v0.43.0) — dřív se vždy stahovalo po
+    // týdnech z burzy („Loading the trade…" i dvě vteřiny).
+    const mistni = await plneniObchoduZTelefonu(obchod);
+    ({ plneni, otevreno } = mistni || await client.plneniObchodu(obchod));
   } catch (err) {
     chyba = err;
   }
@@ -2716,6 +2751,8 @@ async function otevriProhlidku(obchod) {
           time: p.time,
           price: p.price,
           vstup: p.buy,             // nákup ▲, prodej ▼ — stejně jako v živém grafu
+          // Malé jako v živém grafu (v0.43.0); popisek nese číslo.
+          maly: true,
           // Barva podle směru: nákup zeleně, prodej červeně (jako v živém grafu).
           color: p.buy ? BARVA_PLNENI.nakup : BARVA_PLNENI.prodej,
           title: vstup ? `I${++vstupu}` : `O${++vystupu}`,

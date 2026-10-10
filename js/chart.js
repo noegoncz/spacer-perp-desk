@@ -189,17 +189,19 @@ function registrovatCaruPozice() {
      * Průměrný vstup (`jenOsa`) čáru nemá: jen fialový štítek „Entry"
      * vlevo od své cenovky na ose.
      */
-    createPointFigures: ({ overlay, coordinates, bounding }) => {
+    createPointFigures: ({ chart, overlay, coordinates, bounding }) => {
       const d = overlay.extendData || {};
       const y = coordinates[0].y;
-      const stitek = (text, barva, x) => ({
+      // Štítek může uhnout sousednímu (rozmístění), čára zůstává na ceně.
+      const ys = yStitku(chart, overlay, y);
+      const stitek = (text, barva, x, alfa = 0.72) => ({
         type: 'text',
-        attrs: { x, y, text, align: 'right', baseline: 'middle' },
+        attrs: { x, y: ys, text, align: 'right', baseline: 'middle' },
         styles: {
           color: svetlaBarva(barva) ? BARVY.pozadi : '#ffffff',
           size: 10,
           family: 'sans-serif',
-          backgroundColor: rgba(barva, 0.82),
+          backgroundColor: sAlfou(barva, alfa),
           borderSize: 0,
           borderRadius: 2,
           paddingLeft: 5,
@@ -208,19 +210,37 @@ function registrovatCaruPozice() {
           paddingBottom: 2,
         },
       });
-      if (d.jenOsa) return d.title ? [stitek(d.title, d.barvaOsy || d.color, bounding.width - 1)] : [];
+      if (d.jenOsa) {
+        /*
+         * Průměrný vstup: průsvitný fialový štítek „Entry" u cenovky a od
+         * něj do grafu linka, která se postupně ztrácí (v0.43.0).
+         */
+        if (!d.title) return [];
+        const barva = d.barvaOsy || d.color;
+        const x1 = bounding.width - 42;
+        const mizi = [];
+        for (let i = 0; i < 8; i += 1) {
+          mizi.push({
+            type: 'line',
+            attrs: { coordinates: [{ x: x1 - i * 18, y }, { x: x1 - (i + 1) * 18, y }] },
+            styles: { color: sAlfou(barva, 0.45 * (1 - i / 8)), size: 1, style: 'solid' },
+          });
+        }
+        return [...mizi, stitek(d.title, barva, bounding.width - 1, 0.45)];
+      }
       const xBodu = Number.isFinite(coordinates[0].x)
         ? Math.min(bounding.width, Math.max(0, coordinates[0].x)) : null;
       const x0 = d.odCasu && xBodu !== null ? xBodu : 0;
       const x1 = d.doCasu && xBodu !== null ? xBodu : bounding.width;
+      // Čáry o kus průhlednější (v0.43.0), ať co nejméně kazí pohled na graf.
+      const barvaCary = sAlfou(d.color, 0.7);
       return [
         {
           type: 'line',
           attrs: { coordinates: [{ x: x0, y }, { x: x1, y }] },
-          // Všechny čáry stejně tenké; rozlišuje je barva a čárkování.
           styles: d.plna
-            ? { color: d.color, size: 1, style: 'solid' }
-            : { color: d.color, size: 1, style: 'dashed', dashedValue: d.dash || [6, 4] },
+            ? { color: barvaCary, size: 1, style: 'solid' }
+            : { color: barvaCary, size: 1, style: 'dashed', dashedValue: d.dash || [6, 4] },
         },
         ...(d.title ? [stitek(d.title, d.color, bounding.width - 4)] : []),
       ];
@@ -237,7 +257,7 @@ function registrovatCaruPozice() {
       const d = overlay.extendData || {};
       const cena = overlay.points?.[0]?.value;
       if (d.bezCenovky || !Number.isFinite(cena)) return [];
-      return [cenovkaNaOse(chart, cena, coordinates[0].y, d.barvaOsy || d.color)];
+      return [cenovkaNaOse(chart, cena, yStitku(chart, overlay, coordinates[0].y), d.barvaOsy || d.color, 0.85)];
     },
   });
 }
@@ -328,6 +348,65 @@ function popisAlarmu(text, x, y, barva, vypnuty = false) {
 }
 
 /*
+ * Rozmístění štítků vpravo (v0.43.0, přání uživatele: „nikdy se nesmí
+ * překrývat"). Štítky v grafu i cenovky na ose u čar pozice, alarmů
+ * a vodorovných kreseb se seřadí podle ceny a kde by se překryly, rozestoupí
+ * se nad / pod sebe co nejblíž svým cenám. Aktuální cena (štítek knihovny
+ * s odpočtem) se nehýbe — ostatní jí uhnou. Čára sama zůstává na své ceně.
+ */
+const VYSKA_STITKU = 17;
+let rozmisteni = { klic: '', mapa: new Map() };
+const ROZMISTOVANE = new Set(['positionLine', 'alarmLine', 'horizontalStraightLine', 'priceLine']);
+
+function yStitku(chart, overlay, y) {
+  const data = chart.getDataList();
+  const polozky = [];
+  for (const o of chart.getOverlays()) {
+    if (!ROZMISTOVANE.has(o.name) || o.visible === false) continue;
+    const cena = o.points?.[0]?.value;
+    if (!Number.isFinite(cena)) continue;
+    const p = chart.convertToPixel({ value: cena, timestamp: o.points[0].timestamp }, { paneId: 'candle_pane' });
+    const yy = (Array.isArray(p) ? p[0] : p)?.y;
+    if (Number.isFinite(yy)) polozky.push({ id: o.id, y: yy, h: VYSKA_STITKU, pevna: false });
+  }
+  const posledni = data[data.length - 1]?.close;
+  if (Number.isFinite(posledni)) {
+    const p = chart.convertToPixel({ value: posledni }, { paneId: 'candle_pane' });
+    const yy = (Array.isArray(p) ? p[0] : p)?.y;
+    // Cenovka aktuální ceny a pod ní odpočet: dva řádky, střed o kus níž.
+    if (Number.isFinite(yy)) polozky.push({ id: '__cena', y: yy + 9, h: 36, pevna: true });
+  }
+  const klic = polozky.map((x) => `${x.id}:${Math.round(x.y)}`).join('|');
+  if (klic !== rozmisteni.klic) {
+    for (let kolo = 0; kolo < 40; kolo += 1) {
+      polozky.sort((a, b) => a.y - b.y);
+      let posun = false;
+      for (let i = 1; i < polozky.length; i += 1) {
+        const a = polozky[i - 1];
+        const b = polozky[i];
+        const chybi = (a.h + b.h) / 2 - (b.y - a.y);
+        if (chybi <= 0.5) continue;
+        if (a.pevna && b.pevna) continue;
+        if (a.pevna) b.y += chybi;
+        else if (b.pevna) a.y -= chybi;
+        else { a.y -= chybi / 2; b.y += chybi / 2; }
+        posun = true;
+      }
+      if (!posun) break;
+    }
+    rozmisteni = { klic, mapa: new Map(polozky.map((x) => [x.id, x.y])) };
+    // Pro testy (tools/test-stitky-bez-prekryvu.py): výsledné rozmístění.
+    globalThis.__stitkyVpravo = Object.fromEntries(rozmisteni.mapa);
+  }
+  return rozmisteni.mapa.get(overlay.id) ?? y;
+}
+
+/** Barva s průhledností — hex i rgba (jen hex se umí převést). */
+function sAlfou(barva, alfa) {
+  return /^#[0-9a-f]{6}$/i.test(String(barva)) ? rgba(barva, alfa) : barva;
+}
+
+/*
  * Zvonek pro cenovku alarmu na ose (v0.41.0, jako TabTrader): kopule,
  * boky, spodní hrana a srdce. `preskrtnuty` = vypnutý alarm.
  */
@@ -390,31 +469,28 @@ function registrovatCaryAlarmu() {
      * se zvonkem. Vypnutý alarm tmavší, zvonek přeškrtnutý. Alarm z kresby
      * si drží barvu kresby.
      */
-    createPointFigures: ({ overlay, coordinates, bounding }) => {
+    createPointFigures: ({ chart, overlay, coordinates, bounding }) => {
       const d = overlay.extendData || {};
       const y = coordinates[0].y;
+      const ys = yStitku(chart, overlay, y);
       const barva = d.aktivni === false ? 'rgba(110, 122, 138, 0.45)' : (d.color || 'rgba(176, 186, 200, 0.6)');
       const vypnuty = d.aktivni === false;
       /*
-       * Zvonek v šedém štítku, který navazuje na cenovku na ose a šipkou
-       * ukazuje doleva k čáře — jako v TabTraderu (v0.42.0). Osa je na
-       * zvonek úzká, proto stojí štítek těsně vlevo od ní.
+       * Zvonek v obdélníkovém šedém štítku těsně vlevo od cenovky na ose
+       * (v0.43.0 bez šipky — jednotně s ostatními štítky). Osa je na zvonek
+       * úzká, proto stojí štítek v grafu.
        */
-      const pozadi = vypnuty ? '#2b333e' : (d.color ? rgba(d.color, 0.85) : '#56606e');
+      const pozadi = vypnuty ? '#2b333e' : (d.color ? rgba(d.color, 0.8) : 'rgba(86, 96, 110, 0.85)');
       const w = bounding.width;
       return [
         {
           type: 'line',
-          attrs: { coordinates: [{ x: 0, y }, { x: w - 26, y }] },
+          attrs: { coordinates: [{ x: 0, y }, { x: w - 20, y }] },
           styles: { color: barva, size: 1, style: 'solid' },
         },
-        {
-          type: 'polygon',
-          attrs: { coordinates: [{ x: w - 20, y: y - 8 }, { x: w - 26, y }, { x: w - 20, y: y + 8 }] },
-          styles: { style: 'fill', color: pozadi },
-        },
-        { type: 'rect', attrs: { x: w - 20, y: y - 8, width: 20, height: 16 }, styles: { style: 'fill', color: pozadi } },
-        ...zvonek(w - 10, y, vypnuty ? '#8b96a5' : '#ffffff', vypnuty, pozadi),
+        { type: 'rect', attrs: { x: w - 19, y: ys - 8, width: 19, height: 16 },
+          styles: { style: 'fill', color: pozadi, borderRadius: 2 } },
+        ...zvonek(w - 9.5, ys, vypnuty ? '#8b96a5' : '#ffffff', vypnuty, pozadi),
       ];
     },
     createYAxisFigures: ({ chart, overlay, coordinates }) => {
@@ -422,7 +498,7 @@ function registrovatCaryAlarmu() {
       if (!Number.isFinite(cena) || !coordinates?.[0]) return [];
       const d = overlay.extendData || {};
       const vypnuty = d.aktivni === false;
-      const y = coordinates[0].y;
+      const y = yStitku(chart, overlay, coordinates[0].y);
       const text = cenaSPresnosti(chart, cena);
       return [
         {
@@ -432,7 +508,7 @@ function registrovatCaryAlarmu() {
             color: vypnuty ? '#8b96a5' : '#ffffff',
             size: 11,
             family: 'sans-serif',
-            backgroundColor: vypnuty ? '#2b333e' : (d.color ? rgba(d.color, 0.85) : '#56606e'),
+            backgroundColor: vypnuty ? '#2b333e' : (d.color ? rgba(d.color, 0.8) : 'rgba(86, 96, 110, 0.85)'),
             borderRadius: 2,
             borderSize: 0,
             paddingLeft: 3,
@@ -583,7 +659,7 @@ function registrovatZnackuPlneni() {
        * popisků na jedné svíčce se řadí za sebe. Tlumený: tmavý průhledný
        * podklad a jemnější barva, ne výchozí křiklavý rámeček knihovny.
        */
-      if (!d.maly && d.title) {
+      if (d.title) {
         let yPopisku = zaklad + (d.vstup ? 2 : -2);
         const misto = mistoPopisku(chart, overlay);
         if (misto && yAxis) {
@@ -604,6 +680,8 @@ function registrovatZnackuPlneni() {
             size: 10,
             family: 'sans-serif',
             backgroundColor: 'rgba(13, 20, 32, 0.8)',
+            // ⚠ Knihovna kreslí rámeček textu jen se stylem stroke_fill.
+            style: 'stroke_fill',
             // Orámování barvou textu (v0.42.0) — na tmavém pozadí splýval.
             borderColor: d.vstup ? 'rgba(143, 217, 164, 0.7)' : 'rgba(232, 150, 143, 0.7)',
             borderSize: 1,
@@ -935,7 +1013,7 @@ function registrovatVodorovneKresby() {
     const cena = overlay.points?.[0]?.value;
     if (!Number.isFinite(cena) || !coordinates?.[0]) return [];
     const d = overlay.extendData || {};
-    return [cenovkaNaOse(chart, cena, coordinates[0].y, d.color || BARVY_KRESEB[0], d.opacity ?? 1)];
+    return [cenovkaNaOse(chart, cena, yStitku(chart, overlay, coordinates[0].y), d.color || BARVY_KRESEB[0], d.opacity ?? 1)];
   };
   const spolecne = {
     totalStep: 2,
