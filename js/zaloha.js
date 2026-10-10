@@ -15,6 +15,8 @@
  * Modul nesahá na DOM kromě stažení souboru v prohlížeči.
  */
 
+import { vymaz as vymazMezipamet } from './mezipamet.js';
+
 const PREDPONA = 'perpdesk.';
 const NEZALOHOVAT = new Set([
   'perpdesk.apiKey',
@@ -60,6 +62,8 @@ const PO_ODHLASENI_ZUSTAVA = new Set([
  * se zadá znovu (do cloudu schválně nejde).
  */
 export function vymazMistniData() {
+  // Uložené obchody a plnění (IndexedDB) taky — patří odhlášenému účtu.
+  vymazMezipamet();
   try {
     const smazat = [];
     for (let i = 0; i < localStorage.length; i += 1) {

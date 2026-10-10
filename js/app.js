@@ -23,6 +23,7 @@ import * as pozvanky from './pozvanky.js';
 import * as alarmyServer from './alarmy-server.js';
 import * as hlaseni from './hlaseni.js';
 import { zapojDlazdice } from './dlazdice.js';
+import * as mezipamet from './mezipamet.js';
 import * as store from './store.js';
 import * as ui from './ui.js';
 
@@ -411,27 +412,56 @@ const OKNO_PLNENI = 7 * 86400e3;
 const plneniPary = new Map();   // symbol → { od, plneni: Map(klíč → plnění) }
 const MAX_OKEN_PLNENI = 60;     // pojistka ~ 14 měsíců na jedno dotažení
 
-async function dotahniPlneni(symbol, od) {
-  const ted = Date.now();
+/*
+ * ⚠ Plnění se už nezmění — od v0.39.0 se ukládají do telefonu
+ * (`mezipamet`) a z burzy se dotahuje jen to, co přibylo od posledního
+ * stažení (s hodinovým překryvem na zpožděné záznamy), a starší úseky,
+ * které ještě nikdy staženy nebyly. `jenUlozene` vrátí okamžitě to, co
+ * je v telefonu, bez sítě (první vykreslení Historie).
+ */
+const PREKRYV = 3600e3;
+const klicPlneni = (f) => f.execId || `${f.time}|${f.price}|${f.qty}|${f.buy}`;
+
+async function nactiPlneniZTelefonu(symbol) {
   let z = plneniPary.get(symbol);
-  if (!z) {
-    z = { od: ted, plneni: new Map() };
-    plneniPary.set(symbol, z);
+  if (z) return z;
+  const ulozene = await mezipamet.nacti(`plneni:${symbol}`);
+  z = plneniPary.get(symbol);   // mezitím mohl přijít jiný požadavek
+  if (z) return z;
+  z = ulozene?.plneni
+    ? { od: ulozene.od, aktualizovano: ulozene.aktualizovano || 0,
+        plneni: new Map(ulozene.plneni.map((f) => [klicPlneni(f), f])) }
+    : { od: Date.now(), aktualizovano: 0, plneni: new Map() };
+  plneniPary.set(symbol, z);
+  return z;
+}
+
+async function dotahniPlneni(symbol, od, jenUlozene = false) {
+  const z = await nactiPlneniZTelefonu(symbol);
+  const serazene = () => [...z.plneni.values()].sort((a, b) => a.time - b.time);
+  if (jenUlozene) return serazene();
+
+  const ted = Date.now();
+  // Nové: od posledního stažení (s překryvem) do teď; poprvé posledních 7 dní.
+  const noveOd = z.aktualizovano ? Math.max(z.aktualizovano - PREKRYV, ted - 52 * OKNO_PLNENI) : ted - OKNO_PLNENI;
+  const okna = [];
+  for (let konec = ted; konec > noveOd; konec -= OKNO_PLNENI) {
+    okna.push([Math.max(noveOd, konec - OKNO_PLNENI), konec]);
   }
-  // Klíč plnění: execId od Bybitu, jinak čas, cena a množství.
-  const pridej = (seznam) => seznam.forEach((f) => z.plneni.set(f.execId || `${f.time}|${f.price}|${f.qty}|${f.buy}`, f));
-  // Poslední týden vždy znovu (přibývají plnění), starší jen co chybí.
-  const okna = [[ted - OKNO_PLNENI, ted]];
-  let hranice = Math.min(z.od, ted - OKNO_PLNENI);
+  // Starší úseky, které ještě nikdy staženy nebyly.
+  let hranice = Math.min(z.od, noveOd);
   while (hranice > od && okna.length <= MAX_OKEN_PLNENI) {
     const zacatek = Math.max(od, hranice - OKNO_PLNENI);
     okna.push([zacatek, hranice]);
     hranice = zacatek;
   }
   // Souběžně (v0.38.0), ne okno po okně.
-  (await Promise.all(okna.map(([a, b]) => client.getExecutions(symbol, a, b)))).forEach(pridej);
+  (await Promise.all(okna.map(([a, b]) => client.getExecutions(symbol, a, b))))
+    .forEach((seznam) => seznam.forEach((f) => z.plneni.set(klicPlneni(f), f)));
   z.od = Math.min(z.od, hranice);
-  return [...z.plneni.values()].sort((a, b) => a.time - b.time);
+  z.aktualizovano = ted;
+  mezipamet.uloz(`plneni:${symbol}`, { od: z.od, aktualizovano: z.aktualizovano, plneni: [...z.plneni.values()] });
+  return serazene();
 }
 
 /*
@@ -728,6 +758,7 @@ async function connectIfPossible() {
   }
 
   client.setCredentials(apiKey, apiSecret);
+  mezipamet.nastavVlastnika(apiKey);
   if (!ukazSnimek()) ui.showLoading();
   zacatekNacitani = Date.now();
   ukazDiagnostiku();
@@ -756,9 +787,22 @@ function wireEvents() {
     if (client.hasCredentials()) client.refresh();
   });
 
-  naUdalost('refreshBtn', 'click', () => {
-    if (client.hasCredentials()) client.refresh();
-    else openSettings();
+  /*
+   * ⟳ obnoví to, na co se uživatel dívá (v0.39.0): Pozice → pozice a účet,
+   * Watchlists → ceny a objemy, Historie → plná kontrola celého načteného
+   * období (znovu stáhne i uložené). Jen stahuje, nic nemaže ani neposílá.
+   */
+  naUdalost('refreshBtn', 'click', async () => {
+    const tl = el('refreshBtn');
+    tl?.classList.add('toci');
+    try {
+      if (aktivniZalozka === 'watchlist') await obnovTrhy();
+      else if (!client.hasCredentials()) openSettings();
+      else if (aktivniZalozka === 'history') await obnovHistorii(true);
+      else await client.refresh();
+    } finally {
+      tl?.classList.remove('toci');
+    }
   });
 
   naUdalost('hideBtn', 'click', () => {
@@ -1158,6 +1202,9 @@ async function saveAndConnect() {
 
   // Ukládá se až po ověření, ať se do telefonu nedostane nefunkční klíč.
   store.saveCredentials(apiKey, apiSecret);
+  // Jiný účet = jiná historie: mezipaměť se při jiném klíči sama vymaže.
+  zapomenHistorii();
+  mezipamet.nastavVlastnika(apiKey);
   varovaniKlice = null;
   el('apiKey').value = '';
   el('apiSecret').value = '';
@@ -1174,10 +1221,21 @@ async function saveAndConnect() {
   await client.start();
 }
 
+/** Data předchozího účtu z paměti pryč (odpojení / výměna klíče). */
+function zapomenHistorii() {
+  obchody = [];
+  skupinyObchodu = [];
+  historieOd = 0;
+  historieAktualizovano = 0;
+  historieZTelefonu = false;
+  plneniPary.clear();
+}
+
 function clearCredentials() {
   if (!confirm(t('settings.confirmClear'))) return;
   client.stop();
   store.clearCredentials();
+  zapomenHistorii();
   varovaniKlice = null;
   lastPositions = [];
   vykresliBurzy();
@@ -1798,6 +1856,16 @@ let chybaIdentifikace = false;
 let otevrenyPar = null;         // pár v nabídce u hvězdičky
 let rezimSestavy = null;        // { id } při úpravě, { novy, pridat } při zakládání
 
+/** ⟳ ve Watchlists: znovu ceny, objemy a změny všech párů. */
+async function obnovTrhy() {
+  try {
+    trhy = await client.getTickers();
+    vykresliTrhy();
+  } catch {
+    ui.showWatchNote(t('watchlist.failed'));
+  }
+}
+
 async function nactiTrhy() {
   vykresliListu();
   if (trhy.length) {
@@ -2315,8 +2383,60 @@ const HISTORIE_START = 7 * 86400e3;
 const HISTORIE_BLOK = 30 * 86400e3;
 const HISTORIE_MAX = 730 * 86400e3;
 let historieOd = 0;          // nejstarší načtený okamžik (0 = nic načteno)
+let historieAktualizovano = 0;  // kdy se naposledy stahovalo až do „teď"
 let historieNacita = false;
+let historieZTelefonu = false;  // zkusilo se už načíst z mezipaměti?
 let skupinyObchodu = [];
+
+/*
+ * Uzavřené obchody v telefonu (v0.39.0): co se jednou stáhlo, příště se
+ * ukáže hned a z burzy se dotáhne jen to, co přibylo (`obnovHistorii`).
+ * Načtené období se rozšiřuje jen tlačítkem — nic se nestahuje dopředu.
+ */
+function ulozHistorii() {
+  mezipamet.uloz('historie', { od: historieOd, aktualizovano: historieAktualizovano, zaznamy: obchody });
+}
+
+async function nactiHistoriiZTelefonu() {
+  historieZTelefonu = true;
+  const h = await mezipamet.nacti('historie');
+  if (!h?.od || !Array.isArray(h.zaznamy)) return;
+  obchody = h.zaznamy;
+  historieOd = h.od;
+  historieAktualizovano = h.aktualizovano || h.od;
+}
+
+/**
+ * Dotáhne uzavřené obchody od posledního stažení (s překryvem). `plna`
+ * (tlačítko ⟳ v Historii) stáhne znovu celé načtené období i plnění —
+ * pojistka pro vzácnou zpětnou opravu na straně burzy.
+ */
+async function obnovHistorii(plna = false) {
+  if (!client.hasCredentials() || !historieOd || historieNacita) return;
+  historieNacita = plna;
+  if (plna) vykresliHistorii();
+  const ted = Date.now();
+  const od = plna ? historieOd : Math.max(historieOd, historieAktualizovano - PREKRYV);
+  try {
+    const nove = await client.getClosedTrades(od, ted);
+    if (plna) {
+      obchody = [];
+      const pary = new Set(nove.map((o) => o.symbol));
+      pary.forEach((s) => {
+        plneniPary.delete(s);
+        mezipamet.smaz(`plneni:${s}`);
+      });
+    }
+    slucObchody(nove);
+    historieAktualizovano = ted;
+    ulozHistorii();
+    await prepocitejSkupiny();
+  } catch {
+    /* uložený seznam zůstává, nová data přijdou příště */
+  }
+  historieNacita = false;
+  if (aktivniZalozka === 'history') vykresliHistorii();
+}
 
 function klicObchodu(o) {
   return `${o.id}|${o.closedAt}`;
@@ -2384,7 +2504,7 @@ function seskupObchody(zaznamy, plneniPodleParu, pozice) {
   }).sort((a, b) => (b.otevrena - a.otevrena) || (b.posledni - a.posledni));
 }
 
-async function prepocitejSkupiny() {
+async function prepocitejSkupiny(jenUlozene = false) {
   const pary = [...new Set(obchody.map((o) => o.symbol))];
   const od = historieOd || Date.now() - HISTORIE_START;
   // Plnění pro všechny páry souběžně; bez práva na plnění zůstane každý
@@ -2392,7 +2512,7 @@ async function prepocitejSkupiny() {
   const plneni = new Map();
   await Promise.all(pary.map(async (s) => {
     try {
-      plneni.set(s, await dotahniPlneni(s, od));
+      plneni.set(s, await dotahniPlneni(s, od, jenUlozene));
     } catch { /* bez plnění se nesekupuje */ }
   }));
   skupinyObchodu = seskupObchody(obchody, plneni, lastPositions);
@@ -2430,8 +2550,11 @@ async function nactiStarsiHistorii() {
   const doKdy = historieOd || Date.now();
   const od = Math.max(doKdy - (historieOd ? HISTORIE_BLOK : HISTORIE_START), Date.now() - HISTORIE_MAX);
   try {
+    const ted = Date.now();
     slucObchody(await client.getClosedTrades(od, doKdy));
+    if (!historieOd) historieAktualizovano = ted;
     historieOd = od;
+    ulozHistorii();
     await prepocitejSkupiny();
   } catch (err) {
     historieNacita = false;
@@ -2450,20 +2573,21 @@ async function nactiHistorii() {
     ukazPrvek('historyMore', false);
     return;
   }
+  if (!historieOd && !historieZTelefonu) {
+    // Uložené obchody hned, bez čekání na burzu.
+    await nactiHistoriiZTelefonu();
+    if (historieOd) {
+      await prepocitejSkupiny(true);
+      vykresliHistorii();
+    }
+  }
   if (!historieOd) {
     await nactiStarsiHistorii();
     return;
   }
   vykresliHistorii();
-  // Při návratu na záložku dotáhnout obchody zavřené mezitím.
-  try {
-    const ted = Date.now();
-    slucObchody(await client.getClosedTrades(ted - 7 * 86400e3, ted));
-    await prepocitejSkupiny();
-    vykresliHistorii();
-  } catch {
-    /* starší seznam zůstává, nová data přijdou příště */
-  }
+  // Na pozadí jen to, co přibylo od posledního stažení.
+  obnovHistorii(false);
 }
 
 /**

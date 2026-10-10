@@ -85,8 +85,21 @@ def over(podminka, popis):
 klice = lambda: sorted(json.loads(ev("JSON.stringify(Object.keys(localStorage).filter(k => k.startsWith('perpdesk.')))") or '[]'))
 vidim = lambda i: ev(f"!document.getElementById('{i}').hidden")
 
+KLICE_DB = """new Promise((ok) => { const r = indexedDB.open('perpyx-mezipamet', 1);
+  r.onupgradeneeded = () => r.result.createObjectStore('data');
+  r.onsuccess = () => { const tx = r.result.transaction('data', 'readonly');
+    const k = tx.objectStore('data').getAllKeys(); k.onsuccess = () => { ok(JSON.stringify(k.result)); r.result.close(); }; };
+  r.onerror = () => ok('[]'); })"""
+klice_db = lambda: json.loads(p.prikaz('Runtime.evaluate', expression=KLICE_DB, awaitPromise=True,
+                                      returnByValue=True).get('result', {}).get('value') or '[]')
+
 p.prikaz('Page.navigate', url=sys.argv[1])
 time.sleep(5)
+# Historie se uloží do telefonu (mezipaměť, v0.39.0) — odhlášení ji musí smazat.
+ev("document.querySelector('[data-tab=history]').click()")
+time.sleep(3)
+ev("document.querySelector('[data-tab=positions]').click()")
+over('historie' in klice_db(), 'Historie je uložená v telefonu')
 pred = klice()
 over('perpdesk.apiKey' in pred and 'perpdesk.drawings.JUPUSDT' in pred and 'perpdesk.session' in pred, 'telefon má klíč, kresby a přihlášení')
 
@@ -118,6 +131,7 @@ po_odhlaseni = klice()
 over(set(po_odhlaseni) <= {'perpdesk.language', 'perpdesk.coinCategories', 'perpdesk.disclaimerSeen'},
      f'z telefonu smazáno vše kromě věcí zařízení ({po_odhlaseni})')
 over(vidim('onboarding') and vidim('onbLogin'), 'po odhlášení přihlášení')
+over(not [k for k in klice_db() if k != '__vlastnik'], f'uložené obchody a plnění smazány ({klice_db()})')
 
 print('3) přihlášení jiným účtem do prázdného telefonu')
 ev("window.__potvrzeni = []")

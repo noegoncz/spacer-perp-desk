@@ -1530,6 +1530,27 @@ se dotáhne posledních 7 dní. Mock napodobuje omezení Bybitu; test
 - Testy: `test-historie-skupiny.py` (nový), `test-historie-strankovani.py`
   (tlačítko), `test-historie-obchod.py`.
 
+**Mezipaměť v telefonu (v0.39.0, přání uživatele — rychlost):**
+`js/mezipamet.js` (IndexedDB `perpyx-mezipamet`) drží data, která se už
+nezmění: **uzavřené obchody** (`historie`: období, kdy naposledy staženo,
+záznamy) a **plnění po párech** (`plneni:SYMBOL`).
+- Nic se nestahuje dopředu — ukládá se jen to, co uživatel načetl
+  (7 dní, pak tlačítkem po 30 dnech). Příště se Historie ukáže hned
+  z telefonu (`prepocitejSkupiny(true)` bez sítě) a na pozadí se dotáhne
+  jen úsek od posledního stažení s hodinovým překryvem (`obnovHistorii`,
+  `dotahniPlneni`).
+- ⚠ **Jen v telefonu**: ne na server, ne do cloudové zálohy (IndexedDB
+  záloha nebere). Patří jednomu účtu Bybitu — ukládá se otisk API klíče
+  (`nastavVlastnika`) a jiný klíč mezipaměť smaže. **Odpojení burzy,
+  zapomenutý PIN (`store.clearCredentials`) i odhlášení
+  (`zaloha.vymazMistniData`) ji mažou.**
+- **⟳ podle obrazovky:** Pozice → pozice a účet; Watchlists → ceny
+  a objemy (`obnovTrhy`); Historie → **plná kontrola** celého načteného
+  období včetně plnění (pojistka pro zpětnou opravu na burze). Jen
+  stahuje, nic nemaže. Během obnovy se ikona točí.
+- Testy: `test-mezipamet.py` (rychlé zobrazení při pomalé burze, jen
+  poslední úsek, ⟳, odpojení), `test-odhlaseni.py` (smazání při odhlášení).
+
 **Barvy jako TabTrader (v0.38.0):** svíčky tlumené `#60a868` / `#e05858`
 (`BARVY.svickaRust/svickaPokles`), trojúhelníky plnění jasné `#00e020` /
 `#f84840` — odebrané z uživatelova screenshotu TT. Syté `rust`/`pokles`

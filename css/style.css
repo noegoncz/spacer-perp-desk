@@ -2628,3 +2628,7 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
   color: var(--text-dim);
 }
 .trade-soucet .trade-pnl { text-decoration: underline; text-underline-offset: 3px; }
+
+/* ⟳ se točí, dokud obnovení běží. */
+#refreshBtn.toci { animation: toceni 0.8s linear infinite; }
+@keyframes toceni { to { transform: rotate(360deg); } }

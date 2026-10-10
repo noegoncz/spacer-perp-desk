@@ -1,9 +1,13 @@
 {
-  "verze": "0.38.2",
+  "verze": "0.39.0",
   "novinky": [
     {
-      "en": "Open trades are always at the top of History.",
-      "cs": "Otevřené obchody jsou v Historii vždy nahoře."
+      "en": "History opens instantly: trades you've loaded are kept on your phone, and only new ones are fetched.",
+      "cs": "Historie se otevře hned: načtené obchody zůstávají v telefonu a stahují se jen nové."
+    },
+    {
+      "en": "The ⟳ button now refreshes the screen you're on: positions, watchlist prices, or a full re-check of History.",
+      "cs": "Tlačítko ⟳ obnoví obrazovku, na které jsi: pozice, ceny ve Watchlists, nebo plnou kontrolu Historie."
     }
   ],
   "opravy": []

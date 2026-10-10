@@ -3,6 +3,8 @@
  * a nikdy se nesmí dostat do repozitáře.
  */
 
+import { vymaz as vymazMezipamet } from './mezipamet.js';
+
 const KEY_API = 'perpdesk.apiKey';
 const KEY_SECRET = 'perpdesk.apiSecret';
 const KEY_HIDE = 'perpdesk.hideAmounts';
@@ -64,6 +66,8 @@ export function clearCredentials() {
   } catch {
     /* nic */
   }
+  // S klíčem odchází i uložená historie účtu (js/mezipamet.js).
+  vymazMezipamet();
 }
 
 export function hasCredentials() {
