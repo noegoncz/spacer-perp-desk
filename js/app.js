@@ -159,6 +159,7 @@ const client = new BybitClient({
     skonciSnimek();
     naplanujVykresleniPozic();
     ulozSnimek();
+    naplanujPredneceniTrhu();
     if (grafZNotifikace) dokonciGrafZNotifikace();
     syncOpenChart(list);
     /*
@@ -793,6 +794,8 @@ async function connectIfPossible() {
   if (!apiKey || !apiSecret) {
     ui.showPlaceholder(t('positions.noKeys'), t('exchanges.connect'));
     ui.showView('positions');
+    // Bez klíče pozice nepřijdou — Watchlists se předčtou i tak.
+    naplanujPredneceniTrhu(2500);
     dokresliSeznamJeLiZastaraly();
     return;
   }
@@ -1889,19 +1892,27 @@ const grafyFronta = [];
 let grafyBezi = 0;
 let sledovac = null;
 
+const grafyCerstve = new Set();  // stažené v tomto běhu (ne ze snímku)
+
 function odbavGrafy() {
   while (grafyBezi < SOUBEZNYCH_GRAFU && grafyFronta.length) {
     const { symbol, radek } = grafyFronta.shift();
+    if (grafyCerstve.has(symbol) && !radek) continue;
     grafyBezi += 1;
     client
       .getSparkline(symbol)
       .then((data) => {
         grafyCache.set(symbol, data);
-        if (radek.isConnected) ui.drawSparkline(radek, data);
+        grafyCerstve.add(symbol);
+        // Předčtení nemá dlaždici — kreslí se do té, která je teď v DOM.
+        const cil = radek?.isConnected ? radek
+          : document.querySelector(`#watchList .tile[data-symbol="${symbol}"]`);
+        if (cil) ui.drawSparkline(cil, data);
       })
       .catch(() => {})
       .finally(() => {
         grafyBezi -= 1;
+        if (!grafyBezi && !grafyFronta.length) ulozTrhySnimek(true);
         odbavGrafy();
       });
   }
@@ -1909,12 +1920,22 @@ function odbavGrafy() {
 
 function sledujGrafy(radky) {
   sledovac?.disconnect();
+  /*
+   * Mini-grafy, které už jsou v paměti (předčtení, snímek), se nakreslí
+   * hned, ne až když dlaždice vjede do obrazu — jinak by tabulky chvíli
+   * stály prázdné a pak „doskočily" (v0.48.0, přání uživatele).
+   */
+  radky = radky.filter((r) => {
+    const data = grafyCache.get(r.dataset.symbol);
+    if (data) ui.drawSparkline(r, data);
+    return !grafyCerstve.has(r.dataset.symbol);
+  });
   sledovac = new IntersectionObserver((zaznamy) => {
     for (const z of zaznamy) {
       if (!z.isIntersecting) continue;
       sledovac.unobserve(z.target);
       const { symbol } = z.target.dataset;
-      if (grafyCache.has(symbol)) {
+      if (grafyCerstve.has(symbol)) {
         ui.drawSparkline(z.target, grafyCache.get(symbol));
       } else {
         grafyFronta.push({ symbol, radek: z.target });
@@ -1945,31 +1966,129 @@ let chybaIdentifikace = false;
 let otevrenyPar = null;         // pár v nabídce u hvězdičky
 let rezimSestavy = null;        // { id } při úpravě, { novy, pridat } při zakládání
 
-/** ⟳ ve Watchlists: znovu ceny, objemy a změny všech párů. */
-async function obnovTrhy() {
+/*
+ * Watchlists připravené dopředu (v0.48.0, přání uživatele: po startu se
+ * skoro vždy jde buď do grafu pozice, nebo na Watchlists — a ty se pak
+ * načítaly před očima, dlaždice prázdné a hodnoty doskakovaly).
+ *
+ * - **Snímek v telefonu** (`perpdesk.trhySnimek`): poslední známé ceny
+ *   a mini-grafy párů ze seznamů. Watchlists se ukážou hned plné.
+ * - **Předčtení**: jakmile dorazí první pozice (nebo po 2,5 s bez klíče),
+ *   stáhnou se na pozadí ceny všech párů (jeden dotaz) a mini-grafy párů
+ *   ze všech seznamů (po čtyřech) a dlaždice se tiše přepíšou.
+ * - **Obnova**: ve Watchlists každých 30 s ceny (jeden dotaz), při
+ *   návratu na záložku, jsou-li starší než 30 s. Ne při držení dlaždice.
+ * Snímek je veřejná data z burzy, do zálohy nejde, odhlášení ho smaže.
+ */
+const KLIC_TRHY = 'perpdesk.trhySnimek';
+const TRHY_OBNOVA = 30e3;
+let trhyUplne = false;   // v `trhy` jsou všechny páry z burzy, ne jen snímek
+let trhyCas = 0;
+let trhySnimekUlozen = 0;
+let predneceniBezi = false;
+let predneceniHotovo = false;
+
+function paryVSeznamech() {
+  const pary = new Set();
+  for (const s of sestavy.seznamy()) sestavy.paryVPoradi(s.id).forEach((x) => pary.add(x));
+  return pary;
+}
+
+function ulozTrhySnimek(vynutit = false) {
+  // Odstup jen u cen (obnova po 30 s); dostahované mini-grafy se uloží vždy.
+  if (!trhyUplne || (!vynutit && Date.now() - trhySnimekUlozen < 10e3)) return;
+  trhySnimekUlozen = Date.now();
+  const pary = paryVSeznamech();
+  const grafy = {};
+  for (const s of pary) if (grafyCache.has(s)) grafy[s] = grafyCache.get(s);
+  store.saveJson(KLIC_TRHY, { cas: Date.now(), trhy: trhy.filter((r) => pary.has(r.symbol)), grafy });
+}
+
+function nactiTrhySnimek() {
+  if (trhy.length) return;
+  const s = store.loadJson(KLIC_TRHY, null);
+  if (!s || !Array.isArray(s.trhy) || Date.now() - s.cas > 7 * 86400e3) return;
+  trhy = s.trhy;
+  for (const [symbol, data] of Object.entries(s.grafy || {})) {
+    if (!grafyCache.has(symbol)) grafyCache.set(symbol, data);
+  }
+}
+
+async function stahniTrhy() {
+  trhy = await client.getTickers();
+  trhyUplne = true;
+  trhyCas = Date.now();
+  ulozTrhySnimek();
+}
+
+let predneceniCasovac = null;
+function naplanujPredneceniTrhu(za = 300) {
+  if (predneceniHotovo || predneceniCasovac) return;
+  predneceniCasovac = setTimeout(predNactiTrhy, za);
+}
+
+async function predNactiTrhy() {
+  if (predneceniBezi || predneceniHotovo) return;
+  // Bez účtu (úvodní obrazovka, po odhlášení) nic — jinak by se do
+  // vymazaného telefonu hned zase zapsal seznam a snímek trhů.
+  if (!ucet.prihlasen()) {
+    predneceniCasovac = null;
+    return;
+  }
+  predneceniBezi = true;
   try {
-    trhy = await client.getTickers();
+    nactiTrhySnimek();
+    if (!trhyUplne) await stahniTrhy();
+    predneceniHotovo = true;
+    vykresliTrhy();
+    // Mini-grafy všech párů ze seznamů, i těch, které nejsou vidět.
+    for (const symbol of paryVSeznamech()) {
+      if (!grafyCerstve.has(symbol)) grafyFronta.push({ symbol, radek: null });
+    }
+    odbavGrafy();
+  } catch {
+    /* nevadí — Watchlists si data stáhnou při otevření */
+  } finally {
+    predneceniBezi = false;
+  }
+}
+
+/** ⟳ ve Watchlists: znovu ceny, objemy a změny všech párů. */
+async function obnovTrhy(tise = false) {
+  try {
+    await stahniTrhy();
     vykresliTrhy();
   } catch {
-    ui.showWatchNote(t('watchlist.failed'));
+    if (!tise) ui.showWatchNote(t('watchlist.failed'));
   }
 }
 
 async function nactiTrhy() {
   vykresliListu();
+  nactiTrhySnimek();
   if (trhy.length) {
     vykresliTrhy();
+    if (!trhyUplne || Date.now() - trhyCas > TRHY_OBNOVA) obnovTrhy(true);
+    if (!predneceniHotovo) predNactiTrhy();
     return;
   }
   ui.showWatchNote(t('watchlist.loading'));
   try {
-    trhy = await client.getTickers();
+    await stahniTrhy();
   } catch {
     ui.showWatchNote(t('watchlist.failed'));
     return;
   }
   vykresliTrhy();
+  predNactiTrhy();
 }
+
+// Ve Watchlists se ceny obnovují samy (jeden dotaz na všechny páry).
+setInterval(() => {
+  if (aktivniZalozka !== 'watchlist' || document.hidden || !el('viewChart')?.hidden) return;
+  if (document.querySelector('#watchList .drzena')) return; // právě drží dlaždici
+  if (Date.now() - trhyCas >= TRHY_OBNOVA - 1000) obnovTrhy(true);
+}, 5000);
 
 function vykresliListu() {
   ui.renderListBar({

@@ -1441,6 +1441,29 @@ aktivní sestavu → přejmenovat / smazat.
     bude omezení placené verze (`sestavy.LIMITY`).
   - Test: `test-sestavy.py` (skupina uprostřed, seznamy se nehýbou,
     ukazatel, přetečení, přejíždění skutečným dotykem).
+- **Watchlists připravené dopředu (v0.48.0, přání uživatele — po startu
+  se jde skoro vždy do grafu pozice, nebo na Watchlists, a ty se pak
+  načítaly před očima):**
+  - **Předčtení:** první dávka pozic (`onPositions` →
+    `naplanujPredneceniTrhu`, bez klíče po 2,5 s) stáhne ceny všech párů
+    (jeden dotaz) a mini-grafy všech párů ze **všech** seznamů (po čtyřech,
+    i bez dlaždice v DOM) a dlaždice tiše vykreslí. ⚠ Jen s přihlášeným
+    účtem — po odhlášení by jinak do vymazaného telefonu hned zapsalo
+    výchozí seznam a snímek (`test-odhlaseni.py` to chytil).
+  - **Snímek** `perpdesk.trhySnimek` (ceny a mini-grafy párů ze seznamů,
+    7 dní): Watchlists jsou plné hned i po restartu a při pomalé síti.
+    Nezálohuje se (`BEZ_ZALOHY`, `NEZALOHOVAT`), odhlášení ho maže.
+    Uloží se i po dostahování mini-grafů (`ulozTrhySnimek(true)`).
+  - Mini-grafy v paměti se kreslí hned při vykreslení dlaždic
+    (`sledujGrafy`), ne až po vjetí do obrazu; ze sítě se dotahují jen
+    ty, které v tomto běhu ještě nepřišly (`grafyCerstve`).
+  - **Obnova cen:** ve Watchlists každých 30 s (jeden dotaz), při návratu
+    na záložku, jsou-li starší; ne při držení dlaždice. Dřív se ceny
+    po prvním načtení samy neobnovovaly vůbec (jen ⟳).
+  - Hledání a kategorie bývalého „All" mají v HTML `hidden`, dřív při
+    načítání probleskly.
+  - Test: `tools/test-watchlist-predem.py` (pomalá burza, snímek), na
+    starém kódu padá v 7 bodech.
 - ⚠ Magnet v grafu dřív v obsluze klepnutí sahal na tlačítko filtru
   oblíbených (zbloudilý řádek) — se zrušeným tlačítkem by spadl. Odstraněno.
 

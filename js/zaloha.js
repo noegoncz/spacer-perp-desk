@@ -30,6 +30,7 @@ const NEZALOHOVAT = new Set([
   'perpdesk.pushToken',
   // Poslední známé pozice pro okamžitý start — patří jen tomuto telefonu.
   'perpdesk.startSnimek',
+  'perpdesk.trhySnimek',
 ]);
 
 function klice() {

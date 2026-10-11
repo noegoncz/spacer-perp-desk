@@ -1,10 +1,14 @@
 {
-  "verze": "0.47.1",
-  "novinky": [],
-  "opravy": [
+  "verze": "0.48.0",
+  "novinky": [
     {
-      "en": "No more blue circle flashing when a chart opens.",
-      "cs": "Při otevření grafu už nebliká modrý kroužek."
+      "en": "Watchlists are ready the moment you open them: prices and mini-charts load in the background right after start.",
+      "cs": "Seznamy jsou připravené hned při otevření: ceny a mini-grafy se načtou na pozadí hned po startu."
+    },
+    {
+      "en": "Prices in Watchlists now refresh by themselves every 30 seconds.",
+      "cs": "Ceny v seznamech se teď samy obnovují každých 30 sekund."
     }
-  ]
+  ],
+  "opravy": []
 }
