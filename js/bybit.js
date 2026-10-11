@@ -228,6 +228,8 @@ export class BybitClient {
     this.watchdogTimer = null;
     this.pollTimer = null;
     this.subscribedSymbols = new Set();
+    // Páry viditelného seznamu ve Watchlists — tickery navíc k pozicím.
+    this.extraTickers = new Set();
     this.klineTopic = null;
 
     /** UNIFIED nebo CONTRACT; zjistí se při prvním načtení přehledu účtu. */
@@ -1393,22 +1395,38 @@ export class BybitClient {
     this.publicTimer = setTimeout(() => this.connectPublic(), delay);
   }
 
-  /** Odebírá tickery přesně těch párů, na kterých je otevřená pozice. */
+  /**
+   * Tickery párů navíc — dlaždice viditelného seznamu ve Watchlists
+   * (v0.49.0, živé ceny jako v grafu). Změny chodí přes `onTicker`.
+   */
+  setExtraTickers(symbols) {
+    this.extraTickers = new Set(symbols || []);
+    this.syncTickerSubscriptions();
+  }
+
+  /** Odebírá tickery párů s otevřenou pozicí a párů navíc (Watchlists). */
   syncTickerSubscriptions() {
     const ws = this.publicWs;
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
     const wanted = new Set([...this.positions.values()].map((p) => p.symbol));
+    this.extraTickers.forEach((s) => wanted.add(s));
 
     const toAdd = [...wanted].filter((s) => !this.subscribedSymbols.has(s));
     const toRemove = [...this.subscribedSymbols].filter((s) => !wanted.has(s));
 
+    // Po deseti v jedné zprávě — Bybit má na počet témat v žádosti strop.
+    const posli = (op, seznam) => {
+      for (let i = 0; i < seznam.length; i += 10) {
+        ws.send(JSON.stringify({ op, args: seznam.slice(i, i + 10).map((s) => `tickers.${s}`) }));
+      }
+    };
     if (toAdd.length) {
-      ws.send(JSON.stringify({ op: 'subscribe', args: toAdd.map((s) => `tickers.${s}`) }));
+      posli('subscribe', toAdd);
       toAdd.forEach((s) => this.subscribedSymbols.add(s));
     }
     if (toRemove.length) {
-      ws.send(JSON.stringify({ op: 'unsubscribe', args: toRemove.map((s) => `tickers.${s}`) }));
+      posli('unsubscribe', toRemove);
       toRemove.forEach((s) => this.subscribedSymbols.delete(s));
     }
   }
@@ -1419,8 +1437,19 @@ export class BybitClient {
    * bez tohohle by čísla mezi obchody stála.
    */
   applyTicker(data) {
+    if (!data?.symbol) return;
+    // Pro dlaždice ve Watchlists: jen pole, která ve zprávě jsou (delta).
+    if (this.extraTickers.has(data.symbol)) {
+      const zmena = { symbol: data.symbol };
+      const last = optionalNum(data.lastPrice);
+      if (last) zmena.last = last;
+      if (data.price24hPcnt != null && data.price24hPcnt !== '') zmena.changePct = num(data.price24hPcnt) * 100;
+      const obrat = optionalNum(data.turnover24h);
+      if (obrat) zmena.turnover = obrat;
+      if (Object.keys(zmena).length > 1) this.handlers.onTicker?.(zmena);
+    }
     const mark = optionalNum(data.markPrice);
-    if (!mark || !data.symbol) return;
+    if (!mark) return;
 
     let changed = false;
     for (const p of this.positions.values()) {

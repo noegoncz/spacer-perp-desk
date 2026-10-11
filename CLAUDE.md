@@ -1464,6 +1464,20 @@ aktivní sestavu → přejmenovat / smazat.
     načítání probleskly.
   - Test: `tools/test-watchlist-predem.py` (pomalá burza, snímek), na
     starém kódu padá v 7 bodech.
+- **Živé ceny v dlaždicích (v0.49.0, volba uživatele ze tří — živě /
+  častější stahování / jen po návratu z grafu):** páry **vybraného
+  seznamu** odebírají stejný veřejný ticker stream jako pozice
+  (`client.setExtraTickers`, `odebirejSeznam` po každém vykreslení
+  dlaždic; odběry po deseti v jedné zprávě). Změny chodí přes
+  `onTicker` jen s poli, která ve zprávě jsou — Bybit posílá **delty**
+  (ověřeno naostro 2026-10-11: `lastPrice`, `price24hPcnt`,
+  `turnover24h` jen když se změní). Do dlaždic se zapisuje nejvýš jednou
+  za vteřinu a **jen čísla** (`ui.updateTile`), dlaždice se nestaví znovu
+  (držení, přesun, mini-graf ani posun se neruší). Odebírá se i pod
+  otevřeným grafem, ať je po návratu cena hned čerstvá. Bez připojené
+  burzy veřejný stream neběží → zůstává obnova po 30 s.
+  Test: `tools/test-watchlist-zive.py` (podstrčené spojení), na starém
+  kódu padá.
 - ⚠ Magnet v grafu dřív v obsluze klepnutí sahal na tlačítko filtru
   oblíbených (zbloudilý řádek) — se zrušeným tlačítkem by spadl. Odstraněno.
 

@@ -154,6 +154,10 @@ let magnetZapnut = store.loadMagnet();
 let poslednicCena = null;  // poslední cena z grafu — předvyplní hladinu alarmu
 
 const client = new BybitClient({
+  // Živé ceny párů viditelného seznamu ve Watchlists (v0.49.0).
+  onTicker(zmena) {
+    zivaZmenaTrhu(zmena);
+  },
   onPositions(list) {
     lastPositions = list;
     skonciSnimek();
@@ -2083,6 +2087,40 @@ async function nactiTrhy() {
   predNactiTrhy();
 }
 
+/*
+ * Živé ceny v dlaždicích (v0.49.0, přání uživatele — po návratu z grafu
+ * stála v dlaždici stará cena): páry **vybraného seznamu** odebírají
+ * stejný ticker stream jako pozice. Změny se sbírají a do dlaždic se
+ * zapisují nejvýš jednou za vteřinu, jen čísla (`ui.updateTile`).
+ * Odebírá se i pod otevřeným grafem, ať je po návratu cena hned čerstvá.
+ * Bez připojené burzy stream neběží — pak zůstává obnova po 30 s.
+ */
+const zmeneneTrhy = new Set();
+let zapisTrhuCasovac = null;
+
+function odebirejSeznam() {
+  client.setExtraTickers(trhy.length ? sestavy.paryVPoradi(sestavy.aktivni()) : []);
+}
+
+function zivaZmenaTrhu(zmena) {
+  const trh = trhy.find((r) => r.symbol === zmena.symbol);
+  if (!trh) return;
+  Object.assign(trh, zmena);
+  zmeneneTrhy.add(zmena.symbol);
+  if (!zapisTrhuCasovac) zapisTrhuCasovac = setTimeout(zapisZmenyTrhu, 1000);
+}
+
+function zapisZmenyTrhu() {
+  zapisTrhuCasovac = null;
+  const pozice = new Map(lastPositions.map((p) => [p.symbol, p]));
+  for (const symbol of zmeneneTrhy) {
+    const dlazdice = document.querySelector(`#watchList .tile[data-symbol="${symbol}"]`);
+    const trh = trhy.find((r) => r.symbol === symbol);
+    if (dlazdice && trh) ui.updateTile(dlazdice, trh, pozice.get(symbol), hideAmounts);
+  }
+  zmeneneTrhy.clear();
+}
+
 // Ve Watchlists se ceny obnovují samy (jeden dotaz na všechny páry).
 setInterval(() => {
   if (aktivniZalozka !== 'watchlist' || document.hidden || !el('viewChart')?.hidden) return;
@@ -2141,6 +2179,7 @@ function vykresliTrhy() {
       hide: hideAmounts,
     });
     sledujGrafy(dlazdice);
+    odebirejSeznam();
     el('watchHint').textContent = seznam.length ? t('lists.tilesHint', { n: seznam.length }) : '';
     ui.showWatchNote(trhy.length && !seznam.length ? t('lists.emptyTiles') : '');
     return;

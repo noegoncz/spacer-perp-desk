@@ -1,13 +1,9 @@
 {
-  "verze": "0.48.0",
+  "verze": "0.49.0",
   "novinky": [
     {
-      "en": "Watchlists are ready the moment you open them: prices and mini-charts load in the background right after start.",
-      "cs": "Seznamy jsou připravené hned při otevření: ceny a mini-grafy se načtou na pozadí hned po startu."
-    },
-    {
-      "en": "Prices in Watchlists now refresh by themselves every 30 seconds.",
-      "cs": "Ceny v seznamech se teď samy obnovují každých 30 sekund."
+      "en": "Live prices in Watchlists: tiles of the selected list update every second, just like the chart.",
+      "cs": "Živé ceny v seznamech: dlaždice vybraného seznamu se mění každou vteřinu, stejně jako graf."
     }
   ],
   "opravy": []

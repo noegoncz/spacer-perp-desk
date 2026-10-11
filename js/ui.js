@@ -929,6 +929,26 @@ export function renderTiles(trhy, volby) {
 }
 
 /**
+ * Živá změna ceny v dlaždici (v0.49.0): přepíše jen cenu, změnu za 24 h
+ * a hodnotu pozice — dlaždice se nestaví znovu (držení a přesouvání,
+ * mini-graf ani posun stránky se tím neruší).
+ */
+export function updateTile(dlazdice, trh, poz, hide) {
+  const cena = dlazdice.querySelector('.tile-cena');
+  if (cena) cena.textContent = formatPrice(trh.last);
+  const zmena = dlazdice.querySelector('.tile-zmena');
+  if (zmena) {
+    zmena.textContent = formatPercent(trh.changePct);
+    zmena.className = `tile-zmena ${pnlClass(trh.changePct)}`;
+  }
+  const hodnota = dlazdice.querySelector('.tile-poz');
+  if (hodnota) {
+    hodnota.textContent = poz ? (hide ? MASK : `${formatUsd(poz.value)} USDT`) : '';
+    hodnota.className = `tile-poz ${poz ? pnlClass(poz.pnl) : ''}`.trim();
+  }
+}
+
+/**
  * Výsledky hledání v nabídce „+" (přidání páru do seznamu): široké řádky
  * s burzou, objemem, cenou a změnou; přidané páry mají fajfku.
  */
