@@ -62,10 +62,30 @@ if PRO_ZAHLAVI:
     ]
 TED = int(time.time() * 1000)
 pozice, prikazy, plneni = [], [], []
+def svicka_v(cas):
+    # 4h svíčka BTC, do které čas padne
+    return max((s for s in svicky if s[0] <= cas), key=lambda s: s[0])
+
+
 for sym, strana, vel, k, sl, tp, dm in NAVRH:
     mark = ceny[sym]
     vstup = round(mark * k, dm)
     smer = 1 if strana == 'Buy' else -1
+    # Dvě plnění, která pozici otevřela (dohromady přesně její velikost).
+    # U BTC (jediný pár v grafu na snímcích) leží **uvnitř skutečných
+    # svíček** a vstup je jejich vážený průměr — jinak trojúhelník visel
+    # v grafu mimo svíčky.
+    davky = []
+    for i, (hod, podil, odchylka) in enumerate(((52, 0.6, 1.004), (19, 0.4, 0.994))):
+        cas = TED - hod * 3600000
+        if sym == 'BTCUSDT':
+            _, hi, lo = svicka_v(cas)
+            cena = round(lo + (0.35 if i else 0.55) * (hi - lo), dm)
+        else:
+            cena = round(vstup * odchylka, dm)
+        davky.append((cas, cena, round(vel * podil, 6), i))
+    if sym == 'BTCUSDT':
+        vstup = round(sum(c * q for _, c, q, _ in davky) / vel, dm)
     pozice.append({
         'symbol': sym, 'side': strana, 'size': str(vel), 'avgPrice': str(vstup),
         'markPrice': str(mark), 'unrealisedPnl': f'{(mark - vstup) * vel * smer:.4f}',
@@ -74,18 +94,18 @@ for sym, strana, vel, k, sl, tp, dm in NAVRH:
         'takeProfit': str(round(vstup * tp, dm)), 'positionIdx': 0,
         'createdTime': str(TED - 90 * 86400000),
     })
-    # Dvě plnění, která pozici otevřela (dohromady přesně její velikost).
-    for i, (hod, podil, odchylka) in enumerate(((52, 0.6, 1.004), (19, 0.4, 0.994))):
+    for cas, cena, mnozstvi, i in davky:
         plneni.append({'symbol': sym, 'side': strana, 'execType': 'Trade',
-                       'execPrice': str(round(vstup * odchylka, dm)), 'orderId': f'{sym}-{i}',
-                       'execQty': str(round(vel * podil, 6)), 'execTime': str(TED - hod * 3600000)})
+                       'execPrice': str(cena), 'orderId': f'{sym}-{i}',
+                       'execQty': str(mnozstvi), 'execTime': str(cas)})
     if sym == 'BTCUSDT':
         prikazy += [
             {'orderId': 'p1', 'symbol': sym, 'side': 'Sell', 'orderType': 'Market',
              'stopOrderType': 'PartialTakeProfit', 'triggerPrice': str(round(vrch - 0.3 * rozpeti, 1)),
              'qty': '0.02', 'cumExecQty': '0', 'reduceOnly': True, 'createdTime': str(TED - 7200000)},
             {'orderId': 'p2', 'symbol': sym, 'side': 'Buy', 'orderType': 'Limit',
-             'price': str(round(dno + 0.14 * rozpeti, 1)), 'qty': '0.02', 'cumExecQty': '0',
+             # mezi vstupem a SL — ať se štítky limitky a SL nekryjí
+             'price': str(round(vstup - 0.5 * (vstup - vstup * sl), 1)), 'qty': '0.02', 'cumExecQty': '0',
              'reduceOnly': False, 'createdTime': str(TED - 3600000)},
         ]
 
@@ -140,7 +160,7 @@ kresby = [
      'style': {'color': '#f5c542', 'width': 1, 'opacity': 1}},
 ]
 
-# Alarm na BTC kousek nad aktuální cenou — kvůli snímku okna alarmu.
+# Alarm na BTC kousek nad aktuální cenou — v grafu je vidět jeho hladina.
 alarm_cena = round(ceny['BTCUSDT'] * 1.012, 1)
 alarmy_data = [{'id': 'snimek1', 'symbol': 'BTCUSDT', 'typ': 'cena', 'price': alarm_cena,
                 'smer': 'up', 'opakovat': False, 'platnostDnu': 7, 'aktivni': True, 'zprava': 'Breakout'}]
@@ -290,6 +310,15 @@ def snimek(nazev):
     print('uloženo', nazev)
 
 
+def odsad_graf(px, svice=None):
+    # Svíčky končí před štítky vpravo (PnL, TP, SL…), ať je nepřekrývají —
+    # jen pro snímky, v aplikaci zůstává výchozí odsazení.
+    if svice:
+        ev(f"window.__graf.setBarSpace({svice})")
+    ev(f"window.__graf.setOffsetRightDistance({px}); window.__graf.scrollToRealTime()")
+    time.sleep(0.8)
+
+
 def spust(sirka, vyska):
     p.prikaz('Emulation.setDeviceMetricsOverride', width=sirka, height=vyska,
              deviceScaleFactor=2, mobile=True)
@@ -310,6 +339,7 @@ snimek('pozice.webp')
 # 2) Graf BTC s kresbami a indikátory
 ev("""[...document.querySelectorAll('.position')].find((k) => k.textContent.includes('BTCUSDT')).click()""")
 time.sleep(6)
+odsad_graf(130, 5)
 snimek('graf.webp')
 
 # 3) Trhy
@@ -323,20 +353,8 @@ snimek('trhy.webp')
 spust(673, 841)
 ev("""[...document.querySelectorAll('.position')].find((k) => k.textContent.includes('BTCUSDT')).click()""")
 time.sleep(6)
+odsad_graf(170)
 snimek('graf-fold.webp')
-
-# 5) Okno alarmu na rozevřeném Foldu — klepnutím na hladinu alarmu
-p.prikaz('Emulation.setTouchEmulationEnabled', enabled=True, maxTouchPoints=5)
-y = ev("""(() => { const v = document.getElementById('drawLayer').getBoundingClientRect();
-  const yy = window.__graf.convertToPixel({ value: %s }, { paneId: 'candle_pane' });
-  return v.top + (Array.isArray(yy) ? yy[0].y : yy.y); })()""" % alarm_cena)
-bod = [{'x': 300, 'y': y, 'radiusX': 10, 'radiusY': 10, 'force': 1, 'id': 1}]
-p.prikaz('Input.dispatchTouchEvent', type='touchStart', touchPoints=bod)
-time.sleep(0.05)
-p.prikaz('Input.dispatchTouchEvent', type='touchEnd', touchPoints=[])
-time.sleep(1.2)
-print('okno alarmu:', ev("!document.getElementById('sheetAlarm').hidden"))
-snimek('alarm.webp')
 
 # 6) Historie: seznam (obchod s částečnými výstupy) a prohlídka obchodu
 #    v grafu — obchod uprostřed, okolí ztlumené.
