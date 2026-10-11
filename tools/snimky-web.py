@@ -89,22 +89,44 @@ for sym, strana, vel, k, sl, tp, dm in NAVRH:
              'reduceOnly': False, 'createdTime': str(TED - 3600000)},
         ]
 
-# Uzavřený obchod na BTC pro snímek Historie: dva nákupy u dna, prodej
-# u vrcholu — ze skutečných svíček, aby značky seděly na grafu. Leží před
-# plněními současné pozice (52 h a 19 h zpátky), takže se nepletou.
-dno_h = min(svicky[-44:-30], key=lambda s: s[2])
-dno_h2 = min(svicky[-30:-24], key=lambda s: s[2])
-vrch_h = max(svicky[-24:-14], key=lambda s: s[1])
+# Uzavřený obchod na BTC pro snímek Historie: dva nákupy u dna a **tři
+# částečné výstupy** u vrcholu (od v0.38 jedna karta s řádkem na výstup)
+# — ze skutečných svíček, aby značky seděly na grafu. Leží před plněními
+# současné pozice (52 h a 19 h zpátky), takže se nepletou.
+# Úsek s růstem: minimum a po něm (aspoň 6 svíček) co nejvyšší maximum,
+# ať je obchod vítězný bez ohledu na to, kam trh zrovna šel.
+usek = svicky[-44:-15]
+i_dno, i_vrch = max(((i, j) for i in range(len(usek)) for j in range(i + 6, len(usek))),
+                    key=lambda ij: usek[ij[1]][1] - usek[ij[0]][2])
+dno_h, vrch_h = usek[i_dno], usek[i_vrch]
+dno_h2 = usek[min(i_dno + 2, i_vrch - 4)]
 nakupy_h = [(dno_h[0], round(dno_h[2] + 0.15 * (dno_h[1] - dno_h[2]), 1), 0.03),
-            (dno_h2[0], round(dno_h2[2] + 0.2 * (dno_h2[1] - dno_h2[2]), 1), 0.02)]
-prodej_h = (vrch_h[0] + 3600000, round(vrch_h[1] - 0.15 * (vrch_h[1] - vrch_h[2]), 1))
+            (dno_h2[0], round(dno_h2[2] + 0.25 * (dno_h2[1] - dno_h2[2]), 1), 0.02)]
 vstup_h = sum(c * q for _, c, q in nakupy_h) / 0.05
+# Tři částečné výstupy na třech různých svíčkách kolem vrcholu
+v1, v2, v3 = usek[i_vrch - 2], usek[i_vrch], usek[min(i_vrch + 2, len(usek) - 1)]
+prodeje_h = [(v1[0] + 1800000, round(v1[1] - 0.25 * (v1[1] - v1[2]), 1), 0.02),
+             (v2[0] + 1800000, round(v2[1] - 0.1 * (v2[1] - v2[2]), 1), 0.015),
+             (v3[0] + 1800000, round(v3[1] - 0.3 * (v3[1] - v3[2]), 1), 0.015)]
 uzavrene = [{
-    'symbol': 'BTCUSDT', 'orderId': 'hist-btc', 'side': 'Sell', 'qty': '0.05', 'closedSize': '0.05',
-    'avgEntryPrice': f'{vstup_h:.1f}', 'avgExitPrice': str(prodej_h[1]),
-    'closedPnl': f'{(prodej_h[1] - vstup_h) * 0.05:.4f}', 'cumEntryValue': f'{vstup_h * 0.05:.2f}',
-    'leverage': '5', 'createdTime': str(prodej_h[0]), 'updatedTime': str(prodej_h[0] + 19),
-}]
+    'symbol': 'BTCUSDT', 'orderId': f'hist-btc-{i}', 'side': 'Sell', 'qty': str(q), 'closedSize': str(q),
+    'avgEntryPrice': f'{vstup_h:.1f}', 'avgExitPrice': str(c),
+    'closedPnl': f'{(c - vstup_h) * q:.4f}', 'cumEntryValue': f'{vstup_h * q:.2f}',
+    'leverage': '5', 'createdTime': str(t), 'updatedTime': str(t + 19),
+} for i, (t, c, q) in enumerate(prodeje_h)]
+
+# Druhý, ztrátový obchod na ETH (jeden nákup, jeden výstup) — ať Historie
+# není jen o jednom vítězném obchodu.
+eth_vstup = round(ceny['ETHUSDT'] * 1.021, 2)
+eth_vystup = round(ceny['ETHUSDT'] * 1.012, 2)
+eth_nakup_t = TED - 6 * 86400000
+eth_prodej_t = TED - 5 * 86400000 + 3 * 3600000
+uzavrene.append({
+    'symbol': 'ETHUSDT', 'orderId': 'hist-eth', 'side': 'Sell', 'qty': '0.6', 'closedSize': '0.6',
+    'avgEntryPrice': str(eth_vstup), 'avgExitPrice': str(eth_vystup),
+    'closedPnl': f'{(eth_vystup - eth_vstup) * 0.6:.4f}', 'cumEntryValue': f'{eth_vstup * 0.6:.2f}',
+    'leverage': '5', 'createdTime': str(eth_prodej_t), 'updatedTime': str(eth_prodej_t + 19),
+})
 
 # Kresby na BTC: trendová čára po dvou minimech a vodorovná úroveň u maxima.
 starsi = min(svicky[-44:-24], key=lambda s: s[2])
@@ -139,8 +161,13 @@ seznamy = {'verze': 1, 'aktivni': 'fav', 'seznamy': [
 for i, (cas, cena, mnozstvi) in enumerate(nakupy_h):
     plneni.append({'symbol': 'BTCUSDT', 'side': 'Buy', 'execType': 'Trade', 'execPrice': str(cena),
                    'orderId': f'hist-buy-{i}', 'execQty': str(mnozstvi), 'execTime': str(cas + 1800000)})
-plneni.append({'symbol': 'BTCUSDT', 'side': 'Sell', 'execType': 'Trade', 'execPrice': str(prodej_h[1]),
-               'orderId': 'hist-btc', 'execQty': '0.05', 'execTime': str(prodej_h[0])})
+for i, (cas, cena, mnozstvi) in enumerate(prodeje_h):
+    plneni.append({'symbol': 'BTCUSDT', 'side': 'Sell', 'execType': 'Trade', 'execPrice': str(cena),
+                   'orderId': f'hist-btc-{i}', 'execQty': str(mnozstvi), 'execTime': str(cas)})
+plneni.append({'symbol': 'ETHUSDT', 'side': 'Buy', 'execType': 'Trade', 'execPrice': str(eth_vstup),
+               'orderId': 'hist-eth-buy', 'execQty': '0.6', 'execTime': str(eth_nakup_t)})
+plneni.append({'symbol': 'ETHUSDT', 'side': 'Sell', 'execType': 'Trade', 'execPrice': str(eth_vystup),
+               'orderId': 'hist-eth', 'execQty': '0.6', 'execTime': str(eth_prodej_t)})
 
 podstrc = r"""
 (() => {
@@ -311,11 +338,13 @@ time.sleep(1.2)
 print('okno alarmu:', ev("!document.getElementById('sheetAlarm').hidden"))
 snimek('alarm.webp')
 
-# 6) Historie: uzavřený obchod v grafu se značkami nákupů a prodeje
+# 6) Historie: seznam (obchod s částečnými výstupy) a prohlídka obchodu
+#    v grafu — obchod uprostřed, okolí ztlumené.
 spust(412, 880)
 ev("document.querySelector('[data-tab=history]').click()")
-time.sleep(4)
-ev("document.querySelector('.trade') && document.querySelector('.trade').click()")
+time.sleep(5)
+snimek('historie-seznam.webp')
+ev("""[...document.querySelectorAll('.trade')].find((k) => k.textContent.includes('BTCUSDT')).click()""")
 time.sleep(7)
 print('graf obchodu:', ev("!document.getElementById('viewChart').hidden"))
 snimek('historie.webp')
