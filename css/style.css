@@ -312,44 +312,68 @@ main {
 .chip-row::-webkit-scrollbar { display: none; }
 .chip-row.wrap { flex-wrap: wrap; overflow: visible; }
 
-/* Složky: v Trzích se hlavní lišta záložek plynule napojí na řadu
-   seznamů a vybraný seznam na panel s jeho kategoriemi — jako záložka
-   šanonu. Na první pohled je vidět, že seznamy patří k Markets a kategorie
-   k vybranému seznamu. */
+/* Složky (v0.47.0, přání uživatele — seznamy mají na první pohled patřit
+   k Watchlists): ve Watchlists se aktivní hlavní záložka protáhne dolů
+   do panelu seznamů ve stejné barvě, jako záložka šanonu. Panel má
+   barvu aktivní záložky, zbytek lišty je tmavší. */
 .tabs.s-podzalozkami {
   margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
 }
+.tabs.s-podzalozkami .tab.active {
+  border-radius: 8px 8px 0 0;
+  min-height: 41px;
+}
 .watch-lists {
-  gap: 2px;
-  padding: 5px 4px 0;
-  background: var(--surface);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 10px;
+  padding: 4px 6px 6px;
+  background: var(--surface-2);
   border: 1px solid var(--border);
   border-top: none;
-  /* v0.46.0: celá lišta se neposouvá — posouvá se jen pás seznamů,
-     „+ New" stojí napevno vpravo. */
+  border-radius: 0 0 11px 11px;
   overflow: visible;
-  align-items: flex-end;
 }
-.watch-lists-pas {
-  flex: 1 1 auto;
+/* Vyvažovací sloupce: stejně široké, takže skupina seznamů stojí uprostřed
+   obrazovky; vpravo „+ New" (min. jeho šířka), vlevo prázdno. */
+.list-vyvazeni,
+.list-vpravo {
+  flex: 1 1 0;
   min-width: 0;
   display: flex;
-  gap: 2px;
+  justify-content: flex-end;
+}
+.list-vpravo { min-width: max-content; }
+.watch-lists-pas {
+  position: relative;
+  flex: 0 1 auto;
+  min-width: 0;
+  display: flex;
+  gap: 0;
   overflow-x: auto;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
-  /* Okraje pásu se vytrácejí — napoví, že se dá posouvat do strany. */
+}
+/* Jen když se seznamy nevejdou: okraje se vytrácejí — dá se posouvat. */
+.watch-lists-pas.preteka {
   -webkit-mask-image: linear-gradient(to right, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
           mask-image: linear-gradient(to right, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
 }
 .watch-lists-pas::-webkit-scrollbar { display: none; }
-/* Mezery na koncích: i první a poslední seznam dojede doprostřed. */
-.watch-lists-pas::before,
-.watch-lists-pas::after {
-  content: '';
-  flex: 0 0 60%;
+/* Ukazatel vybraného seznamu: při přepnutí plynule přejede pod nový. */
+.list-ukazatel {
+  position: absolute;
+  bottom: 2px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  transition: left 0.22s ease, width 0.22s ease;
+  pointer-events: none;
 }
 .chip.list-new { flex: 0 0 auto; }
 .watch-cats {
@@ -385,14 +409,24 @@ main {
    vybraný má barvu panelu kategorií pod sebou a splývá s ním. */
 .chip.list-tab {
   min-height: 36px;
-  padding: 0 14px;
+  padding: 0 9px;
   border: none;
-  border-radius: 8px 8px 0 0;
+  border-radius: 8px;
   background: transparent;
   font-size: 0.86rem;
   font-weight: 600;
+  white-space: nowrap;
+  transition: color 0.2s ease;
 }
-.chip.list-tab.active { background: var(--surface-2); color: var(--text); }
+.chip.list-tab.active { background: transparent; color: var(--text); }
+.chip.list-tab.active .chip-count { color: var(--accent); }
+
+/* Obsah seznamu přijede ze strany, odkud se přejelo (v0.47.0) — přejetí
+   je pak vidět jako listování stránkami, ne jako záhadné probliknutí. */
+@keyframes prijezdZprava { from { transform: translateX(42px); opacity: 0.2; } to { transform: none; opacity: 1; } }
+@keyframes prijezdZleva { from { transform: translateX(-42px); opacity: 0.2; } to { transform: none; opacity: 1; } }
+.prijezd-zprava { animation: prijezdZprava 0.22s ease-out; }
+.prijezd-zleva { animation: prijezdZleva 0.22s ease-out; }
 .chip.list-new { color: var(--accent); font-weight: 600; }
 .watch-cats .chip { background: var(--surface); }
 .watch-cats .chip.active { background: rgba(76, 154, 255, 0.16); }

@@ -1,13 +1,13 @@
 {
-  "verze": "0.46.0",
+  "verze": "0.47.0",
   "novinky": [
     {
-      "en": "Watchlists show only your own lists — the All tab is gone. Add any pair with the + button.",
-      "cs": "Seznamy ukazují jen tvoje vlastní seznamy — záložka All zmizela. Libovolný pár přidáš tlačítkem +."
+      "en": "Watchlists bar redesigned: your lists hang right under the Watchlists tab, stay in place and only the highlight moves.",
+      "cs": "Nová lišta seznamů: seznamy visí přímo pod záložkou Watchlists, stojí na místě a přesouvá se jen zvýraznění."
     },
     {
-      "en": "The selected list always sits in the middle, + New stays on the right.",
-      "cs": "Vybraný seznam je vždy uprostřed, + New zůstává vpravo."
+      "en": "Swiping now slides the list in from the side, like turning pages.",
+      "cs": "Přejetí prstem teď seznam přisune ze strany, jako listování stránkami."
     }
   ],
   "opravy": []

@@ -7,8 +7,8 @@ Ověřuje:
     „My watchlist"; v liště jsou jen seznamy, „+ New" stojí zvlášť
     napevno u pravého okraje,
   * uložený výběr „All" (starší verze) se převede na první seznam,
-  * nový seznam je vybraný a **vybraný stojí pod středem obrazovky**,
-    i když je seznamů víc, než se vejde,
+  * seznamy stojí pevně jako skupina uprostřed, při přepnutí se mění jen
+    zvýraznění a ukazatel (v0.47.0); když se nevejdou, vybraný je vidět,
   * přejíždění **skutečným dotykem**: přepíná seznamy, za posledním
     pokračuje na Historii, před prvním na Pozice; z Historie zpátky
     přijde na poslední seznam,
@@ -107,11 +107,6 @@ def zalozka():
 
 
 
-def stred_vybraneho():
-    return ev("""(() => { const a = document.querySelector('#watchLists .list-tab.active'); if (!a) return null;
-      const r = a.getBoundingClientRect(); return r.left + r.width / 2; })()""")
-
-
 def new_vpravo():
     return ev("""(() => { const b = document.querySelector('#watchLists .list-new').getBoundingClientRect();
       const l = document.getElementById('watchLists').getBoundingClientRect(); return Math.round(l.right - b.right); })()""")
@@ -131,7 +126,7 @@ print('1) první spuštění')
 l = listy()
 print('   lišta:', l)
 over(l == ['My watchlist*'], f'lišta: jen My watchlist, bez All ({l})')
-over(ev("!!document.querySelector('#watchLists > .list-new')"), '+ New je mimo posuvný pás')
+over(ev("!!document.querySelector('#watchLists .list-vpravo .list-new') && !document.querySelector('.watch-lists-pas .list-new')"), '+ New je mimo pás seznamů')
 over((new_vpravo() or 99) < 10, f'+ New u pravého okraje ({new_vpravo()} px)')
 fav = ev("JSON.parse(localStorage.getItem('perpdesk.lists')).seznamy[0].polozky")
 over(fav == ['bybit:BTCUSDT'], f'oblíbené převedené do seznamu jako burza:pár ({fav})')
@@ -139,27 +134,42 @@ over(ev("document.getElementById('watchCats').hidden") and ev("document.getEleme
      'bez kategorií a hledání (patřily k All)')
 over(radky() == ['BTCUSDT'], f'My watchlist ukazuje BTC ({radky()})')
 
-print('2) víc seznamů, vybraný uprostřed')
-for nazev in ('Scalp', 'Swing', 'Long term', 'Memes', 'AI coins'):
+print('2) seznamy stojí pevně uprostřed, mění se jen zvýraznění (v0.47.0)')
+for nazev in ('Scalp', 'Swing'):
     klik('#watchLists .list-new')
     time.sleep(0.3)
     ev(f"document.getElementById('listName').value = {json.dumps(nazev)}")
     klik('#listSaveBtn')
     time.sleep(0.9)
 l = listy()
-print('   lišta:', l)
-over(l == ['My watchlist', 'Scalp', 'Swing', 'Long term', 'Memes', 'AI coins*'], f'nový seznam je vybraný ({l})')
-s = stred_vybraneho()
-over(s is not None and abs(s - SIRKA / 2) < 6, f'vybraný (poslední) je pod středem obrazovky ({s})')
-over((new_vpravo() or 99) < 10, f'+ New zůstává u pravého okraje ({new_vpravo()} px)')
+over(l == ['My watchlist', 'Scalp', 'Swing*'], f'nový seznam je vybraný ({l})')
+mista = lambda: ev("""[...document.querySelectorAll('#watchLists .list-tab:not(.list-new)')].map((b) => Math.round(b.getBoundingClientRect().left))""")
+pred = mista()
+skupina = ev("""(() => { const t = [...document.querySelectorAll('#watchLists .list-tab:not(.list-new)')].map((b) => b.getBoundingClientRect());
+  return (t[0].left + t[t.length - 1].right) / 2; })()""")
+over(abs(skupina - SIRKA / 2) < 8, f'skupina seznamů je uprostřed obrazovky ({round(skupina)})')
 ev("[...document.querySelectorAll('#watchLists .list-tab')].find((b) => b.firstChild.textContent === 'My watchlist').click()")
-time.sleep(0.9)
-s = stred_vybraneho()
-over(s is not None and abs(s - SIRKA / 2) < 6, f'vybraný (první) je pod středem obrazovky ({s})')
+time.sleep(0.6)
+over(mista() == pred, f'po přepnutí se seznamy nepohnuly ({pred} → {mista()})')
+ukaz = ev("""(() => { const u = document.querySelector('#watchLists .list-ukazatel').getBoundingClientRect();
+  const a = document.querySelector('#watchLists .list-tab.active').getBoundingClientRect();
+  return u.left >= a.left - 1 && u.right <= a.right + 1; })()""")
+over(ukaz, 'ukazatel je pod vybraným seznamem')
+over((new_vpravo() or 99) < 10, f'+ New zůstává u pravého okraje ({new_vpravo()} px)')
+for nazev in ('Long term', 'Memes', 'AI coins'):
+    klik('#watchLists .list-new')
+    time.sleep(0.3)
+    ev(f"document.getElementById('listName').value = {json.dumps(nazev)}")
+    klik('#listSaveBtn')
+    time.sleep(0.9)
+l = listy()
+over(l == ['My watchlist', 'Scalp', 'Swing', 'Long term', 'Memes', 'AI coins*'], f'šest seznamů, poslední vybraný ({l})')
+vidno = ev("""(() => { const a = document.querySelector('#watchLists .list-tab.active').getBoundingClientRect();
+  const p = document.querySelector('#watchLists .watch-lists-pas').getBoundingClientRect();
+  return a.left >= p.left - 1 && a.right <= p.right + 1; })()""")
+over(vidno, 'když se seznamy nevejdou, vybraný je celý vidět')
 ev("[...document.querySelectorAll('#watchLists .list-tab')].find((b) => b.firstChild.textContent === 'Long term').click()")
 time.sleep(0.9)
-s = stred_vybraneho()
-over(s is not None and abs(s - SIRKA / 2) < 6, f'vybraný (prostřední) je pod středem obrazovky ({s})')
 
 print('3) přejíždění skutečným dotykem')
 y = ev("(() => { const r = document.getElementById('watchNote').getBoundingClientRect(); return r.top + 30; })()")
@@ -167,8 +177,8 @@ prejed(340, 80, y)       # Long term → Memes
 time.sleep(0.6)
 l = listy()
 over(l and l[4] == 'Memes*', f'přejetí doleva přepne na další seznam ({l})')
-s = stred_vybraneho()
-over(s is not None and abs(s - SIRKA / 2) < 6, f'i po přejetí je vybraný uprostřed ({s})')
+over(ev("document.getElementById('watchList').classList.contains('prijezd-zprava')"),
+     'obsah přijede zprava (přejetí jako listování)')
 prejed(340, 80, y)       # → AI coins
 prejed(340, 80, y)       # za posledním → Historie
 over(zalozka() == 'history', f'za posledním seznamem přejetí přepne na Historii ({zalozka()})')

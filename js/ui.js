@@ -1218,16 +1218,23 @@ export function renderListBar({ polozky, aktivni, onSelect, onManage, onNew }) {
   const lista = document.getElementById('watchLists');
   if (!lista) return;
   /*
-   * v0.46.0 (přání uživatele): seznamy v posuvném pásu, vybraný vždy
-   * **uprostřed obrazovky** (pod záložkou Watchlists), „+ New" napevno
-   * u pravého okraje bez ohledu na počet seznamů. Pás zůstává stejný
-   * prvek, ať se při přepnutí neresetuje posun a jen plynule dojede.
+   * v0.47.0 (přání uživatele — v0.46.0 lišta při každém přepnutí ujížděla):
+   * seznamy stojí **pevně, jako skupina uprostřed** pod záložkou
+   * Watchlists; při přepnutí se jen přesune zvýraznění a pod vybraným
+   * plynule dojede ukazatel. Vlevo vyvažovací mezera stejně široká jako
+   * pravý sloupec s „+ New", ať je skupina uprostřed obrazovky. Posouvá
+   * se jen při přetečení (víc seznamů, než se vejde), a to jen tolik, aby
+   * byl vybraný vidět.
    */
   let pas = lista.querySelector('.watch-lists-pas');
-  if (!pas) {
+  let ukazatel = lista.querySelector('.list-ukazatel');
+  const novy = !pas;
+  if (novy) {
     pas = document.createElement('div');
     pas.className = 'watch-lists-pas';
-    lista.replaceChildren(pas);
+    ukazatel = document.createElement('span');
+    ukazatel.className = 'list-ukazatel';
+    ukazatel.setAttribute('aria-hidden', 'true');
   }
   const prvky = polozky.map(({ id, nazev, pocet }) => {
     const b = cip(nazev, id === aktivni, () => (id === aktivni ? onManage(id) : onSelect(id)), 'list-tab');
@@ -1246,17 +1253,30 @@ export function renderListBar({ polozky, aktivni, onSelect, onManage, onNew }) {
   const plus = cip(`+ ${t('lists.newShort')}`, false, onNew, 'list-tab list-new');
   plus.setAttribute('aria-label', t('lists.new'));
   plus.title = t('lists.new');
-  pas.replaceChildren(...prvky);
-  lista.replaceChildren(pas, plus);
+  pas.replaceChildren(...prvky, ukazatel);
+  const vlevo = lista.querySelector('.list-vyvazeni') || Object.assign(document.createElement('span'), { className: 'list-vyvazeni' });
+  const vpravo = lista.querySelector('.list-vpravo') || Object.assign(document.createElement('span'), { className: 'list-vpravo' });
+  vpravo.replaceChildren(plus);
+  if (novy || lista.firstElementChild !== vlevo) lista.replaceChildren(vlevo, pas, vpravo);
+
+  pas.classList.toggle('preteka', pas.scrollWidth > pas.clientWidth + 1);
   const vybrany = pas.querySelector('.active');
-  if (vybrany) {
-    // Střed vybraného pod střed celé lišty (ne pásu — ten je kvůli „+ New"
-    // užší a jeho střed leží vlevo od středu obrazovky).
-    // Skutečné souřadnice na obrazovce (offsetLeft se měří od jiného předka).
-    const r = vybrany.getBoundingClientRect();
-    const l = lista.getBoundingClientRect();
-    const posun = (r.left + r.width / 2) - (l.left + l.width / 2);
-    pas.scrollTo({ left: Math.max(0, pas.scrollLeft + posun), behavior: 'smooth' });
+  if (!vybrany) {
+    ukazatel.hidden = true;
+    return;
+  }
+  ukazatel.hidden = false;
+  // Při prvním vykreslení bez animace, jinak by ukazatel přijel z kraje.
+  if (novy) ukazatel.style.transition = 'none';
+  ukazatel.style.left = `${vybrany.offsetLeft + 8}px`;
+  ukazatel.style.width = `${Math.max(12, vybrany.offsetWidth - 16)}px`;
+  if (novy) requestAnimationFrame(() => { ukazatel.style.transition = ''; });
+  // Přetečení: posunout jen tolik, aby byl vybraný celý vidět.
+  const vlevoOd = vybrany.offsetLeft - 16;
+  const vpravoDo = vybrany.offsetLeft + vybrany.offsetWidth + 16;
+  if (vlevoOd < pas.scrollLeft) pas.scrollTo({ left: Math.max(0, vlevoOd), behavior: 'smooth' });
+  else if (vpravoDo > pas.scrollLeft + pas.clientWidth) {
+    pas.scrollTo({ left: vpravoDo - pas.clientWidth, behavior: 'smooth' });
   }
 }
 

@@ -1416,12 +1416,23 @@ aktivní sestavu → přejmenovat / smazat.
   vrátil. Rychlost: zrychlí to jen otevření té záložky (150 dlaždic
   a grafů), start ani ceny ne — tickery jsou jeden dotaz pro všechny páry
   a seznamy je potřebují stejně.
-- **Lišta seznamů (v0.46.0):** seznamy v posuvném pásu
-  `.watch-lists-pas`, vybraný se plynule posune **pod střed obrazovky**
-  (pod záložku Watchlists; počítá se z `getBoundingClientRect`,
-  `offsetLeft` se měří od jiného předka a vycházelo to o 39 px vedle),
-  mezery `::before/::after` dovolí vystředit i krajní. `+ New` stojí
-  mimo pás, napevno u pravého okraje. Test: `test-sestavy.py` (přepsaný).
+- **Lišta seznamů (v0.47.0, přání uživatele po videu — v0.46.0 lišta při
+  každém přepnutí ujížděla, aby vybraný dojel doprostřed, a působila
+  odtrženě):**
+  - Seznamy stojí **pevně jako skupina uprostřed** (vlevo `.list-vyvazeni`,
+    vpravo `.list-vpravo` s `+ New`, oba `flex: 1 1 0`); při přepnutí se
+    mění jen zvýraznění a pod vybraným plynule přejede `.list-ukazatel`.
+    Posouvá se jen při přetečení (`.preteka`, pak i vytrácející okraje),
+    a jen tolik, aby byl vybraný vidět.
+  - **Záložka šanonu:** ve Watchlists se aktivní hlavní záložka protáhne
+    dolů (`.tabs.s-podzalozkami`, bez spodního okraje) do panelu seznamů
+    ve stejné barvě `--surface-2` — seznamy viditelně patří k Watchlists.
+  - **Přejetí jako listování:** obsah seznamu přijede ze strany podle
+    směru (`prijezd-zprava/-zleva`, `vyberSestavu`).
+  - Do budoucna (uživatel, jen pro info): počet seznamů a coinů v nich
+    bude omezení placené verze (`sestavy.LIMITY`).
+  - Test: `test-sestavy.py` (skupina uprostřed, seznamy se nehýbou,
+    ukazatel, přetečení, přejíždění skutečným dotykem).
 - ⚠ Magnet v grafu dřív v obsluze klepnutí sahal na tlačítko filtru
   oblíbených (zbloudilý řádek) — se zrušeným tlačítkem by spadl. Odstraněno.
 

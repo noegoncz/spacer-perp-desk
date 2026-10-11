@@ -2180,6 +2180,9 @@ function otevriMenuDlazdice(symbol, dlazdice) {
 }
 
 function vyberSestavu(id) {
+  // Směr pro animaci obsahu: dál v pořadí → přijede zprava.
+  const poradi = sestavy.poradi();
+  const smer = poradi.indexOf(id) - poradi.indexOf(sestavy.aktivni());
   if (id !== sestavy.aktivni()) {
     filtrKategorie = null;
     hledani = '';
@@ -2189,6 +2192,12 @@ function vyberSestavu(id) {
   }
   sestavy.nastavAktivni(id);
   vykresliTrhy();
+  const obsah = el('watchList');
+  if (obsah && smer) {
+    obsah.classList.remove('prijezd-zprava', 'prijezd-zleva');
+    void obsah.offsetWidth; // restart animace i při rychlém přejíždění
+    obsah.classList.add(smer > 0 ? 'prijezd-zprava' : 'prijezd-zleva');
+  }
 }
 
 /** Stáhne kategorie coinů (poprvé povinné, pak jen tlačítkem obnovit). */
