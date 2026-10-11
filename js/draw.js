@@ -75,6 +75,13 @@ export function createTouchDrawing({
   const prstenec = svg('circle', { class: 'draw-snap', r: 8 });
   // Krátká vlnka po chycení bodu: ukáže, že teď se hýbe prstem kdekoli.
   const vlnka = svg('circle', { class: 'draw-ripple', r: 6 });
+  /*
+   * ⚠ Po dohrání třídu sundat (v0.47.1). Zůstala viset a prohlížeč
+   * animaci spustí znovu pokaždé, když se schovaný graf zase ukáže —
+   * při otevření grafu (třeba z Historie) pak na místě posledního
+   * chyceného bodu dvakrát problikl modrý kroužek.
+   */
+  vlnka.addEventListener('animationend', () => vlnka.classList.remove('play'));
   const uchyty = svg('g', {});
   plocha.append(nahled, carySvisla, caraVodorovna, uchyty, vlnka, prstenec, tecka);
 

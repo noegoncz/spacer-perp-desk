@@ -629,6 +629,14 @@ overlaye a každé smazání hlásí změnu. Bez umlčení se při otevření gr
 prázdný seznam přes uložené kresby dřív, než se stihnou obnovit — tedy tiché
 smazání práce uživatele. Řeší to příznak `tichaZmena`.
 
+⚠ **Vlnka po chycení bodu (`.draw-ripple.play`) se musí po dohrání
+uklidit** (`animationend`, v0.47.1). Třída zůstávala viset a prohlížeč
+animaci spouští znovu, kdykoli se schovaný graf zase ukáže — při každém
+otevření grafu (hlášeno z Historie) dvakrát problikl modrý kroužek na
+místě posledního chyceného bodu. Platí obecně: CSS animace na prvku
+uvnitř `display: none` se při odkrytí přehraje znovu. Test:
+`tools/test-vlnka.py`, na starém kódu padá.
+
 #### Cenovky kreseb, procenta u kříže a měření (v0.17.1)
 
 **Vodorovná čára a cenová čára mají trvale cenu na ose** ve své barvě, jako

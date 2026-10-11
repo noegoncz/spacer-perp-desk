@@ -1,14 +1,10 @@
 {
-  "verze": "0.47.0",
-  "novinky": [
+  "verze": "0.47.1",
+  "novinky": [],
+  "opravy": [
     {
-      "en": "Watchlists bar redesigned: your lists hang right under the Watchlists tab, stay in place and only the highlight moves.",
-      "cs": "Nová lišta seznamů: seznamy visí přímo pod záložkou Watchlists, stojí na místě a přesouvá se jen zvýraznění."
-    },
-    {
-      "en": "Swiping now slides the list in from the side, like turning pages.",
-      "cs": "Přejetí prstem teď seznam přisune ze strany, jako listování stránkami."
+      "en": "No more blue circle flashing when a chart opens.",
+      "cs": "Při otevření grafu už nebliká modrý kroužek."
     }
-  ],
-  "opravy": []
+  ]
 }
