@@ -47,7 +47,7 @@ function X(id) {
 }
 const scena = new URLSearchParams(location.search).get('scena') || 'uvod';
 const el = document.getElementById('scena');
-if (scena === 'uvod') {
+if (scena === 'uvod' || scena === 'uvod-nahled') {
   el.innerHTML = `<div class="zare"></div><div class="dlazdice">${X('d')}</div>
     <div class="znacka"><span>Perpy</span>${X('w')}</div>
     <div class="podtitul">Your perpetuals, at a glance.</div>`;
@@ -61,7 +61,15 @@ if (scena === 'uvod') {
 const E = 'cubic-bezier(.2,.8,.2,1)';
 const anim = (sel, kf, delay, dur) => document.querySelectorAll(sel).forEach((n) =>
   n.animate(kf, { delay, duration: dur, easing: E, fill: 'both' }));
-if (scena === 'uvod') {
+if (scena === 'uvod-nahled') {
+  /*
+   * Varianta, kde je logo vidět **od prvního snímku** — X i jiné sítě
+   * berou první snímek jako náhled videu, a ten pak není černý. Jen
+   * jemné přiblížení a zesílení záře, nic se neskládá.
+   */
+  anim('.dlazdice, .znacka, .podtitul', [{ transform: 'scale(.95)' }, { transform: 'scale(1)' }], 0, 2200);
+  anim('.zare', [{ opacity: 0.6, transform: 'scale(.9)' }, { opacity: 1, transform: 'scale(1.05)' }], 0, 2200);
+} else if (scena === 'uvod') {
   anim('.zare', [{ opacity: 0, transform: 'scale(.6)' }, { opacity: 1, transform: 'scale(1)' }], 0, 900);
   anim('.dlazdice', [{ opacity: 0, transform: 'scale(.86)' }, { opacity: 1, transform: 'scale(1)' }], 0, 450);
   // kusy podjíždějícího pruhu vyjedou od středu ven, pak přes ně přejede celý pruh

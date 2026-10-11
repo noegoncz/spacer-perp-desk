@@ -4,7 +4,7 @@ sys.path.insert(0, r'C:\Users\roman\Projekty\spacer-perp-desk\tools')
 from dotyk import Prohlizec
 
 KDE = os.path.dirname(os.path.abspath(__file__))
-SCENY = {'uvod': 2.2, 'zaver': 3.2}  # délka v sekundách
+SCENY = {'uvod-nahled': 2.2, 'uvod': 2.2, 'zaver': 3.2}  # délka v sekundách
 FPS = 30
 
 p = Prohlizec()

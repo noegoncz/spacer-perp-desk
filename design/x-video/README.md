@@ -13,4 +13,8 @@ s „Join the beta“ / perpyx.com / „Early testers get serious perks.“
    `xfade` (0,35 s úvod → nahrávka, 0,4 s nahrávka → závěr).
 
 Rozměry jiné nahrávky změř dřív (snímek přes `ffmpeg -ss 6 -frames:v 1`).
+**Náhled na X:** X bere jako náhled první snímek videa. Proto se používá
+úvod `uvod-nahled` (logo, nápis i podtitul vidět od prvního snímku, jen
+jemné přiblížení), ne `uvod` (logo se skládá z tmy → černý náhled).
+
 Hotová videa ani snímky do repa nepatří.
