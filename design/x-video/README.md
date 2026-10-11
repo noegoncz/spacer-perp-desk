@@ -1,0 +1,16 @@
+# Úvod a závěr k videím na X
+
+Šablona pro krátká videa z telefonu (2026-10-11): úvod s animovaným logem
+(tkané X se poskládá, „PerpyX“, „Your perpetuals, at a glance.“) a závěr
+s „Join the beta“ / perpyx.com / „Early testers get serious perks.“
+
+1. `python -m http.server 8078` v této složce, Chrome s portem 9223
+   (viz tools/README.md), pak `python render.py` → snímky `uvod/`, `zaver/`
+   (30 fps, 1080 × 1164 — rozměr nahrávky z Foldu po oříznutí).
+2. Spojení ffmpegem (`winget install Gyan.FFmpeg`): nahrávku oříznout
+   o stavovou lištu (56 px nahoře) a panel aplikací (od 1220 px dole),
+   začátek bez černé (`blackdetect`), převést na 30 fps a napojit přes
+   `xfade` (0,35 s úvod → nahrávka, 0,4 s nahrávka → závěr).
+
+Rozměry jiné nahrávky změř dřív (snímek přes `ffmpeg -ss 6 -frames:v 1`).
+Hotová videa ani snímky do repa nepatří.

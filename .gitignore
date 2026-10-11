@@ -37,3 +37,6 @@ web/public/data/
 # Vlastní snímky z účtu uživatele (skutečné částky) — do veřejného repa ne.
 design/x-profil/vlastni/
 design/x-profil/zahlavi-e.png
+design/x-video/uvod/
+design/x-video/zaver/
+design/x-video/*.mp4
