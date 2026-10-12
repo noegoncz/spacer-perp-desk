@@ -31,6 +31,9 @@ const NEZALOHOVAT = new Set([
   // Poslední známé pozice pro okamžitý start — patří jen tomuto telefonu.
   'perpdesk.startSnimek',
   'perpdesk.trhySnimek',
+  // Burza patří ke klíči — ten se nezálohuje, tak ani ona.
+  'perpdesk.burza',
+  'perpdesk.burzaVolby',
 ]);
 
 function klice() {

@@ -7,6 +7,10 @@ import { vymaz as vymazMezipamet } from './mezipamet.js';
 
 const KEY_API = 'perpdesk.apiKey';
 const KEY_SECRET = 'perpdesk.apiSecret';
+// Burza, ke které klíč patří (v0.54.0), a její volby (Binance Demo Trading).
+// Patří ke klíči: nezálohuje se a s klíčem se maže.
+const KEY_BURZA = 'perpdesk.burza';
+const KEY_BURZA_VOLBY = 'perpdesk.burzaVolby';
 const KEY_HIDE = 'perpdesk.hideAmounts';
 
 function read(key) {
@@ -30,7 +34,7 @@ function write(key, value) {
  * Hlášení změn uložených dat — podle něj se spouští automatická cloudová
  * záloha (js/ucet.js). Klíče, relace a technické značky zálohu nespouští.
  */
-const BEZ_ZALOHY = new Set([KEY_API, KEY_SECRET, 'perpdesk.session', 'perpdesk.lastPing', 'perpdesk.lock',
+const BEZ_ZALOHY = new Set([KEY_API, KEY_SECRET, KEY_BURZA, KEY_BURZA_VOLBY, 'perpdesk.session', 'perpdesk.lastPing', 'perpdesk.lock',
   'perpdesk.coinCategories',
   // Poslední známé pozice pro okamžitý start: zapisují se každých 20 s
   // a do zálohy nepatří (js/app.js, ulozSnimek).
@@ -61,10 +65,26 @@ export function saveCredentials(apiKey, apiSecret) {
   write(KEY_SECRET, apiSecret.trim());
 }
 
+/** Zvolená burza; bez záznamu Bybit (všechny starší instalace). */
+export function loadBurza() {
+  let volby = {};
+  try {
+    volby = JSON.parse(localStorage.getItem(KEY_BURZA_VOLBY) || '{}') || {};
+  } catch { /* poškozené — výchozí */ }
+  return { id: read(KEY_BURZA) || 'bybit', volby };
+}
+
+export function saveBurza(id, volby = {}) {
+  write(KEY_BURZA, id);
+  write(KEY_BURZA_VOLBY, JSON.stringify(volby || {}));
+}
+
 export function clearCredentials() {
   try {
     localStorage.removeItem(KEY_API);
     localStorage.removeItem(KEY_SECRET);
+    localStorage.removeItem(KEY_BURZA);
+    localStorage.removeItem(KEY_BURZA_VOLBY);
   } catch {
     /* nic */
   }

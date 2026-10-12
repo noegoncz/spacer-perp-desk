@@ -76,5 +76,6 @@ export function vytvorBurzu(id, handlers = {}, volby = {}) {
   if (!popis) throw new Error(`Neznámá burza: ${id}`);
   const adapter = popis.vytvor(handlers, volby);
   adapter.burza = popis;
+  if (!adapter.volby) adapter.volby = volby;
   return adapter;
 }

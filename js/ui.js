@@ -865,6 +865,12 @@ export function renderWatchlist(radky, veSestave, onSelect, onToggleFav, delic =
  * `veSestave` + `onToggleFav` jen v „All" (záložka pro přidání do seznamu);
  * ve vlastním seznamu se odebírá podržením dlaždice.
  */
+/** Název aktivní burzy pro dlaždice a hledání (v0.54.0). */
+let nazevBurzy = 'BYBIT';
+export function nastavNazevBurzy(nazev) {
+  nazevBurzy = String(nazev || 'Bybit').toUpperCase();
+}
+
 export function renderTiles(trhy, volby) {
   const { siroke, veSestave, onSelect, onToggleFav, popisek, metrika = 'volume', pozice, hide } = volby;
   // Jen třídy rozložení — `lze-presouvat` nastavuje app.js a nesmí zmizet.
@@ -892,7 +898,7 @@ export function renderTiles(trhy, volby) {
     const hodnota = div(`tile-poz ${poz ? pnlClass(poz.pnl) : ''}`.trim(),
       poz ? (hide ? MASK : `${formatUsd(poz.value)} USDT`) : '');
 
-    d.append(div('tile-burza', 'BYBIT'), div('tile-par', trh.symbol), div('tile-sub', sub),
+    d.append(div('tile-burza', nazevBurzy), div('tile-par', trh.symbol), div('tile-sub', sub),
       spark, div('tile-cena', formatPrice(trh.last)), zmena, hodnota);
 
     if (onToggleFav) {
@@ -965,7 +971,7 @@ export function renderPairSearch(kontejner, trhy, { jeVSeznamu, onPick }) {
     par.textContent = trh.symbol;
     const sub = document.createElement('div');
     sub.className = 'pair-hit-sub';
-    sub.textContent = `BYBIT · Perp · ${t('chart.vol24h')} ${zkratkaObratu(trh.turnover) || '—'}`;
+    sub.textContent = `${nazevBurzy} · Perp · ${t('chart.vol24h')} ${zkratkaObratu(trh.turnover) || '—'}`;
     vlevo.append(par, sub);
     const vpravo = document.createElement('div');
     vpravo.className = 'pair-hit-vpravo';

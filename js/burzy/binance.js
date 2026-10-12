@@ -20,7 +20,12 @@ const TYDEN = 7 * 864e5;
 
 export class BinanceClient extends CcxtAdapter {
   constructor(handlers = {}, volby = {}) {
-    super('binanceusdm', handlers, volby);
+    // fetchCurrencies: CCXT by si s klíčem stahovala měny ze spotové části
+    // (/sapi/…) — k ničemu, a v Demo Tradingu ten dotaz vůbec nejde.
+    super('binanceusdm', handlers, {
+      ...volby,
+      ccxtVolby: { ...(volby.ccxtVolby || {}), options: { fetchCurrencies: false } },
+    });
   }
 
   popisUctu() {

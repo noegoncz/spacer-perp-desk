@@ -1,9 +1,9 @@
 {
-  "verze": "0.53.0",
+  "verze": "0.54.0",
   "novinky": [
     {
-      "en": "Binance support is being built in the background — first tests against the real exchange passed.",
-      "cs": "Na pozadí vzniká podpora Binance — první testy proti skutečné burze prošly."
+      "en": "Binance is here (beta): connect it with a read-only key, or try it risk-free with a Demo Trading key.",
+      "cs": "Přichází Binance (beta): připoj ho klíčem jen pro čtení, nebo ho bez rizika vyzkoušej s klíčem z Demo Tradingu."
     }
   ],
   "opravy": []

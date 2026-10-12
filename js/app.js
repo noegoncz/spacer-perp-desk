@@ -154,7 +154,7 @@ let ordersTimer = null;
 let magnetZapnut = store.loadMagnet();
 let poslednicCena = null;  // poslední cena z grafu — předvyplní hladinu alarmu
 
-const client = vytvorBurzu(VYCHOZI_BURZA, {
+const HANDLERY = {
   // Živé ceny párů viditelného seznamu ve Watchlists (v0.49.0).
   onTicker(zmena) {
     zivaZmenaTrhu(zmena);
@@ -225,7 +225,28 @@ const client = vytvorBurzu(VYCHOZI_BURZA, {
       ui.showPlaceholder(t('positions.failed'), t('action.openSettings'));
     }
   },
-});
+};
+
+/*
+ * Klient burzy podle uložené volby (v0.54.0). Při výběru jiné burzy se
+ * vymění (`prepniBurzu`) — `let`, ne `const`. Bez uložené volby Bybit.
+ */
+let client = (() => {
+  const { id, volby } = store.loadBurza();
+  try {
+    return vytvorBurzu(id, HANDLERY, volby);
+  } catch {
+    return vytvorBurzu(VYCHOZI_BURZA, HANDLERY);
+  }
+})();
+
+function prepniBurzu(id, volby = {}) {
+  if (client.burza?.id === id && JSON.stringify(client.volby || {}) === JSON.stringify(volby)) return;
+  client.stop();
+  client = vytvorBurzu(id, HANDLERY, volby);
+  client.volby = client.volby || volby;
+  ui.nastavNazevBurzy(client.burza.nazev);
+}
 
 /* ---------- seznam pozic: řazení a filtr ---------- */
 
@@ -1019,6 +1040,11 @@ function wireEvents() {
   });
 
   naUdalost('saveBtn', 'click', saveAndConnect);
+  document.querySelectorAll('#onbExchange .exchange-btn[data-burza]').forEach((b) => {
+    b.addEventListener('click', () => vyberBurzuVUvodu(b.dataset.burza));
+  });
+  vyberBurzuVUvodu(vybranaBurza);
+  ui.nastavNazevBurzy(client.burza.nazev);
   naUdalost('testBtn', 'click', testCredentials);
   naUdalost('clearBtn', 'click', clearCredentials);
   naUdalost('backupExportBtn', 'click', ulozZalohu);
@@ -1200,7 +1226,7 @@ async function testCredentials() {
   btn.textContent = t('settings.testing');
   ui.clearSettingsMessage();
 
-  const result = await client.testCredentials(apiKey, apiSecret);
+  const result = await otestujVybranou(apiKey, apiSecret);
 
   btn.disabled = false;
   btn.textContent = t('settings.test');
@@ -1226,6 +1252,37 @@ async function zkontrolujUlozenyKlic() {
   if (varovaniKlice) ui.showError(varovaniKlice);
 }
 
+/*
+ * Výběr burzy na úvodní obrazovce (v0.54.0). Test a uložení jdou přes
+ * adaptér VYBRANÉ burzy, ne přes běžícího klienta — klíč Binance se nesmí
+ * zkoušet proti Bybitu. Binance nabízí i Demo Trading (falešné peníze).
+ */
+let vybranaBurza = store.loadBurza().id;
+
+function vyberBurzuVUvodu(id) {
+  vybranaBurza = id;
+  document.querySelectorAll('#onbExchange .exchange-btn[data-burza]').forEach((b) => {
+    b.classList.toggle('active', b.dataset.burza === id);
+  });
+  ukazPrvek('exDemoRow', id === 'binance');
+  ukazPrvek('helpBybit', id === 'bybit');
+  ukazPrvek('helpBinance', id === 'binance');
+  ui.clearSettingsMessage();
+}
+
+function volbyVybraneBurzy() {
+  return vybranaBurza === 'binance' && el('exDemo')?.checked ? { demo: true } : {};
+}
+
+async function otestujVybranou(apiKey, apiSecret) {
+  const zkusebni = vytvorBurzu(vybranaBurza, {}, volbyVybraneBurzy());
+  try {
+    return await zkusebni.testCredentials(apiKey, apiSecret);
+  } finally {
+    zkusebni.stop();
+  }
+}
+
 async function saveAndConnect() {
   const { apiKey, apiSecret } = readForm();
   if (!apiKey || !apiSecret) {
@@ -1237,7 +1294,7 @@ async function saveAndConnect() {
   btn.disabled = true;
   btn.textContent = t('settings.saving');
 
-  const result = await client.testCredentials(apiKey, apiSecret);
+  const result = await otestujVybranou(apiKey, apiSecret);
 
   btn.disabled = false;
   btn.textContent = t('settings.save');
@@ -1249,6 +1306,8 @@ async function saveAndConnect() {
 
   // Ukládá se až po ověření, ať se do telefonu nedostane nefunkční klíč.
   store.saveCredentials(apiKey, apiSecret);
+  store.saveBurza(vybranaBurza, volbyVybraneBurzy());
+  prepniBurzu(vybranaBurza, volbyVybraneBurzy());
   // Jiný účet = jiná historie: mezipaměť se při jiném klíči sama vymaže.
   zapomenHistorii();
   mezipamet.nastavVlastnika(apiKey);
@@ -4617,7 +4676,7 @@ function vykresliBurzy() {
   radek.className = 'exchange-row';
   const nazev = document.createElement('div');
   nazev.className = 'exchange-name';
-  nazev.textContent = 'Bybit';
+  nazev.textContent = client.burza.nazev + (client.volby?.demo ? ' · Demo' : '');
   const klic = document.createElement('div');
   klic.className = 'exchange-key';
   klic.textContent = t('exchanges.keyEnding', { end: apiKey.slice(-4) });

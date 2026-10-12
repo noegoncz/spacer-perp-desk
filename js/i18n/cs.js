@@ -458,6 +458,12 @@ export const cs = {
   'exchanges.add': 'Přidat burzu',
   'exchanges.connect': 'Připojit burzu',
   'exchanges.none': 'Zatím není připojená žádná burza.',
+  'exchanges.demo': 'Klíč z Demo Tradingu (testovací peníze)',
+  'exchanges.demoHint': 'Vytvoříš ho v Binance po přepnutí do Demo Tradingu.',
+  'settings.helpTitleBinance': 'Jak na Binance vytvořit klíč jen pro čtení',
+  'settings.helpBinance1': 'Binance → profil → Správa API → Vytvořit API → Generované systémem.',
+  'settings.helpBinance2': 'Omezení: nech zaškrtnuté jen Povolit čtení (Enable Reading).',
+  'settings.helpBinance3': 'Futures, Spot a margin obchodování, převody a výběry nech nezaškrtnuté.',
   'exchanges.soon': 'brzy',
   'exchanges.keyEnding': 'Klíč jen pro čtení ••••{end}',
   'exchanges.replace': 'Vyměnit klíč',
@@ -560,6 +566,7 @@ export const cs = {
   'settings.help5': 'IP omezení nech prázdné — mobilní síť mění IP adresu.',
 
   /* ---------- chyby Bybitu ---------- */
+  'error.network': 'Burza neodpovídá. Zkontroluj připojení a zkus to znovu.',
   'error.badKey': 'Neplatný API klíč nebo podpis. Zkontroluj, že jsi zkopíroval klíč i secret celé a bez mezer.',
   'error.clock': 'Nesedí čas. Zkontroluj v telefonu automatické nastavení data a času.',
   'error.noPermission': 'Klíč nemá oprávnění číst pozice. Vytvoř na Bybitu read-only klíč s právem na Pozice.',

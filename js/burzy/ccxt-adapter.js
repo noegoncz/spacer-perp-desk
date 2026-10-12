@@ -96,12 +96,24 @@ export class CcxtAdapter {
     return m.symbol;
   }
 
+  /**
+   * Chyba CCXT → srozumitelná hláška. ⚠ Podle tříd knihovny (`instanceof`),
+   * ne podle jména — ve zmenšené knihovně jsou jména tříd zkomolená.
+   * Surová zpráva CCXT obsahuje celou adresu dotazu i s podpisem; do UI
+   * nepatří (podpis není tajemství, ale nic uživateli neřekne).
+   */
   prelozChybu(err) {
-    const n = err?.constructor?.name || '';
-    if (n === 'AuthenticationError') return t('error.badKey');
-    if (n === 'PermissionDenied') return t('error.noPermission');
-    if (n === 'InvalidNonce') return t('error.clock');
-    return err?.message || String(err);
+    const c = globalThis.ccxt || {};
+    const je = (trida) => typeof c[trida] === 'function' && err instanceof c[trida];
+    if (je('AuthenticationError')) return t('error.badKey');
+    if (je('PermissionDenied')) return t('error.noPermission');
+    if (je('InvalidNonce')) return t('error.clock');
+    if (je('NetworkError')) return t('error.network');
+    const zprava = String(err?.message || err || '')
+      .replace(/^\S+\s+(GET|POST|PUT|DELETE)\s+https?:\/\/\S+\s*/i, '')
+      .replace(/https?:\/\/\S+/g, '')
+      .trim();
+    return zprava || t('error.network');
   }
 
   /* ---------- stejné rozhraní jako Bybit adaptér ---------- */

@@ -463,6 +463,12 @@ export const en = {
   'exchanges.add': 'Add exchange',
   'exchanges.connect': 'Connect exchange',
   'exchanges.none': 'No exchange connected yet.',
+  'exchanges.demo': 'Demo Trading key (test money)',
+  'exchanges.demoHint': 'Create it in Binance after switching to Demo Trading.',
+  'settings.helpTitleBinance': 'How to create a read-only key on Binance',
+  'settings.helpBinance1': 'Binance → profile → API Management → Create API → System generated.',
+  'settings.helpBinance2': 'Restrictions: keep only Enable Reading ticked.',
+  'settings.helpBinance3': 'Leave Futures, Spot & Margin Trading, transfers and withdrawals unticked.',
   'exchanges.soon': 'soon',
   'exchanges.keyEnding': 'Read-only key ••••{end}',
   'exchanges.replace': 'Replace key',
@@ -565,6 +571,7 @@ export const en = {
   'settings.help5': 'Leave the IP restriction empty — mobile networks change IP.',
 
   /* ---------- Bybit errors ---------- */
+  'error.network': 'The exchange is not responding. Check your connection and try again.',
   'error.badKey': 'Invalid API key or signature. Check that you copied both the key and the secret in full, without spaces.',
   'error.clock': 'Clock mismatch. Check that automatic date and time is enabled on your phone.',
   'error.noPermission': 'The key cannot read positions. Create a read-only key on Bybit with the Positions permission.',

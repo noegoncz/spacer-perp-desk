@@ -191,6 +191,28 @@ Binance → Gate → MEXC → OKX (+EEA) → Bitget → Hyperliquid, pak vlny 2 
 - Mock (`tools/mock-bybit.js`) pouští dotazy na ostatní burzy do sítě.
 - Zatím **jen v kontraktním testu** — výběr burzy v aplikaci je další krok.
 
+**Krok 3 — výběr burzy v aplikaci (v0.54.0):**
+- Jedna aktivní burza najednou (víc burz v jednom seznamu později).
+  `perpdesk.burza` + `perpdesk.burzaVolby` (`{ demo: true }`) patří ke
+  klíči: nezálohují se (`BEZ_ZALOHY`, `NEZALOHOVAT`), mažou se s klíčem.
+- `app.js`: obsluha klienta je objekt `HANDLERY`, klient `let client`
+  podle uložené burzy; `prepniBurzu(id, volby)` ho vymění.
+- Úvodní obrazovka: Bybit / Binance (`data-burza`), u Binance volba
+  **Demo Trading** a návod na klíč jen pro čtení. ⚠ Test a uložení klíče
+  jdou přes adaptér **vybrané** burzy (`otestujVybranou`), ne přes běžícího
+  klienta.
+- Dlaždice a hledání nesou název aktivní burzy (`ui.nastavNazevBurzy`).
+- ⚠ CCXT chyby se rozpoznávají `instanceof` třídami knihovny — ve zmenšené
+  knihovně jsou jména tříd zkomolená. Surovou zprávu (adresa dotazu
+  s podpisem) do UI nepouštět (`prelozChybu`).
+- ⚠ Binance: `options.fetchCurrencies: false` — jinak CCXT s klíčem volá
+  spotové `/sapi/` (v Demo Tradingu nejde, chyba při každém klíči).
+- **Zbývá:** funding u Binance; serverový hlídač alarmů bere ceny
+  z Bybitu (u Binance páru jsou blízké, ne stejné); WebSocket místo
+  dotazování; víc burz najednou.
+- Test: `tools/test-vyber-burzy.py` (výběr, neplatný klíč, veřejná data
+  ze skutečného Binance v aplikaci), `test-uvod.py`.
+
 ### `js/bybit.js` je izolovaný záměrně
 
 Veškerá komunikace s burzou (REST i WebSocket) je **jen** v tomto modulu.

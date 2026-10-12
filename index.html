@@ -852,12 +852,18 @@
       <p class="hint" data-i18n="onb.connectHint">PerpyX reads your positions with a read-only API key.
         The key stays on this phone and is never sent to us.</p>
       <div class="exchange-pick">
-        <button type="button" class="exchange-btn active" id="exBybitBtn">Bybit</button>
-        <button type="button" class="exchange-btn" disabled>Binance <span data-i18n="exchanges.soon">soon</span></button>
+        <button type="button" class="exchange-btn active" id="exBybitBtn" data-burza="bybit">Bybit</button>
+        <button type="button" class="exchange-btn" data-burza="binance">Binance</button>
         <button type="button" class="exchange-btn" disabled>Hyperliquid <span data-i18n="exchanges.soon">soon</span></button>
         <button type="button" class="exchange-btn" disabled>OKX <span data-i18n="exchanges.soon">soon</span></button>
       </div>
       <div id="exchangeForm">
+      <!-- Binance Demo Trading — falešné peníze, na vyzkoušení (v0.54.0). -->
+      <label class="exchange-demo" id="exDemoRow" hidden>
+        <input type="checkbox" id="exDemo">
+        <span><span data-i18n="exchanges.demo">Demo Trading key (test money)</span>
+          <small data-i18n="exchanges.demoHint">Create it in Binance after switching to Demo Trading.</small></span>
+      </label>
       <label for="apiKey" data-i18n="settings.apiKey">API key</label>
       <input type="text" id="apiKey" autocomplete="off" autocapitalize="off"
              autocorrect="off" spellcheck="false" inputmode="text"
@@ -876,7 +882,16 @@
       </div>
 
       <p id="settingsMsg" class="settings-msg" hidden></p>
-      <details class="help">
+      <details class="help" id="helpBinance" hidden>
+        <summary data-i18n="settings.helpTitleBinance">How to create a read-only key on Binance</summary>
+        <ol>
+          <li data-i18n="settings.helpBinance1">Binance → profile → API Management → Create API → System generated.</li>
+          <li data-i18n="settings.helpBinance2">Restrictions: keep only Enable Reading ticked.</li>
+          <li data-i18n="settings.helpBinance3">Leave Futures, Spot &amp; Margin Trading, transfers and withdrawals unticked.</li>
+          <li data-i18n="settings.help5">Leave the IP restriction empty — mobile networks change IP.</li>
+        </ol>
+      </details>
+      <details class="help" id="helpBybit">
         <summary data-i18n="settings.helpTitle">How to create a read-only key on Bybit</summary>
         <ol>
           <li data-i18n="settings.help1">Bybit → profile → API → Create New Key.</li>

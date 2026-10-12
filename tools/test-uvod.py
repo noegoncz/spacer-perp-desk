@@ -5,7 +5,7 @@
   1. první spuštění (bez účtu): úvodní okno je vidět hned, ještě před
      naběhnutím aplikace, a zavřít nejde,
   2. po přihlášení bez burzy rovnou krok „Připoj burzu" (Bybit, ostatní
-     burzy „brzy"), jde přeskočit a po přenačtení se už nevnucuje,
+     burzy „brzy", Binance od v0.54.0 vybrat jde), jde přeskočit a po přenačtení se už nevnucuje,
   3. nastavení: klíč se nikde nezobrazuje, jen „••••" a konec klíče;
      přidání a výměna klíče jdou přes stejné okno (s křížkem),
   4. odhlášení vrátí povinné přihlášení.
@@ -98,7 +98,9 @@ ev("(() => { const i = document.getElementById('accountCode'); i.value = '123456
 time.sleep(1.5)
 over(vidim('onboarding') and vidim('onbExchange') and not vidim('onbLogin'), 'po přihlášení krok Připoj burzu')
 burzy = ev("[...document.querySelectorAll('.exchange-btn')].map((b) => b.textContent.trim() + (b.disabled ? ':x' : ''))")
-over(burzy and burzy[0] == 'Bybit' and all(b.endswith(':x') for b in burzy[1:]), f'Bybit a ostatní „brzy" ({burzy})')
+# v0.54.0: Bybit a Binance jdou vybrat, ostatní „brzy".
+over(burzy and burzy[:2] == ['Bybit', 'Binance'] and all(b.endswith(':x') for b in burzy[2:]),
+     f'Bybit a Binance jdou vybrat, ostatní „brzy" ({burzy})')
 ev("document.getElementById('onbSkipBtn').click()")
 time.sleep(0.4)
 over(not vidim('onboarding'), 'přeskočit jde')

@@ -2803,3 +2803,15 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
   background: transparent; color: var(--text-dim); font-size: 0.8rem; font-weight: 700;
 }
 .nabidka-volba button.active { border-color: var(--accent); color: var(--accent); background: rgba(76, 154, 255, 0.12); }
+
+/* Volba Demo Tradingu u Binance na úvodní obrazovce (v0.54.0). */
+.exchange-demo {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 4px 0 12px;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+.exchange-demo input { margin-top: 3px; width: 18px; height: 18px; accent-color: var(--accent); }
+.exchange-demo small { display: block; color: var(--text-dim); font-size: 0.78rem; margin-top: 2px; }
