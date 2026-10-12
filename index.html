@@ -243,58 +243,54 @@
          nástroje i timeframy jsou dole na palec, graf začíná hned pod
          údaji o pozici. -->
     <div class="draw-toolbar" id="drawToolbar" role="toolbar" aria-label="Drawing">
-      <!-- Nástroje se posouvají, pomocná tlačítka zůstávají vždy po ruce. -->
-      <!-- Kurzor a tlačítko, které otevře nabídku všech kreslicích nástrojů
-           s velkými ikonami a názvy (2026-10-05, přání uživatele — jako
-           v TradingView; v posuvné liště byly na úzkém displeji skoro
-           neviditelné). Ikona tlačítka ukazuje zvolený nástroj. -->
-      <div class="tool-main">
-        <button type="button" class="tool-btn active" data-tool=""
-                data-i18n-aria="chart.cursor" data-i18n-title="chart.cursor">
-          <svg viewBox="0 0 24 24"><path d="M5 3l14 8-6 1.5L10 19z"/></svg>
+      <!-- Jedna řada stejných tlačítek přes celou šířku, jako v TabTraderu
+           (v0.50.0, přání uživatele). Tlačítka se šipkou ^ otevírají
+           nabídku zespodu. Magnet, coin/USDT a koš jsou v liště jen na
+           širokém displeji (.jen-siroky) — na úzkém jsou v nabídkách
+           kreslení a oka. Kurzor zmizel: kreslení ruší křížek v pruhu
+           s návodem nebo druhé klepnutí na zvolený nástroj. -->
+      <button type="button" class="tool-btn" data-tool="mereni"
+              data-i18n-aria="tool.mereni" data-i18n-title="tool.mereni">
+        <svg viewBox="0 0 24 24"><path d="M3.5 16.5 16.5 3.5l4 4-13 13z"/><path d="M7.5 12.5l1.8 1.8M10.5 9.5l1.8 1.8M13.5 6.5l1.8 1.8"/></svg>
       </button>
-        <button type="button" class="tool-btn tool-open" id="toolsBtn"
-                data-i18n-aria="chart.tools" data-i18n-title="chart.tools">
-          <span class="tool-open-ikona" id="toolsBtnIcon"><svg viewBox="0 0 24 24"><path d="M4 20l1-4L16 5l3 3L8 19z"/><path d="M14 7l3 3"/></svg></span>
-          <svg class="tool-open-sipka" viewBox="0 0 10 10"><path d="M2 6.5 5 3.5 8 6.5"/></svg>
-        </button>
-      </div>
-
-      <div class="tool-pinned">
-        <!-- Alarm se zadává odsud, ne kreslením: klepnutí otevře nastavení
-             s předvyplněnou aktuální cenou. -->
-        <!-- Hodnoty u čar v coinu, nebo v USDT (v0.42.0). -->
-        <button type="button" class="tool-btn tool-jednotka" id="unitBtn"
-                data-i18n-aria="chart.unit" data-i18n-title="chart.unit">
-          <span id="unitBtnText">COIN</span>
-        </button>
-        <button type="button" class="tool-btn" id="alarmBtn"
-                data-i18n-aria="alarm.new" data-i18n-title="alarm.new">
-          <svg viewBox="0 0 24 24"><path d="M18 15V10a6 6 0 10-12 0v5l-2 3h16z"/><path d="M10 21h4"/></svg>
-        </button>
-        <button type="button" class="tool-btn" id="magnetBtn"
-                data-i18n-aria="chart.magnet" data-i18n-title="chart.magnet">
-          <svg viewBox="0 0 24 24"><path d="M6 4v8a6 6 0 0012 0V4"/><path d="M6 9h5M13 9h5"/></svg>
-        </button>
-        <!-- Vrstvy: skrýt kresby, alarmy, indikátory, obchod. Svítí, když
-             je něco skryté — ať se nezdá, že kresby zmizely. -->
-        <button type="button" class="tool-btn" id="layersBtn"
-                data-i18n-aria="chart.layers" data-i18n-title="chart.layers">
-          <svg viewBox="0 0 24 24"><path d="M12 4 3 9l9 5 9-5z"/><path d="M3 14l9 5 9-5"/></svg>
-        </button>
-        <button type="button" class="tool-btn" id="indicatorBtn"
-                data-i18n-aria="chart.indicators" data-i18n-title="chart.indicators">
-          <svg viewBox="0 0 24 24"><path d="M3 16l4-6 3 3 4-7 3 5 4-4"/><path d="M3 20h18"/></svg>
-        </button>
-        <button type="button" class="tool-btn" id="eraseBtn"
-                data-i18n-aria="chart.eraseDrawings" data-i18n-title="chart.eraseDrawings">
-          <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
-        </button>
-        <button type="button" class="tool-btn" id="fullscreenBtn"
-                data-i18n-aria="chart.fullscreen" data-i18n-title="chart.fullscreen">
-          <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
-        </button>
-      </div>
+      <button type="button" class="tool-btn tool-open" id="toolsBtn"
+              data-i18n-aria="chart.tools" data-i18n-title="chart.tools">
+        <span class="tool-open-ikona" id="toolsBtnIcon"><svg viewBox="0 0 24 24"><path d="M4 20l1-4L16 5l3 3L8 19z"/><path d="M14 7l3 3"/></svg></span>
+        <svg class="tool-open-sipka" viewBox="0 0 10 10"><path d="M2 6.5 5 3.5 8 6.5"/></svg>
+      </button>
+      <button type="button" class="tool-btn jen-siroky" id="magnetBtn"
+              data-i18n-aria="chart.magnet" data-i18n-title="chart.magnet">
+        <svg viewBox="0 0 24 24"><path d="M6 4v8a6 6 0 0012 0V4"/><path d="M6 9h5M13 9h5"/></svg>
+      </button>
+      <button type="button" class="tool-btn" id="indicatorBtn"
+              data-i18n-aria="chart.indicators" data-i18n-title="chart.indicators">
+        <svg viewBox="0 0 24 24"><path d="M3 16l4-6 3 3 4-7 3 5 4-4"/><path d="M3 20h18"/></svg>
+      </button>
+      <!-- Oko = vrstvy (kresby, alarmy, indikátory, obchod). Svítí, když je
+           něco skryté — ať se nezdá, že kresby zmizely. -->
+      <button type="button" class="tool-btn tool-open" id="layersBtn"
+              data-i18n-aria="chart.layers" data-i18n-title="chart.layers">
+        <svg viewBox="0 0 24 24"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+        <svg class="tool-open-sipka" viewBox="0 0 10 10"><path d="M2 6.5 5 3.5 8 6.5"/></svg>
+      </button>
+      <!-- Hodnoty u čar v coinu, nebo v USDT (v0.42.0). -->
+      <button type="button" class="tool-btn tool-jednotka jen-siroky" id="unitBtn"
+              data-i18n-aria="chart.unit" data-i18n-title="chart.unit">
+        <span id="unitBtnText">COIN</span>
+      </button>
+      <!-- Alarm se zadává odsud, ne kreslením: kříž, pak nastavení. -->
+      <button type="button" class="tool-btn" id="alarmBtn"
+              data-i18n-aria="alarm.new" data-i18n-title="alarm.new">
+        <svg viewBox="0 0 24 24"><path d="M18 15V10a6 6 0 10-12 0v5l-2 3h16z"/><path d="M10 21h4"/></svg>
+      </button>
+      <button type="button" class="tool-btn jen-siroky" id="eraseBtn"
+              data-i18n-aria="chart.eraseDrawings" data-i18n-title="chart.eraseDrawings">
+        <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
+      </button>
+      <button type="button" class="tool-btn" id="fullscreenBtn"
+              data-i18n-aria="chart.fullscreen" data-i18n-title="chart.fullscreen">
+        <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+      </button>
     </div>
 
     <div class="chart-tools">
@@ -327,6 +323,12 @@
         <span data-i18n="chart.tools">Drawing tools</span>
         <button type="button" class="icon-btn" data-close="sheetTools" data-i18n-aria="action.close">✕</button>
       </div>
+      <!-- Magnet (na úzkém displeji jen tady, v0.50.0). -->
+      <button type="button" class="nabidka-radek" id="magnetRow" aria-pressed="false">
+        <svg class="nabidka-ikona" viewBox="0 0 24 24"><path d="M6 4v8a6 6 0 0012 0V4"/><path d="M6 9h5M13 9h5"/></svg>
+        <span data-i18n="chart.magnet">Snap to candles</span>
+        <svg class="nabidka-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+      </button>
       <div class="tool-grid" role="group" data-i18n-aria="chart.tools">
           <button type="button" class="tool-btn tool-item" data-tool="segment"
                 data-i18n-aria="tool.segment" data-i18n-title="tool.segment">
@@ -377,11 +379,6 @@
                 data-i18n-aria="tool.simpleAnnotation" data-i18n-title="tool.simpleAnnotation">
           <svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>
         <span data-i18n="tool.simpleAnnotation">Note</span>
-          </button>
-          <button type="button" class="tool-btn tool-item" data-tool="mereni"
-                data-i18n-aria="tool.mereni" data-i18n-title="tool.mereni">
-          <svg viewBox="0 0 24 24"><path d="M5 4h14M5 20h14"/><path d="M12 7v10"/><path d="M9 9.5l3-3 3 3M9 14.5l3 3 3-3"/></svg>
-        <span data-i18n="tool.mereni">Measure</span>
           </button>
       </div>
     </div>

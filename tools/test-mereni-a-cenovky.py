@@ -156,7 +156,7 @@ if not videt or '%' not in procenta or 'vs entry' not in procenta:
 p.prikaz('Input.dispatchTouchEvent', type='touchEnd', touchPoints=[])
 time.sleep(0.3)
 ev("document.querySelector('.draw-banner-cancel').dispatchEvent(new PointerEvent('pointerup', { bubbles: true }))")
-ev("document.querySelector('.tool-btn[data-tool=\"\"]').click()")
+ev("document.querySelector('.tool-btn[data-tool].active').click()")  # druhé klepnutí zruší
 time.sleep(0.4)
 
 # ---- 3b) náhled kresby má barvu, jakou bude mít hotová kresba ----
@@ -181,7 +181,7 @@ hotova = ev("""(() => { const k = window.__graf.getOverlays()
 print('hotová úsečka má barvu:', hotova)
 if hotova != '#f0b90b':
     chyby.append(f'hotová kresba nepřevzala naposledy použitou barvu z minula: {hotova}')
-ev("document.querySelector('.tool-btn[data-tool=\"\"]').click()")
+ev("document.querySelector('.tool-btn[data-tool].active').click()")  # druhé klepnutí zruší
 time.sleep(0.3)
 
 # ---- 4) měření ----

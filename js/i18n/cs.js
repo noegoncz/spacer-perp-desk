@@ -258,6 +258,7 @@ export const cs = {
   'layers.indicators': 'Indikátory',
   'layers.trade': 'Obchod',
   'layers.tradeNote': 'Vstup, SL/TP, příkazy, likvidace, plnění, linka zisku',
+  'layers.lineValues': 'Hodnoty u čar',
   'layers.hideAll': 'Skrýt vše',
   'layers.showAll': 'Zobrazit vše',
   'alarm.label': 'Alarm',

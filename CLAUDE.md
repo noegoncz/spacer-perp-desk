@@ -1025,6 +1025,22 @@ Dřív se 13 nástrojů posouvalo v liště a na zavřeném displeji byly vidět
 dva. Vpravo zůstává alarm, magnet, vrstvy, indikátory, koš a celá
 obrazovka; tlačítka 38 px. Lišta se vejde i na 344 px bez posouvání.
 
+**Lišta pod grafem jako v TabTraderu** (v0.50.0, přání uživatele podle
+snímků TT): jedna řada stejných, větších tlačítek (48 × 44 px) přes celou
+šířku, bez rámečků, zvolené = barevná ikona s jemným podkladem; šipka ^
+značí nabídku zespodu. Úzký displej (< 560 px): **měření, kreslení ^,
+indikátory, oko ^ (vrstvy), alarm, celá obrazovka**. Rozevřený Fold
+navíc **magnet, coin/USDT a koš** (`.jen-siroky`). Na úzkém je magnet
+nahoře v nabídce kreslení (`#magnetRow`) a coin/USDT + „Smazat kresby“
+v nabídce oka. Nabídka oka = seznam s fajfkami (`.nabidka-radek`,
+klepnutí na řádek vrstvu přepne). **Kurzor zmizel**: kreslení ruší
+křížek v pruhu s návodem nebo druhé klepnutí na zvolený nástroj (i na
+měření v liště). Měření není v nabídce nástrojů (má tlačítko v liště).
+Řada timeframů s velkým zpět zůstala (rozhodnutí uživatele — TT měl
+timeframe jako tlačítko „H4“ s nabídkou). Test:
+`test-nastroje-a-timeframy.py` (6 tlačítek na 344 px, 9 na 673 px),
+`test-vrstvy.py`.
+
 **Timeframy** (v0.37.0): 1m, 5m, 15m, **30m**, 1h, 4h, 1D, 1W, 1M v pevném
 pořadí. Lišta vyplní místo vlevo od tlačítka zpět (to má pevnou šířku
 `clamp(104px, 26vw, 200px)`), volně se posouvá a vybraný timeframe se

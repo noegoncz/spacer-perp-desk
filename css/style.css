@@ -1456,14 +1456,6 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
    kreslicí nástroje jsou v nabídce (#sheetTools), takže se lišta vejde
    i na zavřený displej Foldu (2026-10-05). */
 .draw-toolbar { justify-content: space-between; }
-.tool-main { display: flex; gap: 2px; flex: none; }
-.tool-pinned {
-  display: flex;
-  gap: 2px;
-  flex: none;
-  padding-left: 6px;
-  border-left: 1px solid var(--border);
-}
 
 /* Tlačítko nabídky: ikona zvoleného nástroje + šipka „rozbalit". */
 .tool-open { position: relative; }
@@ -2696,10 +2688,67 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 /* Přepínač coin / USDT u čar v grafu (v0.42.0). */
 .tool-btn.tool-jednotka { width: auto; min-width: 38px; padding: 0 5px; }
 .tool-jednotka span { font-size: 0.66rem; font-weight: 700; letter-spacing: 0.02em; color: var(--text); }
-/* Zavřený Fold: o tlačítko víc v liště — o kousek užší, ať se vejde. */
-@media (max-width: 420px) {
-  .draw-toolbar .tool-btn { width: 34px; }
-  .draw-toolbar .tool-btn.tool-jednotka { width: auto; min-width: 34px; padding: 0 3px; }
-  .tool-pinned, .tool-main { gap: 0; }
-  .tool-pinned { padding-left: 4px; }
+
+/* ---------- lišta pod grafem jako v TabTraderu (v0.50.0) ----------
+   Jedna řada stejných, větších tlačítek rozprostřených přes celou šířku,
+   bez rámečků; zvolené = barevná ikona s jemným podkladem. */
+.draw-toolbar {
+  justify-content: space-around;
+  gap: 0;
+  padding: 4px 4px;
 }
+.draw-toolbar .tool-btn {
+  width: 48px;
+  height: 44px;
+  border-radius: 10px;
+  color: #b6c2d1;
+}
+.draw-toolbar .tool-btn svg { width: 24px; height: 24px; stroke-width: 1.7; }
+.draw-toolbar .tool-btn.active { background: rgba(76, 154, 255, 0.16); color: var(--accent); }
+.draw-toolbar .tool-btn.tool-jednotka { width: auto; min-width: 48px; padding: 0 6px; }
+.draw-toolbar .tool-jednotka span { font-size: 0.74rem; }
+.draw-toolbar .tool-btn .tool-open-sipka { right: 3px; top: 3px; width: 10px; height: 10px; }
+/* Magnet, coin/USDT a koš: v liště jen na širokém displeji, na úzkém
+   v nabídkách (kreslení, oko). */
+@media (max-width: 559px) {
+  .draw-toolbar .jen-siroky { display: none; }
+}
+
+/* Řádek nabídky jako v TabTraderu: ikona, název, vpravo fajfka. */
+.nabidka-radek {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 50px;
+  padding: 0 6px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-size: 0.95rem;
+  text-align: left;
+  cursor: pointer;
+}
+.nabidka-radek:last-child { border-bottom: none; }
+.nabidka-radek:active { background: var(--surface-2); }
+.nabidka-radek > span { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.nabidka-radek small { color: var(--text-dim); font-size: 0.74rem; }
+.nabidka-ikona, .nabidka-check {
+  width: 22px; height: 22px; flex: none;
+  fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+}
+.nabidka-ikona { color: var(--text-dim); }
+.nabidka-check { color: var(--accent); visibility: hidden; }
+.nabidka-radek[aria-pressed="true"] .nabidka-check { visibility: visible; }
+#magnetRow { margin-bottom: 10px; }
+.nabidka-radek.nebezpecne { color: var(--red, #f6465d); }
+.nabidka-radek.nebezpecne .nabidka-ikona { color: inherit; }
+/* Coin / USDT v nabídce oka: dvě tlačítka vedle sebe. */
+.nabidka-volba { display: flex; gap: 4px; }
+.nabidka-volba button {
+  min-width: 58px; height: 32px; padding: 0 10px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: transparent; color: var(--text-dim); font-size: 0.8rem; font-weight: 700;
+}
+.nabidka-volba button.active { border-color: var(--accent); color: var(--accent); background: rgba(76, 154, 255, 0.12); }

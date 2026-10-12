@@ -59,15 +59,24 @@ time.sleep(0.5)
 over(ev("!document.getElementById('sheetTools').hidden"), 'tlačítko otevře nabídku nástrojů')
 popisky = ev("[...document.querySelectorAll('#sheetTools .tool-item span')].map((s) => s.textContent)") or []
 print('   nástroje:', popisky)
-over(len(popisky) == 11 and 'Trend line' in popisky and 'Measure' in popisky, 'nabídka má 11 nástrojů s názvy')
+over(len(popisky) == 10 and 'Trend line' in popisky and 'Measure' not in popisky, 'nabídka má 10 nástrojů s názvy (měření je v liště)')
+over(ev("!!document.getElementById('magnetRow')"), 'v nabídce kreslení je magnet')
+# Lišta jako v TabTraderu (v0.50.0): na úzkém displeji 6 tlačítek, vejdou se.
+lista = ev("""(() => { const l = document.getElementById('drawToolbar');
+  const vidno = [...l.querySelectorAll('.tool-btn')].filter((b) => b.offsetWidth > 0);
+  return { pocet: vidno.length, vejde: l.scrollWidth <= l.clientWidth + 1,
+           sirka: Math.round(vidno[0].getBoundingClientRect().width) }; })()""") or {}
+print('   lišta:', lista)
+over(lista.get('pocet') == 6 and lista.get('vejde'), 'úzký displej: 6 tlačítek v liště, bez posouvání')
+over((lista.get('sirka') or 0) >= 44, 'tlačítka lišty jsou aspoň 44 px široká')
 ev("document.querySelector('#sheetTools .tool-item[data-tool=segment]').click()")
 time.sleep(0.5)
 over(ev("document.getElementById('sheetTools').hidden"), 'výběr nástroje nabídku zavře')
 over(ev("document.getElementById('toolsBtn').classList.contains('active')"), 'tlačítko nabídky svítí')
 over(ev("!!document.querySelector('#toolsBtnIcon svg path[d^=\"M6 18L18 6\"]')"), 'tlačítko nese ikonu trendové čáry')
-ev("document.querySelector('#drawToolbar .tool-btn[data-tool=\"\"]').click()")
+ev("document.querySelector('.tool-btn[data-tool].active').click()")  # druhé klepnutí zruší (v0.50.0 bez kurzoru)
 time.sleep(0.3)
-over(not ev("document.getElementById('toolsBtn').classList.contains('active')"), 'kurzor vrátí výchozí ikonu')
+over(not ev("document.getElementById('toolsBtn').classList.contains('active')"), 'druhé klepnutí na nástroj vrátí výchozí ikonu')
 
 print('2) timeframy')
 def poradi():
@@ -113,6 +122,15 @@ time.sleep(0.3)
 over(any(t.startswith('Stop Loss 2,547 JUP') for t in tituly()), 'zpět na coin')
 over(ev("document.getElementById('drawToolbar').scrollWidth <= document.getElementById('drawToolbar').clientWidth + 1"),
      's přepínačem se lišta pořád vejde na 344 px')
+
+# Rozevřený Fold: v liště navíc magnet, coin/USDT a koš (9 tlačítek).
+p.prikaz('Emulation.setDeviceMetricsOverride', width=673, height=841, deviceScaleFactor=1, mobile=True)
+time.sleep(1)
+siroka = ev("""(() => { const l = document.getElementById('drawToolbar');
+  return { pocet: [...l.querySelectorAll('.tool-btn')].filter((b) => b.offsetWidth > 0).length,
+           vejde: l.scrollWidth <= l.clientWidth + 1 }; })()""") or {}
+print('   lišta na rozevřeném Foldu:', siroka)
+over(siroka.get('pocet') == 9 and siroka.get('vejde'), 'široký displej: 9 tlačítek včetně magnetu, coin/USDT a koše')
 
 konzole = ev('(window.__chyby||[]).join(" | ")') or ''
 over(not konzole, f'bez chyb v konzoli ({konzole})')

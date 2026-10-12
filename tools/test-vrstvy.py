@@ -71,7 +71,7 @@ def stav():
 
 
 def prepni(klic):
-    ev(f"document.querySelector('#layersBody [data-vrstva={klic}] .nastaveni-prepinac').click()")
+    ev(f"document.querySelector('#layersBody [data-vrstva={klic}]').click()")
     time.sleep(0.4)
 
 
@@ -91,7 +91,9 @@ over({'EMA', 'RSI', 'PNLLINE'} <= set(s0['ind']) and not s0['sviti'], 'indikáto
 ev("document.getElementById('layersBtn').click()")
 time.sleep(0.4)
 over(ev("!document.getElementById('sheetLayers').hidden"), 'nabídka vrstev se otevře')
-over(ev("document.querySelectorAll('#layersBody .nastaveni-radek').length") == 4, 'čtyři vrstvy')
+over(ev("document.querySelectorAll('#layersBody [data-vrstva]').length") == 4, 'čtyři vrstvy')
+over(ev("!!document.getElementById('layersEraseRow') && !!document.querySelector('#layersBody .nabidka-volba')"),
+     'v nabídce oka je coin/USDT a smazání kreseb')
 
 print('1) jednotlivé vrstvy')
 prepni('kresby')

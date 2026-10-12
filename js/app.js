@@ -696,7 +696,7 @@ function boot() {
   postavVyberJazyka();
   ui.renderVersion(self.APP_VERSION, self.APP_BUILD);
   prepniTridu('hideBtn', 'active', hideAmounts);
-  prepniTridu('magnetBtn', 'active', magnetZapnut);
+  oznacMagnet();
   wireEvents();
   vykresliUcet();
   if (ucet.prihlasen() && !store.hasCredentials() && !store.loadJson('perpdesk.exchangeSkipped', false)) {
@@ -983,39 +983,22 @@ function wireEvents() {
 
   document.querySelectorAll('.tool-btn[data-tool]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      vyberNastroj(btn.dataset.tool);
+      // Druhé klepnutí na zvolený nástroj kreslení zruší (v0.50.0 —
+      // tlačítko kurzoru zmizelo, jako v TabTraderu).
+      vyberNastroj(btn.classList.contains('active') ? '' : btn.dataset.tool);
       // Výběr v nabídce nástrojů ji zavře — kreslí se hned.
       if (btn.classList.contains('tool-item')) zavriNabidky();
     });
   });
+  naUdalost('magnetRow', 'click', prepniMagnet);
   naUdalost('toolsBtn', 'click', () => otevriNabidku('sheetTools'));
   // Hodnoty u čar v coinu, nebo v USDT (v0.42.0).
-  naUdalost('unitBtn', 'click', () => {
-    hodnotyVUsdt = !hodnotyVUsdt;
-    store.saveJson('perpdesk.lineUnit', hodnotyVUsdt ? 'usdt' : 'coin');
-    oznacJednotku();
-    applyChartLines(true);
-  });
+  naUdalost('unitBtn', 'click', () => nastavJednotku(!hodnotyVUsdt));
   // Přeložení Foldu mění šířku lišty timeframů — aktivní zůstane uprostřed.
   window.addEventListener('resize', () => ui.vycentrujInterval());
 
-  naUdalost('magnetBtn', 'click', () => {
-    magnetZapnut = !magnetZapnut;
-    store.saveMagnet(magnetZapnut);
-    el('magnetBtn').classList.toggle('active', magnetZapnut);
-    chart?.setMagnet(magnetZapnut);
-  });
-
-  naUdalost('eraseBtn', 'click', () => {
-    // Když má uživatel kresbu v úpravách, koš maže jen ji — jinak všechny.
-    if (chart?.hasSelection()) {
-      chart.deleteSelected();
-      return;
-    }
-    if (!confirm(t('chart.confirmEraseAll'))) return;
-    chart?.clearDrawings();
-    vyberNastroj('');
-  });
+  naUdalost('magnetBtn', 'click', prepniMagnet);
+  naUdalost('eraseBtn', 'click', smazKresby);
   document.querySelectorAll('[data-close]').forEach((btn) => {
     btn.addEventListener('click', zavriNabidky);
   });
@@ -1604,12 +1587,45 @@ function vyberNastroj(nastroj) {
   const ikona = el('toolsBtnIcon');
   if (ikona) {
     if (!ikona.dataset.vychozi) ikona.dataset.vychozi = ikona.innerHTML;
-    const zvoleny = nastroj && document.querySelector(`.tool-item[data-tool="${nastroj}"] svg`);
+    const zvoleny = nastroj && nastroj !== 'mereni' && document.querySelector(`.tool-item[data-tool="${nastroj}"] svg`);
     ikona.innerHTML = zvoleny ? zvoleny.outerHTML : ikona.dataset.vychozi;
     el('toolsBtn').classList.toggle('active', Boolean(zvoleny));
   }
 
   if (nastroj) chart.startDrawing(nastroj);
+}
+
+/** Magnet — tlačítko v liště (široký displej) i řádek v nabídce kreslení. */
+function prepniMagnet() {
+  magnetZapnut = !magnetZapnut;
+  store.saveMagnet(magnetZapnut);
+  oznacMagnet();
+  chart?.setMagnet(magnetZapnut);
+}
+
+function oznacMagnet() {
+  prepniTridu('magnetBtn', 'active', magnetZapnut);
+  el('magnetRow')?.setAttribute('aria-pressed', String(magnetZapnut));
+}
+
+/** Hodnoty u čar v coinu, nebo v USDT (v0.42.0). */
+function nastavJednotku(usdt) {
+  hodnotyVUsdt = usdt;
+  store.saveJson('perpdesk.lineUnit', hodnotyVUsdt ? 'usdt' : 'coin');
+  oznacJednotku();
+  applyChartLines(true);
+}
+
+/** Koš: kresba v úpravách → jen ona, jinak po potvrzení všechny. */
+function smazKresby() {
+  if (chart?.hasSelection()) {
+    chart.deleteSelected();
+    return false;
+  }
+  if (!confirm(t('chart.confirmEraseAll'))) return false;
+  chart?.clearDrawings();
+  vyberNastroj('');
+  return true;
 }
 
 function postavNabidky() {
@@ -1698,23 +1714,69 @@ function oznacVrstvy() {
 function otevriVrstvy() {
   if (!chart) return;
   const vrstvy = chart.getLayers();
-  el('layersBody').replaceChildren(...VRSTVY.map(({ klic, popisek, poznamka }) => {
-    const radek = document.createElement('div');
-    radek.className = 'nastaveni-radek';
+  /*
+   * Seznam s fajfkami jako v TabTraderu (v0.50.0): klepnutí na řádek
+   * vrstvu skryje / ukáže. Pod ním hodnoty u čar (coin / USDT) a smazání
+   * kreseb — na úzkém displeji nejsou v liště.
+   */
+  const fajfka = '<svg class="nabidka-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  const radky = VRSTVY.map(({ klic, popisek, poznamka }) => {
+    const radek = document.createElement('button');
+    radek.type = 'button';
+    radek.className = 'nabidka-radek';
+    radek.dataset.vrstva = klic;
+    radek.setAttribute('aria-pressed', String(Boolean(vrstvy[klic])));
     const text = document.createElement('span');
-    text.className = 'nastaveni-popisek';
     text.textContent = t(popisek);
     if (poznamka) {
       const maly = document.createElement('small');
-      maly.className = 'vrstva-poznamka';
       maly.textContent = t(poznamka);
       text.append(maly);
     }
-    radek.dataset.vrstva = klic;
-    radek.append(text, ovladacPole({ typ: 'prepinac' }, vrstvy[klic],
-      (v) => { nastavVrstvy({ [klic]: v }); popisVsechVrstev(); }));
+    radek.append(text);
+    radek.insertAdjacentHTML('beforeend', fajfka);
+    radek.addEventListener('click', () => {
+      const nove = !chart.getLayers()[klic];
+      nastavVrstvy({ [klic]: nove });
+      radek.setAttribute('aria-pressed', String(nove));
+      popisVsechVrstev();
+    });
     return radek;
-  }));
+  });
+
+  const jednotka = document.createElement('div');
+  jednotka.className = 'nabidka-radek';
+  const jText = document.createElement('span');
+  jText.textContent = t('layers.lineValues');
+  const volba = document.createElement('div');
+  volba.className = 'nabidka-volba';
+  const mena = String(chartSymbol || '').replace(/USDT$|USDC$/, '') || 'COIN';
+  [[false, mena], [true, 'USDT']].forEach(([usdt, popis]) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = popis;
+    b.classList.toggle('active', hodnotyVUsdt === usdt);
+    b.addEventListener('click', () => {
+      nastavJednotku(usdt);
+      volba.querySelectorAll('button').forEach((x, i) => x.classList.toggle('active', (i === 1) === usdt));
+    });
+    volba.append(b);
+  });
+  jednotka.append(jText, volba);
+
+  const smazat = document.createElement('button');
+  smazat.type = 'button';
+  smazat.className = 'nabidka-radek nebezpecne';
+  smazat.id = 'layersEraseRow';
+  smazat.innerHTML = '<svg class="nabidka-ikona" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>';
+  const sText = document.createElement('span');
+  sText.textContent = t('chart.eraseDrawings');
+  smazat.append(sText);
+  smazat.addEventListener('click', () => {
+    if (smazKresby()) zavriNabidky();
+  });
+
+  el('layersBody').replaceChildren(...radky, jednotka, smazat);
   popisVsechVrstev();
   otevriNabidku('sheetLayers');
 }

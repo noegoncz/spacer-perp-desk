@@ -262,6 +262,7 @@ export const en = {
   'layers.indicators': 'Indicators',
   'layers.trade': 'Trade',
   'layers.tradeNote': 'Entry, SL/TP, orders, liquidation, fills, PnL line',
+  'layers.lineValues': 'Values on lines',
   'layers.hideAll': 'Hide all',
   'layers.showAll': 'Show all',
   'alarm.label': 'Alert',
