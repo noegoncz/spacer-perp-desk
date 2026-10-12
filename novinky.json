@@ -1,9 +1,9 @@
 {
-  "verze": "0.52.0",
+  "verze": "0.53.0",
   "novinky": [
     {
-      "en": "Groundwork for more exchanges: PerpyX now talks to exchanges through one common layer. Binance is next.",
-      "cs": "Základ pro další burzy: PerpyX teď mluví s burzami přes jednu společnou vrstvu. Další na řadě je Binance."
+      "en": "Binance support is being built in the background — first tests against the real exchange passed.",
+      "cs": "Na pozadí vzniká podpora Binance — první testy proti skutečné burze prošly."
     }
   ],
   "opravy": []

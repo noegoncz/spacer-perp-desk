@@ -15,6 +15,7 @@
  * se jich nedotkne.
  */
 import { BybitClient } from '../bybit.js';
+import { BinanceClient } from './binance.js';
 
 export const BURZY = {
   bybit: {
@@ -34,6 +35,31 @@ export const BURZY = {
     },
     regiony: {
       global: { nazev: 'Global', api: 'https://api.bybit.com' },
+    },
+  },
+  /*
+   * Binance USDⓈ-M přes CCXT (v0.53.0). Zatím jen v kontraktním testu —
+   * výběr burzy v aplikaci přijde v dalším kroku. Živá data dotazováním,
+   * funding zatím ne (doplní se). Testovací prostředí: volby { demo }
+   * (Binance Demo Trading); starý testnet 2026-10-12 neodpovídal.
+   */
+  binance: {
+    id: 'binance',
+    nazev: 'Binance',
+    vytvor: (handlers, volby) => new BinanceClient(handlers, volby),
+    schopnosti: {
+      zivePozice: false,
+      zivaCena: false,
+      zivaSvicka: false,
+      prehledUctu: true,
+      plneni: true,
+      historieObchodu: true,
+      funding: false,
+      fundingHistorie: false,
+      kontrolaJenCteni: true,
+    },
+    regiony: {
+      global: { nazev: 'Global', api: 'https://fapi.binance.com' },
     },
   },
 };

@@ -116,6 +116,9 @@ js/version.js           # classic script: self.APP_VERSION, self.APP_BUILD
 js/bybit.js             # ⚠ jediný modul, který mluví s Bybitem (adaptér burzy)
 js/burzy/model.js       # společný model burz („řeč PerpyX"), kontrola tvarů
 js/burzy/index.js       # seznam burz: adaptér, schopnosti, regiony
+js/burzy/ccxt.js        # líné načtení CCXT (vendor/ccxt), převod timeframů
+js/burzy/ccxt-adapter.js # obecný adaptér nad CCXT → společný model
+js/burzy/binance.js     # Binance USDⓈ-M (CCXT + kontrola klíče, uzavřené obchody)
 js/store.js             # localStorage: klíče + nastavení
 js/format.js            # formátování čísel, cen, časů (podle jazyka)
 js/i18n.js              # ⚠ překlady; texty nikdy přímo v kódu ani v HTML
@@ -163,6 +166,30 @@ Binance → Gate → MEXC → OKX (+EEA) → Bitget → Hyperliquid, pak vlny 2 
   a zkontroluje je proti `TVARY` + povinné `METODY`. Každý nový adaptér
   musí projít. (Hned našel chybějící `execId` v mocku.)
 - Kontrolu „klíč jen pro čtení" CCXT nesjednocuje — pro každou burzu zvlášť.
+
+**Krok 2 — Binance přes CCXT (v0.53.0):**
+- Dostupnost (postup pro každou burzu): má perpetuály a API odpovídá =
+  podmínka; dostupnost pro ČR/EU **není** podmínka (aplikace je pro celý
+  svět). Binance: 568 perpetuálů, CORS povolený i s klíčem → funguje
+  přímo, bez nativního HTTP. Gate a MEXC: veřejně ano, podepsané hlavičky
+  CORS nepovoluje → soukromá data až přes nativní HTTP v APK.
+- **CCXT 4.5.85** vložená v `vendor/ccxt/` (SHA-256 ověřený proti
+  jsDelivr, viz `VERZE.md`; žádné auto-aktualizace). 5,9 MB / 1,1 MB po
+  kompresi, **načítá se líně** (`js/burzy/ccxt.js`) jen pro burzu přes
+  CCXT — s Bybitem se nestahuje (ověřeno). Není v SHELL service workeru.
+- `CcxtAdapter` = obecný převod CCXT → model: pozice, příkazy, plnění
+  (po 7denních oknech), svíčky (i z minulosti přes `endTime`), tickery,
+  účet; živá data **dotazováním** (pozice 3 s, ceny a svíčka 2 s;
+  WebSocket přes CCXT pro později). `BinanceClient`: kontrola klíče přes
+  `/sapi/v1/account/apiRestrictions`, uzavřené obchody z deníku příjmů
+  (REALIZED_PNL) + plnění s realizovaným ziskem, typy SL/TP z `info.type`.
+  Funding zatím ne (`schopnosti.funding: false`).
+- **Testování bez rizika: Binance Demo Trading** (`volby.demo`,
+  demo-fapi.binance.com, CORS ano). Starý `testnet.binancefuture.com`
+  2026-10-12 neodpovídal. Kontraktní test: veřejná data Binance vždy
+  z ostré burzy, soukromá jen s `BINANCE_DEMO_KEY/SECRET` v prostředí.
+- Mock (`tools/mock-bybit.js`) pouští dotazy na ostatní burzy do sítě.
+- Zatím **jen v kontraktním testu** — výběr burzy v aplikaci je další krok.
 
 ### `js/bybit.js` je izolovaný záměrně
 

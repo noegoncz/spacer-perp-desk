@@ -47,6 +47,9 @@ window.fetch = function (vstup, volby) {
   const u = String(vstup && vstup.url ? vstup.url : vstup);
   // Poznámky k nové verzi jsou soubor aplikace, ne Bybit — jdou ze serveru.
   if (u.includes('novinky.json')) return __puvodniFetch(vstup, volby);
+  // Ostatní burzy (adaptéry přes CCXT) jdou na skutečnou burzu — mock
+  // podstrkuje jen Bybit a perpyx.com (kontraktní test, v0.53.0).
+  if (/binance|gateio|gate\.io|mexc|okx|bitget|hyperliquid/i.test(u)) return __puvodniFetch(vstup, volby);
   if (u.includes('/v5/market/time'))
     return ok({retCode:0, result:{timeNano:String(Date.now()*1e6)}, time:Date.now()});
   if (u.includes('/v5/position/list')) return ok({retCode:0, result:{list:[pozice]}});
