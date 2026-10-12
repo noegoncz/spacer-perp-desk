@@ -2129,6 +2129,13 @@ s `position: fixed` (graf, vysouvací nabídky) — okraje z `body` se jich
 netýkají, musí si je vzít samy. Test: `tools/test-okraje-apk.py`, na starém
 CSS padá.
 
+**Pruh pod systémovými tlačítky (v0.51.1, přání uživatele):** aplikace
+kreslí pod navigační lištu (Android 15+ to vynucuje) a obsah jen odsazuje
+— pod tlačítky prosvítalo pozadí aplikace. `html::after` v style.css je
+černý pruh výšky `--okraj-dole` s linkou nahoře, navrch všeho, bez
+dotyků; v prohlížeči má výšku 0. Totéž bude fungovat na iPhonu.
+Test: `test-okraje-apk.py` (pruh, obsah nabídky nad ním).
+
 **Systémové tlačítko zpět (v0.51.0, přání uživatele):** bez pluginu
 `@capacitor/app` Android při „zpět" aplikaci rovnou zavřel (graf, Historie,
 nastavení — vždy ven). Plugin je v apk.yml; `zapojTlacitkoZpet` v app.js

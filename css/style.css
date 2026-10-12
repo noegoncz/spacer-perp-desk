@@ -36,6 +36,28 @@
 
 * { box-sizing: border-box; }
 
+/*
+ * Pruh pod systémovými tlačítky (v0.51.1, přání uživatele): aplikace kreslí
+ * až pod navigační lištu Androidu (od Androidu 15 to systém vynucuje)
+ * a obsah jen odsazuje — pod tlačítky pak prosvítalo pozadí aplikace
+ * a vypadalo to, že aplikace pokračuje pod nimi. Teď tam leží vlastní
+ * černý pruh s jemnou linkou: aplikace viditelně končí nad tlačítky.
+ * Výška = spodní okraj (v prohlížeči 0, nic se nekreslí); totéž na iPhonu
+ * pod domovskou čárkou. Navrch všeho, ať ho nepřekryje graf ani nabídky,
+ * a bez dotyků (tlačítka obsluhuje systém).
+ */
+html::after {
+  content: '';
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--okraj-dole);
+  background: linear-gradient(#1f2833, #1f2833) top / 100% 1px no-repeat, #000;
+  z-index: 2147483000;
+  pointer-events: none;
+}
+
 /* Atribut hidden schovává prvek přes display:none v prohlížečovém stylu,
    jenže autorský styl prohlížečový vždycky přebije — bez ohledu na
    specificitu. Každé pravidlo níž, které nastavuje display (.update-bar,

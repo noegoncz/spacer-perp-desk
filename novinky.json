@@ -1,9 +1,9 @@
 {
-  "verze": "0.51.0",
+  "verze": "0.51.1",
   "novinky": [
     {
-      "en": "The phone's Back button now goes one step back inside PerpyX — closes a menu, the chart or settings — instead of leaving the app. Needs the new APK.",
-      "cs": "Tlačítko zpět na telefonu teď v PerpyX vrací o krok — zavře nabídku, graf nebo nastavení — místo aby aplikaci opustilo. Potřebuje nové APK."
+      "en": "The app now ends neatly above the phone's navigation buttons — nothing shows through underneath.",
+      "cs": "Aplikace teď končí úhledně nad tlačítky telefonu — pod nimi už nic neprosvítá."
     }
   ],
   "opravy": []

@@ -74,6 +74,22 @@ print(f'hlavička grafu od horního okraje: {hlavaGrafu} px (aspoň {NAHORE})')
 if hlavaGrafu is None or hlavaGrafu < NAHORE:
     chyby.append('hlavička grafu zalezla pod stavovou lištu')
 
+# v0.51.1: pod systémovými tlačítky vlastní černý pruh — aplikace končí nad nimi.
+pruh = ev("""(() => { const s = getComputedStyle(document.documentElement, '::after');
+  return { vyska: Math.round(parseFloat(s.height)), pozice: s.position, dole: s.bottom,
+           barva: s.backgroundColor, z: Number(s.zIndex) }; })()""") or {}
+print(f'pruh pod tlačítky: {pruh}')
+if pruh.get('vyska') != DOLE or pruh.get('pozice') != 'fixed' or pruh.get('dole') != '0px':
+    chyby.append('pod systémovými tlačítky chybí vlastní pruh v jejich výšce')
+if pruh.get('barva') != 'rgb(0, 0, 0)' or (pruh.get('z') or 0) < 1000000:
+    chyby.append('pruh pod tlačítky není černý a navrch (prosvítala by aplikace)')
+ev("document.getElementById('layersBtn').click()")
+time.sleep(0.5)
+nabidka = ev("Math.round(innerHeight - document.querySelector('#layersBody').getBoundingClientRect().bottom)")
+print(f'obsah nabídky od spodního okraje: {nabidka} px (aspoň {DOLE})')
+if nabidka is None or nabidka < DOLE:
+    chyby.append('obsah nabídky zalezl pod pruh u tlačítek')
+
 konzole = ev('(window.__chyby||[]).join(" | ")') or ''
 if konzole:
     chyby.append(f'chyby v konzoli: {konzole}')
