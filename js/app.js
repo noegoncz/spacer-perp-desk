@@ -711,6 +711,7 @@ function boot() {
     onZmena: () => vykresliAlarmy(),
   });
   zapojPrejeti();
+  zapojTlacitkoZpet();
   odemkniZvuk();
   hlidejCasoveAlarmy();
   connectIfPossible();
@@ -3789,6 +3790,74 @@ function otevriNabidku(id) {
 function zavriNabidky() {
   NABIDKY.forEach((id) => ukazPrvek(id, false));
   ukazPrvek('sheetBackdrop', false);
+}
+
+/*
+ * Systémové tlačítko zpět (v0.51.0, přání uživatele — tlačítka Androidu
+ * prosvítají pod aplikací a „zpět" z ní dřív rovnou vyskočilo). Udělá
+ * jeden krok zpět podle toho, co je otevřené, od nejbližšího:
+ * nabídka / okno → kreslení → celá obrazovka → graf → nastavení →
+ * Watchlists / Historie → Pozice. Vrací false, když už není kam — pak se
+ * aplikace jen minimalizuje (nezavře, zůstane ve stejném stavu).
+ */
+function krokZpet() {
+  if (el('lockScreen') && !el('lockScreen').hidden) return false;
+  if (uvodViditelny()) {
+    const krizek = el('onbCloseBtn');
+    if (krizek && !krizek.hidden) {
+      krizek.click();
+      return true;
+    }
+    return false;
+  }
+  const okna = document.querySelectorAll(
+    '.sheet:not([hidden]), #tileMenu:not([hidden]), #quickMenu:not([hidden])');
+  if (okna.length) {
+    zavriNabidky();
+    zavriNabidkyTrhu();
+    zavriHlaseni();
+    pozvanky.zavri();
+    skryjRychlyAlarm();
+    return true;
+  }
+  if (chartSymbol) {
+    if (chart?.isBusy() || document.querySelector('#drawToolbar .tool-btn.active[data-tool], #toolsBtn.active')) {
+      vyberNastroj('');
+      zobrazPaletu(null);
+      return true;
+    }
+    if (document.fullscreenElement) {
+      prepniCelouObrazovku();
+      return true;
+    }
+    // Graf má vlastní záznam v historii — zavře ho popstate, jako šipka.
+    history.back();
+    return true;
+  }
+  if (!el('viewSettings')?.hidden) {
+    el('backBtn')?.click();
+    return true;
+  }
+  if (aktivniZalozka !== 'positions') {
+    prepniZalozku('positions');
+    return true;
+  }
+  return false;
+}
+
+/** Připojí krok zpět na systémové tlačítko (jen APK s pluginem App). */
+// Pro testy (tools/test-tlacitko-zpet.py): stejný krok jako systémové zpět.
+globalThis.__krokZpet = () => krokZpet();
+
+function zapojTlacitkoZpet() {
+  const app = self.Capacitor?.Plugins?.App;
+  if (!app?.addListener) return;
+  app.addListener('backButton', () => {
+    if (krokZpet()) return;
+    // Na začátku aplikace: minimalizovat jako tlačítkem domů, nezavírat.
+    if (app.minimizeApp) app.minimizeApp().catch(() => app.exitApp?.());
+    else app.exitApp?.();
+  });
 }
 
 /* ---------- čáry pozice ---------- */

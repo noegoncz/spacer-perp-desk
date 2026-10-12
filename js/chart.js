@@ -2656,6 +2656,11 @@ export function createPriceChart(container, layer, handlers = {}) {
       kresleni.beginCreate(1, popis);
     },
 
+    /** Probíhá kreslení, úprava kresby nebo výběr hladiny křížem? */
+    isBusy() {
+      return kresleni.isActive() || Boolean(rozdelanyNastroj) || Boolean(upravovanaKresba);
+    },
+
     cancelDrawing() {
       if (kresleni.isActive()) kresleni.cancel();
       rozdelanyNastroj = null;

@@ -2129,6 +2129,18 @@ s `position: fixed` (graf, vysouvací nabídky) — okraje z `body` se jich
 netýkají, musí si je vzít samy. Test: `tools/test-okraje-apk.py`, na starém
 CSS padá.
 
+**Systémové tlačítko zpět (v0.51.0, přání uživatele):** bez pluginu
+`@capacitor/app` Android při „zpět" aplikaci rovnou zavřel (graf, Historie,
+nastavení — vždy ven). Plugin je v apk.yml; `zapojTlacitkoZpet` v app.js
+poslouchá `backButton` a `krokZpet()` udělá jeden krok od nejbližšího:
+nabídka / okno → kreslení (i výběr kresby, kříž alarmu) → celá obrazovka
+→ graf (`history.back()`, zavře ho popstate) → nastavení → Watchlists /
+Historie → Pozice. Na Pozicích bez ničeho otevřeného se aplikace
+**minimalizuje** (`minimizeApp`, ne `exitApp`) — zůstane ve stejném stavu.
+Zámek: minimalizuje; úvod: zavře jen zavíratelný krok burzy. Starší APK
+bez pluginu chování nezmění (kód se bez pluginu nezapojí). Test:
+`tools/test-tlacitko-zpet.py` (podstrčený plugin), na starém kódu padá.
+
 ⚠ **Systémové notifikace v APK nefungují** a z webu fungovat nebudou:
 Android WebView nepodporuje Notifications API ani `showNotification` service
 workeru. Musí jít přes nativní plugin (`@capacitor/local-notifications`)
