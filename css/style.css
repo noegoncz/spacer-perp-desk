@@ -2815,3 +2815,11 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 }
 .exchange-demo input { margin-top: 3px; width: 18px; height: 18px; accent-color: var(--accent); }
 .exchange-demo small { display: block; color: var(--text-dim); font-size: 0.78rem; margin-top: 2px; }
+
+/* Připojené burzy (v0.55.0): aktivní zvýrazněná, ostatní s „Přepnout". */
+.exchange-pocet { margin: 0 0 6px; }
+.exchange-row + .exchange-row { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.exchange-aktivni {
+  padding: 4px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 700;
+  color: var(--accent); background: rgba(76, 154, 255, 0.14);
+}

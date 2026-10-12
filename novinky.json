@@ -1,9 +1,13 @@
 {
-  "verze": "0.54.0",
+  "verze": "0.55.0",
   "novinky": [
     {
-      "en": "Binance is here (beta): connect it with a read-only key, or try it risk-free with a Demo Trading key.",
-      "cs": "Přichází Binance (beta): připoj ho klíčem jen pro čtení, nebo ho bez rizika vyzkoušej s klíčem z Demo Tradingu."
+      "en": "Keep several exchanges connected — Bybit, Binance and more. Switch between them in Settings without re-entering keys.",
+      "cs": "Víc připojených burz najednou — Bybit, Binance a další. V nastavení mezi nimi přepneš bez nového zadávání klíče."
+    },
+    {
+      "en": "Binance is here (beta), including a risk-free Demo Trading option.",
+      "cs": "Binance je tu (beta), včetně bezrizikového Demo Tradingu."
     }
   ],
   "opravy": []

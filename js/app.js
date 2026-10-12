@@ -1,7 +1,7 @@
 /** Orchestrace: propojuje modul Bybitu, UI a lifecycle service workeru. */
 
 // Burza přes společné rozhraní (js/burzy/) — aplikace nezná třídu adaptéru.
-import { vytvorBurzu, VYCHOZI as VYCHOZI_BURZA } from './burzy/index.js';
+import { vytvorBurzu, VYCHOZI as VYCHOZI_BURZA, BURZY } from './burzy/index.js';
 import {
   createPriceChart, NASTROJE, INDIKATORY, popisIndikatoru, nazevIndikatoru,
   IKONY_INDIKATORU, BARVY_KRESEB, TLOUSTKY, PRUHLEDNOSTI,
@@ -720,6 +720,8 @@ function boot() {
   ui.renderVersion(self.APP_VERSION, self.APP_BUILD);
   prepniTridu('hideBtn', 'active', hideAmounts);
   oznacMagnet();
+  // Dosavadní jediný klíč → první připojení (v0.55.0), hned při startu.
+  store.loadPripojeni();
   wireEvents();
   vykresliUcet();
   if (ucet.prihlasen() && !store.hasCredentials() && !store.loadJson('perpdesk.exchangeSkipped', false)) {
@@ -1305,17 +1307,32 @@ async function saveAndConnect() {
   }
 
   // Ukládá se až po ověření, ať se do telefonu nedostane nefunkční klíč.
-  store.saveCredentials(apiKey, apiSecret);
-  store.saveBurza(vybranaBurza, volbyVybraneBurzy());
-  prepniBurzu(vybranaBurza, volbyVybraneBurzy());
-  // Jiný účet = jiná historie: mezipaměť se při jiném klíči sama vymaže.
-  zapomenHistorii();
-  mezipamet.nastavVlastnika(apiKey);
-  varovaniKlice = null;
+  // Nové připojení se PŘIDÁ k ostatním (v0.55.0) a stane se aktivním.
+  const id = store.pridejPripojeni({
+    burza: vybranaBurza, volby: volbyVybraneBurzy(), apiKey, apiSecret,
+  });
   el('apiKey').value = '';
   el('apiSecret').value = '';
   ui.clearSettingsMessage();
   skryjUvod();
+  await prepniNaPripojeni(id);
+}
+
+/**
+ * Přepne aplikaci na uložené připojení (v0.55.0): klíč se znovu nezadává.
+ * Zatím je aktivní jedno připojení najednou — spojený seznam pozic ze
+ * všech burz je další krok.
+ */
+async function prepniNaPripojeni(id) {
+  if (!store.aktivujPripojeni(id)) return;
+  const { apiKey, apiSecret } = store.loadCredentials();
+  const { id: burza, volby } = store.loadBurza();
+  prepniBurzu(burza, volby);
+  // Jiný účet = jiná historie: mezipaměť se při jiném klíči sama vymaže.
+  zapomenHistorii();
+  mezipamet.nastavVlastnika(apiKey);
+  varovaniKlice = null;
+  lastPositions = [];
   vykresliBurzy();
   client.stop();
   client.setCredentials(apiKey, apiSecret);
@@ -1325,6 +1342,32 @@ async function saveAndConnect() {
   ui.showView('positions');
   dokresliSeznamJeLiZastaraly();
   await client.start();
+}
+
+/** Odebere jedno připojení; aktivní nahradí jiné, nebo nic. */
+async function odeberPripojeni(id) {
+  if (!confirm(t('exchanges.confirmRemove'))) return;
+  const aktivni = store.aktivniPripojeni() === id;
+  store.odeberPripojeni(id);
+  if (!aktivni) {
+    vykresliBurzy();
+    return;
+  }
+  // Aktivní klíč pryč dřív, než se hledá další připojení.
+  store.odeberAktivniKlic();
+  const dalsi = store.loadPripojeni()[0];
+  if (dalsi) {
+    await prepniNaPripojeni(dalsi.id);
+    return;
+  }
+  client.stop();
+  // Poslední připojení pryč = jako odpojení: i uložená historie účtu.
+  store.clearCredentials();
+  zapomenHistorii();
+  varovaniKlice = null;
+  lastPositions = [];
+  vykresliBurzy();
+  ui.showPlaceholder(t('positions.keysCleared'), t('exchanges.connect'));
 }
 
 /** Data předchozího účtu z paměti pryč (odpojení / výměna klíče). */
@@ -4659,42 +4702,60 @@ function skryjUvod() {
 
 const uvodViditelny = () => el('onboarding')?.hidden === false;
 
-/** Připojené burzy v nastavení — klíč se nikdy neukazuje, jen jeho konec. */
+/**
+ * Připojené burzy v nastavení (v0.55.0: všechna připojení, ne jen jedno).
+ * Klíč se nikdy neukazuje, jen jeho konec. Aktivní má štítek, ostatní jde
+ * jedním klepnutím přepnout — bez nového zadávání klíče.
+ */
 function vykresliBurzy() {
   const seznam = el('exchangeList');
   if (!seznam) return;
-  const { apiKey } = store.loadCredentials();
-  if (!apiKey) {
+  const pripojeni = store.loadPripojeni();
+  ukazPrvek('exchangeAddBtn', true);
+  if (!pripojeni.length) {
     const p = document.createElement('p');
     p.className = 'hint';
     p.textContent = t('exchanges.none');
     seznam.replaceChildren(p);
-    ukazPrvek('exchangeAddBtn', true);
     return;
   }
-  const radek = document.createElement('div');
-  radek.className = 'exchange-row';
-  const nazev = document.createElement('div');
-  nazev.className = 'exchange-name';
-  nazev.textContent = client.burza.nazev + (client.volby?.demo ? ' · Demo' : '');
-  const klic = document.createElement('div');
-  klic.className = 'exchange-key';
-  klic.textContent = t('exchanges.keyEnding', { end: apiKey.slice(-4) });
-  nazev.append(klic);
-  const vymenit = document.createElement('button');
-  vymenit.type = 'button';
-  vymenit.className = 'secondary-btn';
-  vymenit.textContent = t('exchanges.replace');
-  vymenit.addEventListener('click', () => ukazUvod('burza', true));
-  const odpojit = document.createElement('button');
-  odpojit.type = 'button';
-  odpojit.className = 'text-btn danger';
-  odpojit.textContent = t('exchanges.disconnect');
-  odpojit.addEventListener('click', clearCredentials);
-  radek.append(nazev, vymenit, odpojit);
-  seznam.replaceChildren(radek);
-  // Víc burz zatím neumíme — „přidat" by nabídlo jen tu, co už je.
-  ukazPrvek('exchangeAddBtn', false);
+  const aktivni = store.aktivniPripojeni();
+  const pocet = document.createElement('p');
+  pocet.className = 'hint exchange-pocet';
+  pocet.textContent = t('exchanges.count', { n: pripojeni.length });
+  seznam.replaceChildren(pocet, ...pripojeni.map((pr) => {
+    const radek = document.createElement('div');
+    radek.className = `exchange-row ${pr.id === aktivni ? 'aktivni' : ''}`.trim();
+    radek.dataset.pripojeni = pr.id;
+    const nazev = document.createElement('div');
+    nazev.className = 'exchange-name';
+    nazev.textContent = (BURZY[pr.burza]?.nazev || pr.burza) + (pr.volby?.demo ? ' · Demo' : '');
+    const klic = document.createElement('div');
+    klic.className = 'exchange-key';
+    klic.textContent = t('exchanges.keyEnding', { end: pr.apiKey.slice(-4) });
+    nazev.append(klic);
+    radek.append(nazev);
+    if (pr.id === aktivni) {
+      const stitek = document.createElement('span');
+      stitek.className = 'exchange-aktivni';
+      stitek.textContent = t('exchanges.active');
+      radek.append(stitek);
+    } else {
+      const prepnout = document.createElement('button');
+      prepnout.type = 'button';
+      prepnout.className = 'secondary-btn';
+      prepnout.textContent = t('exchanges.switch');
+      prepnout.addEventListener('click', () => prepniNaPripojeni(pr.id));
+      radek.append(prepnout);
+    }
+    const odebrat = document.createElement('button');
+    odebrat.type = 'button';
+    odebrat.className = 'text-btn danger';
+    odebrat.textContent = t('exchanges.disconnect');
+    odebrat.addEventListener('click', () => odeberPripojeni(pr.id));
+    radek.append(odebrat);
+    return radek;
+  }));
 }
 
 /* ---------- hlášení problému / nápadu (js/hlaseni.js) ---------- */

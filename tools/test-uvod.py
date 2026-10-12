@@ -126,7 +126,7 @@ over('Bybit' in seznam and '••••ABCD' in seznam, f'burza v nastavení s 
 text = ev("document.body.innerText") or ''
 over('MUJKLIC1234ABCD' not in text and 'MUJSECRET' not in text, 'klíč ani secret nejsou nikde vidět')
 over(ev("document.getElementById('apiKey').value") == '', 'formulář klíče se po uložení vyčistil')
-over(not vidim('exchangeAddBtn'), 'druhou burzu zatím přidat nejde (není kterou)')
+over(vidim('exchangeAddBtn'), 'tlačítko Přidat burzu je vidět (v0.55.0 víc burz)')
 
 print('4) odhlášení')
 ev("document.getElementById('accountLogoutBtn').click()")

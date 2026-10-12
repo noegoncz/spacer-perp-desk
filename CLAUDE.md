@@ -213,6 +213,23 @@ Binance → Gate → MEXC → OKX (+EEA) → Bitget → Hyperliquid, pak vlny 2 
 - Test: `tools/test-vyber-burzy.py` (výběr, neplatný klíč, veřejná data
   ze skutečného Binance v aplikaci), `test-uvod.py`.
 
+**Krok 4a — víc připojení (v0.55.0, přání uživatele: neomezeně burz
+najednou, nikdy nemuset klíč odebírat; limit jen v budoucím předplatném):**
+- `perpdesk.pripojeni` = `[{ id, burza, volby, apiKey, apiSecret }]` —
+  ⚠ obsahuje klíče: `BEZ_ZALOHY`, `NEZALOHOVAT`, maže se s odhlášením,
+  zapomenutým PINem (`store.clearCredentials`) i s posledním připojením.
+  Aktivní připojení je zrcadlené v `perpdesk.apiKey/apiSecret/burza`
+  (zbytek aplikace se ptá jen na ně). Dosavadní jediný klíč se převede při
+  startu (`store.loadPripojeni`); ⚠ jen když seznam ještě nikdy nebyl —
+  prázdný seznam po odebrání se znovu nezakládá.
+- Nastavení → Burzy: všechna připojení, aktivní se štítkem, ostatní
+  „Přepnout" (`prepniNaPripojeni`, bez zadávání klíče), „Odpojit" u
+  každého; „Přidat burzu" vždy. Nové připojení se přidá a stane aktivním.
+- **Zatím je aktivní jedno připojení najednou.** Krok 4b: spojený seznam
+  pozic ze všech burz (identita účet + pár všude), štítek burzy na kartě,
+  graf z burzy pozice, Historie napříč burzami, limit počtu (vypnutý).
+- Test: `tools/test-vice-pripojeni.py`.
+
 ### `js/bybit.js` je izolovaný záměrně
 
 Veškerá komunikace s burzou (REST i WebSocket) je **jen** v tomto modulu.

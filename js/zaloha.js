@@ -34,6 +34,8 @@ const NEZALOHOVAT = new Set([
   // Burza patří ke klíči — ten se nezálohuje, tak ani ona.
   'perpdesk.burza',
   'perpdesk.burzaVolby',
+  // Všechna připojení — obsahují klíče.
+  'perpdesk.pripojeni',
 ]);
 
 function klice() {

@@ -11,6 +11,14 @@ const KEY_SECRET = 'perpdesk.apiSecret';
 // Patří ke klíči: nezálohuje se a s klíčem se maže.
 const KEY_BURZA = 'perpdesk.burza';
 const KEY_BURZA_VOLBY = 'perpdesk.burzaVolby';
+/*
+ * Všechna připojení k burzám (v0.55.0, přání uživatele: víc burz najednou,
+ * bez odebírání klíčů). [{ id, burza, volby, apiKey, apiSecret }]. Aktivní
+ * připojení je zrcadlené v KEY_API / KEY_SECRET / KEY_BURZA — zbytek
+ * aplikace se dál ptá jen na ně. ⚠ Obsahuje klíče: jen v telefonu, nikdy
+ * do zálohy ani na server.
+ */
+const KEY_PRIPOJENI = 'perpdesk.pripojeni';
 const KEY_HIDE = 'perpdesk.hideAmounts';
 
 function read(key) {
@@ -34,7 +42,7 @@ function write(key, value) {
  * Hlášení změn uložených dat — podle něj se spouští automatická cloudová
  * záloha (js/ucet.js). Klíče, relace a technické značky zálohu nespouští.
  */
-const BEZ_ZALOHY = new Set([KEY_API, KEY_SECRET, KEY_BURZA, KEY_BURZA_VOLBY, 'perpdesk.session', 'perpdesk.lastPing', 'perpdesk.lock',
+const BEZ_ZALOHY = new Set([KEY_API, KEY_SECRET, KEY_BURZA, KEY_BURZA_VOLBY, KEY_PRIPOJENI, 'perpdesk.session', 'perpdesk.lastPing', 'perpdesk.lock',
   'perpdesk.coinCategories',
   // Poslední známé pozice pro okamžitý start: zapisují se každých 20 s
   // a do zálohy nepatří (js/app.js, ulozSnimek).
@@ -79,12 +87,85 @@ export function saveBurza(id, volby = {}) {
   write(KEY_BURZA_VOLBY, JSON.stringify(volby || {}));
 }
 
+/**
+ * Seznam připojení. Starší instalace mají jen jeden klíč (KEY_API…) —
+ * ten se při prvním čtení převede na první připojení.
+ */
+export function loadPripojeni() {
+  let seznam = [];
+  let surove = null;
+  try {
+    surove = localStorage.getItem(KEY_PRIPOJENI);
+    seznam = JSON.parse(surove || '[]');
+  } catch { /* poškozené — prázdné */ }
+  if (!Array.isArray(seznam)) seznam = [];
+  const { apiKey, apiSecret } = loadCredentials();
+  // ⚠ Převod jen jednou — když seznam ještě nikdy neexistoval. Prázdný
+  // seznam po odebrání posledního připojení se znovu nezakládá.
+  if (surove === null && apiKey && apiSecret) {
+    const { id, volby } = loadBurza();
+    seznam = [{ id: `p${Date.now().toString(36)}`, burza: id, volby, apiKey, apiSecret }];
+    write(KEY_PRIPOJENI, JSON.stringify(seznam));
+  }
+  return seznam;
+}
+
+function ulozPripojeni(seznam) {
+  write(KEY_PRIPOJENI, JSON.stringify(seznam));
+}
+
+/** Přidá připojení (stejná burza + stejný klíč = aktualizace). Vrací id. */
+export function pridejPripojeni({ burza, volby = {}, apiKey, apiSecret }) {
+  const seznam = loadPripojeni();
+  const stare = seznam.find((p) => p.burza === burza && p.apiKey === apiKey.trim());
+  if (stare) {
+    Object.assign(stare, { volby, apiSecret: apiSecret.trim() });
+    ulozPripojeni(seznam);
+    return stare.id;
+  }
+  const id = `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+  seznam.push({ id, burza, volby, apiKey: apiKey.trim(), apiSecret: apiSecret.trim() });
+  ulozPripojeni(seznam);
+  return id;
+}
+
+export function odeberPripojeni(id) {
+  ulozPripojeni(loadPripojeni().filter((p) => p.id !== id));
+}
+
+/** Id aktivního připojení (to, jehož klíč je v KEY_API). */
+export function aktivniPripojeni() {
+  const { apiKey } = loadCredentials();
+  const { id: burza } = loadBurza();
+  return loadPripojeni().find((p) => p.apiKey === apiKey && p.burza === burza)?.id || null;
+}
+
+/** Udělá připojení aktivním — přepíše zrcadlo v KEY_API / KEY_BURZA. */
+export function aktivujPripojeni(id) {
+  const p = loadPripojeni().find((x) => x.id === id);
+  if (!p) return false;
+  saveCredentials(p.apiKey, p.apiSecret);
+  saveBurza(p.burza, p.volby);
+  return true;
+}
+
+/** Jen aktivní klíč pryč (odebrání posledního připojení). */
+export function odeberAktivniKlic() {
+  try {
+    localStorage.removeItem(KEY_API);
+    localStorage.removeItem(KEY_SECRET);
+    localStorage.removeItem(KEY_BURZA);
+    localStorage.removeItem(KEY_BURZA_VOLBY);
+  } catch { /* nic */ }
+}
+
 export function clearCredentials() {
   try {
     localStorage.removeItem(KEY_API);
     localStorage.removeItem(KEY_SECRET);
     localStorage.removeItem(KEY_BURZA);
     localStorage.removeItem(KEY_BURZA_VOLBY);
+    localStorage.removeItem(KEY_PRIPOJENI);
   } catch {
     /* nic */
   }
