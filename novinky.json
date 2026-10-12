@@ -1,10 +1,15 @@
 {
-  "verze": "0.51.1",
+  "verze": "0.51.2",
   "novinky": [
     {
-      "en": "The app now ends neatly above the phone's navigation buttons — nothing shows through underneath.",
-      "cs": "Aplikace teď končí úhledně nad tlačítky telefonu — pod nimi už nic neprosvítá."
+      "en": "The area under the phone's buttons now matches the app, so it no longer looks cut off.",
+      "cs": "Plocha pod tlačítky telefonu má teď barvu aplikace, takže už nepůsobí odříznutě."
     }
   ],
-  "opravy": []
+  "opravy": [
+    {
+      "en": "Buttons at the bottom no longer jump when switching watchlists.",
+      "cs": "Tlačítka dole už při přepínání seznamů neposkakují."
+    }
+  ]
 }

@@ -2132,9 +2132,17 @@ CSS padá.
 **Pruh pod systémovými tlačítky (v0.51.1, přání uživatele):** aplikace
 kreslí pod navigační lištu (Android 15+ to vynucuje) a obsah jen odsazuje
 — pod tlačítky prosvítalo pozadí aplikace. `html::after` v style.css je
-černý pruh výšky `--okraj-dole` s linkou nahoře, navrch všeho, bez
-dotyků; v prohlížeči má výšku 0. Totéž bude fungovat na iPhonu.
-Test: `test-okraje-apk.py` (pruh, obsah nabídky nad ním).
+pruh výšky `--okraj-dole`, navrch všeho, bez dotyků; v prohlížeči má
+výšku 0. Totéž bude fungovat na iPhonu. Barva (v0.51.2) = spodek aplikace:
+`--bg`, v grafu `--surface` (`html.graf-otevreny`, nastavuje
+`ui.showChart`) — černý s linkou působil odříznutě.
+⚠ **`overflow-x: clip` na html, body i `#viewWatchlist`** (v0.51.2):
+animace přepnutí seznamu (`prijezd-*`, posun do strany) přetekla přes
+pravý okraj, prohlížeč na okamžik přepočítal šířku stránky a plovoucí
+tlačítka i pruh dole na telefonu poskakovaly (video 2026-10-12). `clip`,
+ne `hidden` — nevytváří posuvný kontejner a nerozbije sticky.
+Test: `test-okraje-apk.py` (pruh, barva, obsah nabídky nad ním),
+`test-sestavy.py` (tlačítko + se během animace nepohne).
 
 **Systémové tlačítko zpět (v0.51.0, přání uživatele):** bez pluginu
 `@capacitor/app` Android při „zpět" aplikaci rovnou zavřel (graf, Historie,

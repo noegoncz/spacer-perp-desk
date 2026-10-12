@@ -151,6 +151,18 @@ over(abs(skupina - SIRKA / 2) < 8, f'skupina seznamů je uprostřed obrazovky ({
 ev("[...document.querySelectorAll('#watchLists .list-tab')].find((b) => b.firstChild.textContent === 'My watchlist').click()")
 time.sleep(0.6)
 over(mista() == pred, f'po přepnutí se seznamy nepohnuly ({pred} → {mista()})')
+# v0.51.2: během animace přepnutí seznamu se stránka nerozšíří a plovoucí
+# tlačítko + neposkočí (na telefonu poskakovalo i s pruhem dole).
+fab = lambda: ev("JSON.stringify(document.getElementById('addPairBtn').getBoundingClientRect())")
+fab_pred = fab()
+ev("[...document.querySelectorAll('#watchLists .list-tab')].find((b) => b.firstChild.textContent === 'Swing').click()")
+behem = ev("({ siroka: document.documentElement.scrollWidth <= innerWidth + 1 })")
+fab_behem = fab()
+time.sleep(0.5)
+over(behem and behem.get('siroka'), 'během animace stránka nepřetéká do strany')
+over(fab_behem == fab_pred, 'plovoucí tlačítko + se během animace nepohne')
+ev("[...document.querySelectorAll('#watchLists .list-tab')].find((b) => b.firstChild.textContent === 'My watchlist').click()")
+time.sleep(0.6)
 ukaz = ev("""(() => { const u = document.querySelector('#watchLists .list-ukazatel').getBoundingClientRect();
   const a = document.querySelector('#watchLists .list-tab.active').getBoundingClientRect();
   return u.left >= a.left - 1 && u.right <= a.right + 1; })()""")

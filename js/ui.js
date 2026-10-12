@@ -1041,6 +1041,8 @@ export function showWatchNote(text) {
  */
 export function showChart(visible) {
   dom.viewChart.hidden = !visible;
+  // Pruh pod systémovými tlačítky má v grafu barvu spodní lišty (CSS).
+  document.documentElement.classList.toggle('graf-otevreny', Boolean(visible));
 }
 
 /** Graf se otevírá i na páru bez pozice — pak místo PnL ukazuje cenu. */

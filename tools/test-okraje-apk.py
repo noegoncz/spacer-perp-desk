@@ -81,8 +81,13 @@ pruh = ev("""(() => { const s = getComputedStyle(document.documentElement, '::af
 print(f'pruh pod tlačítky: {pruh}')
 if pruh.get('vyska') != DOLE or pruh.get('pozice') != 'fixed' or pruh.get('dole') != '0px':
     chyby.append('pod systémovými tlačítky chybí vlastní pruh v jejich výšce')
-if pruh.get('barva') != 'rgb(0, 0, 0)' or (pruh.get('z') or 0) < 1000000:
-    chyby.append('pruh pod tlačítky není černý a navrch (prosvítala by aplikace)')
+# v0.51.2: barva spodku aplikace — v grafu barva spodní lišty (--surface).
+if pruh.get('barva') != 'rgb(19, 26, 35)' or (pruh.get('z') or 0) < 1000000:
+    chyby.append('pruh pod tlačítky nemá v grafu barvu spodní lišty nebo není navrch')
+# Přepnutí seznamu nesmí stránku rozšířit (animace posunu přes okraj).
+sirka = ev("document.documentElement.scrollWidth <= innerWidth + 1")
+if not sirka:
+    chyby.append('stránka přetéká do strany')
 ev("document.getElementById('layersBtn').click()")
 time.sleep(0.5)
 nabidka = ev("Math.round(innerHeight - document.querySelector('#layersBody').getBoundingClientRect().bottom)")

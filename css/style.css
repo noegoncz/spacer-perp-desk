@@ -39,9 +39,9 @@
 /*
  * Pruh pod systémovými tlačítky (v0.51.1, přání uživatele): aplikace kreslí
  * až pod navigační lištu Androidu (od Androidu 15 to systém vynucuje)
- * a obsah jen odsazuje — pod tlačítky pak prosvítalo pozadí aplikace
- * a vypadalo to, že aplikace pokračuje pod nimi. Teď tam leží vlastní
- * černý pruh s jemnou linkou: aplikace viditelně končí nad tlačítky.
+ * a obsah jen odsazuje — pod tlačítky pak prosvítal obsah. Teď tam leží
+ * vlastní pruh **v barvě spodku aplikace** (v0.51.2: černý s linkou
+ * působil odříznutě) — na přehledech pozadí, v grafu barva spodní lišty.
  * Výška = spodní okraj (v prohlížeči 0, nic se nekreslí); totéž na iPhonu
  * pod domovskou čárkou. Navrch všeho, ať ho nepřekryje graf ani nabídky,
  * a bez dotyků (tlačítka obsluhuje systém).
@@ -53,10 +53,11 @@ html::after {
   right: 0;
   bottom: 0;
   height: var(--okraj-dole);
-  background: linear-gradient(#1f2833, #1f2833) top / 100% 1px no-repeat, #000;
+  background: var(--bg);
   z-index: 2147483000;
   pointer-events: none;
 }
+html.graf-otevreny::after { background: var(--surface); }
 
 /* Atribut hidden schovává prvek přes display:none v prohlížečovém stylu,
    jenže autorský styl prohlížečový vždycky přebije — bez ohledu na
@@ -68,6 +69,11 @@ html::after {
 html, body {
   margin: 0;
   padding: 0;
+  /* ⚠ Stránka nesmí přetéct do strany (v0.51.2): animace přepnutí seznamu
+     posunula obsah přes pravý okraj, prohlížeč na okamžik přepočítal šířku
+     stránky a plovoucí tlačítka i pruh dole poskočily. `clip`, ne `hidden`
+     — nevytváří posuvný kontejner a nerozbije position: sticky. */
+  overflow-x: clip;
   background: var(--bg);
   color: var(--text);
   font-family: -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
@@ -445,8 +451,10 @@ main {
 
 /* Obsah seznamu přijede ze strany, odkud se přejelo (v0.47.0) — přejetí
    je pak vidět jako listování stránkami, ne jako záhadné probliknutí. */
-@keyframes prijezdZprava { from { transform: translateX(42px); opacity: 0.2; } to { transform: none; opacity: 1; } }
-@keyframes prijezdZleva { from { transform: translateX(-42px); opacity: 0.2; } to { transform: none; opacity: 1; } }
+@keyframes prijezdZprava { from { transform: translateX(24px); opacity: 0.35; } to { transform: none; opacity: 1; } }
+@keyframes prijezdZleva { from { transform: translateX(-24px); opacity: 0.35; } to { transform: none; opacity: 1; } }
+/* Posouvaný seznam nesmí přetéct přes okraj (viz overflow-x u html). */
+#viewWatchlist { overflow-x: clip; }
 .prijezd-zprava { animation: prijezdZprava 0.22s ease-out; }
 .prijezd-zleva { animation: prijezdZleva 0.22s ease-out; }
 .chip.list-new { color: var(--accent); font-weight: 600; }
