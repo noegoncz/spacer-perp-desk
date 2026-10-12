@@ -119,6 +119,7 @@ js/burzy/index.js       # seznam burz: adaptér, schopnosti, regiony
 js/burzy/ccxt.js        # líné načtení CCXT (vendor/ccxt), převod timeframů
 js/burzy/ccxt-adapter.js # obecný adaptér nad CCXT → společný model
 js/burzy/binance.js     # Binance USDⓈ-M (CCXT + kontrola klíče, uzavřené obchody)
+js/burzy/dalsi.js       # OKX, Bitget, Gate, MEXC, Hyperliquid (zatím veřejná data)
 js/store.js             # localStorage: klíče + nastavení
 js/format.js            # formátování čísel, cen, časů (podle jazyka)
 js/i18n.js              # ⚠ překlady; texty nikdy přímo v kódu ani v HTML
@@ -259,6 +260,35 @@ ze všech podporovaných burz bez ohledu na připojené klíče):**
   nastavit `chartBurza` (pozice, příkaz, prohlídka obchodu, dlaždice).
   Test: `tools/test-graf-podle-burzy.py`, na starém kódu padá.
 - **Připomínat uživateli:** hledání párů u + chce později vylepšit.
+
+**Další sada burz — zatím veřejná data (v0.57.0, `js/burzy/dalsi.js`):**
+OKX, Bitget, Gate, MEXC, Hyperliquid jsou ve Watchlists a v grafu bez
+klíče; připojit klíčem je zatím **nejde** (`pripojeni: false`, úvod
+nabízí jen Bybit a Binance). Sonda z prohlížeče 2026-10-12:
+
+| burza | veřejná | soukromá | pozn. |
+|---|---|---|---|
+| OKX | CORS ✓ | CORS ✓ | klíč + heslo (passphrase); kontrola jen čtení `perm` |
+| Bitget | CORS ✓ | **bez CORS** → nativní HTTP | klíč + heslo |
+| Gate | futures CORS ✓, spot ne | **bez CORS** | ⚠ CCXT posílá `X-Gate-Channel-Id` v `ex.headers` — Gate ho v CORS nepustí, mažeme (`upravCcxt`) |
+| MEXC | **bez CORS** | bez CORS | jen v APK (`jenVApk`, `verejneDostupne()`) |
+| Hyperliquid | CORS ✓ | adresa peněženky | perpetuály v **USDC** → páry `BTCUSDC` (`this.mena`) |
+| KuCoin, BingX | bez CORS | — | další vlna s nativním HTTP |
+| WOO X | tickery ✓, svíčky bez CORS | — | další vlna |
+
+- Obecný adaptér: `fetchCurrencies` vypnuté (jen perpetuály, `typyTrhu`),
+  `mena` (USDT / USDC), obrat 24 h i z objemu v coinu (OKX), svíčky
+  z minulosti přes sjednocené `until`, `password` (heslo klíče) připravené.
+- **Nativní HTTP** (`nativniFetch` v ccxt.js): v APK u burz s
+  `nativniHttp` dostane CCXT `fetchImplementation` přes plugin
+  CapacitorHttp (jádro Capacitoru). ⚠ **Na telefonu zatím neověřené** —
+  MEXC v APK je první skutečná zkouška.
+- Testy: `test-kontrakt-burzy.py` (veřejná data všech burz naostro),
+  `test-nativni-http.py` (podstrčený plugin, Gate přes něj),
+  `test-dalsi-burzy.py` (dlaždice, hledání, graf Hyperliquid).
+- **Zbývá k připojení klíčem:** pole pro heslo (OKX, Bitget), adresa
+  peněženky (Hyperliquid), kontrola jen pro čtení u Bitget / Gate / MEXC,
+  ověření na skutečných účtech uživatele (Gate, MEXC; OKX/Bitget nemá).
 
 ### `js/bybit.js` je izolovaný záměrně
 

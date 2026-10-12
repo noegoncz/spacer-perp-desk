@@ -25,7 +25,7 @@ if (sessionStorage.getItem('__binance')) {
   localStorage.setItem('perpdesk.burza', 'binance');
   localStorage.setItem('perpdesk.exchangeSkipped', 'true');
   localStorage.setItem('perpdesk.lists', JSON.stringify({ verze: 1, aktivni: 'a',
-    seznamy: [{ id: 'a', nazev: 'Main', polozky: ['bybit:BTCUSDT', 'bybit:ETHUSDT'] }] }));
+    seznamy: [{ id: 'a', nazev: 'Main', polozky: ['binance:BTCUSDT', 'binance:ETHUSDT'] }] }));
 }
 """
 

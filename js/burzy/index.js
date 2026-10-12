@@ -16,6 +16,7 @@
  */
 import { BybitClient } from '../bybit.js';
 import { BinanceClient } from './binance.js';
+import { OkxClient, BitgetClient, GateClient, MexcClient, HyperliquidClient } from './dalsi.js';
 
 export const BURZY = {
   bybit: {
@@ -62,7 +63,39 @@ export const BURZY = {
       global: { nazev: 'Global', api: 'https://fapi.binance.com' },
     },
   },
+  /*
+   * Další sada (v0.57.0, js/burzy/dalsi.js): zatím jen veřejná data —
+   * páry ve Watchlists a graf bez klíče. `pripojeni: false` = klíč zatím
+   * nejde připojit (ověří se na skutečném účtu). `jenVApk` = API bez CORS,
+   * v prohlížeči nejde vůbec (nativní HTTP jen v APK).
+   */
+  okx: verejna('okx', 'OKX', (h, v) => new OkxClient(h, v), 'https://www.okx.com'),
+  bitget: verejna('bitget', 'Bitget', (h, v) => new BitgetClient(h, v), 'https://api.bitget.com'),
+  gate: verejna('gate', 'Gate', (h, v) => new GateClient(h, v), 'https://api.gateio.ws'),
+  mexc: { ...verejna('mexc', 'MEXC', (h, v) => new MexcClient(h, v), 'https://contract.mexc.com'), jenVApk: true },
+  hyperliquid: verejna('hyperliquid', 'Hyperliquid', (h, v) => new HyperliquidClient(h, v), 'https://api.hyperliquid.xyz'),
 };
+
+/** Popis burzy, která zatím dává jen veřejná data (bez připojení klíče). */
+function verejna(id, nazev, vytvor, api) {
+  return {
+    id,
+    nazev,
+    vytvor,
+    pripojeni: false,
+    schopnosti: {
+      zivePozice: false, zivaCena: false, zivaSvicka: false, prehledUctu: false, plneni: false,
+      historieObchodu: false, funding: false, fundingHistorie: false, kontrolaJenCteni: false,
+    },
+    regiony: { global: { nazev: 'Global', api } },
+  };
+}
+
+/** Burzy, jejichž veřejná data jdou v tomhle prostředí stáhnout. */
+export function verejneDostupne() {
+  const apk = Boolean(globalThis.Capacitor?.isNativePlatform?.());
+  return Object.values(BURZY).filter((b) => !b.jenVApk || apk).map((b) => b.id);
+}
 
 /** Výchozí burza, dokud aplikace neumí víc burz najednou. */
 export const VYCHOZI = 'bybit';

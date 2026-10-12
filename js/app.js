@@ -1,7 +1,7 @@
 /** Orchestrace: propojuje modul Bybitu, UI a lifecycle service workeru. */
 
 // Burza přes společné rozhraní (js/burzy/) — aplikace nezná třídu adaptéru.
-import { vytvorBurzu, VYCHOZI as VYCHOZI_BURZA, BURZY } from './burzy/index.js';
+import { vytvorBurzu, VYCHOZI as VYCHOZI_BURZA, BURZY, verejneDostupne } from './burzy/index.js';
 import {
   createPriceChart, NASTROJE, INDIKATORY, popisIndikatoru, nazevIndikatoru,
   IKONY_INDIKATORU, BARVY_KRESEB, TLOUSTKY, PRUHLEDNOSTI,
@@ -2260,8 +2260,8 @@ function nactiTrhySnimek() {
  * se tentokrát nestahovaly, si nechají předchozí data.
  */
 async function stahniTrhy(vsechny = false) {
-  const burzy = [...new Set(vsechny ? Object.keys(BURZY) : [...burzyVSeznamech(), client.burza.id])]
-    .filter((b) => BURZY[b]);
+  const burzy = [...new Set(vsechny ? verejneDostupne() : [...burzyVSeznamech(), client.burza.id])]
+    .filter((b) => verejneDostupne().includes(b));
   const vysledky = await Promise.allSettled(burzy.map(async (b) =>
     (await verejnyKlient(b).getTickers()).map((r) => sBurzou(r, b))));
   const stazene = new Set(burzy.filter((_, i) => vysledky[i].status === 'fulfilled'));
@@ -2358,7 +2358,7 @@ function odebirejSeznam() {
   client.setExtraTickers(podle.get(client.burza.id) || []);
   for (const [b, k] of verejneKlienty) if (b !== client.burza.id && !podle.has(b)) k.setExtraTickers([]);
   for (const [b, symboly] of podle) {
-    if (b === client.burza.id || !BURZY[b]) continue;
+    if (b === client.burza.id || !verejneDostupne().includes(b)) continue;
     const k = verejnyKlient(b);
     k.setExtraTickers(symboly);
     if (k.naplanujCeny && !k.casovacCen) {
@@ -2543,7 +2543,7 @@ function otevriPridani() {
   ukazPrvek('sheetAddPair', true);
   el('addPairSearch').focus();
   // Hledání nabízí páry ze všech podporovaných burz, i bez připojení.
-  if (!Object.keys(BURZY).every((b) => trhy.some((r) => r.burza === b))) {
+  if (!verejneDostupne().every((b) => trhy.some((r) => r.burza === b))) {
     stahniTrhy(true).then(vykresliPridani).catch(() => {});
   }
 }

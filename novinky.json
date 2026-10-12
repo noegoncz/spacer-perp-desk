@@ -1,15 +1,10 @@
 {
-  "verze": "0.56.1",
+  "verze": "0.57.0",
   "novinky": [
     {
-      "en": "Watchlists now take pairs from any supported exchange (Bybit, Binance) — no API key needed. Each tile shows its exchange, live price and chart.",
-      "cs": "Do seznamů jde přidat pár z kterékoli podporované burzy (Bybit, Binance), i bez API klíče. Každá dlaždice ukazuje svou burzu, živou cenu a graf."
+      "en": "Watchlists now also take pairs from OKX, Bitget, Gate, MEXC and Hyperliquid — live prices and charts, no API key needed.",
+      "cs": "Do seznamů jde přidat i páry z OKX, Bitget, Gate, MEXC a Hyperliquid — živé ceny a grafy, bez API klíče."
     }
   ],
-  "opravy": [
-    {
-      "en": "Drawings and alerts now belong only to the chart (exchange and pair) where you made them.",
-      "cs": "Kresby a alarmy patří jen ke grafu (burza a pár), kde vznikly."
-    }
-  ]
+  "opravy": []
 }

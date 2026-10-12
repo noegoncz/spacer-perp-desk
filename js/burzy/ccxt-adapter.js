@@ -14,7 +14,7 @@
  * ⚠ Modul nesahá na DOM (kromě načtení knihovny v js/burzy/ccxt.js)
  * a nikam neposílá klíče — CCXT běží v telefonu a volá přímo burzu.
  */
-import { nactiCcxt, TIMEFRAME, DELKA_TF } from './ccxt.js';
+import { nactiCcxt, TIMEFRAME, DELKA_TF, nativniFetch } from './ccxt.js';
 import { t } from '../i18n.js';
 
 const strana = (s) => (String(s).toLowerCase() === 'buy' || String(s).toLowerCase() === 'long' ? 'Buy' : 'Sell');
@@ -34,10 +34,18 @@ export class CcxtAdapter {
    */
   constructor(idCcxt, handlers = {}, volby = {}) {
     this.idCcxt = idCcxt;
+    // Měna, ve které se perpetuály vypořádávají (Hyperliquid: USDC).
+    this.mena = 'USDT';
+    // Burzy, jejichž API nemá CORS (MEXC, soukromá data Gate a Bitget):
+    // v APK jdou dotazy nativním HTTP Capacitoru (v0.57.0).
+    this.nativniHttp = false;
     this.handlers = handlers;
     this.volby = volby;
     this.apiKey = '';
     this.apiSecret = '';
+    // OKX, Bitget a KuCoin chtějí ke klíči ještě heslo (passphrase) —
+    // formulář pro něj přijde s připojením těch burz.
+    this.apiPassphrase = '';
     this.ex = null;
     this.exKlic = '';
     this.positions = new Map();
@@ -59,15 +67,24 @@ export class CcxtAdapter {
 
   /** Instance burzy v CCXT; při změně klíče se vyrobí znovu. */
   async burzaCcxt() {
-    const klic = `${this.apiKey}|${this.apiSecret}`;
+    const klic = `${this.apiKey}|${this.apiSecret}|${this.apiPassphrase}`;
     if (this.ex && this.exKlic === klic) return this.ex;
     const ccxt = await nactiCcxt();
     const ex = new ccxt[this.idCcxt]({
       apiKey: this.apiKey || undefined,
       secret: this.apiSecret || undefined,
+      password: this.apiPassphrase || undefined,
       enableRateLimit: true,
       ...(this.volby.ccxtVolby || {}),
     });
+    // Jen perpetuály: spotové trhy ani seznam měn aplikace nepotřebuje
+    // a u několika burz (Gate, MEXC) je jejich API bez CORS — načtení
+    // trhů by kvůli nim spadlo celé (v0.57.0, ověřeno sondou).
+    ex.fetchCurrencies = async () => ({});
+    if (this.typyTrhu) ex.options.fetchMarkets = { ...(ex.options.fetchMarkets || {}), types: this.typyTrhu };
+    this.upravCcxt(ex);
+    const nativni = this.nativniHttp && nativniFetch();
+    if (nativni) ex.fetchImplementation = nativni;
     if (this.volby.demo && ex.enableDemoTrading) ex.enableDemoTrading(true);
     else if (this.volby.testnet) ex.setSandboxMode(true);
     await ex.loadMarkets();
@@ -76,7 +93,10 @@ export class CcxtAdapter {
     return ex;
   }
 
-  /** Lineární USDT perpetuál CCXT → kanonický symbol PerpyX ('JUPUSDT'). */
+  /** Úprava instance CCXT před načtením trhů — burza může přepsat. */
+  upravCcxt() {}
+
+  /** Lineární perpetuál CCXT → kanonický symbol PerpyX ('JUPUSDT', na Hyperliquid 'BTCUSDC'). */
   kanonicky(trh) {
     return `${trh.base}${trh.quote}`;
   }
@@ -85,7 +105,7 @@ export class CcxtAdapter {
   trh(symbol) {
     const ex = this.ex;
     const hledany = String(symbol).toUpperCase();
-    return Object.values(ex.markets).find((m) => m.swap && m.linear && m.quote === 'USDT'
+    return Object.values(ex.markets).find((m) => m.swap && m.linear && m.quote === this.mena
       && this.kanonicky(m) === hledany) || null;
   }
 
@@ -187,7 +207,7 @@ export class CcxtAdapter {
     const m = this.ex.markets[p.symbol];
     const velikost = Math.abs(cislo(p.contracts) * cislo(p.contractSize || m?.contractSize || 1));
     return {
-      symbol: m ? this.kanonicky(m) : String(p.symbol).replace(/[/:]|USDT$/g, '') + 'USDT',
+      symbol: m ? this.kanonicky(m) : String(p.symbol).split('/')[0] + this.mena,
       side: strana(p.side),
       size: velikost,
       entry: cislo(p.entryPrice),
@@ -214,7 +234,7 @@ export class CcxtAdapter {
       this.positions.clear();
       for (const p of surove) {
         const m = ex.markets[p.symbol];
-        if (!m || !m.linear || m.quote !== 'USDT') continue;
+        if (!m || !m.linear || m.quote !== this.mena) continue;
         const poz = this.pozice(p);
         if (!poz.size) continue;
         this.positions.set(`${poz.symbol}#${poz.side}`, poz);
@@ -256,10 +276,10 @@ export class CcxtAdapter {
   async getWalletBalance() {
     const ex = await this.burzaCcxt();
     const b = await ex.fetchBalance();
-    const equity = cislo(b?.total?.USDT);
+    const equity = cislo(b?.total?.[this.mena]);
     if (!equity) return { ucet: null, chyba: t('account.unavailable') };
-    const volny = cislo(b?.free?.USDT);
-    const pouzity = cislo(b?.used?.USDT);
+    const volny = cislo(b?.free?.[this.mena]);
+    const pouzity = cislo(b?.used?.[this.mena]);
     return {
       ucet: { equity, volny, pouzity, vyuziti: equity > 0 ? (pouzity / equity) * 100 : null, typ: '' },
       chyba: null,
@@ -356,7 +376,7 @@ export class CcxtAdapter {
     const s = await this.symbolCcxt(symbol);
     const konec = endTime || Date.now();
     const od = konec - limit * (DELKA_TF[tf] || 3600e3);
-    const radky = await ex.fetchOHLCV(s, tf, Math.floor(od), limit, endTime ? { endTime: Math.ceil(endTime) } : {});
+    const radky = await ex.fetchOHLCV(s, tf, Math.floor(od), limit, endTime ? { until: Math.ceil(endTime) } : {}); // `until` = sjednocený konec okna CCXT
     return radky.map(([time, open, high, low, close, volume]) => ({
       time, open: cislo(open), high: cislo(high), low: cislo(low), close: cislo(close), volume: cislo(volume),
     }));
@@ -374,7 +394,8 @@ export class CcxtAdapter {
       symbol: m ? this.kanonicky(m) : tk.symbol,
       last: cislo(tk.last),
       changePct: cislo(tk.percentage),
-      turnover: cislo(tk.quoteVolume),
+      // Obrat 24 h v měně vypořádání; OKX dává jen objem v coinu.
+      turnover: cislo(tk.quoteVolume) || cislo(tk.baseVolume) * cislo(tk.last),
       funding: 0,
       openInterest: 0,
     };
@@ -392,7 +413,7 @@ export class CcxtAdapter {
     return Object.values(vse)
       .filter((tk) => {
         const m = ex.markets[tk.symbol];
-        return m && m.swap && m.linear && m.quote === 'USDT' && m.active !== false;
+        return m && m.swap && m.linear && m.quote === this.mena && m.active !== false;
       })
       .map((tk) => this.ticker(tk))
       .sort((a, b) => b.turnover - a.turnover);

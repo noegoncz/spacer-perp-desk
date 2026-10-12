@@ -27,6 +27,33 @@ export function nactiCcxt() {
   return nacitani;
 }
 
+/**
+ * `fetch` přes nativní HTTP Capacitoru (jen v APK), pro burzy bez CORS.
+ * CCXT ho dostane jako `fetchImplementation`; mimo APK vrací null a CCXT
+ * použije běžný `fetch` (v prohlížeči tyhle burzy prostě nepůjdou).
+ * Odpověď se vrací jako opravdový `Response`, ať CCXT čte status,
+ * hlavičky i text jako obvykle.
+ */
+export function nativniFetch() {
+  const cap = globalThis.Capacitor;
+  const http = cap?.Plugins?.CapacitorHttp;
+  if (!http || !cap.isNativePlatform?.()) return null;
+  return async (url, volby = {}) => {
+    const r = await http.request({
+      url: String(url),
+      method: volby.method || 'GET',
+      headers: volby.headers || {},
+      data: volby.body,
+      responseType: 'text',
+      connectTimeout: 15000,
+      readTimeout: 15000,
+    });
+    const text = typeof r.data === 'string' ? r.data : JSON.stringify(r.data ?? '');
+    const telo = [204, 205, 304].includes(r.status) ? null : text;
+    return new Response(telo, { status: r.status || 599, headers: r.headers || {} });
+  };
+}
+
 /** Interval grafu (Bybit kódy, které používá aplikace) → timeframe CCXT. */
 export const TIMEFRAME = {
   1: '1m', 5: '5m', 15: '15m', 30: '30m', 60: '1h', 240: '4h', D: '1d', W: '1w', M: '1M',

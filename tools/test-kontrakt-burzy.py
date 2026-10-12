@@ -41,15 +41,22 @@ KONFIG = {
     'bybit': {'klic': ['KONTRAKT', 'KONTRAKT'], 'volby': {}, 'par': 'JUPUSDT'},
     'binance': {'klic': [os.environ.get('BINANCE_DEMO_KEY', ''), os.environ.get('BINANCE_DEMO_SECRET', '')],
                 'volby': {'demo': True}, 'par': 'BTCUSDT', 'verejne': True},
+    # v0.57.0: zatím jen veřejná data (připojení klíče se zapne později).
+    'okx': {'par': 'BTCUSDT', 'verejne': True},
+    'bitget': {'par': 'BTCUSDT', 'verejne': True},
+    'gate': {'par': 'BTCUSDT', 'verejne': True},
+    'mexc': {'par': 'BTCUSDT', 'verejne': True},
+    'hyperliquid': {'par': 'BTCUSDC', 'verejne': True},
 }
 
 vysledek = p.prikaz('Runtime.evaluate', awaitPromise=True, returnByValue=True, expression=r"""
 (async () => {
   const KONFIG = """ + json.dumps(KONFIG) + r""";
   const model = await import('./js/burzy/model.js');
-  const { BURZY, vytvorBurzu } = await import('./js/burzy/index.js');
+  const { BURZY, vytvorBurzu, verejneDostupne } = await import('./js/burzy/index.js');
   const out = {};
-  for (const id of Object.keys(BURZY)) {
+  // MEXC (bez CORS) jde jen v APK — v prohlížeči se přeskočí.
+  for (const id of Object.keys(BURZY).filter((b) => verejneDostupne().includes(b))) {
     const k = KONFIG[id] || {};
     const r = { chyby: [], pocty: {} };
     const kontrola = (tvar, seznam) => {
