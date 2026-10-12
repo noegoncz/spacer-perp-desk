@@ -288,7 +288,7 @@ nabízí jen Bybit a Binance). Sonda z prohlížeče 2026-10-12:
   `test-dalsi-burzy.py` (dlaždice, hledání, graf Hyperliquid).
 - **Zbývá k připojení klíčem:** pole pro heslo (OKX, Bitget), adresa
   peněženky (Hyperliquid), kontrola jen pro čtení u Bitget / Gate / MEXC,
-  ověření na skutečných účtech uživatele (Gate, MEXC; OKX/Bitget nemá).
+  ověření na skutečných účtech (uživatel má Gate a MEXC; OKX a Bitget nezmínil).
 
 ### `js/bybit.js` je izolovaný záměrně
 
