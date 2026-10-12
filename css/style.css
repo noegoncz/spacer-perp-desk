@@ -1379,13 +1379,6 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
   touch-action: pan-x;
   overscroll-behavior-x: contain;
 }
-/* Mezery na koncích, aby šel vystředit i první (1m) a poslední (1M)
-   timeframe — polovina lišty minus polovina tlačítka. */
-.intervals::before,
-.intervals::after {
-  content: '';
-  flex: 0 0 calc(50% - 30px);
-}
 .intervals::-webkit-scrollbar { display: none; }
 
 /* Zpět na přehled vpravo dole, na palec pravé ruky. Větší než timeframy,
@@ -1410,6 +1403,25 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
   cursor: pointer;
 }
 .chart-back-big:active { background: rgba(76, 154, 255, 0.32); }
+/* Malé zpět v hlavičce grafu — stejný vzhled jako velké dole (v0.50.1). */
+.chart-back-top {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  background: rgba(76, 154, 255, 0.16);
+  color: var(--accent);
+  cursor: pointer;
+}
+.chart-back-top:active { background: rgba(76, 154, 255, 0.32); }
+.chart-back-top svg {
+  width: 20px; height: 20px; fill: none; stroke: currentColor;
+  stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round;
+}
 .chart-back-big svg {
   width: 26px;
   height: 26px;
@@ -2693,9 +2705,23 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
    Jedna řada stejných, větších tlačítek rozprostřených přes celou šířku,
    bez rámečků; zvolené = barevná ikona s jemným podkladem. */
 .draw-toolbar {
-  justify-content: space-around;
+  /* Posuvná do strany jako timeframy (v0.50.1); na širokém displeji se
+     tlačítka rozloží přes celou šířku. ⚠ space-between, ne space-around:
+     při přetečení by space-around obsah vystředil a začátek by byl
+     useknutý mimo dosah posunu. */
+  justify-content: space-between;
   gap: 0;
   padding: 4px 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
+}
+.draw-toolbar::-webkit-scrollbar { display: none; }
+/* Když se tlačítka nevejdou, pravý okraj se vytrácí — napoví posun. */
+.draw-toolbar.preteka:not(.na-konci) {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+          mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
 }
 .draw-toolbar .tool-btn {
   width: 48px;
@@ -2708,11 +2734,6 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 .draw-toolbar .tool-btn.tool-jednotka { width: auto; min-width: 48px; padding: 0 6px; }
 .draw-toolbar .tool-jednotka span { font-size: 0.74rem; }
 .draw-toolbar .tool-btn .tool-open-sipka { right: 3px; top: 3px; width: 10px; height: 10px; }
-/* Magnet, coin/USDT a koš: v liště jen na širokém displeji, na úzkém
-   v nabídkách (kreslení, oko). */
-@media (max-width: 559px) {
-  .draw-toolbar .jen-siroky { display: none; }
-}
 
 /* Řádek nabídky jako v TabTraderu: ikona, název, vpravo fajfka. */
 .nabidka-radek {

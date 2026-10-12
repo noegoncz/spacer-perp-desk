@@ -994,8 +994,9 @@ function wireEvents() {
   naUdalost('toolsBtn', 'click', () => otevriNabidku('sheetTools'));
   // Hodnoty u čar v coinu, nebo v USDT (v0.42.0).
   naUdalost('unitBtn', 'click', () => nastavJednotku(!hodnotyVUsdt));
-  // Přeložení Foldu mění šířku lišty timeframů — aktivní zůstane uprostřed.
-  window.addEventListener('resize', () => ui.vycentrujInterval());
+  // Přeložení Foldu mění šířku lišty timeframů — aktivní zůstane vidět.
+  window.addEventListener('resize', () => { ui.vycentrujInterval(); oznacPreteceniListy(); });
+  el('drawToolbar')?.addEventListener('scroll', oznacPreteceniListy, { passive: true });
 
   naUdalost('magnetBtn', 'click', prepniMagnet);
   naUdalost('eraseBtn', 'click', smazKresby);
@@ -1354,6 +1355,7 @@ async function otevriGraf(symbol, position, trh) {
   ui.showChartError('');
   ui.showChart(true);
   ui.vycentrujInterval();
+  requestAnimationFrame(oznacPreteceniListy);
   oznacJednotku();
 
   // Aby hardwarové tlačítko zpět zavřelo graf, a ne celou aplikaci.
@@ -1595,7 +1597,15 @@ function vyberNastroj(nastroj) {
   if (nastroj) chart.startDrawing(nastroj);
 }
 
-/** Magnet — tlačítko v liště (široký displej) i řádek v nabídce kreslení. */
+/** Lišta pod grafem: vytrácející pravý okraj, dokud jde posunout dál. */
+function oznacPreteceniListy() {
+  const l = el('drawToolbar');
+  if (!l || !l.clientWidth) return;
+  l.classList.toggle('preteka', l.scrollWidth > l.clientWidth + 1);
+  l.classList.toggle('na-konci', l.scrollLeft + l.clientWidth >= l.scrollWidth - 2);
+}
+
+/** Magnet — tlačítko v liště i řádek v nabídce kreslení. */
 function prepniMagnet() {
   magnetZapnut = !magnetZapnut;
   store.saveMagnet(magnetZapnut);

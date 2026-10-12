@@ -1135,6 +1135,11 @@ export function setActiveInterval(interval) {
 
 /** Posune lištu timeframů tak, aby aktivní byl uprostřed viditelné části. */
 export function vycentrujInterval(plynule = false) {
+  /*
+   * Od v0.50.1 (přání uživatele) se vybraný timeframe **nestředí** a na
+   * koncích lišty nejsou prázdné mezery — lišta se posune jen tolik, aby
+   * byl vybraný celý vidět. (Název funkce zůstal kvůli volajícím.)
+   */
   const box = document.getElementById('intervals');
   const aktivni = box?.querySelector('.interval-btn.active');
   if (!aktivni) return;
@@ -1142,8 +1147,11 @@ export function vycentrujInterval(plynule = false) {
     const r = box.getBoundingClientRect();
     const a = aktivni.getBoundingClientRect();
     if (!r.width) return;
-    box.scrollTo({ left: box.scrollLeft + (a.left + a.width / 2) - (r.left + r.width / 2),
-                   behavior: plynule ? 'smooth' : 'auto' });
+    const okraj = 8;
+    let posun = 0;
+    if (a.left < r.left + okraj) posun = a.left - r.left - okraj;
+    else if (a.right > r.right - okraj) posun = a.right - r.right + okraj;
+    if (posun) box.scrollTo({ left: box.scrollLeft + posun, behavior: plynule ? 'smooth' : 'auto' });
   });
 }
 

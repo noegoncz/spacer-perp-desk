@@ -1,14 +1,19 @@
 {
-  "verze": "0.50.0",
+  "verze": "0.50.1",
   "novinky": [
     {
-      "en": "New chart toolbar: bigger buttons in one row, menus that open from the bottom — measure, drawing, indicators, layers, alerts.",
-      "cs": "Nová lišta pod grafem: větší tlačítka v jedné řadě, nabídky zespodu — měření, kreslení, indikátory, vrstvy, alarmy."
+      "en": "All chart tools in one bar, most used first — on the narrow screen just swipe it sideways.",
+      "cs": "Všechny nástroje grafu v jedné liště, nejpoužívanější první — na úzkém displeji ji jen posuneš prstem."
     },
     {
-      "en": "The eye menu shows and hides layers with one tap, switches coin / USDT values and deletes drawings.",
-      "cs": "Nabídka oka jedním klepnutím skrývá a ukazuje vrstvy, přepíná hodnoty coin / USDT a maže kresby."
+      "en": "Clearer magnet icon and a matching back button at the top.",
+      "cs": "Srozumitelnější ikona magnetu a stejné tlačítko zpět i nahoře."
     }
   ],
-  "opravy": []
+  "opravy": [
+    {
+      "en": "Timeframes no longer jump to the middle and leave empty space.",
+      "cs": "Timeframy už neskáčou doprostřed a nenechávají prázdné místo."
+    }
+  ]
 }

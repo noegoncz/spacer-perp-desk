@@ -1037,8 +1037,19 @@ klepnutí na řádek vrstvu přepne). **Kurzor zmizel**: kreslení ruší
 křížek v pruhu s návodem nebo druhé klepnutí na zvolený nástroj (i na
 měření v liště). Měření není v nabídce nástrojů (má tlačítko v liště).
 Řada timeframů s velkým zpět zůstala (rozhodnutí uživatele — TT měl
-timeframe jako tlačítko „H4“ s nabídkou). Test:
-`test-nastroje-a-timeframy.py` (6 tlačítek na 344 px, 9 na 673 px),
+timeframe jako tlačítko „H4“ s nabídkou).
+**v0.50.1 (přání uživatele):** v liště je **všech 9 tlačítek i na úzkém
+displeji** a lišta se posouvá do strany jako timeframy; pořadí od
+nejpoužívanějších: **kreslení ^, alarm, měření, indikátory, oko ^, celá
+obrazovka, magnet, coin/USDT, koš** (na 344 px je vidět prvních 7,
+pravý okraj se vytrácí, dokud jde posouvat — `oznacPreteceniListy`).
+⚠ `justify-content: space-between`, ne `space-around` — při přetečení
+by space-around obsah vystředil a začátek by byl mimo dosah posunu.
+Magnet je ikona podkovy. **Timeframy se nestředí** a na koncích lišty
+nejsou mezery — vybraný se jen posune, aby byl celý vidět
+(`vycentrujInterval` si nechal jméno). Horní šipka zpět má vzhled
+velkého zpět dole (`.chart-back-top`). Test:
+`test-nastroje-a-timeframy.py` (pořadí, posun na 344 px, 9 bez posunu na 673 px),
 `test-vrstvy.py`.
 
 **Timeframy** (v0.37.0): 1m, 5m, 15m, **30m**, 1h, 4h, 1D, 1W, 1M v pevném
