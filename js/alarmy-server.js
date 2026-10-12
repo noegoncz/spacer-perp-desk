@@ -41,7 +41,9 @@ export function hlidaServer() {
 
 async function odesli() {
   if (!ucet.prihlasen()) return;
-  const seznam = alarmy.vsechny();
+  // Hlídač bere ceny z Bybitu — alarmy grafů jiných burz (binance:BTCUSDT)
+  // hlídá jen telefon (v0.56.1).
+  const seznam = alarmy.vsechny().filter((a) => !String(a.symbol).includes(':'));
   const otisk = JSON.stringify(seznam);
   if (otisk === posledniOdeslane) return;
   try {

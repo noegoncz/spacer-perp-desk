@@ -174,7 +174,8 @@ const HANDLERY = {
      * kolem hladiny vyrobilo protnutí, které se nestalo.
      */
     for (const p of list) {
-      if (p.symbol !== chartSymbol) zkontrolujHladiny(p.symbol, p.mark);
+      const k = klicGrafu(client.burza.id, p.symbol);
+      if (k !== grafKlic()) zkontrolujHladiny(k, p.mark);
     }
     zkontrolujSltp(list);
   },
@@ -203,7 +204,7 @@ const HANDLERY = {
     if (!chart || !chartSymbol) return;
     chart.updateCandle(bar);
     poslednicCena = bar.close;
-    zkontrolujHladiny(chartSymbol, bar.close);
+    zkontrolujHladiny(grafKlic(), bar.close);
   },
   onDiag() {
     ukazDiagnostiku();
@@ -262,6 +263,23 @@ function verejnyKlient(burza) {
 let chartBurza = null;
 const grafKlient = () => verejnyKlient(chartBurza || client.burza.id);
 const grafZAktivni = () => !chartBurza || chartBurza === client.burza.id;
+/*
+ * Klíč grafu pro kresby a alarmy (v0.56.1, přání uživatele): všechno, co
+ * uživatel v grafu udělá, patří jen k tomu jednomu grafu — BTCUSDT na
+ * Bybitu a na Binance jsou dva grafy (svíčky se liší). Bybit má holý pár
+ * (dosavadní uložená data platí dál), ostatní burzy „burza:pár".
+ */
+const klicGrafu = (burza, symbol) => (!burza || burza === 'bybit' ? symbol : `${burza}:${symbol}`);
+const grafKlic = () => (chartSymbol ? klicGrafu(chartBurza || client.burza.id, chartSymbol) : null);
+/** Pár pro text upozornění: „BTCUSDT (Binance)" u jiné burzy než Bybit. */
+function nazevKlice(klic) {
+  const i = String(klic).indexOf(':');
+  if (i < 0) return klic;
+  const burza = klic.slice(0, i);
+  return `${klic.slice(i + 1)} (${BURZY[burza]?.nazev || burza})`;
+}
+/** Server hlídá jen alarmy na Bybitu (bere ceny z Bybitu). */
+const hlidaServerAlarm = (a) => !String(a?.symbol).includes(':') && alarmyServer.hlidaServer();
 
 function prepniBurzu(id, volby = {}) {
   if (client.burza?.id === id && JSON.stringify(client.volby || {}) === JSON.stringify(volby)) return;
@@ -678,6 +696,7 @@ function zebrikPozice(p, orders) {
 function otevriPrikaz(order) {
   const pozice = lastPositions.find((p) => p.symbol === order.symbol) || null;
   prohlizenyObchod = null;
+  chartBurza = client.burza.id;
   chartInterval = intervalUzivatele;
   return otevriGraf(order.symbol, pozice, null);
 }
@@ -1524,7 +1543,7 @@ async function otevriGraf(symbol, position, trh) {
   if (prohlizenyObchod?.okno) chart.showTradeWindow(prohlizenyObchod.okno.od, prohlizenyObchod.okno.do);
   chart.setInterval(chartInterval); // knihovna si data vyžádá sama
   odebiratZiveSvice(symbol, chartInterval);
-  chart.restoreDrawings(store.loadDrawings(symbol));
+  chart.restoreDrawings(store.loadDrawings(grafKlic()));
   vykresliAlarmy();
   nastavLinkuPnl();
   if (!prohlizenyObchod) {
@@ -1551,7 +1570,7 @@ function closeChart() {
    * proto zahazuje — jinak by skok mezi poslední cenou svíčky a mark cenou
    * vypadal jako protnutí hladiny, které se nestalo.
    */
-  alarmy.zapomenCenu(chartSymbol);
+  alarmy.zapomenCenu(grafKlic());
   chartSymbol = null;
   chartTrh = null;
   // Nástroj se vrací na kurzor, ať graf příště nezačne v režimu kreslení.
@@ -1686,7 +1705,7 @@ async function refreshChartOrders() {
 
 function ulozKresby() {
   if (!chart || !chartSymbol) return;
-  store.saveDrawings(chartSymbol, chart.getDrawings());
+  store.saveDrawings(grafKlic(), chart.getDrawings());
 }
 
 function ulozIndikatory() {
@@ -3153,6 +3172,7 @@ async function plneniObchoduZTelefonu(obchod) {
 
 async function otevriProhlidku(obchod) {
   prohlizenyObchod = obchod;
+  chartBurza = client.burza.id;
 
   /*
    * Nejdřív plnění **jen tohoto obchodu** — od otevření pozice po zavírací
@@ -3297,7 +3317,7 @@ async function ukazNotifikaci(alarm, text) {
   try {
     const registrace = await navigator.serviceWorker?.getRegistration();
     if (!registrace?.showNotification) return;
-    await registrace.showNotification(t('alarm.notifTitle', { symbol: alarm.symbol }), {
+    await registrace.showNotification(t('alarm.notifTitle', { symbol: nazevKlice(alarm.symbol) }), {
       body: text,
       icon: 'icons/icon-192.png',
       badge: 'icons/icon-192.png',
@@ -3317,7 +3337,7 @@ async function ukazNotifikaci(alarm, text) {
  * a zavibrování; pípnutí z aplikace zůstává jen jako záloha, když server
  * alarmy zrovna nehlídá — a pro zásah SL/TP, ten server nehlídá vůbec.
  */
-function ozviSe(alarm, text, { zvuk = !alarmyServer.hlidaServer() } = {}) {
+function ozviSe(alarm, text, { zvuk = !hlidaServerAlarm(alarm) } = {}) {
   navigator.vibrate?.([120, 70, 120, 70, 200]);
   if (zvuk) zapipej();
   ukazNotifikaci(alarm, text);
@@ -3326,8 +3346,8 @@ function ozviSe(alarm, text, { zvuk = !alarmyServer.hlidaServer() } = {}) {
 /** Text, který uživatel uvidí: jeho vlastní zpráva, jinak co se stalo. */
 function textAlarmu(a) {
   if (a.zprava) return a.zprava;
-  if (a.typ === 'cas') return t('alarm.timeHit', { symbol: a.symbol });
-  return t('alarm.hit', { symbol: a.symbol, price: formatPrice(alarmy.uroven(a)) });
+  if (a.typ === 'cas') return t('alarm.timeHit', { symbol: nazevKlice(a.symbol) });
+  return t('alarm.hit', { symbol: nazevKlice(a.symbol), price: formatPrice(alarmy.uroven(a)) });
 }
 
 /** Kdy se alarm naposledy ohlásil v telefonu — proti dvojímu zvonění s push. */
@@ -3340,7 +3360,7 @@ function ohlasAlarmy(spustene) {
     ohlaseneAlarmy.set(a.id, Date.now());
     // Aplikace na pozadí + alarmy hlídá server → ozve se push ze serveru
     // (doručí ho Android i do spícího telefonu). Telefon by zvonil podruhé.
-    if (document.visibilityState !== 'visible' && alarmyServer.hlidaServer()) continue;
+    if (document.visibilityState !== 'visible' && hlidaServerAlarm(a)) continue;
     ozviSe(a, text);
     ui.showNotice(text);
   }
@@ -3412,7 +3432,7 @@ function zkontrolujHladiny(symbol, cena) {
   if (!spustene.length) return;
   ohlasAlarmy(spustene);
   // Jednorázový alarm po zaznění zešedne, takže se čáry musí překreslit.
-  if (symbol === chartSymbol) vykresliAlarmy();
+  if (symbol === grafKlic()) vykresliAlarmy();
 }
 
 /**
@@ -3445,7 +3465,7 @@ function popisAlarmu(a) {
 
 function vykresliAlarmy() {
   if (!chart) return;
-  const seznam = chartSymbol ? alarmy.proPar(chartSymbol) : [];
+  const seznam = chartSymbol ? alarmy.proPar(grafKlic()) : [];
   chart.setAlarmLines(
     seznam.map((a) => ({
       id: a.id,
@@ -3521,7 +3541,7 @@ function potvrdRychlyAlarm() {
   if (!rychlyAlarm?.cena || !chartSymbol) return;
   const cena = rychlyAlarm.cena;
   ukazVrstvu('alarmy');
-  alarmy.uloz({ ...alarmy.novy(chartSymbol, cena), aktivni: true });
+  alarmy.uloz({ ...alarmy.novy(grafKlic(), cena), aktivni: true });
   vykresliAlarmy();
   potvrdRychle(el('quickAlarm'), t('alarm.quickDone', { price: formatPrice(cena) }));
 }
@@ -3545,7 +3565,7 @@ function novyAlarmKrizem() {
     if (!Number.isFinite(bod?.value)) return;
     // Kříž vrací cenu s plnou přesností pixelu; do alarmu patří zaokrouhlená
     // na platná místa páru, jinak by v nastavení stálo 0,3021886009304391.
-    otevriAlarm(alarmy.novy(chartSymbol, zaokrouhliCenu(bod.value)));
+    otevriAlarm(alarmy.novy(grafKlic(), zaokrouhliCenu(bod.value)));
   });
 }
 
@@ -3560,7 +3580,7 @@ function alarmZKresby() {
   ukazVrstvu('alarmy');
   const kresba = chart.selectedDrawing();
   if (!kresba) return;
-  const alarm = alarmy.zKresby(chartSymbol, kresba);
+  const alarm = alarmy.zKresby(grafKlic(), kresba);
   if (alarm.typ === 'cena') alarm.price = zaokrouhliCenu(alarm.price);
   chart.deleteSelected();
   otevriAlarm(alarm);
@@ -3581,7 +3601,7 @@ const zaokrouhliCenu = (cena) => Number(Number(cena).toFixed(priceDecimals(cena)
 
 function otevriAlarm(alarm) {
   if (!chartSymbol) return;
-  upravovanyAlarm = { ...(alarm || alarmy.novy(chartSymbol, Number(aktualniCena()) || 0)) };
+  upravovanyAlarm = { ...(alarm || alarmy.novy(grafKlic(), Number(aktualniCena()) || 0)) };
 
   // O nadpisu i koši rozhoduje `id`: rozpracovaný alarm, který se vrátil
   // z výběru hladiny v grafu, je pořád ještě nový.

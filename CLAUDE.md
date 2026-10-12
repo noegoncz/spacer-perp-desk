@@ -249,6 +249,16 @@ ze všech podporovaných burz bez ohledu na připojené klíče):**
   je to aktivní burza (`grafZAktivni()`); hodnota pozice na dlaždici taky.
 - Test: `tools/test-watchlist-vic-burz.py` (Binance ze skutečné burzy),
   `test-dlazdice.py` (hledání nabízí i Binance).
+- **Kresby a alarmy patří jen ke svému grafu (v0.56.1, přání uživatele):**
+  BTCUSDT na Bybitu a na Binance jsou dva grafy. Klíč grafu
+  `klicGrafu(burza, pár)` / `grafKlic()`: Bybit holý pár (dosavadní
+  `perpdesk.drawings.JUPUSDT` a alarmy platí dál), ostatní `binance:JUPUSDT`
+  — v klíči kreseb i v `symbol` alarmu. Na server (hlídač bere ceny
+  z Bybitu) jdou **jen alarmy Bybitu**; ostatní hlídá telefon a zvoní
+  sám i na pozadí (`hlidaServerAlarm`). ⚠ Každé otevření grafu musí
+  nastavit `chartBurza` (pozice, příkaz, prohlídka obchodu, dlaždice).
+  Test: `tools/test-graf-podle-burzy.py`, na starém kódu padá.
+- **Připomínat uživateli:** hledání párů u + chce později vylepšit.
 
 ### `js/bybit.js` je izolovaný záměrně
 
