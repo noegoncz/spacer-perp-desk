@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Naimportuje v prohlížeči každý modul aplikace (js/*.js, js/i18n/*.js).
+Naimportuje v prohlížeči každý modul aplikace (js/*.js, js/i18n/*.js, js/burzy/*.js).
 
 ⚠ Syntaktická chyba v kterémkoli modulu shodí celou aplikaci ještě před
 spuštěním — ve v0.23.1 to byl neescapovaný apostrof v anglickém slovníku
@@ -20,7 +20,8 @@ from dotyk import Prohlizec
 ZAKLAD = (sys.argv[1] if len(sys.argv) > 1 else 'http://localhost:8075').rstrip('/')
 KOREN = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 soubory = sorted(os.path.relpath(f, KOREN).replace(os.sep, '/')
-                 for f in glob.glob(os.path.join(KOREN, 'js', '*.js')) + glob.glob(os.path.join(KOREN, 'js', 'i18n', '*.js')))
+                 for f in glob.glob(os.path.join(KOREN, 'js', '*.js')) + glob.glob(os.path.join(KOREN, 'js', 'i18n', '*.js'))
+                 + glob.glob(os.path.join(KOREN, 'js', 'burzy', '*.js')))
 
 p = Prohlizec()
 for c in ('Page.enable', 'Runtime.enable', 'Network.enable'):

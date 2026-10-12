@@ -23,6 +23,8 @@ const SHELL = [
   './js/version.js',
   './js/app.js',
   './js/bybit.js',
+  './js/burzy/index.js',
+  './js/burzy/model.js',
   './js/store.js',
   './js/format.js',
   './js/ui.js',

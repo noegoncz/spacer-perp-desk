@@ -113,7 +113,9 @@ manifest.webmanifest
 sw.js                   # service worker, cache + detekce nové verze
 css/style.css
 js/version.js           # classic script: self.APP_VERSION, self.APP_BUILD
-js/bybit.js             # ⚠ jediný modul, který mluví s Bybitem
+js/bybit.js             # ⚠ jediný modul, který mluví s Bybitem (adaptér burzy)
+js/burzy/model.js       # společný model burz („řeč PerpyX"), kontrola tvarů
+js/burzy/index.js       # seznam burz: adaptér, schopnosti, regiony
 js/store.js             # localStorage: klíče + nastavení
 js/format.js            # formátování čísel, cen, časů (podle jazyka)
 js/i18n.js              # ⚠ překlady; texty nikdy přímo v kódu ani v HTML
@@ -136,6 +138,31 @@ tools/                  # testy přes DevTools Protocol, bez API klíčů (viz t
 .github/workflows/web.yml   # nasazení webu perpyx.com na Cloudflare
 web/                    # web aplikace (úvod + přihláška do bety), NE aplikace samotná
 ```
+
+### Více burz: společné rozhraní (v0.52.0, krok 1)
+
+Plán (rozhodnutí uživatele 2026-10-12, podrobnosti v paměti
+`project-vice-burz`): **jen APK**; burzy přes **společný model**
+(`js/burzy/model.js`) a adaptéry; nové burzy přes **CCXT** (verze vložená
+v repu, žádné auto-aktualizace), Bybit zůstává na vlastním kódu. Pořadí:
+Binance → Gate → MEXC → OKX (+EEA) → Bitget → Hyperliquid, pak vlny 2 a 3.
+
+- **Aplikace mluví jen se společným modelem.** `vytvorBurzu(id, handlers)`
+  (`js/burzy/index.js`) vrátí adaptér s `burza` (název, `schopnosti`,
+  `regiony`); `app.js` nezná třídu adaptéru. Kanonické hodnoty: strana
+  `Buy`/`Sell`, symbol `JUPUSDT`, čas v ms, čísla jako number, chybějící
+  null, typy podmíněných příkazů jako u Bybitu (`TYPY_STOP`).
+- **Nová funkce nad existujícími daty se píše jednou.** Nový druh dat →
+  pole/metoda do modelu + `schopnosti`; burza, která ho neumí, ho
+  nenabídne a aplikace danou věc skryje.
+- **Burza = rodina + region:** stejný adaptér, jiná adresa API. Nabízí se
+  jen region s perpetuály, ověřený dotazem na trhy (Bybit EU 2026-10-12:
+  0 perpetuálů → není v nabídce).
+- **Kontraktní test** `tools/test-kontrakt-burzy.py`: pro každou burzu ze
+  seznamu stáhne pozice, příkazy, obchody, plnění, svíčky a tickery
+  a zkontroluje je proti `TVARY` + povinné `METODY`. Každý nový adaptér
+  musí projít. (Hned našel chybějící `execId` v mocku.)
+- Kontrolu „klíč jen pro čtení" CCXT nesjednocuje — pro každou burzu zvlášť.
 
 ### `js/bybit.js` je izolovaný záměrně
 

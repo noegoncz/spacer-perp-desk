@@ -21,6 +21,9 @@ from dotyk import Prohlizec
 KOREN = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 mock = open(os.path.join(KOREN, 'tools', 'mock-bybit.js'), encoding='utf-8').read()
 mock += """
+// Od v0.46.0 není záložka All — oba páry jsou ve vlastním seznamu.
+localStorage.setItem('perpdesk.lists', JSON.stringify({ verze: 1, aktivni: 'a',
+  seznamy: [{ id: 'a', nazev: 'Main', polozky: ['bybit:BTCUSDT', 'bybit:JUPUSDT'] }] }));
 (() => {
   const puvodni = window.fetch;
   window.fetch = function (vstup, volby) {
@@ -81,7 +84,6 @@ STAV = """JSON.stringify({ par: document.getElementById('chartSymbol').textConte
 
 ev("document.querySelector('[data-tab=watchlist]').click()")
 time.sleep(1)
-ev("[...document.querySelectorAll('#watchLists .chip')].find((c) => c.textContent.startsWith('All'))?.click()")
 time.sleep(0.5)
 ev("[...document.querySelectorAll('.tile')].find((r) => r.textContent.includes('BTCUSDT')).click()")
 time.sleep(4)
@@ -123,7 +125,6 @@ ev("history.back()")
 time.sleep(1)
 ev("document.querySelector('[data-tab=watchlist]').click()")
 time.sleep(1)
-ev("[...document.querySelectorAll('#watchLists .chip')].find((c) => c.textContent.startsWith('All'))?.click()")
 time.sleep(0.5)
 ev("[...document.querySelectorAll('.tile')].find((r) => r.dataset.symbol === 'JUPUSDT').click()")
 time.sleep(0.6)

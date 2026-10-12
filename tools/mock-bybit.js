@@ -136,6 +136,9 @@ window.fetch = function (vstup, volby) {
       {symbol:'JUPUSDT', side:'Sell', execType:'Trade', execPrice:'0.3100', orderId:'c3',
        execQty:'253', execTime:String(TED_MOCKU - 8*3600e3)},
     ];
+    // execId posílá skutečný Bybit vždy (kontraktní test ho vyžaduje) —
+    // stálý podle příkazu a času, ať opakované stažení nedělá duplikáty.
+    vse.forEach((e) => { e.execId = e.execId || `${e.orderId}-${e.execTime}`; });
     const q = new URL(u, location.origin).searchParams;
     const od = Number(q.get('startTime')) || 0;
     const doKdy = Number(q.get('endTime')) || Date.now();

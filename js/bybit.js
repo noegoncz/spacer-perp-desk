@@ -1204,6 +1204,14 @@ export class BybitClient {
     }
   }
 
+  /**
+   * Typ účtu pro řádek nad grafem („Bybit · Unified"). Společné rozhraní
+   * (js/burzy/model.js) — jiná burza vrátí svůj popis nebo prázdno.
+   */
+  popisUctu() {
+    return this.typUctu === 'CONTRACT' ? 'Classic' : 'Unified';
+  }
+
   /** Aplikace hlásí, jestli je v popředí — modul sám na DOM nesahá. */
   setForeground(value) {
     this.foreground = value;

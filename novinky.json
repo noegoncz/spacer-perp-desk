@@ -1,15 +1,10 @@
 {
-  "verze": "0.51.2",
+  "verze": "0.52.0",
   "novinky": [
     {
-      "en": "The area under the phone's buttons now matches the app, so it no longer looks cut off.",
-      "cs": "Plocha pod tlačítky telefonu má teď barvu aplikace, takže už nepůsobí odříznutě."
+      "en": "Groundwork for more exchanges: PerpyX now talks to exchanges through one common layer. Binance is next.",
+      "cs": "Základ pro další burzy: PerpyX teď mluví s burzami přes jednu společnou vrstvu. Další na řadě je Binance."
     }
   ],
-  "opravy": [
-    {
-      "en": "Buttons at the bottom no longer jump when switching watchlists.",
-      "cs": "Tlačítka dole už při přepínání seznamů neposkakují."
-    }
-  ]
+  "opravy": []
 }

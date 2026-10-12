@@ -1,6 +1,7 @@
 /** Orchestrace: propojuje modul Bybitu, UI a lifecycle service workeru. */
 
-import { BybitClient } from './bybit.js';
+// Burza přes společné rozhraní (js/burzy/) — aplikace nezná třídu adaptéru.
+import { vytvorBurzu, VYCHOZI as VYCHOZI_BURZA } from './burzy/index.js';
 import {
   createPriceChart, NASTROJE, INDIKATORY, popisIndikatoru, nazevIndikatoru,
   IKONY_INDIKATORU, BARVY_KRESEB, TLOUSTKY, PRUHLEDNOSTI,
@@ -153,7 +154,7 @@ let ordersTimer = null;
 let magnetZapnut = store.loadMagnet();
 let poslednicCena = null;  // poslední cena z grafu — předvyplní hladinu alarmu
 
-const client = new BybitClient({
+const client = vytvorBurzu(VYCHOZI_BURZA, {
   // Živé ceny párů viditelného seznamu ve Watchlists (v0.49.0).
   onTicker(zmena) {
     zivaZmenaTrhu(zmena);
@@ -563,7 +564,8 @@ async function znackyPlneni(position, od = Date.now() - OKNO_PLNENI) {
 
 /** „Bybit · Unified" — burza a typ účtu nad grafem (víc burz přijde). */
 function popisBurzy() {
-  return `Bybit · ${client.typUctu === 'CONTRACT' ? 'Classic' : 'Unified'}`;
+  const ucet = client.popisUctu?.();
+  return ucet ? `${client.burza.nazev} · ${ucet}` : client.burza.nazev;
 }
 
 /** Linka aktuální ceny se ziskem; bez pozice se nekreslí. */
