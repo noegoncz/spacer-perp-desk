@@ -26,6 +26,12 @@ const KLIC_KATEGORIE = 'perpdesk.coinCategories';
 const KLIC_OPRAVY = 'perpdesk.categoryOverrides';
 
 export const polozka = (symbol, burza = BURZA) => `${burza}:${symbol}`;
+/*
+ * Položka seznamu je „burza:pár" (v0.56.0: Watchlists z libovolné burzy,
+ * bez ohledu na připojené klíče). Funkce níž berou buď celý klíč
+ * ('binance:BTCUSDT'), nebo holý pár — ten znamená Bybit (starší kód).
+ */
+const klicPolozky = (x) => (String(x).includes(':') ? String(x) : polozka(x));
 
 /**
  * Pár na burze → zkratka coinu, pod kterou ho zná CoinGecko.
@@ -36,6 +42,7 @@ export const polozka = (symbol, burza = BURZA) => `${burza}:${symbol}`;
 const PREJMENOVANE = { RAYDIUM: 'RAY', LUNA2: 'LUNA' };
 
 export function zkratkaCoinu(symbol) {
+  symbol = String(symbol).split(':').pop();
   let z = String(symbol).replace(/(USDT|USDC|PERP)$/, '');
   if (PREJMENOVANE[z]) return PREJMENOVANE[z];
   const predpona = /^(10{2,})([A-Z].*)$/.exec(z);
@@ -147,19 +154,19 @@ export function smaz(id) {
 }
 
 export function obsahuje(id, symbol) {
-  return Boolean(najdi(id)?.polozky.includes(polozka(symbol)));
+  return Boolean(najdi(id)?.polozky.includes(klicPolozky(symbol)));
 }
 
 /** Je pár aspoň v jedné sestavě? (plná hvězdička v řádku) */
 export function jeVNejake(symbol) {
-  const p = polozka(symbol);
+  const p = klicPolozky(symbol);
   return seznamy().some((x) => x.polozky.includes(p));
 }
 
 export function prepni(id, symbol) {
   const x = najdi(id);
   if (!x) return;
-  const p = polozka(symbol);
+  const p = klicPolozky(symbol);
   if (x.polozky.includes(p)) x.polozky = x.polozky.filter((q) => q !== p);
   else x.polozky.push(p);
   uloz();
@@ -183,7 +190,7 @@ export function lzeZalozit() {
 /** Přidá pár na konec seznamu (Trhy, tlačítko +). Vrací false, když už tam je nebo je plný. */
 export function pridej(id, symbol) {
   const x = najdi(id);
-  const p = polozka(symbol);
+  const p = klicPolozky(symbol);
   if (!x || x.polozky.includes(p) || jePlny(id)) return false;
   x.polozky.push(p);
   uloz();
@@ -193,7 +200,7 @@ export function pridej(id, symbol) {
 export function odeber(id, symbol) {
   const x = najdi(id);
   if (!x) return;
-  x.polozky = x.polozky.filter((q) => q !== polozka(symbol));
+  x.polozky = x.polozky.filter((q) => q !== klicPolozky(symbol));
   uloz();
 }
 
@@ -204,8 +211,8 @@ export function odeber(id, symbol) {
 export function prohod(id, symbolA, symbolB) {
   const x = najdi(id);
   if (!x) return;
-  const a = x.polozky.indexOf(polozka(symbolA));
-  const b = x.polozky.indexOf(polozka(symbolB));
+  const a = x.polozky.indexOf(klicPolozky(symbolA));
+  const b = x.polozky.indexOf(klicPolozky(symbolB));
   if (a < 0 || b < 0 || a === b) return;
   [x.polozky[a], x.polozky[b]] = [x.polozky[b], x.polozky[a]];
   uloz();
@@ -214,12 +221,22 @@ export function prohod(id, symbolA, symbolB) {
 /** Přesune pár na dané místo v seznamu. */
 export function presun(id, symbol, naIndex) {
   const x = najdi(id);
-  const p = polozka(symbol);
+  const p = klicPolozky(symbol);
   if (!x || !x.polozky.includes(p)) return;
   const bez = x.polozky.filter((q) => q !== p);
   bez.splice(Math.max(0, Math.min(naIndex, bez.length)), 0, p);
   x.polozky = bez;
   uloz();
+}
+
+/** Položky seznamu v pořadí uživatele, všechny burzy: [{ burza, symbol, klic }]. */
+export function polozkyVPoradi(id) {
+  const x = najdi(id);
+  if (!x) return [];
+  return x.polozky.map((klic) => {
+    const i = klic.indexOf(':');
+    return { burza: klic.slice(0, i), symbol: klic.slice(i + 1), klic };
+  });
 }
 
 /** Páry seznamu v pořadí, které si uživatel nastavil (jen naše burza). */

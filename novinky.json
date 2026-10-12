@@ -1,13 +1,9 @@
 {
-  "verze": "0.55.0",
+  "verze": "0.56.0",
   "novinky": [
     {
-      "en": "Keep several exchanges connected — Bybit, Binance and more. Switch between them in Settings without re-entering keys.",
-      "cs": "Víc připojených burz najednou — Bybit, Binance a další. V nastavení mezi nimi přepneš bez nového zadávání klíče."
-    },
-    {
-      "en": "Binance is here (beta), including a risk-free Demo Trading option.",
-      "cs": "Binance je tu (beta), včetně bezrizikového Demo Tradingu."
+      "en": "Watchlists now take pairs from any supported exchange (Bybit, Binance) — no API key needed. Each tile shows its exchange, live price and chart.",
+      "cs": "Do seznamů jde přidat pár z kterékoli podporované burzy (Bybit, Binance), i bez API klíče. Každá dlaždice ukazuje svou burzu, živou cenu a graf."
     }
   ],
   "opravy": []

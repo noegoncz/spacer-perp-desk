@@ -157,7 +157,7 @@ let poslednicCena = null;  // poslední cena z grafu — předvyplní hladinu al
 const HANDLERY = {
   // Živé ceny párů viditelného seznamu ve Watchlists (v0.49.0).
   onTicker(zmena) {
-    zivaZmenaTrhu(zmena);
+    zivaZmenaTrhu({ ...zmena, burza: client.burza.id });
   },
   onPositions(list) {
     lastPositions = list;
@@ -239,6 +239,29 @@ let client = (() => {
     return vytvorBurzu(VYCHOZI_BURZA, HANDLERY);
   }
 })();
+
+/*
+ * Watchlists z libovolné burzy (v0.56.0, přání uživatele): ceny, mini-grafy
+ * a graf páru z burzy dlaždice, bez ohledu na připojené klíče — jsou to
+ * veřejná data. Aktivní připojení se použije, když je to stejná burza;
+ * jinak adaptér bez klíče (u Binance se tím teprve načte CCXT).
+ */
+const klicTrhu = (burza, symbol) => `${burza}:${symbol}`;
+const verejneKlienty = new Map();
+function verejnyKlient(burza) {
+  if (!burza || client.burza?.id === burza) return client;
+  if (!verejneKlienty.has(burza)) {
+    verejneKlienty.set(burza, vytvorBurzu(burza, {
+      onTicker: (z) => zivaZmenaTrhu({ ...z, burza }),
+      onKline: (k) => { if (chartBurza === burza) HANDLERY.onKline?.(k); },
+    }));
+  }
+  return verejneKlienty.get(burza);
+}
+/** Burza otevřeného grafu (z dlaždice může být jiná než aktivní připojení). */
+let chartBurza = null;
+const grafKlient = () => verejnyKlient(chartBurza || client.burza.id);
+const grafZAktivni = () => !chartBurza || chartBurza === client.burza.id;
 
 function prepniBurzu(id, volby = {}) {
   if (client.burza?.id === id && JSON.stringify(client.volby || {}) === JSON.stringify(volby)) return;
@@ -544,7 +567,7 @@ function otevreniZPlneni(plneni, position) {
 }
 
 async function znackyPlneni(position, od = Date.now() - OKNO_PLNENI) {
-  if (!client.hasCredentials() || !chartSymbol) return;
+  if (!client.hasCredentials() || !chartSymbol || !grafZAktivni()) return;
   const symbol = chartSymbol;
   const cislo = ++pozadavekPlneni;
   /*
@@ -585,6 +608,8 @@ async function znackyPlneni(position, od = Date.now() - OKNO_PLNENI) {
 
 /** „Bybit · Unified" — burza a typ účtu nad grafem (víc burz přijde). */
 function popisBurzy() {
+  // Graf páru z dlaždice jiné burzy: jen její název.
+  if (!grafZAktivni()) return BURZY[chartBurza]?.nazev || chartBurza;
   const ucet = client.popisUctu?.();
   return ucet ? `${client.burza.nazev} · ${ucet}` : client.burza.nazev;
 }
@@ -1399,6 +1424,7 @@ function clearCredentials() {
 /** Z karty pozice. */
 const openChart = (position) => {
   prohlizenyObchod = null;
+  chartBurza = client.burza.id;
   chartInterval = intervalUzivatele; // ne ten, který si půjčila Historie
   return otevriGraf(position.symbol, position, null);
 };
@@ -1406,6 +1432,7 @@ const openChart = (position) => {
 /** Ze seznamu trhů — pár, na kterém pozici mít nemusím. */
 const openChartSymbol = (trh) => {
   prohlizenyObchod = null;
+  chartBurza = trh?.burza || client.burza.id;
   chartInterval = intervalUzivatele;
   return otevriGraf(trh.symbol, null, trh);
 };
@@ -1434,7 +1461,7 @@ async function otevriGraf(symbol, position, trh) {
    * dat a do té doby vypadal graf jinak (limitky bez množství a barvy).
    * Prohlídka obchodu z Historie pozici záměrně nemá.
    */
-  if (!position && !prohlizenyObchod) {
+  if (!position && !prohlizenyObchod && grafZAktivni()) {
     position = lastPositions.find((p) => p.symbol === symbol) || null;
   }
   chartSymbol = symbol;
@@ -1447,7 +1474,7 @@ async function otevriGraf(symbol, position, trh) {
   // Graf otevřený z Pozic nebo z notifikace objem nemá — stáhne se zvlášť,
   // mimo hlavní cestu (graf na něj nečeká).
   if (!chartObrat) {
-    client.getTicker(symbol).then((tk) => {
+    grafKlient().getTicker(symbol).then((tk) => {
       if (chartSymbol !== symbol || !tk?.turnover) return;
       chartObrat = tk.turnover;
       ui.renderChartInfo(chartPosition, hideAmounts, popisBurzy(), chartObrat);
@@ -1536,6 +1563,7 @@ function closeChart() {
   chartOrders = [];
   clearInterval(ordersTimer);
   client.setKlineSubscription(null, null);
+  verejneKlienty.forEach((k) => k.setKlineSubscription(null, null));
   zavriNabidky();
   ui.showChart(false);
   // Pod grafem se seznam nepřekresloval — teď má zase ukázat čerstvá čísla.
@@ -1548,15 +1576,15 @@ function closeChart() {
  */
 function odebiratZiveSvice(symbol, interval) {
   const konec = konecSvicProhlidky(interval);
-  if (konec !== null && konec < Date.now()) client.setKlineSubscription(null, null);
-  else client.setKlineSubscription(symbol, interval);
+  if (konec !== null && konec < Date.now()) grafKlient().setKlineSubscription(null, null);
+  else grafKlient().setKlineSubscription(symbol, interval);
 }
 
 async function nactiSviceProInterval(interval) {
   // ⚠ Prohlídka starého obchodu potřebuje svíčky **z jeho doby** (`end`).
   // Bez něj přišlo nejnovějších 500 — na 1m pár hodin — a obchod ze
   // včerejška v datech vůbec nebyl: graf ukázal dnešek bez značek (v0.45.0).
-  const bars = await client.getKlines(chartSymbol, interval, 500, konecSvicProhlidky(interval));
+  const bars = await grafKlient().getKlines(chartSymbol, interval, 500, konecSvicProhlidky(interval));
   return bars.map((b) => ({
     timestamp: b.time,
     open: b.open,
@@ -1635,7 +1663,8 @@ async function zmenInterval(interval) {
 async function refreshChartOrders() {
   const symbol = chartSymbol;
   // Bez klíčů příkazy nenačteme; graf samotný je veřejný a běží dál.
-  if (!symbol || !client.hasCredentials()) return;
+  // Graf páru z jiné burzy než připojené: příkazy tam nemáme odkud vzít.
+  if (!symbol || !client.hasCredentials() || !grafZAktivni()) return;
   // Prohlídka uzavřeného obchodu: dnešní příkazy s ním nesouvisí.
   if (prohlizenyObchod) {
     chartOrders = [];
@@ -2077,17 +2106,18 @@ const grafyCerstve = new Set();  // stažené v tomto běhu (ne ze snímku)
 
 function odbavGrafy() {
   while (grafyBezi < SOUBEZNYCH_GRAFU && grafyFronta.length) {
-    const { symbol, radek } = grafyFronta.shift();
-    if (grafyCerstve.has(symbol) && !radek) continue;
+    const { klic, radek } = grafyFronta.shift();
+    if (grafyCerstve.has(klic) && !radek) continue;
     grafyBezi += 1;
-    client
+    const [burza, symbol] = klic.split(':');
+    verejnyKlient(burza)
       .getSparkline(symbol)
       .then((data) => {
-        grafyCache.set(symbol, data);
-        grafyCerstve.add(symbol);
+        grafyCache.set(klic, data);
+        grafyCerstve.add(klic);
         // Předčtení nemá dlaždici — kreslí se do té, která je teď v DOM.
         const cil = radek?.isConnected ? radek
-          : document.querySelector(`#watchList .tile[data-symbol="${symbol}"]`);
+          : document.querySelector(`#watchList .tile[data-klic="${klic}"]`);
         if (cil) ui.drawSparkline(cil, data);
       })
       .catch(() => {})
@@ -2106,20 +2136,21 @@ function sledujGrafy(radky) {
    * hned, ne až když dlaždice vjede do obrazu — jinak by tabulky chvíli
    * stály prázdné a pak „doskočily" (v0.48.0, přání uživatele).
    */
+  const klicRadku = (r) => r.dataset.klic || klicTrhu('bybit', r.dataset.symbol);
   radky = radky.filter((r) => {
-    const data = grafyCache.get(r.dataset.symbol);
+    const data = grafyCache.get(klicRadku(r));
     if (data) ui.drawSparkline(r, data);
-    return !grafyCerstve.has(r.dataset.symbol);
+    return !grafyCerstve.has(klicRadku(r));
   });
   sledovac = new IntersectionObserver((zaznamy) => {
     for (const z of zaznamy) {
       if (!z.isIntersecting) continue;
       sledovac.unobserve(z.target);
-      const { symbol } = z.target.dataset;
-      if (grafyCerstve.has(symbol)) {
-        ui.drawSparkline(z.target, grafyCache.get(symbol));
+      const klic = klicRadku(z.target);
+      if (grafyCerstve.has(klic)) {
+        ui.drawSparkline(z.target, grafyCache.get(klic));
       } else {
-        grafyFronta.push({ symbol, radek: z.target });
+        grafyFronta.push({ klic, radek: z.target });
       }
     }
     odbavGrafy();
@@ -2169,11 +2200,19 @@ let trhySnimekUlozen = 0;
 let predneceniBezi = false;
 let predneceniHotovo = false;
 
+/** Klíče („burza:pár") všech položek ve všech seznamech. */
 function paryVSeznamech() {
   const pary = new Set();
-  for (const s of sestavy.seznamy()) sestavy.paryVPoradi(s.id).forEach((x) => pary.add(x));
+  for (const s of sestavy.seznamy()) sestavy.polozkyVPoradi(s.id).forEach((x) => pary.add(x.klic));
   return pary;
 }
+
+function burzyVSeznamech() {
+  return new Set([...paryVSeznamech()].map((k) => k.split(':')[0]));
+}
+
+/** Řádek trhu s burzou a klíčem; starší data (snímek) jsou z Bybitu. */
+const sBurzou = (r, burza = r.burza || 'bybit') => ({ ...r, burza, klic: klicTrhu(burza, r.symbol) });
 
 function ulozTrhySnimek(vynutit = false) {
   // Odstup jen u cen (obnova po 30 s); dostahované mini-grafy se uloží vždy.
@@ -2182,21 +2221,34 @@ function ulozTrhySnimek(vynutit = false) {
   const pary = paryVSeznamech();
   const grafy = {};
   for (const s of pary) if (grafyCache.has(s)) grafy[s] = grafyCache.get(s);
-  store.saveJson(KLIC_TRHY, { cas: Date.now(), trhy: trhy.filter((r) => pary.has(r.symbol)), grafy });
+  store.saveJson(KLIC_TRHY, { cas: Date.now(), trhy: trhy.filter((r) => pary.has(r.klic)), grafy });
 }
 
 function nactiTrhySnimek() {
   if (trhy.length) return;
   const s = store.loadJson(KLIC_TRHY, null);
   if (!s || !Array.isArray(s.trhy) || Date.now() - s.cas > 7 * 86400e3) return;
-  trhy = s.trhy;
-  for (const [symbol, data] of Object.entries(s.grafy || {})) {
-    if (!grafyCache.has(symbol)) grafyCache.set(symbol, data);
+  trhy = s.trhy.map((r) => sBurzou(r));
+  for (const [klic, data] of Object.entries(s.grafy || {})) {
+    const k = klic.includes(':') ? klic : klicTrhu('bybit', klic);
+    if (!grafyCache.has(k)) grafyCache.set(k, data);
   }
 }
 
-async function stahniTrhy() {
-  trhy = await client.getTickers();
+/**
+ * Ceny ze všech burz, které jsou v seznamech (a z aktivní). `vsechny` —
+ * ze všech podporovaných burz (hledání páru u tlačítka +). Burzy, které
+ * se tentokrát nestahovaly, si nechají předchozí data.
+ */
+async function stahniTrhy(vsechny = false) {
+  const burzy = [...new Set(vsechny ? Object.keys(BURZY) : [...burzyVSeznamech(), client.burza.id])]
+    .filter((b) => BURZY[b]);
+  const vysledky = await Promise.allSettled(burzy.map(async (b) =>
+    (await verejnyKlient(b).getTickers()).map((r) => sBurzou(r, b))));
+  const stazene = new Set(burzy.filter((_, i) => vysledky[i].status === 'fulfilled'));
+  if (!stazene.size) throw vysledky.find((r) => r.status === 'rejected')?.reason || new Error('trhy');
+  trhy = [...trhy.filter((r) => !stazene.has(r.burza)),
+    ...vysledky.filter((r) => r.status === 'fulfilled').flatMap((r) => r.value)];
   trhyUplne = true;
   trhyCas = Date.now();
   ulozTrhySnimek();
@@ -2223,8 +2275,8 @@ async function predNactiTrhy() {
     predneceniHotovo = true;
     vykresliTrhy();
     // Mini-grafy všech párů ze seznamů, i těch, které nejsou vidět.
-    for (const symbol of paryVSeznamech()) {
-      if (!grafyCerstve.has(symbol)) grafyFronta.push({ symbol, radek: null });
+    for (const klic of paryVSeznamech()) {
+      if (!grafyCerstve.has(klic)) grafyFronta.push({ klic, radek: null });
     }
     odbavGrafy();
   } catch {
@@ -2276,24 +2328,43 @@ const zmeneneTrhy = new Set();
 let zapisTrhuCasovac = null;
 
 function odebirejSeznam() {
-  client.setExtraTickers(trhy.length ? sestavy.paryVPoradi(sestavy.aktivni()) : []);
+  // Živé ceny po burzách: aktivní připojení svým proudem, ostatní burzy
+  // svým adaptérem bez klíče (CCXT dotazováním; Bybit bez klíče jen
+  // obnovou po 30 s — veřejný proud běží jen s připojením).
+  const podle = new Map();
+  for (const p of trhy.length ? sestavy.polozkyVPoradi(sestavy.aktivni()) : []) {
+    if (!podle.has(p.burza)) podle.set(p.burza, []);
+    podle.get(p.burza).push(p.symbol);
+  }
+  client.setExtraTickers(podle.get(client.burza.id) || []);
+  for (const [b, k] of verejneKlienty) if (b !== client.burza.id && !podle.has(b)) k.setExtraTickers([]);
+  for (const [b, symboly] of podle) {
+    if (b === client.burza.id || !BURZY[b]) continue;
+    const k = verejnyKlient(b);
+    k.setExtraTickers(symboly);
+    if (k.naplanujCeny && !k.casovacCen) {
+      k.burzaCcxt().then(() => k.naplanujCeny()).catch(() => {});
+    }
+  }
 }
 
 function zivaZmenaTrhu(zmena) {
-  const trh = trhy.find((r) => r.symbol === zmena.symbol);
+  const klic = klicTrhu(zmena.burza || client.burza.id, zmena.symbol);
+  const trh = trhy.find((r) => r.klic === klic);
   if (!trh) return;
-  Object.assign(trh, zmena);
-  zmeneneTrhy.add(zmena.symbol);
+  const { burza, ...hodnoty } = zmena;
+  Object.assign(trh, hodnoty);
+  zmeneneTrhy.add(klic);
   if (!zapisTrhuCasovac) zapisTrhuCasovac = setTimeout(zapisZmenyTrhu, 1000);
 }
 
 function zapisZmenyTrhu() {
   zapisTrhuCasovac = null;
-  const pozice = new Map(lastPositions.map((p) => [p.symbol, p]));
-  for (const symbol of zmeneneTrhy) {
-    const dlazdice = document.querySelector(`#watchList .tile[data-symbol="${symbol}"]`);
-    const trh = trhy.find((r) => r.symbol === symbol);
-    if (dlazdice && trh) ui.updateTile(dlazdice, trh, pozice.get(symbol), hideAmounts);
+  const pozice = new Map(lastPositions.map((p) => [klicTrhu(client.burza.id, p.symbol), p]));
+  for (const klic of zmeneneTrhy) {
+    const dlazdice = document.querySelector(`#watchList .tile[data-klic="${klic}"]`);
+    const trh = trhy.find((r) => r.klic === klic);
+    if (dlazdice && trh) ui.updateTile(dlazdice, trh, pozice.get(klic), hideAmounts);
   }
   zmeneneTrhy.clear();
 }
@@ -2345,15 +2416,17 @@ function vykresliTrhy() {
   // Ikona ukazuje, na co se klepnutím přepne.
   if (ikona) ikona.innerHTML = siroke ? IKONA_MRIZKA : IKONA_SIROKE;
   if (!proVse) {
-    const podleSymbolu = new Map(trhy.map((r) => [r.symbol, r]));
-    const seznam = sestavy.paryVPoradi(aktivni).map((s) => podleSymbolu.get(s)).filter(Boolean);
+    const podleKlice = new Map(trhy.map((r) => [r.klic, r]));
+    const seznam = sestavy.polozkyVPoradi(aktivni).map((p) => podleKlice.get(p.klic)).filter(Boolean);
     const dlazdice = ui.renderTiles(seznam, {
       siroke,
       onSelect: openChartSymbol,
       metrika: 'volume',
       popisek: popisekKategorie,
-      pozice: new Map(lastPositions.map((p) => [p.symbol, p])),
+      // Hodnota pozice jen u dlaždice burzy, na které pozice je.
+      pozice: new Map(lastPositions.map((p) => [klicTrhu(client.burza.id, p.symbol), p])),
       hide: hideAmounts,
+      nazevBurzy: (b) => BURZY[b]?.nazev,
     });
     sledujGrafy(dlazdice);
     odebirejSeznam();
@@ -2450,6 +2523,10 @@ function otevriPridani() {
   ukazPrvek('watchBackdrop', true);
   ukazPrvek('sheetAddPair', true);
   el('addPairSearch').focus();
+  // Hledání nabízí páry ze všech podporovaných burz, i bez připojení.
+  if (!Object.keys(BURZY).every((b) => trhy.some((r) => r.burza === b))) {
+    stahniTrhy(true).then(vykresliPridani).catch(() => {});
+  }
 }
 
 function vykresliPridani() {
@@ -2459,8 +2536,9 @@ function vykresliPridani() {
   const shody = (dotaz ? trhy.filter((r) => r.symbol.includes(dotaz)) : trhy)
     .slice().sort((a, b) => b.turnover - a.turnover).slice(0, dotaz ? 50 : 30);
   ui.renderPairSearch(el('addPairResults'), shody, {
-    jeVSeznamu: (s) => sestavy.obsahuje(pridavaniDo, s),
+    jeVSeznamu: (klic) => sestavy.obsahuje(pridavaniDo, klic),
     onPick: vyberPridani,
+    nazevBurzy: (b) => BURZY[b]?.nazev,
   });
 }
 
@@ -2477,9 +2555,9 @@ function ukazToast(text, neutralni = false) {
 function vyberPridani(trh) {
   if (!pridavaniDo) return;
   const nazev = sestavy.najdi(pridavaniDo)?.nazev || '';
-  if (sestavy.obsahuje(pridavaniDo, trh.symbol)) {
+  if (sestavy.obsahuje(pridavaniDo, trh.klic)) {
     ukazToast(t('lists.already', { pair: trh.symbol, list: nazev }), true);
-  } else if (!sestavy.pridej(pridavaniDo, trh.symbol)) {
+  } else if (!sestavy.pridej(pridavaniDo, trh.klic)) {
     ukazToast(t('lists.full', { n: sestavy.LIMITY.paru }), true);
   } else {
     ukazToast(t('lists.added', { pair: trh.symbol, list: nazev }));
@@ -2564,12 +2642,14 @@ function otevriPar(symbol) {
 function vykresliPar() {
   const s = otevrenyPar;
   if (!s) return;
+  // `s` může být celý klíč („binance:BTCUSDT") — seznamy ho berou celý,
+  // kategorie a nadpis holý pár.
   const moje = new Set(sestavy.kategorieCoinu(s));
   const sKategoriemi = sestavy.maKategorie();
   ukazPrvek('sheetPairCatsLabel', sKategoriemi);
   ukazPrvek('sheetPairCats', sKategoriemi);
   ui.renderPairSheet({
-    symbol: s,
+    symbol: String(s).split(':').pop(),
     sestavy: sestavy.seznamy().map((x) => ({ id: x.id, nazev: x.nazev, zapnuto: sestavy.obsahuje(x.id, s) })),
     onToggleList: (id) => {
       sestavy.prepni(id, s);
@@ -4117,7 +4197,7 @@ function applyChartLines(force = false) {
 
 /** Pozice se mění za běhu — graf musí držet krok s PnL, SL/TP i likvidací. */
 function syncOpenChart(list) {
-  if (!chartSymbol) return;
+  if (!chartSymbol || !grafZAktivni()) return;
 
   /*
    * Pozice otevřená na páru, jehož graf je zrovna otevřený (2026-10-08,

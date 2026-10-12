@@ -114,11 +114,11 @@ over(ev("!document.getElementById('sheetAddPair').hidden"), '+ otevře vyhledáv
 over(ev("document.activeElement && document.activeElement.id") == 'addPairSearch', 'pole hledání má kurzor')
 ev("(() => { const i = document.getElementById('addPairSearch'); i.value = 'eth'; i.dispatchEvent(new Event('input')); })()")
 time.sleep(0.3)
-vysl = ev("[...document.querySelectorAll('#addPairResults .pair-hit')].map((b) => b.dataset.symbol)")
+vysl = ev("[...document.querySelectorAll('#addPairResults .pair-hit')].filter((b) => (b.dataset.klic || 'bybit:').startsWith('bybit:')).map((b) => b.dataset.symbol)")
 print('   výsledky „eth“:', vysl)
 over(vysl == ['ETHUSDT', 'ETHFIUSDT'], 'hledání najde ETH páry seřazené podle objemu')
 over('BYBIT' in (ev("document.querySelector('.pair-hit .pair-hit-sub').textContent") or ''), 'u výsledku je burza a objem')
-klepni('.pair-hit[data-symbol=ETHUSDT]')
+klepni('.pair-hit[data-klic=\"bybit:ETHUSDT\"]')
 toast = ev("document.getElementById('addPairToast').textContent")
 print('   potvrzení:', toast)
 over('ETHUSDT' in (toast or '') and 'added' in toast, 'krátké potvrzení přidání')
@@ -127,9 +127,17 @@ over(ev("document.activeElement && document.activeElement.id") == 'addPairSearch
 over(ulozene()[-1] == 'bybit:ETHUSDT', 'pár přibyl na konec seznamu')
 ev("(() => { const i = document.getElementById('addPairSearch'); i.value = 'ETHUSDT'; i.dispatchEvent(new Event('input')); })()")
 time.sleep(0.3)
-over(ev("document.querySelector('.pair-hit[data-symbol=ETHUSDT]').classList.contains('pridano')"), 'přidaný pár má ve výsledcích fajfku')
-klepni('.pair-hit[data-symbol=ETHUSDT]')
+over(ev("document.querySelector('.pair-hit[data-klic=\"bybit:ETHUSDT\"]').classList.contains('pridano')"), 'přidaný pár má ve výsledcích fajfku')
+klepni('.pair-hit[data-klic=\"bybit:ETHUSDT\"]')
 over('already' in (ev("document.getElementById('addPairToast').textContent") or ''), 'podruhé stejný pár → „už je v seznamu“')
+# v0.56.0: hledání nabízí páry všech burz (Binance ze skutečné burzy, bez klíče)
+for _ in range(20):
+    time.sleep(0.5)
+    ev("(() => { const i = document.getElementById('addPairSearch'); i.value = 'ETHUSDT'; i.dispatchEvent(new Event('input')); })()")
+    if ev("!!document.querySelector('.pair-hit[data-klic=\"binance:ETHUSDT\"]')"):
+        break
+over(ev("(document.querySelector('.pair-hit[data-klic=\"binance:ETHUSDT\"] .pair-hit-sub') || {}).textContent || ''").startswith('BINANCE'),
+     'hledání nabízí i Binance (bez připojeného klíče), s názvem burzy')
 over(ulozene().count('bybit:ETHUSDT') == 1, 'pár není v seznamu dvakrát')
 klepni('#addPairClose')
 over(poradi() == ['BTCUSDT', 'SOLUSDT', 'JUPUSDT', 'ETHUSDT'], f'nová dlaždice v seznamu ({poradi()})')

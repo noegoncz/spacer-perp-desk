@@ -78,9 +78,9 @@ export function zapojDlazdice(kontejner, { onPresun, onNabidka }) {
     setTimeout(() => { delete st.tile.dataset.potlacKlik; }, 450);
     if (zruseno) return;
     if (st.pohnuto && st.cil) {
-      onPresun(st.tile.dataset.symbol, st.cil.dataset.symbol);
+      onPresun(st.tile.dataset.klic || st.tile.dataset.symbol, st.cil.dataset.klic || st.cil.dataset.symbol);
     } else if (!st.pohnuto) {
-      onNabidka(st.tile.dataset.symbol, st.tile);
+      onNabidka(st.tile.dataset.klic || st.tile.dataset.symbol, st.tile);
     }
   };
   kontejner.addEventListener('touchend', (e) => konec(e, false));

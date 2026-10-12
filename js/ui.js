@@ -872,7 +872,7 @@ export function nastavNazevBurzy(nazev) {
 }
 
 export function renderTiles(trhy, volby) {
-  const { siroke, veSestave, onSelect, onToggleFav, popisek, metrika = 'volume', pozice, hide } = volby;
+  const { siroke, veSestave, onSelect, onToggleFav, popisek, metrika = 'volume', pozice, hide, nazevBurzy: nazevPodle } = volby;
   // Jen třídy rozložení — `lze-presouvat` nastavuje app.js a nesmí zmizet.
   dom.watchList.classList.add('tiles');
   dom.watchList.classList.toggle('siroke', Boolean(siroke));
@@ -886,7 +886,8 @@ export function renderTiles(trhy, volby) {
   const prvky = trhy.map((trh) => {
     const d = div('tile');
     d.dataset.symbol = trh.symbol;
-    const poz = pozice?.get(trh.symbol);
+    if (trh.klic) d.dataset.klic = trh.klic;
+    const poz = pozice?.get(trh.klic || trh.symbol);
     if (poz) d.classList.add(poz.side === 'Sell' ? 'tile-short' : 'tile-long');
 
     const sub = [textMetriky(trh, metrika), popisek ? popisek(trh.symbol) : ''].filter(Boolean).join(' · ');
@@ -898,7 +899,7 @@ export function renderTiles(trhy, volby) {
     const hodnota = div(`tile-poz ${poz ? pnlClass(poz.pnl) : ''}`.trim(),
       poz ? (hide ? MASK : `${formatUsd(poz.value)} USDT`) : '');
 
-    d.append(div('tile-burza', nazevBurzy), div('tile-par', trh.symbol), div('tile-sub', sub),
+    d.append(div('tile-burza', String(nazevPodle?.(trh.burza) || nazevBurzy).toUpperCase()), div('tile-par', trh.symbol), div('tile-sub', sub),
       spark, div('tile-cena', formatPrice(trh.last)), zmena, hodnota);
 
     if (onToggleFav) {
@@ -958,11 +959,12 @@ export function updateTile(dlazdice, trh, poz, hide) {
  * Výsledky hledání v nabídce „+" (přidání páru do seznamu): široké řádky
  * s burzou, objemem, cenou a změnou; přidané páry mají fajfku.
  */
-export function renderPairSearch(kontejner, trhy, { jeVSeznamu, onPick }) {
+export function renderPairSearch(kontejner, trhy, { jeVSeznamu, onPick, nazevBurzy: nazevPodle }) {
   kontejner.replaceChildren(...trhy.map((trh) => {
     const b = document.createElement('button');
     b.type = 'button';
-    b.className = `pair-hit ${jeVSeznamu(trh.symbol) ? 'pridano' : ''}`.trim();
+    b.className = `pair-hit ${jeVSeznamu(trh.klic || trh.symbol) ? 'pridano' : ''}`.trim();
+    if (trh.klic) b.dataset.klic = trh.klic;
     b.dataset.symbol = trh.symbol;
     const vlevo = document.createElement('div');
     vlevo.className = 'pair-hit-vlevo';
@@ -971,7 +973,7 @@ export function renderPairSearch(kontejner, trhy, { jeVSeznamu, onPick }) {
     par.textContent = trh.symbol;
     const sub = document.createElement('div');
     sub.className = 'pair-hit-sub';
-    sub.textContent = `${nazevBurzy} · Perp · ${t('chart.vol24h')} ${zkratkaObratu(trh.turnover) || '—'}`;
+    sub.textContent = `${String(nazevPodle?.(trh.burza) || nazevBurzy).toUpperCase()} · Perp · ${t('chart.vol24h')} ${zkratkaObratu(trh.turnover) || '—'}`;
     vlevo.append(par, sub);
     const vpravo = document.createElement('div');
     vpravo.className = 'pair-hit-vpravo';

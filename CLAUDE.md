@@ -230,6 +230,26 @@ najednou, nikdy nemuset klíč odebírat; limit jen v budoucím předplatném):*
   graf z burzy pozice, Historie napříč burzami, limit počtu (vypnutý).
 - Test: `tools/test-vice-pripojeni.py`.
 
+**Watchlists z libovolné burzy (v0.56.0, přání uživatele: přidávat páry
+ze všech podporovaných burz bez ohledu na připojené klíče):**
+- Položka seznamu je `burza:pár` (to už model uměl); funkce v sestavy.js
+  berou celý klíč i holý pár (= Bybit); `polozkyVPoradi(id)` vrací
+  `{ burza, symbol, klic }`. Trhy (`trhy`) mají u každého řádku `burza`
+  a `klic`; mini-grafy, snímek Watchlists a živé změny jdou podle klíče.
+  Dlaždice nese `data-klic` a název své burzy.
+- `verejnyKlient(burza)` (app.js): aktivní klient, je-li to tatáž burza,
+  jinak adaptér **bez klíče** (veřejná data). `stahniTrhy()` stahuje
+  burzy ze seznamů + aktivní; hledání u + stáhne všechny (`stahniTrhy(true)`).
+- Živé ceny: aktivní burza svým proudem, ostatní CCXT dotazováním
+  (`naplanujCeny`). ⚠ **Bybit bez připojení nemá živý proud** (veřejný WS
+  běží jen se spuštěným klientem) — dlaždice Bybitu se při aktivní Binance
+  obnovují jen při stažení trhů.
+- Graf z dlaždice jde z burzy dlaždice (`chartBurza`, `grafKlient()`):
+  svíčky, živá svíčka, ticker. Příkazy, plnění a pozici kreslí jen, když
+  je to aktivní burza (`grafZAktivni()`); hodnota pozice na dlaždici taky.
+- Test: `tools/test-watchlist-vic-burz.py` (Binance ze skutečné burzy),
+  `test-dlazdice.py` (hledání nabízí i Binance).
+
 ### `js/bybit.js` je izolovaný záměrně
 
 Veškerá komunikace s burzou (REST i WebSocket) je **jen** v tomto modulu.
