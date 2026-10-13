@@ -1091,7 +1091,6 @@ function wireEvents() {
   ui.nastavNazevBurzy(client.burza.nazev);
   naUdalost('testBtn', 'click', testCredentials);
   naUdalost('clearBtn', 'click', clearCredentials);
-  naUdalost('backupExportBtn', 'click', ulozZalohu);
 
   // Upozornění při prvním spuštění — jednou, pak už jen v Nastavení.
   ukazPrvek('disclaimerNote', !store.loadJson('perpdesk.disclaimerSeen', false));
@@ -4380,30 +4379,6 @@ async function registerServiceWorker() {
 
 function checkForUpdate() {
   registration?.update().catch(() => {});
-}
-
-/* ---------- záloha a obnova (js/zaloha.js) ---------- */
-
-function zpravaZalohy(text, ok = true) {
-  const p = el('backupMsg');
-  if (!p) return;
-  p.textContent = text;
-  p.className = `settings-msg ${ok ? 'ok' : 'fail'}`;
-  p.hidden = false;
-}
-
-async function ulozZalohu() {
-  try {
-    const cesta = await zaloha.ulozVen(zaloha.sestavZalohu());
-    if (cesta === 'sdileni') zpravaZalohy(t('backup.shared'));
-    else if (cesta === 'schranka') zpravaZalohy(t('backup.copied'));
-    else zpravaZalohy(t('backup.downloaded', { name: zaloha.nazevSouboru() }));
-  } catch (e) {
-    // Zavřené sdílení bez výběru cíle není chyba.
-    if (/cancel/i.test(String(e?.message || e))) return;
-    console.warn('zaloha', e);
-    zpravaZalohy(t('backup.failed'), false);
-  }
 }
 
 /* ---------- účet PerpyX (js/ucet.js) ---------- */

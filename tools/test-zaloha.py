@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Záloha a obnova dat (js/zaloha.js).
+Obsah zálohy a obnova dat (js/zaloha.js).
 
 Ověřuje:
-  * záloha obsahuje seznamy, kresby, alarmy a nastavení, ale **nikdy
-    API klíč ani secret**,
-  * v APK jde soubor přes nativní Filesystem + Share (tady podstrčené),
-    ve starším APK bez pluginů do schránky, v prohlížeči stažením,
+  * záloha (obsah cloudové zálohy účtu) obsahuje seznamy, kresby, alarmy
+    a nastavení, ale **nikdy API klíč ani secret**,
+  * v nastavení není stažení ani obnova ze souboru (v0.58.1),
   * obnova (tu dělá účet po přihlášení; tlačítko obnovy ze souboru zmizelo
     ve v0.58.0) nahradí data a klíče nechá být,
   * cizí soubor modul odmítne.
@@ -32,9 +31,6 @@ mock += """
   localStorage.setItem('perpdesk.coinCategories', JSON.stringify({ coiny: {} }));
 })();
 window.confirm = () => true;
-window.__stazeno = null;
-const puvodniUrl = URL.createObjectURL;
-URL.createObjectURL = (blob) => { blob.text().then((t) => { window.__stazeno = t; }); return puvodniUrl(blob); };
 """
 
 p = Prohlizec()
@@ -62,20 +58,14 @@ def over(podminka, popis):
         chyby.append(popis)
 
 
-def zprava():
-    return ev("document.getElementById('backupMsg').textContent") or ''
-
-
 p.prikaz('Page.navigate', url=sys.argv[1])
 time.sleep(5)
 ev("document.getElementById('settingsBtn').click()")
 time.sleep(0.5)
 
-print('1) prohlížeč — stažení souboru')
-ev("document.getElementById('backupExportBtn').click()")
-time.sleep(0.8)
-text = ev("window.__stazeno")
-over(bool(text), 'záloha se stáhla')
+print('1) obsah zálohy (jde na účet)')
+over(ev("!document.getElementById('backupExportBtn')"), 'v nastavení není stažení dat (v0.58.1: účet zálohuje sám)')
+text = ev("import('./js/zaloha.js').then((m) => JSON.stringify(m.sestavZalohu()))", cekat=True)
 z = json.loads(text or '{}')
 d = z.get('data', {})
 over(z.get('aplikace') == 'PerpyX' and z.get('typ') == 'zaloha', 'hlavička zálohy')
@@ -84,33 +74,6 @@ over('perpdesk.lists' in d and 'perpdesk.drawings.JUPUSDT' in d and 'perpdesk.al
 over(not any(k in d for k in ('perpdesk.apiKey', 'perpdesk.apiSecret')) and 'FAKESECRET' not in (text or ''),
      'NEOBSAHUJE API klíč ani secret')
 over('perpdesk.coinCategories' not in d, 'stažené kategorie se nezálohují')
-
-print('2) APK — nativní sdílení')
-ev("""window.Capacitor = { isNativePlatform: () => true, Plugins: {
-  Filesystem: { writeFile: async (o) => { window.__zapsano = o; return { uri: 'file:///cache/' + o.path }; } },
-  Share: { share: async (o) => { window.__sdileno = o; } } } };""")
-ev("document.getElementById('backupExportBtn').click()")
-time.sleep(0.5)
-zap = ev("window.__zapsano") or {}
-sd = ev("window.__sdileno") or {}
-over(zap.get('directory') == 'CACHE' and zap.get('path', '').startswith('perpyx-backup-'), f'soubor zapsán do cache ({zap.get("path")})')
-over(sd.get('files') == ['file:///cache/' + zap.get('path', '')], 'nabídnut ke sdílení')
-over('choose where' in zprava(), f'hláška o sdílení ({zprava()[:40]})')
-
-ev("window.Capacitor.Plugins.Share.share = async () => { throw new Error('Share canceled'); }")
-ev("document.getElementById('backupMsg').hidden = true")
-ev("document.getElementById('backupExportBtn').click()")
-time.sleep(0.5)
-over(ev("document.getElementById('backupMsg').hidden"), 'zrušené sdílení nehlásí chybu')
-
-print('3) starší APK bez pluginů — schránka')
-ev("""window.Capacitor = { isNativePlatform: () => true, Plugins: {} };
-navigator.clipboard.writeText = async (t) => { window.__schranka = t; };""")
-ev("document.getElementById('backupExportBtn').click()")
-time.sleep(0.5)
-over('"aplikace": "PerpyX"' in (ev("window.__schranka") or ''), 'záloha ve schránce')
-over('clipboard' in zprava(), 'hláška o schránce')
-ev("delete window.Capacitor")
 
 print('4) obnova (modul, jak ho volá účet)')
 over(ev("!document.getElementById('backupImportBtn') && !document.getElementById('backupFile')"),

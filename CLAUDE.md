@@ -298,8 +298,10 @@ nabízí jen Bybit a Binance). Sonda z prohlížeče 2026-10-12:
   uloží se volby, se kterými prošel (u připojení „· Demo").
 - **Ruční záloha a obnova zmizely** (účet: Back up now / Restore… / výběr
   verze; Pokročilé: obnova ze souboru). Účet zálohuje po každé změně
-  a po přihlášení obnoví sám; verze 30 dní drží server dál. V Pokročilých
-  zůstalo jen **„Download my data"** (přenositelnost dat, GDPR).
+  a po přihlášení obnoví sám; verze 30 dní drží server dál. **v0.58.1:**
+  zmizelo i „Download my data" a celé Pokročilé (uživatel: účet to řeší;
+  přenositelnost dat podle zásad jde vyřídit na žádost e-mailem).
+  `zaloha.js` už jen skládá a obnovuje obsah cloudové zálohy.
 - Testy: `test-uvod.py`, `test-vyber-burzy.py` (pokus o demo),
   `test-vice-pripojeni.py`, `test-zaloha.py` (obnova přes modul).
 

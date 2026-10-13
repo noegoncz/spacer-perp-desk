@@ -1,18 +1,18 @@
 /**
- * Záloha a obnova dat aplikace do souboru.
+ * Záloha a obnova dat aplikace — obsah cloudové zálohy účtu (js/ucet.js).
+ * (Do souboru se od v0.58.1 neukládá: účet zálohuje i obnovuje sám.)
  *
  * Záloha obsahuje všechno, co si uživatel v aplikaci vytvořil: seznamy
  * (watchlisty), kresby, alarmy, vybrané indikátory, vzhled kreseb,
  * opravy kategorií a nastavení.
  *
- * ⚠ **API klíč ani secret se do zálohy nikdy nedostanou.** Soubor
- * záloh putuje na Disk Google, do e-mailu, k jiným lidem — klíč patří
- * jen do telefonu (viz „Bezpečnost klíčů" v CLAUDE.md). Po obnově na
+ * ⚠ **API klíč ani secret se do zálohy nikdy nedostanou.** Záloha jde
+ * na server — klíč patří jen do telefonu (viz „Bezpečnost klíčů" v CLAUDE.md). Po obnově na
  * novém telefonu se klíč zadává znovu.
  *
  * Kategorie z CoinGecko se také nezálohují — jde je kdykoli stáhnout znovu.
  *
- * Modul nesahá na DOM kromě stažení souboru v prohlížeči.
+ * Modul nesahá na DOM.
  */
 
 import { vymaz as vymazMezipamet } from './mezipamet.js';
@@ -138,45 +138,4 @@ export function obnov(zaloha) {
     if (!k.startsWith(PREDPONA) || NEZALOHOVAT.has(k) || typeof v !== 'string') continue;
     localStorage.setItem(k, v);
   }
-}
-
-export function nazevSouboru() {
-  return `perpyx-backup-${new Date().toISOString().slice(0, 10)}.json`;
-}
-
-/**
- * Uloží zálohu ven z aplikace.
- *  - V APK přes nativní pluginy Filesystem + Share: soubor se nabídne
- *    ke sdílení (Disk Google, Gmail, Soubory…). WebView obyčejné
- *    stažení souboru neumí — odkaz s `download` tam nic neudělá.
- *  - V prohlížeči klasickým stažením.
- *  - Starší APK bez pluginů: zkopíruje text do schránky.
- * Vrací, jakou cestou se to povedlo: 'sdileni' | 'stazeni' | 'schranka'.
- */
-export async function ulozVen(zaloha) {
-  const text = JSON.stringify(zaloha, null, 1);
-  const nazev = nazevSouboru();
-  const pluginy = self.Capacitor?.Plugins;
-  const vAplikaci = Boolean(self.Capacitor?.isNativePlatform?.());
-
-  if (vAplikaci && pluginy?.Filesystem && pluginy?.Share) {
-    const { uri } = await pluginy.Filesystem.writeFile({
-      path: nazev, data: text, directory: 'CACHE', encoding: 'utf8',
-    });
-    await pluginy.Share.share({ title: nazev, files: [uri] });
-    return 'sdileni';
-  }
-  if (vAplikaci) {
-    await navigator.clipboard.writeText(text);
-    return 'schranka';
-  }
-  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = nazev;
-  document.body.append(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
-  return 'stazeni';
 }
