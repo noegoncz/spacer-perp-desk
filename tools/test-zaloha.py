@@ -7,9 +7,9 @@ Ověřuje:
     API klíč ani secret**,
   * v APK jde soubor přes nativní Filesystem + Share (tady podstrčené),
     ve starším APK bez pluginů do schránky, v prohlížeči stažením,
-  * obnova ze souboru (skutečný výběr souboru přes CDP) nahradí data,
-    klíče nechá být a stránka se přenačte,
-  * cizí soubor odmítne.
+  * obnova (tu dělá účet po přihlášení; tlačítko obnovy ze souboru zmizelo
+    ve v0.58.0) nahradí data a klíče nechá být,
+  * cizí soubor modul odmítne.
 
 Spuštění: python tools/test-zaloha.py http://localhost:8075/index.html
 """
@@ -112,43 +112,31 @@ over('"aplikace": "PerpyX"' in (ev("window.__schranka") or ''), 'záloha ve schr
 over('clipboard' in zprava(), 'hláška o schránce')
 ev("delete window.Capacitor")
 
-print('4) obnova ze souboru')
+print('4) obnova (modul, jak ho volá účet)')
+over(ev("!document.getElementById('backupImportBtn') && !document.getElementById('backupFile')"),
+     'v nastavení už není obnova ze souboru (jen stažení dat)')
 zmenena = dict(z)
 zmenena['data'] = dict(d)
 zmenena['data']['perpdesk.lists'] = json.dumps({'verze': 1, 'aktivni': 'all',
     'seznamy': [{'id': 'x', 'nazev': 'Z obnovy', 'polozky': ['bybit:SOLUSDT']}]})
 zmenena['data']['perpdesk.apiKey'] = 'PODVRZENY'   # obnova ho nesmí zapsat
-soubor = os.path.join(tempfile.gettempdir(), 'perpyx-zaloha-test.json')
-with open(soubor, 'w', encoding='utf-8') as f:
-    json.dump(zmenena, f)
 ev("localStorage.setItem('perpdesk.drawings.ETHUSDT', '[]')")   # po obnově má zmizet
-uzel = p.prikaz('DOM.getDocument')['root']['nodeId']
-vstup = p.prikaz('DOM.querySelector', nodeId=uzel, selector='#backupFile')['nodeId']
-p.prikaz('DOM.setFileInputFiles', nodeId=vstup, files=[soubor])
-time.sleep(3)
-seznamy = json.loads(ev("localStorage.getItem('perpdesk.lists')") or '{}').get('seznamy', [])
+vysl = ev("""import('./js/zaloha.js').then((m) => {
+  m.obnov(m.prectiZalohu(%s));
+  return JSON.stringify([localStorage.getItem('perpdesk.lists'), localStorage.getItem('perpdesk.drawings.ETHUSDT'),
+    localStorage.getItem('perpdesk.apiKey')]);
+})""" % json.dumps(json.dumps(zmenena)), cekat=True)
+seznamy_json, kresba_eth, klic = json.loads(vysl or '[null, null, null]')
+seznamy = json.loads(seznamy_json or '{}').get('seznamy', [])
 over(seznamy and seznamy[0]['nazev'] == 'Z obnovy', 'seznamy nahrazené zálohou')
-over(ev("localStorage.getItem('perpdesk.drawings.ETHUSDT')") is None, 'data mimo zálohu smazaná (záloha = celý stav)')
-# ⚠ Mock klíč při každém načtení stránky zapíše znovu, proto se obnova
-# klíče ověřuje přímo voláním modulu, bez přenačtení.
-klic = ev("""import('./js/zaloha.js').then((m) => {
-  m.obnov({ data: { 'perpdesk.apiKey': 'PODVRZENY', 'perpdesk.apiSecret': 'X', 'perpdesk.magnet': '1' } });
-  return [localStorage.getItem('perpdesk.apiKey'), localStorage.getItem('perpdesk.magnet')].join('|');
-})""", cekat=True)
-over(klic == 'FAKEKEY1234567890ab|1', f'obnova nezapíše klíč ze souboru, ostatní ano ({klic})')
+over(kresba_eth is None, 'data mimo zálohu smazaná (záloha = celý stav)')
+over(klic == 'FAKEKEY1234567890ab', f'obnova nezapíše klíč ze zálohy ({klic})')
 over(ev("localStorage.getItem('perpdesk.coinCategories')") is not None, 'stažené kategorie zůstaly')
 
 print('5) cizí soubor')
-ev("document.getElementById('settingsBtn').click()")
-time.sleep(0.5)
-cizi = os.path.join(tempfile.gettempdir(), 'perpyx-cizi.json')
-with open(cizi, 'w', encoding='utf-8') as f:
-    f.write('{"hello": 1}')
-uzel = p.prikaz('DOM.getDocument')['root']['nodeId']
-vstup = p.prikaz('DOM.querySelector', nodeId=uzel, selector='#backupFile')['nodeId']
-p.prikaz('DOM.setFileInputFiles', nodeId=vstup, files=[cizi])
-time.sleep(0.8)
-over('not a PerpyX backup' in zprava(), f'cizí soubor odmítnut ({zprava()})')
+cizi = ev("""import('./js/zaloha.js').then((m) => { try { m.prectiZalohu('{"hello": 1}'); return 'prijato'; }
+  catch (e) { return 'odmitnuto'; } })""", cekat=True)
+over(cizi == 'odmitnuto', 'cizí soubor odmítnut')
 
 konzole = ev('(window.__chyby||[]).join(" | ")') or ''
 over(not konzole, f'bez chyb v konzoli ({konzole})')

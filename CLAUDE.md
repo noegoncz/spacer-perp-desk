@@ -286,6 +286,23 @@ nabízí jen Bybit a Binance). Sonda z prohlížeče 2026-10-12:
 - Testy: `test-kontrakt-burzy.py` (veřejná data všech burz naostro),
   `test-nativni-http.py` (podstrčený plugin, Gate přes něj),
   `test-dalsi-burzy.py` (dlaždice, hledání, graf Hyperliquid).
+**Nastavení burz a dat (v0.58.0, přání uživatele):**
+- Karta **Burzy** = všechny burzy z `BURZY` pod sebou (`vykresliBurzy`):
+  připojená má pod názvem své účty (konec klíče, Aktivní / Přepnout,
+  Odpojit) a „+ Další účet"; nepřipojená **Připojit** → okno pro klíč té
+  burzy (`ukazUvod('burza', true, id)` — bez výběru burz, nadpis
+  „Connect Binance"); `pripojeni: false` = „brzy". Výběr burz v úvodu se
+  kreslí ze stejného seznamu (`vykresliVyberBurz`).
+- **Zaškrtávátko Demo zmizelo** — demo klíč Binance se pozná sám:
+  `otestujVybranou` zkusí ostrou burzu, a když klíč nezná, Demo Trading;
+  uloží se volby, se kterými prošel (u připojení „· Demo").
+- **Ruční záloha a obnova zmizely** (účet: Back up now / Restore… / výběr
+  verze; Pokročilé: obnova ze souboru). Účet zálohuje po každé změně
+  a po přihlášení obnoví sám; verze 30 dní drží server dál. V Pokročilých
+  zůstalo jen **„Download my data"** (přenositelnost dat, GDPR).
+- Testy: `test-uvod.py`, `test-vyber-burzy.py` (pokus o demo),
+  `test-vice-pripojeni.py`, `test-zaloha.py` (obnova přes modul).
+
 - **Zbývá k připojení klíčem:** pole pro heslo (OKX, Bitget), adresa
   peněženky (Hyperliquid), kontrola jen pro čtení u Bitget / Gate / MEXC,
   ověření na skutečných účtech (uživatel má Gate a MEXC; OKX a Bitget nezmínil).

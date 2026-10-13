@@ -565,17 +565,6 @@
                   data-i18n="account.pushEnable">Turn on alarms with the screen off</button>
         </div>
         <div class="button-row">
-          <button type="button" id="accountBackupBtn" class="secondary-btn" data-i18n="account.backupNow">Back up now</button>
-          <button type="button" id="accountRestoreBtn" class="secondary-btn" data-i18n="account.restore">Restore…</button>
-        </div>
-        <div id="accountRestoreBox" hidden>
-          <label for="accountVersions" data-i18n="account.versions">Backup from</label>
-          <select id="accountVersions" class="select-field"></select>
-          <div class="button-row">
-            <button type="button" id="accountRestoreGo" class="primary-btn" data-i18n="account.restoreSelected">Restore this backup</button>
-          </div>
-        </div>
-        <div class="button-row">
           <button type="button" id="accountLogoutBtn" class="secondary-btn" data-i18n="account.signOut">Sign out</button>
           <button type="button" id="accountDeleteBtn" class="text-btn danger" data-i18n="account.delete">Delete account</button>
         </div>
@@ -620,14 +609,12 @@
       <p id="lockSettingsMsg" class="settings-msg" hidden></p>
     </div>
 
-    <!-- Burzy: jen přehled připojených, klíč se nikdy nezobrazuje.
-         Přidání a výměna klíče jdou přes úvodní okno (krok Burza). -->
+    <!-- Burzy (v0.58.0): všechny podporované pod sebou; připojené
+         s Aktivní / Přepnout / Odpojit, ostatní s Připojit (okno pro klíč).
+         Klíč se nikdy nezobrazuje, jen jeho konec. -->
     <div class="card" id="exchangeCard">
       <h2 data-i18n="exchanges.title">Exchanges</h2>
       <div id="exchangeList"></div>
-      <div class="button-row">
-        <button type="button" id="exchangeAddBtn" class="secondary-btn" data-i18n="exchanges.add">Add exchange</button>
-      </div>
     </div>
 
     <div class="card">
@@ -656,21 +643,20 @@
       <label for="language" data-i18n="settings.language">Language</label>
       <select id="language" class="select-field"></select>
 
-      <!-- Pokročilé: záloha do souboru. S účtem se zálohuje samo; soubor
-           zůstává kvůli přenositelnosti dat a jako pojistka bez e-mailu. -->
+      <!-- Pokročilé: stažení dat do souboru (v0.58.0). Zálohuje a obnovuje
+           účet sám; soubor zůstává jen kvůli přenositelnosti dat (GDPR). -->
       <details class="help advanced">
         <summary data-i18n="settings.advanced">Advanced</summary>
       <!-- Záloha: seznamy, kresby, alarmy, nastavení (js/zaloha.js). Bez klíčů. -->
-      <label data-i18n="backup.title">Backup</label>
+      <label data-i18n="backup.title">Your data</label>
       <p class="hint" data-i18n="backup.hint">
-        Watchlists, drawings, alarms and settings in one file — for a new phone
-        or a fresh install. API keys are never included.
+        Your account backs up watchlists, drawings, alarms and settings automatically and
+        restores them when you sign in. Here you can download them as a file. API keys are
+        never included — they stay only on this phone.
       </p>
       <div class="button-row">
-        <button type="button" id="backupExportBtn" class="secondary-btn" data-i18n="backup.export">Save backup</button>
-        <button type="button" id="backupImportBtn" class="secondary-btn" data-i18n="backup.import">Restore</button>
+        <button type="button" id="backupExportBtn" class="secondary-btn" data-i18n="backup.export">Download my data</button>
       </div>
-      <input type="file" id="backupFile" accept="application/json,.json" hidden>
       <p id="backupMsg" class="settings-msg" hidden></p>
       </details>
 
@@ -848,22 +834,13 @@
 
     <!-- Krok 2: burza -->
     <div id="onbExchange" hidden>
-      <h2 data-i18n="onb.connect">Connect your exchange</h2>
+      <h2 id="onbExchangeTitle" data-i18n="onb.connect">Connect your exchange</h2>
       <p class="hint" data-i18n="onb.connectHint">PerpyX reads your positions with a read-only API key.
         The key stays on this phone and is never sent to us.</p>
-      <div class="exchange-pick">
-        <button type="button" class="exchange-btn active" id="exBybitBtn" data-burza="bybit">Bybit</button>
-        <button type="button" class="exchange-btn" data-burza="binance">Binance</button>
-        <button type="button" class="exchange-btn" disabled>Hyperliquid <span data-i18n="exchanges.soon">soon</span></button>
-        <button type="button" class="exchange-btn" disabled>OKX <span data-i18n="exchanges.soon">soon</span></button>
-      </div>
+      <!-- Burzy se kreslí ze seznamu (vykresliVyberBurz); co zatím nejde
+           připojit klíčem, je „brzy". -->
+      <div class="exchange-pick" id="exchangePick"></div>
       <div id="exchangeForm">
-      <!-- Binance Demo Trading — falešné peníze, na vyzkoušení (v0.54.0). -->
-      <label class="exchange-demo" id="exDemoRow" hidden>
-        <input type="checkbox" id="exDemo">
-        <span><span data-i18n="exchanges.demo">Demo Trading key (test money)</span>
-          <small data-i18n="exchanges.demoHint">Create it in Binance after switching to Demo Trading.</small></span>
-      </label>
       <label for="apiKey" data-i18n="settings.apiKey">API key</label>
       <input type="text" id="apiKey" autocomplete="off" autocapitalize="off"
              autocorrect="off" spellcheck="false" inputmode="text"

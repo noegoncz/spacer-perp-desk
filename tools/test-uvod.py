@@ -110,10 +110,16 @@ over(not vidim('onboarding'), 'po přenačtení se připojení burzy nevnucuje')
 print('3) nastavení bez viditelného klíče')
 ev("document.getElementById('settingsBtn').click()")
 time.sleep(0.4)
-over('No exchange connected' in (ev("document.getElementById('exchangeList').textContent") or ''), 'bez burzy: „No exchange connected"')
-ev("document.getElementById('exchangeAddBtn').click()")
+over(not ev("document.querySelector('#exchangeList .exchange-row[data-pripojeni]')"), 'bez burzy: žádný připojený účet, jen Připojit')
+burzy = ev("[...document.querySelectorAll('#exchangeList .exchange-blok')].map((b) => b.dataset.burza + ':' + (b.querySelector('.secondary-btn') ? 'connect' : 'soon'))") or []
+print('   burzy v nastavení:', burzy)
+over(burzy[:2] == ['bybit:connect', 'binance:connect'] and len(burzy) >= 5 and all(x.endswith(':soon') for x in burzy[2:]),
+     'v nastavení všechny burzy pod sebou: Bybit a Binance s Připojit, ostatní „brzy"')
+ev("document.querySelector('#exchangeList .exchange-blok[data-burza=bybit] .secondary-btn').click()")
 time.sleep(0.3)
-over(vidim('onbExchange') and vidim('onbCloseBtn') and not vidim('onbSkipBtn'), 'Přidat burzu otevře stejné okno s křížkem')
+over(vidim('onbExchange') and vidim('onbCloseBtn') and not vidim('onbSkipBtn') and not vidim('exchangePick'),
+     'Připojit otevře okno pro klíč Bybitu s křížkem, bez výběru burzy')
+over('Bybit' in (ev("document.getElementById('onbExchangeTitle').textContent") or ''), 'nadpis okna: Connect Bybit')
 ev("document.getElementById('apiKey').value = 'MUJKLIC1234ABCD'")
 ev("document.getElementById('apiSecret').value = 'MUJSECRET1234567890abcdef'")
 ev("document.getElementById('saveBtn').click()")
@@ -126,7 +132,7 @@ over('Bybit' in seznam and '••••ABCD' in seznam, f'burza v nastavení s 
 text = ev("document.body.innerText") or ''
 over('MUJKLIC1234ABCD' not in text and 'MUJSECRET' not in text, 'klíč ani secret nejsou nikde vidět')
 over(ev("document.getElementById('apiKey').value") == '', 'formulář klíče se po uložení vyčistil')
-over(vidim('exchangeAddBtn'), 'tlačítko Přidat burzu je vidět (v0.55.0 víc burz)')
+over(ev("!!document.querySelector('#exchangeList .exchange-blok[data-burza=bybit] .exchange-dalsi')"), 'u připojené burzy jde přidat další účet')
 
 print('4) odhlášení')
 ev("document.getElementById('accountLogoutBtn').click()")

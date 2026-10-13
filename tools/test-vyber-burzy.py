@@ -21,6 +21,11 @@ KOREN = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 mock = open(os.path.join(KOREN, 'tools', 'mock-bybit.js'), encoding='utf-8').read()
 predem = """
 sessionStorage.setItem('__bezKlice', '1');
+(() => {
+  const f = window.fetch;
+  window.__dotazy = [];
+  window.fetch = function (v, o) { window.__dotazy.push(String(v && v.url ? v.url : v)); return f(v, o); };
+})();
 if (sessionStorage.getItem('__binance')) {
   localStorage.setItem('perpdesk.burza', 'binance');
   localStorage.setItem('perpdesk.exchangeSkipped', 'true');
@@ -59,12 +64,12 @@ def over(podminka, popis):
 print('1) úvodní obrazovka')
 over(ev("!document.getElementById('onbExchange').hidden"), 'úvodní obrazovka s burzou je vidět')
 over(ev("!document.querySelector('#onbExchange .exchange-btn[data-burza=binance]').disabled"), 'Binance jde vybrat (už ne „brzy“)')
-over(ev("document.getElementById('exDemoRow').hidden"), 'u Bybitu volba Demo není')
+over(not ev("document.getElementById('exDemoRow')"), 'zaškrtávátko Demo zmizelo (v0.58.0: demo účet se pozná sám)')
 ev("document.querySelector('#onbExchange .exchange-btn[data-burza=binance]').click()")
 time.sleep(0.3)
 over(ev("document.querySelector('#onbExchange .exchange-btn[data-burza=binance]').classList.contains('active')"), 'Binance je vybraný')
-over(ev("!document.getElementById('exDemoRow').hidden && document.getElementById('helpBybit').hidden && !document.getElementById('helpBinance').hidden"),
-     'u Binance je volba Demo a návod pro Binance')
+over(ev("document.getElementById('helpBybit').hidden && !document.getElementById('helpBinance').hidden"),
+     'u Binance je návod pro Binance')
 
 print('2) vymyšlený klíč Binance')
 ev("document.getElementById('apiKey').value = 'VYMYSLENY'; document.getElementById('apiSecret').value = 'VYMYSLENY'")
@@ -76,6 +81,7 @@ for _ in range(30):
 zprava = ev("document.getElementById('settingsMsg').textContent") or ''
 print('   hláška:', zprava[:120])
 over(zprava and ev("document.getElementById('settingsMsg').classList.contains('fail')"), 'neplatný klíč hlásí chybu')
+over(ev("(window.__dotazy || []).some((u) => u.includes('demo-fapi.binance.com'))"), 'neplatný klíč se zkusil i na Demo Tradingu')
 over(not ev("localStorage.getItem('perpdesk.apiKey')") and not ev("localStorage.getItem('perpdesk.burza')"), 'nic se neuložilo')
 
 print('3) aplikace s Binance bez klíče — veřejná data ze skutečné burzy')

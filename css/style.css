@@ -2373,7 +2373,7 @@ html.uvod, html.uvod body { overflow: hidden; }
 .exchange-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .exchange-name { flex: 1; min-width: 140px; font-weight: 650; }
 .exchange-key { font-size: 0.78rem; font-weight: 400; color: var(--text-dim); margin-top: 2px; }
-.exchange-row .secondary-btn { min-height: 38px; padding: 0 12px; }
+.exchange-row .secondary-btn { flex: 0 0 auto; min-height: 38px; padding: 0 16px; }
 details.advanced { margin-top: 14px; }
 .account-legal a, .onb-inner a { color: var(--accent); }
 
@@ -2804,21 +2804,12 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 }
 .nabidka-volba button.active { border-color: var(--accent); color: var(--accent); background: rgba(76, 154, 255, 0.12); }
 
-/* Volba Demo Tradingu u Binance na úvodní obrazovce (v0.54.0). */
-.exchange-demo {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  margin: 4px 0 12px;
-  font-size: 0.9rem;
-  color: var(--text);
-}
-.exchange-demo input { margin-top: 3px; width: 18px; height: 18px; accent-color: var(--accent); }
-.exchange-demo small { display: block; color: var(--text-dim); font-size: 0.78rem; margin-top: 2px; }
-
-/* Připojené burzy (v0.55.0): aktivní zvýrazněná, ostatní s „Přepnout". */
-.exchange-pocet { margin: 0 0 6px; }
-.exchange-row + .exchange-row { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+/* Burzy v nastavení (v0.58.0): všechny pod sebou, účty pod názvem. */
+.exchange-blok + .exchange-blok { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.exchange-ucet { margin-top: 6px; padding-left: 2px; }
+.exchange-ucet .exchange-key { flex: 1; min-width: 140px; margin-top: 0; }
+.exchange-brzy { font-size: 0.78rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.4px; }
+.exchange-dalsi { margin-top: 4px; padding-left: 0; font-size: 0.85rem; }
 .exchange-aktivni {
   padding: 4px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 700;
   color: var(--accent); background: rgba(76, 154, 255, 0.14);

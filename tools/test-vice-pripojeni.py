@@ -52,8 +52,8 @@ def over(podminka, popis):
 def radky():
     ev("document.getElementById('settingsBtn').click()")
     time.sleep(0.6)
-    return json.loads(ev("""JSON.stringify([...document.querySelectorAll('#exchangeList .exchange-row')].map((r) => ({
-      id: r.dataset.pripojeni, nazev: r.querySelector('.exchange-name').firstChild.textContent,
+    return json.loads(ev("""JSON.stringify([...document.querySelectorAll('#exchangeList .exchange-row[data-pripojeni]')].map((r) => ({
+      id: r.dataset.pripojeni, nazev: r.closest('.exchange-blok').querySelector('.exchange-name').textContent,
       aktivni: r.classList.contains('aktivni'), klic: r.querySelector('.exchange-key').textContent })))""") or '[]')
 
 

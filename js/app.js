@@ -1086,16 +1086,12 @@ function wireEvents() {
   });
 
   naUdalost('saveBtn', 'click', saveAndConnect);
-  document.querySelectorAll('#onbExchange .exchange-btn[data-burza]').forEach((b) => {
-    b.addEventListener('click', () => vyberBurzuVUvodu(b.dataset.burza));
-  });
+  vykresliVyberBurz();
   vyberBurzuVUvodu(vybranaBurza);
   ui.nastavNazevBurzy(client.burza.nazev);
   naUdalost('testBtn', 'click', testCredentials);
   naUdalost('clearBtn', 'click', clearCredentials);
   naUdalost('backupExportBtn', 'click', ulozZalohu);
-  naUdalost('backupImportBtn', 'click', () => el('backupFile')?.click());
-  naUdalost('backupFile', 'change', obnovZalohu);
 
   // Upozornění při prvním spuštění — jednou, pak už jen v Nastavení.
   ukazPrvek('disclaimerNote', !store.loadJson('perpdesk.disclaimerSeen', false));
@@ -1129,7 +1125,6 @@ function wireEvents() {
     skryjUvod();
   });
   naUdalost('onbCloseBtn', 'click', skryjUvod);
-  naUdalost('exchangeAddBtn', 'click', () => ukazUvod('burza', true));
 
   // Alarmy hlídané serverem (push, i se zhasnutým displejem)
   alarmyServer.naZmenu(vykresliPushStav);
@@ -1166,9 +1161,6 @@ function wireEvents() {
     if (/^\d{6}$/.test(e.target.value.trim())) overKodUctu();
   });
   naUdalost('accountBackBtn', 'click', () => ukazKrokUctu('email'));
-  naUdalost('accountBackupBtn', 'click', zalohujUcetTed);
-  naUdalost('accountRestoreBtn', 'click', otevriObnovuUctu);
-  naUdalost('accountRestoreGo', 'click', obnovZUctu);
   naUdalost('accountLogoutBtn', 'click', odhlasUcet);
   naUdalost('accountDeleteBtn', 'click', smazUcet);
   ucet.naZmenu(vykresliUcet);
@@ -1301,32 +1293,64 @@ async function zkontrolujUlozenyKlic() {
 /*
  * Výběr burzy na úvodní obrazovce (v0.54.0). Test a uložení jdou přes
  * adaptér VYBRANÉ burzy, ne přes běžícího klienta — klíč Binance se nesmí
- * zkoušet proti Bybitu. Binance nabízí i Demo Trading (falešné peníze).
+ * zkoušet proti Bybitu.
  */
 let vybranaBurza = store.loadBurza().id;
 
+/** Tlačítka burz v úvodu ze seznamu: připojitelné, ostatní „brzy". */
+function vykresliVyberBurz() {
+  const misto = el('exchangePick');
+  if (!misto) return;
+  misto.replaceChildren(...Object.values(BURZY).map((b) => {
+    const tl = document.createElement('button');
+    tl.type = 'button';
+    tl.className = 'exchange-btn';
+    tl.dataset.burza = b.id;
+    tl.textContent = b.nazev;
+    if (b.pripojeni === false) {
+      tl.disabled = true;
+      const brzy = document.createElement('span');
+      brzy.textContent = t('exchanges.soon');
+      tl.append(brzy);
+    } else {
+      tl.addEventListener('click', () => vyberBurzuVUvodu(b.id));
+    }
+    return tl;
+  }));
+  vyberBurzuVUvodu(vybranaBurza);
+}
+
 function vyberBurzuVUvodu(id) {
+  if (!BURZY[id] || BURZY[id].pripojeni === false) id = VYCHOZI_BURZA;
   vybranaBurza = id;
   document.querySelectorAll('#onbExchange .exchange-btn[data-burza]').forEach((b) => {
     b.classList.toggle('active', b.dataset.burza === id);
   });
-  ukazPrvek('exDemoRow', id === 'binance');
   ukazPrvek('helpBybit', id === 'bybit');
   ukazPrvek('helpBinance', id === 'binance');
   ui.clearSettingsMessage();
 }
 
-function volbyVybraneBurzy() {
-  return vybranaBurza === 'binance' && el('exDemo')?.checked ? { demo: true } : {};
-}
-
+/**
+ * Ověří klíč u vybrané burzy. Demo účet (Binance Demo Trading) se pozná
+ * sám (v0.58.0, přání uživatele — zaškrtávátko „Demo" byla otázka navíc):
+ * když ostrá burza klíč nezná, zkusí se demo prostředí. Vrací výsledek
+ * testu a volby, se kterými klíč prošel.
+ */
 async function otestujVybranou(apiKey, apiSecret) {
-  const zkusebni = vytvorBurzu(vybranaBurza, {}, volbyVybraneBurzy());
-  try {
-    return await zkusebni.testCredentials(apiKey, apiSecret);
-  } finally {
-    zkusebni.stop();
-  }
+  const zkus = async (volby) => {
+    const zkusebni = vytvorBurzu(vybranaBurza, {}, volby);
+    try {
+      return { ...(await zkusebni.testCredentials(apiKey, apiSecret)), volby };
+    } finally {
+      zkusebni.stop();
+    }
+  };
+  const ostra = await zkus({});
+  // Klíč s právem obchodovat / vybírat je odmítnutý — to demo nespraví.
+  if (ostra.ok || ostra.kod || vybranaBurza !== 'binance') return ostra;
+  const demo = await zkus({ demo: true });
+  return demo.ok ? demo : ostra;
 }
 
 async function saveAndConnect() {
@@ -1353,7 +1377,7 @@ async function saveAndConnect() {
   // Ukládá se až po ověření, ať se do telefonu nedostane nefunkční klíč.
   // Nové připojení se PŘIDÁ k ostatním (v0.55.0) a stane se aktivním.
   const id = store.pridejPripojeni({
-    burza: vybranaBurza, volby: volbyVybraneBurzy(), apiKey, apiSecret,
+    burza: vybranaBurza, volby: result.volby || {}, apiKey, apiSecret,
   });
   el('apiKey').value = '';
   el('apiSecret').value = '';
@@ -4382,30 +4406,6 @@ async function ulozZalohu() {
   }
 }
 
-async function obnovZalohu(e) {
-  const soubor = e.target.files?.[0];
-  e.target.value = '';   // stejný soubor půjde vybrat znovu
-  if (!soubor) return;
-  let z;
-  try {
-    z = zaloha.prectiZalohu(await soubor.text());
-  } catch (chyba) {
-    zpravaZalohy(t(chyba.message === 'newer-version' ? 'backup.newer' : 'backup.notBackup'), false);
-    return;
-  }
-  const s = zaloha.souhrn(z);
-  const ok = confirm(t('backup.confirm', {
-    date: s.vytvoreno ? new Date(s.vytvoreno).toLocaleDateString(getLocale()) : '?',
-    lists: s.seznamy, pairs: s.paryVSeznamech, drawings: s.kresby,
-    drawingPairs: s.parySKresbami, alarms: s.alarmy,
-  }));
-  if (!ok) return;
-  zaloha.obnov(z);
-  zpravaZalohy(t('backup.restored'));
-  // Moduly drží data v paměti (alarmy, seznamy) — čistý start je nejjistější.
-  setTimeout(() => location.reload(), 600);
-}
-
 /* ---------- účet PerpyX (js/ucet.js) ---------- */
 
 let emailUctu = '';
@@ -4529,60 +4529,6 @@ async function nabidniObnovuPoPrihlaseni(me) {
     setTimeout(() => location.reload(), 600);
   } else if (mistni) {
     ucet.zalohujTed().catch(() => {});
-  }
-}
-
-async function zalohujUcetTed() {
-  try {
-    await ucet.zalohujTed();
-    zpravaUctu(t('account.backedUp'));
-  } catch (e) {
-    zpravaUctu(t('account.failed', { why: duvod(e) }), false);
-  }
-}
-
-async function otevriObnovuUctu() {
-  const box = el('accountRestoreBox');
-  if (box && !box.hidden) {
-    box.hidden = true;
-    return;
-  }
-  try {
-    const verze = await ucet.verzeZaloh();
-    if (!verze.length) {
-      zpravaUctu(t('account.noVersions'), false);
-      return;
-    }
-    const vyber = el('accountVersions');
-    vyber.replaceChildren(...verze.map((v) => {
-      const o = document.createElement('option');
-      o.value = String(v.version);
-      o.textContent = new Date(v.created_at).toLocaleString(getLocale());
-      return o;
-    }));
-    ukazPrvek('accountRestoreBox', true);
-    zpravaUctu('');
-  } catch (e) {
-    zpravaUctu(t('account.failed', { why: duvod(e) }), false);
-  }
-}
-
-async function obnovZUctu() {
-  const verze = Number(el('accountVersions')?.value) || null;
-  try {
-    const z = await ucet.stahniZalohu(verze);
-    const s = zaloha.souhrn(z);
-    const ok = confirm(t('backup.confirm', {
-      date: s.vytvoreno ? new Date(s.vytvoreno).toLocaleString(getLocale()) : '?',
-      lists: s.seznamy, pairs: s.paryVSeznamech, drawings: s.kresby,
-      drawingPairs: s.parySKresbami, alarms: s.alarmy,
-    }));
-    if (!ok) return;
-    zaloha.obnov(z);
-    zpravaUctu(t('backup.restored'));
-    setTimeout(() => location.reload(), 600);
-  } catch (e) {
-    zpravaUctu(t('account.failed', { why: duvod(e) }), false);
   }
 }
 
@@ -4781,7 +4727,12 @@ function vykresliPushStav() {
  * nebo `burza` (připojení klíče; jde přeskočit). `zavritelna` = otevřená
  * z nastavení, má křížek.
  */
-function ukazUvod(krok, zavritelna = false) {
+function ukazUvod(krok, zavritelna = false, burza = null) {
+  // Z nastavení u konkrétní burzy: jen formulář pro její klíč, bez výběru.
+  if (burza) vyberBurzuVUvodu(burza);
+  ukazPrvek('exchangePick', !burza);
+  const nadpis = el('onbExchangeTitle');
+  if (nadpis) nadpis.textContent = burza ? t('exchanges.connectTo', { name: BURZY[burza]?.nazev || burza }) : t('onb.connect');
   document.documentElement.classList.remove('uvod-start');
   ukazPrvek('onboarding', true);
   ukazPrvek('onbLogin', krok === 'prihlaseni');
@@ -4803,58 +4754,68 @@ function skryjUvod() {
 const uvodViditelny = () => el('onboarding')?.hidden === false;
 
 /**
- * Připojené burzy v nastavení (v0.55.0: všechna připojení, ne jen jedno).
- * Klíč se nikdy neukazuje, jen jeho konec. Aktivní má štítek, ostatní jde
- * jedním klepnutím přepnout — bez nového zadávání klíče.
+ * Burzy v nastavení (v0.58.0, přání uživatele): všechny podporované pod
+ * sebou. Připojená má pod názvem své účty (konec klíče, Aktivní / Přepnout,
+ * Odpojit) a „Další účet"; nepřipojená tlačítko Připojit, které otevře
+ * okno pro klíč té burzy. Co zatím nejde připojit, je „brzy".
  */
 function vykresliBurzy() {
   const seznam = el('exchangeList');
   if (!seznam) return;
   const pripojeni = store.loadPripojeni();
-  ukazPrvek('exchangeAddBtn', true);
-  if (!pripojeni.length) {
-    const p = document.createElement('p');
-    p.className = 'hint';
-    p.textContent = t('exchanges.none');
-    seznam.replaceChildren(p);
-    return;
-  }
   const aktivni = store.aktivniPripojeni();
-  const pocet = document.createElement('p');
-  pocet.className = 'hint exchange-pocet';
-  pocet.textContent = t('exchanges.count', { n: pripojeni.length });
-  seznam.replaceChildren(pocet, ...pripojeni.map((pr) => {
-    const radek = document.createElement('div');
-    radek.className = `exchange-row ${pr.id === aktivni ? 'aktivni' : ''}`.trim();
-    radek.dataset.pripojeni = pr.id;
+  const tlacitko = (text, trida, akce) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = trida;
+    b.textContent = text;
+    b.addEventListener('click', akce);
+    return b;
+  };
+  seznam.replaceChildren(...Object.values(BURZY).map((burza) => {
+    const blok = document.createElement('div');
+    blok.className = 'exchange-blok';
+    blok.dataset.burza = burza.id;
+    const hlava = document.createElement('div');
+    hlava.className = 'exchange-row';
     const nazev = document.createElement('div');
     nazev.className = 'exchange-name';
-    nazev.textContent = (BURZY[pr.burza]?.nazev || pr.burza) + (pr.volby?.demo ? ' · Demo' : '');
-    const klic = document.createElement('div');
-    klic.className = 'exchange-key';
-    klic.textContent = t('exchanges.keyEnding', { end: pr.apiKey.slice(-4) });
-    nazev.append(klic);
-    radek.append(nazev);
-    if (pr.id === aktivni) {
-      const stitek = document.createElement('span');
-      stitek.className = 'exchange-aktivni';
-      stitek.textContent = t('exchanges.active');
-      radek.append(stitek);
-    } else {
-      const prepnout = document.createElement('button');
-      prepnout.type = 'button';
-      prepnout.className = 'secondary-btn';
-      prepnout.textContent = t('exchanges.switch');
-      prepnout.addEventListener('click', () => prepniNaPripojeni(pr.id));
-      radek.append(prepnout);
+    nazev.textContent = burza.nazev;
+    hlava.append(nazev);
+    blok.append(hlava);
+    const ucty = pripojeni.filter((pr) => pr.burza === burza.id);
+    if (burza.pripojeni === false) {
+      const brzy = document.createElement('span');
+      brzy.className = 'exchange-brzy';
+      brzy.textContent = t('exchanges.soon');
+      hlava.append(brzy);
+      return blok;
     }
-    const odebrat = document.createElement('button');
-    odebrat.type = 'button';
-    odebrat.className = 'text-btn danger';
-    odebrat.textContent = t('exchanges.disconnect');
-    odebrat.addEventListener('click', () => odeberPripojeni(pr.id));
-    radek.append(odebrat);
-    return radek;
+    if (!ucty.length) {
+      hlava.append(tlacitko(t('exchanges.connectBtn'), 'secondary-btn', () => ukazUvod('burza', true, burza.id)));
+      return blok;
+    }
+    for (const pr of ucty) {
+      const radek = document.createElement('div');
+      radek.className = `exchange-row exchange-ucet ${pr.id === aktivni ? 'aktivni' : ''}`.trim();
+      radek.dataset.pripojeni = pr.id;
+      const klic = document.createElement('div');
+      klic.className = 'exchange-key';
+      klic.textContent = t('exchanges.keyEnding', { end: pr.apiKey.slice(-4) }) + (pr.volby?.demo ? ' · Demo' : '');
+      radek.append(klic);
+      if (pr.id === aktivni) {
+        const stitek = document.createElement('span');
+        stitek.className = 'exchange-aktivni';
+        stitek.textContent = t('exchanges.active');
+        radek.append(stitek);
+      } else {
+        radek.append(tlacitko(t('exchanges.switch'), 'secondary-btn', () => prepniNaPripojeni(pr.id)));
+      }
+      radek.append(tlacitko(t('exchanges.disconnect'), 'text-btn danger', () => odeberPripojeni(pr.id)));
+      blok.append(radek);
+    }
+    blok.append(tlacitko(t('exchanges.anotherAccount'), 'text-btn exchange-dalsi', () => ukazUvod('burza', true, burza.id)));
+    return blok;
   }));
 }
 
