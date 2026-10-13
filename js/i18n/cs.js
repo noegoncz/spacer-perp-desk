@@ -359,7 +359,7 @@ export const cs = {
   'account.available': 'Volné',
   'account.marginUsed': 'Margin',
   'account.unavailable': 'Přehled účtu potřebuje u klíče oprávnění Wallet.',
-  'account.needsWallet': 'Přidej klíči na Bybitu oprávnění Wallet (čtení), ať je vidět equity a margin.',
+  'account.needsWallet': 'Klíč nemůže číst zůstatek účtu, proto equity a margin nejsou vidět. Na Bybitu přidej oprávnění Wallet (čtení).',
 
   'funding.nextShort': 'Další',
   'funding.dayShort': 'Den',

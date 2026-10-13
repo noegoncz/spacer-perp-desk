@@ -75,12 +75,17 @@ export class CcxtAdapter {
       secret: this.apiSecret || undefined,
       password: this.apiPassphrase || undefined,
       enableRateLimit: true,
+      // Mobilní síť: výchozích 10 s CCXT bylo na telefonu málo (v0.58.2).
+      timeout: 20000,
       ...(this.volby.ccxtVolby || {}),
     });
     // Jen perpetuály: spotové trhy ani seznam měn aplikace nepotřebuje
     // a u několika burz (Gate, MEXC) je jejich API bez CORS — načtení
     // trhů by kvůli nim spadlo celé (v0.57.0, ověřeno sondou).
     ex.fetchCurrencies = async () => ({});
+    // Otevřené příkazy na všech párech najednou: CCXT to u Binance bez
+    // této volby odmítne varováním („could not load open orders").
+    ex.options.warnOnFetchOpenOrdersWithoutSymbol = false;
     if (this.typyTrhu) ex.options.fetchMarkets = { ...(ex.options.fetchMarkets || {}), types: this.typyTrhu };
     this.upravCcxt(ex);
     const nativni = this.nativniHttp && nativniFetch();
@@ -134,6 +139,19 @@ export class CcxtAdapter {
       .replace(/https?:\/\/\S+/g, '')
       .trim();
     return zprava || t('error.network');
+  }
+
+  /**
+   * Technický popis chyby do diagnostiky: třída CCXT a cesta dotazu bez
+   * parametrů (v parametrech je podpis), např. „NetworkError /fapi/v3/account".
+   * Uživatel blok vyfotí a je hned vidět, který dotaz neprošel.
+   */
+  technickyPopis(err) {
+    const c = globalThis.ccxt || {};
+    const trida = Object.keys(c).find((k) => typeof c[k] === 'function' && /Error|Denied|Nonce|Exchange/.test(k)
+      && err?.constructor === c[k]) || err?.name || 'Error';
+    const cesta = (String(err?.message || '').match(/https?:\/\/[^/\s]+(\/[^?\s]*)/) || [])[1] || '';
+    return `${trida}${cesta ? ' ' + cesta : ''}`;
   }
 
   /* ---------- stejné rozhraní jako Bybit adaptér ---------- */
@@ -246,7 +264,7 @@ export class CcxtAdapter {
       return true;
     } catch (err) {
       const zprava = this.prelozChybu(err);
-      this.zapisDiag('chyba', zprava);
+      this.zapisDiag('chyba', `${zprava} [${this.technickyPopis(err)}]`);
       this.setStatus({ rest: 'error' });
       this.handlers.onError?.(zprava);
       return false;
@@ -276,8 +294,9 @@ export class CcxtAdapter {
   async getWalletBalance() {
     const ex = await this.burzaCcxt();
     const b = await ex.fetchBalance();
+    // Dotaz prošel = přehled je; i nulová equity je údaj (prázdný futures
+    // účet), ne chybějící oprávnění (v0.58.2).
     const equity = cislo(b?.total?.[this.mena]);
-    if (!equity) return { ucet: null, chyba: t('account.unavailable') };
     const volny = cislo(b?.free?.[this.mena]);
     const pouzity = cislo(b?.used?.[this.mena]);
     return {

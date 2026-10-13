@@ -1,5 +1,5 @@
 {
-  "verze": "0.58.1",
+  "verze": "0.58.2",
   "novinky": [
     {
       "en": "Cleaner settings: every supported exchange in one list with a Connect button, and Binance demo keys are recognised automatically.",
@@ -8,8 +8,8 @@
   ],
   "opravy": [
     {
-      "en": "Your account backs everything up on its own — the extra backup buttons are gone.",
-      "cs": "Účet zálohuje sám — zbytečná tlačítka zálohy zmizela."
+      "en": "Binance: open orders, account overview, connection status and the read-only key check work properly.",
+      "cs": "Binance: otevřené příkazy, přehled účtu, stav spojení a kontrola klíče jen pro čtení fungují správně."
     }
   ]
 }

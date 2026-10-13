@@ -75,6 +75,20 @@ vysledek = json.loads(ev_async(r"""(async () => {
   const gate2 = vytvorBurzu('gate', {});
   out.gate2 = (await gate2.getTickers()).length;
   out.gate2Nativne = window.__nativni.length;
+  // Kontrola klíče Binance jde přes plugin (sapi nemá CORS): odpověď jako
+  // klíč uživatele 2026-10-13 — Enable Reading + Enable Futures.
+  window.Capacitor.isNativePlatform = () => true;
+  const puvodni = window.Capacitor.Plugins.CapacitorHttp.request;
+  const odpoved = (prava) => async (o) => (o.url.includes('apiRestrictions')
+    ? { status: 200, headers: { 'content-type': 'application/json' }, data: JSON.stringify(prava) } : puvodni(o));
+  const binance = vytvorBurzu('binance', {});
+  binance.setCredentials('KLIC', 'TAJNE');
+  window.Capacitor.Plugins.CapacitorHttp.request = odpoved({ enableReading: true, enableFutures: true, enableWithdrawals: false });
+  out.sFutures = await binance.opravneniKlice();
+  window.Capacitor.Plugins.CapacitorHttp.request = odpoved({ enableReading: true, enableFutures: false, enableWithdrawals: false });
+  out.jenCteni = await binance.opravneniKlice();
+  window.Capacitor.isNativePlatform = () => false;
+  out.prohlizecKlic = await binance.opravneniKlice();
   delete window.Capacitor;
   return JSON.stringify(out);
 })()""") or '{}')
@@ -85,6 +99,9 @@ over(g.get('tickeru', 0) > 500 and g.get('svicek', 0) >= 19 and (g.get('posledni
 over(vysledek.get('gateNativne', 0) >= 2, 'dotazy Gate šly přes plugin')
 over(vysledek.get('okxTickeru', 0) > 300 and vysledek.get('okxNativne') == 0, 'OKX (má CORS) přes plugin nejde')
 over(vysledek.get('gate2', 0) > 500 and vysledek.get('gate2Nativne') == 0, 'mimo APK se plugin nepoužije')
+over(vysledek.get('sFutures') == {'jenCteni': False, 'vyber': False}, f'Binance klíč s Enable Futures = NE jen pro čtení ({vysledek.get("sFutures")})')
+over(vysledek.get('jenCteni') == {'jenCteni': True, 'vyber': False}, 'Binance klíč jen s Enable Reading = jen pro čtení')
+over(vysledek.get('prohlizecKlic') is None, 'v prohlížeči (sapi bez CORS) „nevím", ne „v pořádku"')
 
 konzole = p.prikaz('Runtime.evaluate', expression='(window.__chyby||[]).join(" | ")', returnByValue=True).get('result', {}).get('value') or ''
 over(not konzole, f'bez chyb v konzoli ({konzole})')

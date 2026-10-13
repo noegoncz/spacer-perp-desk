@@ -635,7 +635,12 @@ const STATUS_TRIDA = {
 };
 
 export function renderStatus(status) {
-  const stav = STATUS_TRIDA[status.ws] === undefined ? 'idle' : status.ws;
+  // Burzy přes CCXT nemají WebSocket, data chodí dotazováním (`poll`):
+  // spojení je živé, když poslední dotaz prošel (dřív „Not connected").
+  const ws = status.ws === 'poll'
+    ? (status.rest === 'error' ? 'error' : status.lastUpdate || status.rest === 'ok' ? 'live' : 'connecting')
+    : status.ws;
+  const stav = STATUS_TRIDA[ws] === undefined ? 'idle' : ws;
   dom.statusDot.className = `dot ${STATUS_TRIDA[stav]}`;
   dom.statusText.textContent = t(`status.${stav}`);
   dom.lastUpdate.textContent = status.lastUpdate

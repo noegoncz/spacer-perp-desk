@@ -14,6 +14,7 @@
  *    a plnění s realizovaným ziskem, jeden záznam na zavírací příkaz.
  */
 import { CcxtAdapter } from './ccxt-adapter.js';
+import { nactiCcxt, nativniFetch } from './ccxt.js';
 
 const cislo = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const TYDEN = 7 * 864e5;
@@ -48,8 +49,18 @@ export class BinanceClient extends CcxtAdapter {
    */
   async opravneniKlice() {
     if (this.volby.testnet || this.volby.demo) return null;
+    /*
+     * ⚠ `/sapi/v1/account/apiRestrictions` nemá CORS (ověřeno 2026-10-13):
+     * z WebView by dotaz vždy spadl a kontrola by tiše řekla „nevím" — klíč
+     * s právem obchodovat by prošel. Proto jde přes nativní HTTP v APK;
+     * jinde (prohlížeč) zůstává „nevím" s upozorněním „zkontroluj si to".
+     */
+    const nativni = nativniFetch();
+    if (!nativni) return null;
     try {
-      const ex = await this.burzaCcxt();
+      const ccxt = await nactiCcxt();
+      const ex = new ccxt.binanceusdm({ apiKey: this.apiKey, secret: this.apiSecret, timeout: 20000 });
+      ex.fetchImplementation = nativni;
       const r = await ex.sapiGetAccountApiRestrictions();
       const ano = (k) => r?.[k] === true || r?.[k] === 'true';
       return {

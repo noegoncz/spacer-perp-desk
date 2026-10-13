@@ -302,6 +302,24 @@ nabízí jen Bybit a Binance). Sonda z prohlížeče 2026-10-12:
   zmizelo i „Download my data" a celé Pokročilé (uživatel: účet to řeší;
   přenositelnost dat podle zásad jde vyřídit na žádost e-mailem).
   `zaloha.js` už jen skládá a obnovuje obsah cloudové zálohy.
+**Binance na telefonu (v0.58.2, první skutečný klíč uživatele 2026-10-13):**
+- ⚠ **`/sapi/v1/account/apiRestrictions` nemá CORS** — kontrola „jen pro
+  čtení" u Binance dřív z WebView vždy spadla a vrátila „nevím", takže
+  klíč s „Enable Futures" (= obchodování) prošel. Teď jde přes nativní
+  HTTP v APK (vlastní instance CCXT s `fetchImplementation`); v prohlížeči
+  „nevím". Uložený klíč se kontroluje při startu (`zkontrolujUlozenyKlic`)
+  a s právem obchodovat dostane trvalé varování.
+- `warnOnFetchOpenOrdersWithoutSymbol: false` — jinak CCXT příkazy bez
+  páru odmítne („Could not load open orders").
+- Přehled účtu i s nulovou equity (prázdný futures účet není chybějící
+  oprávnění); text „needsWallet" bez Bybitu.
+- Stav spojení u dotazování (`ws: 'poll'`) podle REST: Live / chyba.
+- CCXT `timeout: 20000`; diagnostika ukazuje třídu chyby a cestu dotazu
+  (`technickyPopis`, bez parametrů — v nich je podpis).
+- ⚠ `test-odolny-start.py` poslouchá na 8078 — na Windows tam může viset
+  jiný `http.server` (šablona videa) a požadavky se náhodně dělí; test
+  pak „padá". Před během zkontroluj `netstat -ano | grep :8078`.
+
 - Testy: `test-uvod.py`, `test-vyber-burzy.py` (pokus o demo),
   `test-vice-pripojeni.py`, `test-zaloha.py` (obnova přes modul).
 

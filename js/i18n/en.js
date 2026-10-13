@@ -364,7 +364,7 @@ export const en = {
   'account.available': 'Free',
   'account.marginUsed': 'Margin',
   'account.unavailable': 'Account overview needs the Wallet permission on your API key.',
-  'account.needsWallet': 'Add the Wallet (read) permission on Bybit to see equity and margin.',
+  'account.needsWallet': 'Your API key can\'t read the account balance, so equity and margin are hidden. On Bybit add the Wallet (read) permission.',
 
   'funding.nextShort': 'Next',
   'funding.dayShort': 'Day',
