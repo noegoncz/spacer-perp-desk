@@ -226,9 +226,32 @@ najednou, nikdy nemuset klíč odebírat; limit jen v budoucím předplatném):*
 - Nastavení → Burzy: všechna připojení, aktivní se štítkem, ostatní
   „Přepnout" (`prepniNaPripojeni`, bez zadávání klíče), „Odpojit" u
   každého; „Přidat burzu" vždy. Nové připojení se přidá a stane aktivním.
-- **Zatím je aktivní jedno připojení najednou.** Krok 4b: spojený seznam
-  pozic ze všech burz (identita účet + pár všude), štítek burzy na kartě,
-  graf z burzy pozice, Historie napříč burzami, limit počtu (vypnutý).
+- ~~Zatím je aktivní jedno připojení najednou.~~ Od v0.59.0 viz krok 4b.
+
+**Krok 4b — všechny účty najednou (v0.59.0, přání uživatele: „přepínat
+a hledat pozice nedává smysl"):**
+- Každé připojení má vlastního klienta (`klienti`: id → adaptér), všichni
+  běží současně (`spustUcty`). Handlery účtu (`handleryUctu`) data označí
+  `burza`, `ucet` (id připojení) a `trh` a slijí je (`stavUctu`) do
+  společného zpracování `HANDLERY`. ⚠ **Identita pozice/příkazu = účet +
+  pár** (`p.ucet`, `${p.ucet}|${p.symbol}`), nikdy jen pár — BTCUSDT může
+  být na dvou burzách i dvou účtech.
+- Přehled účtu = součet účtů (`soucetUctu`); stav v hlavičce a diagnostika
+  = nejhorší účet (`nejhorsiUcet`, `ui.stavSpojeni`); chyby s názvem účtu.
+- Karta pozice má při víc účtech štítek (`nazevUctu`: „Binance", u dvou
+  účtů téže burzy „Bybit ••who8").
+- Graf: `chartUcet` + `grafKlient()` (klient účtu pozice, z dlaždice
+  připojený účet té burzy, jinak veřejný); `grafSUctem()` místo dřívějšího
+  „aktivní burza". Plnění jiného účtu než Historie jen v paměti
+  (`plneniCiziho`) — mezipaměť patří jednomu klíči.
+- **Historie je zatím po účtech:** `client` = účet Historie, volí se
+  čipy nad Historií (`#historyAccounts`, `prepniNaPripojeni`); přepnutí
+  vymaže mezipaměť (patří jednomu klíči) a načte Historii znovu. V
+  nastavení žádné „Přepnout" ani „Aktivní". Další krok: Historie napříč
+  účty (mezipaměť po účtech).
+- Funding v telefonu jen u účtu Historie; kontrola klíčů jen pro čtení
+  u všech účtů při startu.
+- Test: `tools/test-vice-pripojeni.py` (dva účty, štítky, Historie, odebrání).
 - Test: `tools/test-vice-pripojeni.py`.
 
 **Watchlists z libovolné burzy (v0.56.0, přání uživatele: přidávat páry

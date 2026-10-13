@@ -2804,6 +2804,19 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 }
 .nabidka-volba button.active { border-color: var(--accent); color: var(--accent); background: rgba(76, 154, 255, 0.12); }
 
+/* Víc účtů (v0.59.0): burza u karty pozice, volba účtu v Historii. */
+.pos-burza {
+  margin-right: 6px; padding: 1px 6px; border-radius: 6px; font-size: 0.68rem; font-weight: 700;
+  letter-spacing: 0.4px; text-transform: uppercase; color: var(--text-dim); background: var(--surface-2);
+  vertical-align: 2px;
+}
+.history-ucty { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 10px; }
+.history-ucet {
+  min-height: 34px; padding: 0 12px; border: 1px solid var(--border); border-radius: 999px;
+  background: transparent; color: var(--text-dim); font-size: 0.85rem; font-weight: 600;
+}
+.history-ucet.active { border-color: var(--accent); color: var(--accent); background: rgba(76, 154, 255, 0.12); }
+
 /* Burzy v nastavení (v0.58.0): všechny pod sebou, účty pod názvem. */
 .exchange-blok + .exchange-blok { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
 .exchange-ucet { margin-top: 6px; padding-left: 2px; }

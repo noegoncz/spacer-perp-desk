@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Víc připojených burz (v0.55.0, první část).
+Víc připojených burz (v0.55.0) — od v0.59.0 všechny účty najednou.
 
 1) Dosavadní jediný klíč se převede na první připojení (nic se neztratí).
-2) V nastavení jsou všechna připojení; aktivní má štítek, ostatní „Přepnout"
-   — přepnutí bez nového zadávání klíče, pozice se načtou znovu.
-3) Odebrání neaktivního připojení nechá aktivní běžet; odebrání aktivního
-   přepne na zbývající.
+2) Dva účty běží současně: pozice obou v jednom seznamu, u karet štítek
+   účtu, v nastavení žádné „Přepnout"; Historie má volbu účtu.
+3) Odebrání jednoho účtu nechá druhý běžet (jeho pozice zůstanou).
 4) Připojení (s klíči) se nikdy nedostanou do zálohy.
 
 Druhé připojení je Bybit s jiným (vymyšleným) klíčem — podstrčená burza
@@ -54,38 +53,57 @@ def radky():
     time.sleep(0.6)
     return json.loads(ev("""JSON.stringify([...document.querySelectorAll('#exchangeList .exchange-row[data-pripojeni]')].map((r) => ({
       id: r.dataset.pripojeni, nazev: r.closest('.exchange-blok').querySelector('.exchange-name').textContent,
-      aktivni: r.classList.contains('aktivni'), klic: r.querySelector('.exchange-key').textContent })))""") or '[]')
+      klic: r.querySelector('.exchange-key').textContent })))""") or '[]')
 
 
 print('1) převod dosavadního klíče')
 r = radky()
 print('   připojení:', r)
-over(len(r) == 1 and r[0]['aktivni'] and r[0]['nazev'] == 'Bybit', 'dosavadní klíč je první, aktivní připojení')
+over(len(r) == 1 and r[0]['nazev'] == 'Bybit', 'dosavadní klíč je první připojení')
 
-print('2) druhé připojení a přepnutí')
+print('2) dva účty najednou')
 ev("""(() => { const s = JSON.parse(localStorage.getItem('perpdesk.pripojeni'));
   s.push({ id: 'druhy', burza: 'bybit', volby: {}, apiKey: 'DRUHYKLIC9999', apiSecret: 'TAJNE' });
   localStorage.setItem('perpdesk.pripojeni', JSON.stringify(s)); })()""")
 p.prikaz('Page.reload')
-time.sleep(5)
+time.sleep(6)
 r = radky()
 print('   připojení:', r)
-over(len(r) == 2 and r[0]['aktivni'] and not r[1]['aktivni'], 'v nastavení jsou obě, aktivní je první')
-ev("document.querySelector('#exchangeList .exchange-row[data-pripojeni=druhy] .secondary-btn').click()")
-time.sleep(4)
-over(ev("localStorage.getItem('perpdesk.apiKey')") == 'DRUHYKLIC9999', 'přepnutí udělalo aktivním druhý klíč')
-over(ev("document.querySelectorAll('.position').length") >= 1, 'pozice se po přepnutí načetly')
-r = radky()
-over(r and r[1]['aktivni'] and not r[0]['aktivni'], 'štítek Aktivní je u druhého')
+over(len(r) == 2, 'v nastavení jsou oba účty')
+over(not ev("document.querySelector('#exchangeList .exchange-row[data-pripojeni] .secondary-btn')"), 'žádné tlačítko Přepnout')
+ev("document.getElementById('backBtn').click()")
+time.sleep(0.5)
+karty = ev("[...document.querySelectorAll('.position')].map((k) => (k.querySelector('.pos-burza') || {}).textContent + ' ' + k.querySelector('.pos-symbol').textContent)") or []
+print('   karty:', karty)
+over(len(karty) == 2 and len(set(karty)) == 2 and all('Bybit ••' in k for k in karty),
+     'pozice obou účtů v jednom seznamu, každá se štítkem účtu')
+ev("document.querySelector('.tab[data-tab=history]').click()")
+time.sleep(1.5)
+ucty = ev("[...document.querySelectorAll('#historyAccounts .history-ucet')].map((b) => b.textContent + (b.classList.contains('active') ? '*' : ''))") or []
+print('   Historie:', ucty)
+over(len(ucty) == 2 and sum(u.endswith('*') for u in ucty) == 1, 'Historie nabízí volbu účtu')
+ev("document.querySelectorAll('#historyAccounts .history-ucet')[1].click()")
+time.sleep(1.5)
+over(ev("document.querySelectorAll('#historyAccounts .history-ucet')[1].classList.contains('active')"), 'volba účtu v Historii funguje')
+over(ev("document.querySelectorAll('.position').length") == 2, 'pozice obou účtů běží dál')
+ev("document.querySelector('.tab[data-tab=positions]').click()")
+time.sleep(0.5)
 
 print('3) odebrání')
 ev("window.confirm = () => true")
-prvni = r[0]['id'] if r else ''
-ev(f"document.querySelector('#exchangeList .exchange-row[data-pripojeni={prvni}] .text-btn').click()")
-time.sleep(1)
 r = radky()
-over(len(r) == 1 and r[0]['id'] == 'druhy' and r[0]['aktivni'], 'odebrání neaktivního nechá aktivní')
-over(ev("localStorage.getItem('perpdesk.apiKey')") == 'DRUHYKLIC9999', 'aktivní klíč zůstal')
+prvni = [x['id'] for x in r if x['id'] != 'druhy'][0] if r else ''
+ev(f"document.querySelector('#exchangeList .exchange-row[data-pripojeni={prvni}] .text-btn').click()")
+time.sleep(1.5)
+r = radky()
+over(len(r) == 1 and r[0]['id'] == 'druhy', 'odebrání jednoho účtu nechá druhý')
+ev("document.getElementById('backBtn').click()")
+time.sleep(0.5)
+over(ev("document.querySelectorAll('.position').length") == 1 and not ev("document.querySelector('.pos-burza')"),
+     'zbyla pozice druhého účtu (u jednoho účtu bez štítku)')
+over(ev("localStorage.getItem('perpdesk.apiKey')") == 'DRUHYKLIC9999', 'aktivní klíč = zbylý účet')
+ev("document.getElementById('settingsBtn').click()")
+time.sleep(0.5)
 ev("document.querySelector('#exchangeList .exchange-row[data-pripojeni=druhy] .text-btn').click()")
 time.sleep(1)
 over(not ev("localStorage.getItem('perpdesk.apiKey')") and ev("localStorage.getItem('perpdesk.pripojeni')") in (None, '[]'),

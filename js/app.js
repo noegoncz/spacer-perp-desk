@@ -174,7 +174,7 @@ const HANDLERY = {
      * kolem hladiny vyrobilo protnutí, které se nestalo.
      */
     for (const p of list) {
-      const k = klicGrafu(client.burza.id, p.symbol);
+      const k = klicGrafu(p.burza || client.burza.id, p.symbol);
       if (k !== grafKlic()) zkontrolujHladiny(k, p.mark);
     }
     zkontrolujSltp(list);
@@ -229,8 +229,154 @@ const HANDLERY = {
 };
 
 /*
- * Klient burzy podle uložené volby (v0.54.0). Při výběru jiné burzy se
- * vymění (`prepniBurzu`) — `let`, ne `const`. Bez uložené volby Bybit.
+ * Všechny připojené účty najednou (v0.59.0, přání uživatele: „chceme mít
+ * všechny účty online, přepínat a hledat pozice nedává smysl").
+ *
+ * Každé připojení má vlastního klienta (`klienti`), všichni běží současně.
+ * Jejich data se slévají: pozice a příkazy dostanou `burza`, `ucet` (id
+ * připojení) a `trh` („binance:BTCUSDT") a jdou do stejného zpracování
+ * jako dřív (`HANDLERY`); přehled účtu se sčítá. Graf pozice se ptá
+ * klienta toho účtu (`chartUcet`).
+ *
+ * `client` zůstává: je to účet, jehož **Historii** uživatel zrovna vidí
+ * (vybírá se přímo v Historii) — Historie a mezipaměť jsou zatím po účtech.
+ */
+const klienti = new Map();   // id připojení → adaptér
+const stavUctu = new Map();  // id připojení → { pozice, prikazy, ucet, chyba, chybaPrikazu, status }
+
+function stavUctuPro(id) {
+  if (!stavUctu.has(id)) {
+    stavUctu.set(id, { pozice: [], prikazy: [], ucet: null, chyba: null, chybaPrikazu: null,
+      status: { ws: 'idle', rest: 'idle', lastUpdate: null } });
+  }
+  return stavUctu.get(id);
+}
+
+const vsechnyPozice = () => [...stavUctu.values()].flatMap((s) => s.pozice);
+const vsechnyPrikazy = () => [...stavUctu.values()].flatMap((s) => s.prikazy);
+
+/** Přehled účtu: součet všech účtů, které ho daly. */
+function soucetUctu() {
+  const ucty = [...stavUctu.values()].filter((s) => s.ucet);
+  if (!ucty.length) {
+    const chyba = [...stavUctu.values()].find((s) => s.chyba)?.chyba || null;
+    return [null, chyba];
+  }
+  if (ucty.length === 1) return [ucty[0].ucet, null];
+  const soucet = (k) => ucty.reduce((s, u) => s + (Number(u.ucet[k]) || 0), 0);
+  const equity = soucet('equity');
+  const pouzity = soucet('pouzity');
+  return [{ equity, volny: soucet('volny'), pouzity,
+    vyuziti: equity > 0 ? (pouzity / equity) * 100 : null, typ: '' }, null];
+}
+
+/** Stav spojení do hlavičky: nejhorší ze všech účtů (chyba > připojuje > živě). */
+function nejhorsiUcet() {
+  const poradi = { error: 0, connecting: 1, idle: 1, live: 2 };
+  let nej = null;
+  for (const [id, s] of stavUctu) {
+    if (!klienti.has(id)) continue;
+    const r = poradi[ui.stavSpojeni(s.status)] ?? 1;
+    if (!nej || r < nej.r) nej = { id, r, status: s.status };
+  }
+  return nej;
+}
+const souhrnStavu = () => nejhorsiUcet()?.status || client.status;
+
+/** Data jednoho účtu → společné zpracování (pozice, příkazy, účet…). */
+function handleryUctu(id, burza) {
+  const znacka = (x) => ({ ...x, burza, ucet: id, trh: klicTrhu(burza, x.symbol) });
+  const nazev = () => BURZY[burza]?.nazev || burza;
+  return {
+    onTicker: (z) => zivaZmenaTrhu({ ...z, burza }),
+    onPositions(list) {
+      stavUctuPro(id).pozice = list.map(znacka);
+      HANDLERY.onPositions(vsechnyPozice());
+    },
+    onFundingUlozit: (symbol, stav) => HANDLERY.onFundingUlozit(symbol, stav),
+    onAccount(ucet, chyba) {
+      Object.assign(stavUctuPro(id), { ucet, chyba });
+      HANDLERY.onAccount(...soucetUctu());
+    },
+    onOrders(orders, chyba) {
+      Object.assign(stavUctuPro(id), { prikazy: orders.map(znacka), chybaPrikazu: chyba });
+      HANDLERY.onOrders(vsechnyPrikazy(), [...stavUctu.values()].find((s) => s.chybaPrikazu)?.chybaPrikazu || null);
+    },
+    onKline(bar) {
+      if (chartUcet === id) HANDLERY.onKline(bar);
+    },
+    onDiag: () => HANDLERY.onDiag(),
+    onStatus(status) {
+      stavUctuPro(id).status = status;
+      HANDLERY.onStatus(souhrnStavu());
+    },
+    onError: (m) => HANDLERY.onError(klienti.size > 1 ? `${nazev()}: ${m}` : m),
+  };
+}
+
+/** „Binance" — nebo „Binance ••KUZD", když je na burze účtů víc. */
+function nazevUctu(id) {
+  const k = klienti.get(id);
+  if (!k) return '';
+  const nazev = k.burza?.nazev || '';
+  const stejne = [...klienti.values()].filter((x) => x.burza?.id === k.burza?.id).length;
+  return stejne > 1 ? `${nazev} ••${String(k.apiKey).slice(-4)}` : nazev;
+}
+
+/** Klient připojeného účtu na burze (první, když jich je víc), jinak null. */
+function klientBurzy(burza) {
+  for (const k of klienti.values()) if (k.burza?.id === burza) return k;
+  return null;
+}
+
+/** Spustí klienty všech uložených připojení, která ještě neběží. */
+async function spustUcty() {
+  const pripojeni = store.loadPripojeni();
+  const nove = [];
+  for (const pr of pripojeni) {
+    if (klienti.has(pr.id)) continue;
+    let k;
+    try {
+      k = vytvorBurzu(pr.burza, handleryUctu(pr.id, pr.burza), pr.volby || {});
+    } catch { continue; }
+    k.pripojeniId = pr.id;
+    k.setCredentials(pr.apiKey, pr.apiSecret);
+    // Uložený funding (mezipaměť patří účtu Historie) ještě před startem —
+    // karty ho ukážou s prvními pozicemi.
+    if (pr.id === store.aktivniPripojeni()) k.obnovUlozeneFundingy?.(fundingyUlozene);
+    klienti.set(pr.id, k);
+    stavUctuPro(pr.id);
+    nove.push(k);
+  }
+  const aktivni = klienti.get(store.aktivniPripojeni()) || klienti.values().next().value;
+  if (aktivni && aktivni !== client) {
+    if (![...klienti.values()].includes(client)) client.stop();
+    client = aktivni;
+    ui.nastavNazevBurzy(client.burza.nazev);
+  }
+  await Promise.all(nove.map((k) => k.start()));
+}
+
+/** Zastaví a zapomene klienta jednoho připojení (jeho data zmizí ze seznamu). */
+function zastavUcet(id) {
+  klienti.get(id)?.stop();
+  klienti.delete(id);
+  stavUctu.delete(id);
+  HANDLERY.onPositions(vsechnyPozice());
+  HANDLERY.onOrders(vsechnyPrikazy(), null);
+  HANDLERY.onAccount(...soucetUctu());
+}
+
+function zastavVsechnyUcty() {
+  for (const k of klienti.values()) k.stop();
+  client.stop();
+  klienti.clear();
+  stavUctu.clear();
+}
+
+/*
+ * Klient bez klíče do startu (a když není připojené nic) — Watchlists
+ * a výchozí název burzy. Po startu ho nahradí účet z `klienti`.
  */
 let client = (() => {
   const { id, volby } = store.loadBurza();
@@ -250,7 +396,10 @@ let client = (() => {
 const klicTrhu = (burza, symbol) => `${burza}:${symbol}`;
 const verejneKlienty = new Map();
 function verejnyKlient(burza) {
-  if (!burza || client.burza?.id === burza) return client;
+  if (!burza) return client;
+  const pripojeny = klientBurzy(burza);
+  if (pripojeny) return pripojeny;
+  if (client.burza?.id === burza) return client;
   if (!verejneKlienty.has(burza)) {
     verejneKlienty.set(burza, vytvorBurzu(burza, {
       onTicker: (z) => zivaZmenaTrhu({ ...z, burza }),
@@ -259,10 +408,14 @@ function verejnyKlient(burza) {
   }
   return verejneKlienty.get(burza);
 }
-/** Burza otevřeného grafu (z dlaždice může být jiná než aktivní připojení). */
+/** Burza a účet otevřeného grafu (účet null = graf páru bez připojení). */
 let chartBurza = null;
-const grafKlient = () => verejnyKlient(chartBurza || client.burza.id);
-const grafZAktivni = () => !chartBurza || chartBurza === client.burza.id;
+let chartUcet = null;
+const grafKlient = () => klienti.get(chartUcet) || verejnyKlient(chartBurza || client.burza.id);
+/** Graf patří připojenému účtu — jen pak jsou příkazy, plnění a pozice. */
+const grafSUctem = () => Boolean(chartUcet && klienti.has(chartUcet));
+/** Pozice patří otevřenému grafu (stejný pár i účet). */
+const naGrafu = (p) => p.symbol === chartSymbol && p.ucet === chartUcet;
 /*
  * Klíč grafu pro kresby a alarmy (v0.56.1, přání uživatele): všechno, co
  * uživatel v grafu udělá, patří jen k tomu jednomu grafu — BTCUSDT na
@@ -280,14 +433,6 @@ function nazevKlice(klic) {
 }
 /** Server hlídá jen alarmy na Bybitu (bere ceny z Bybitu). */
 const hlidaServerAlarm = (a) => !String(a?.symbol).includes(':') && alarmyServer.hlidaServer();
-
-function prepniBurzu(id, volby = {}) {
-  if (client.burza?.id === id && JSON.stringify(client.volby || {}) === JSON.stringify(volby)) return;
-  client.stop();
-  client = vytvorBurzu(id, HANDLERY, volby);
-  client.volby = client.volby || volby;
-  ui.nastavNazevBurzy(client.burza.nazev);
-}
 
 /* ---------- seznam pozic: řazení a filtr ---------- */
 
@@ -323,8 +468,9 @@ function serazenePozice() {
 function prikazyPodleParu() {
   const mapa = new Map();
   for (const o of otevrenePrikazy) {
-    if (!mapa.has(o.symbol)) mapa.set(o.symbol, []);
-    mapa.get(o.symbol).push(o);
+    const k = `${o.ucet}|${o.symbol}`;
+    if (!mapa.has(k)) mapa.set(k, []);
+    mapa.get(k).push(o);
   }
   return mapa;
 }
@@ -380,8 +526,10 @@ function vykresliPozice() {
   const seznam = serazenePozice();
   const prikazy = prikazyPodleParu();
   ui.renderPositions(seznam, hideAmounts, openChart, prahLikvidace, {
-    zebrik: (p) => zebrikPozice(p, prikazy.get(p.symbol) || []),
+    zebrik: (p) => zebrikPozice(p, prikazy.get(`${p.ucet}|${p.symbol}`) || []),
     equity: ucetStav.ucet?.equity ?? null,
+    // Víc účtů: u karty i burza (u dvou účtů na jedné burze konec klíče).
+    burza: klienti.size > 1 ? (p) => nazevUctu(p.ucet) : null,
   });
 
   /*
@@ -389,9 +537,9 @@ function vykresliPozice() {
    * pozice** — ty by se jinak neměly kde ukázat, proužek v kartě je bez
    * pozice nemá kam nakreslit. Zbytek je vidět rovnou v kartě.
    */
-  const sPozici = new Set(lastPositions.map((p) => p.symbol));
+  const sPozici = new Set(lastPositions.map((p) => `${p.ucet}|${p.symbol}`));
   ui.renderOrders(
-    otevrenePrikazy.filter((o) => !sPozici.has(o.symbol)),
+    otevrenePrikazy.filter((o) => !sPozici.has(`${o.ucet}|${o.symbol}`)),
     hideAmounts,
     otevriPrikaz,
   );
@@ -443,7 +591,7 @@ function zkontrolujSltp(list) {
 
   const zive = new Set();
   for (const p of list) {
-    const klic = `${p.symbol}#${p.positionIdx ?? 0}`;
+    const klic = `${p.ucet}|${p.symbol}#${p.positionIdx ?? 0}`;
     zive.add(klic);
     const predchozi = sltpPosledni.get(klic);
     sltpPosledni.set(klic, p.mark);
@@ -500,6 +648,13 @@ const MAX_OKEN_PLNENI = 60;     // pojistka ~ 14 měsíců na jedno dotažení
 const PREKRYV = 3600e3;
 const klicPlneni = (f) => f.execId || `${f.time}|${f.price}|${f.qty}|${f.buy}`;
 
+const plneniCizich = new Map();   // `${id účtu}|${pár}` → stejný tvar jako plneniPary
+function plneniCiziho(klient, symbol) {
+  const k = `${klient.pripojeniId}|${symbol}`;
+  if (!plneniCizich.has(k)) plneniCizich.set(k, { od: Date.now(), aktualizovano: 0, plneni: new Map() });
+  return plneniCizich.get(k);
+}
+
 async function nactiPlneniZTelefonu(symbol) {
   let z = plneniPary.get(symbol);
   if (z) return z;
@@ -514,8 +669,14 @@ async function nactiPlneniZTelefonu(symbol) {
   return z;
 }
 
-async function dotahniPlneni(symbol, od, jenUlozene = false) {
-  const z = await nactiPlneniZTelefonu(symbol);
+/**
+ * Plnění páru. Účet Historie (`client`) má mezipaměť v telefonu; graf
+ * pozice jiného účtu (v0.59.0) drží plnění jen v paměti běhu — mezipaměť
+ * patří jednomu klíči.
+ */
+async function dotahniPlneni(symbol, od, jenUlozene = false, klient = client) {
+  const vlastni = klient === client;
+  const z = vlastni ? await nactiPlneniZTelefonu(symbol) : plneniCiziho(klient, symbol);
   const serazene = () => [...z.plneni.values()].sort((a, b) => a.time - b.time);
   if (jenUlozene) return serazene();
 
@@ -534,11 +695,11 @@ async function dotahniPlneni(symbol, od, jenUlozene = false) {
     hranice = zacatek;
   }
   // Souběžně (v0.38.0), ne okno po okně.
-  (await Promise.all(okna.map(([a, b]) => client.getExecutions(symbol, a, b))))
+  (await Promise.all(okna.map(([a, b]) => klient.getExecutions(symbol, a, b))))
     .forEach((seznam) => seznam.forEach((f) => z.plneni.set(klicPlneni(f), f)));
   z.od = Math.min(z.od, hranice);
   z.aktualizovano = ted;
-  mezipamet.uloz(`plneni:${symbol}`, { od: z.od, aktualizovano: z.aktualizovano, plneni: [...z.plneni.values()] });
+  if (vlastni) mezipamet.uloz(`plneni:${symbol}`, { od: z.od, aktualizovano: z.aktualizovano, plneni: [...z.plneni.values()] });
   return serazene();
 }
 
@@ -585,7 +746,7 @@ function otevreniZPlneni(plneni, position) {
 }
 
 async function znackyPlneni(position, od = Date.now() - OKNO_PLNENI) {
-  if (!client.hasCredentials() || !chartSymbol || !grafZAktivni()) return;
+  if (!chartSymbol || !grafSUctem()) return;
   const symbol = chartSymbol;
   const cislo = ++pozadavekPlneni;
   /*
@@ -613,11 +774,12 @@ async function znackyPlneni(position, od = Date.now() - OKNO_PLNENI) {
     })));
   };
   try {
-    const ulozena = await dotahniPlneni(symbol, od, true);
+    const klient = grafKlient();
+    const ulozena = await dotahniPlneni(symbol, od, true, klient);
     if (ulozena.length) kresli(ulozena, otevreniZPlneni(ulozena, position));
-    const plneni = await dotahniPlneni(symbol, od);
+    const plneni = await dotahniPlneni(symbol, od, false, klient);
     let otevreno = otevreniZPlneni(plneni, position);
-    if (otevreno === null && position) otevreno = await client.otevreniPozice(position).catch(() => null);
+    if (otevreno === null && position) otevreno = await klient.otevreniPozice(position).catch(() => null);
     kresli(plneni, otevreno);
   } catch {
     /* značky jsou doplněk — bez nich graf funguje dál */
@@ -627,9 +789,10 @@ async function znackyPlneni(position, od = Date.now() - OKNO_PLNENI) {
 /** „Bybit · Unified" — burza a typ účtu nad grafem (víc burz přijde). */
 function popisBurzy() {
   // Graf páru z dlaždice jiné burzy: jen její název.
-  if (!grafZAktivni()) return BURZY[chartBurza]?.nazev || chartBurza;
-  const ucet = client.popisUctu?.();
-  return ucet ? `${client.burza.nazev} · ${ucet}` : client.burza.nazev;
+  if (!grafSUctem()) return BURZY[chartBurza]?.nazev || chartBurza;
+  const k = grafKlient();
+  const ucet = k.popisUctu?.();
+  return ucet ? `${nazevUctu(chartUcet)} · ${ucet}` : nazevUctu(chartUcet);
 }
 
 /** Linka aktuální ceny se ziskem; bez pozice se nekreslí. */
@@ -694,9 +857,10 @@ function zebrikPozice(p, orders) {
 
 /** Klepnutí na příkaz v seznamu otevře graf toho páru. */
 function otevriPrikaz(order) {
-  const pozice = lastPositions.find((p) => p.symbol === order.symbol) || null;
+  const pozice = lastPositions.find((p) => p.symbol === order.symbol && p.ucet === order.ucet) || null;
   prohlizenyObchod = null;
-  chartBurza = client.burza.id;
+  chartBurza = order.burza || client.burza.id;
+  chartUcet = order.ucet || client.pripojeniId || null;
   chartInterval = intervalUzivatele;
   return otevriGraf(order.symbol, pozice, null);
 }
@@ -711,7 +875,11 @@ let zacatekNacitani = 0;
 const DIAGNOSTIKA_PO = 6000;
 
 function ukazDiagnostiku() {
-  if (!client.hasCredentials() || client.status.rest === 'ok') {
+  const nej = nejhorsiUcet();
+  const k = nej ? klienti.get(nej.id) : client;
+  // Data už jednou přišla (dotazování pak hlásí „loading") = není co ladit
+  // (v0.59.0: dřív visela pod prázdným účtem „No open positions").
+  if (!k.hasCredentials() || k.status.rest === 'ok' || (k.status.lastUpdate && k.status.rest !== 'error')) {
     ui.showDiagnostics(null);
     return;
   }
@@ -724,8 +892,8 @@ function ukazDiagnostiku() {
     ukazDiagnostiku.odklad = setTimeout(ukazDiagnostiku, ceka + 50);
     return;
   }
-  const d = client.diag;
-  const s = client.status;
+  const d = k.diag;
+  const s = k.status;
   const cas = (t) => (t ? new Date(t).toLocaleTimeString(undefined, { hour12: false }) : '—');
   ui.showDiagnostics(
     `krok: ${d.krok}
@@ -874,19 +1042,19 @@ async function connectIfPossible() {
     return;
   }
 
-  client.setCredentials(apiKey, apiSecret);
-  mezipamet.nastavVlastnika(apiKey);
+  // Všechny účty se rozjedou níž (spustUcty); `client` = účet Historie.
+  const aktivni = store.loadPripojeni().find((pr) => pr.id === store.aktivniPripojeni());
+  mezipamet.nastavVlastnika(aktivni?.apiKey || apiKey);
   if (!ukazSnimek()) ui.showLoading();
   // Uložený funding hned do klienta — karty ho ukážou s prvními pozicemi,
   // obnoví se na pozadí. Čtení z telefonu trvá milisekundy.
   try {
     fundingyUlozene = (await mezipamet.nacti('funding')) || {};
-    client.obnovUlozeneFundingy(fundingyUlozene);
   } catch { /* bez uloženého fundingu se jen počítá od začátku */ }
   zacatekNacitani = Date.now();
-  ukazDiagnostiku();
   try {
-    await client.start();
+    await spustUcty();
+    ukazDiagnostiku();
     zkontrolujUlozenyKlic();
   } catch (err) {
     ui.showError(err?.message || String(err));
@@ -907,7 +1075,7 @@ function wireEvents() {
     else ukazUvod('burza', true);
   });
   naUdalost('retryBtn', 'click', () => {
-    if (client.hasCredentials()) client.refresh();
+    for (const k of klienti.values()) k.refresh();
   });
 
   /*
@@ -920,9 +1088,9 @@ function wireEvents() {
     tl?.classList.add('toci');
     try {
       if (aktivniZalozka === 'watchlist') await obnovTrhy();
-      else if (!client.hasCredentials()) openSettings();
+      else if (!klienti.size) openSettings();
       else if (aktivniZalozka === 'history') await obnovHistorii(true);
-      else await client.refresh();
+      else await Promise.all([...klienti.values()].map((k) => k.refresh()));
     } finally {
       tl?.classList.remove('toci');
     }
@@ -1183,9 +1351,9 @@ function wireEvents() {
   // Android uspaná WS spojení tiše zabíjí — po návratu do popředí se ověří stav.
   document.addEventListener('visibilitychange', () => {
     const visible = document.visibilityState === 'visible';
-    client.setForeground(visible);
+    for (const k of klienti.values()) k.setForeground(visible);
     if (visible) {
-      client.ensureConnected();
+      for (const k of klienti.values()) k.ensureConnected();
       checkForUpdate();
     }
   });
@@ -1210,7 +1378,7 @@ function postavVyberJazyka() {
     vykresliPozice();
     // Přehled účtu má vlastní popisky, překreslit ho taky.
     ui.renderAccount(ucetStav.ucet, ucetStav.chyba, hideAmounts);
-    ui.renderStatus(client.status);
+    ui.renderStatus(souhrnStavu());
     if (trhy.length) vykresliTrhy();
     if (chart) {
       postavNabidky();
@@ -1281,11 +1449,14 @@ async function testCredentials() {
 let varovaniKlice = null;
 
 async function zkontrolujUlozenyKlic() {
-  if (!client.hasCredentials()) return;
-  const o = await client.opravneniKlice();
-  if (o?.vyber) varovaniKlice = `⚠ ${t('settings.storedKeyWithdraw')}`;
-  else if (o && !o.jenCteni) varovaniKlice = `⚠ ${t('settings.storedKeyNotReadOnly')}`;
-  else varovaniKlice = null;
+  const varovani = [];
+  await Promise.all([...klienti.entries()].map(async ([id, k]) => {
+    const o = await k.opravneniKlice().catch(() => null);
+    const pred = klienti.size > 1 ? `${nazevUctu(id)}: ` : '';
+    if (o?.vyber) varovani.push(`⚠ ${pred}${t('settings.storedKeyWithdraw')}`);
+    else if (o && !o.jenCteni) varovani.push(`⚠ ${pred}${t('settings.storedKeyNotReadOnly')}`);
+  }));
+  varovaniKlice = varovani.length ? varovani.join(' ') : null;
   if (varovaniKlice) ui.showError(varovaniKlice);
 }
 
@@ -1382,40 +1553,48 @@ async function saveAndConnect() {
   el('apiSecret').value = '';
   ui.clearSettingsMessage();
   skryjUvod();
-  await prepniNaPripojeni(id);
+  // Nový účet se přidá k běžícím; Historie na něj přejde, jen když je první.
+  const prvni = !klienti.size;
+  if (prvni) {
+    ui.showLoading();
+    zacatekNacitani = Date.now();
+  }
+  if (prvni) await prepniNaPripojeni(id);
+  else {
+    // pridejPripojeni udělal nový účet aktivním — Historie ale zůstává.
+    if (client.pripojeniId) store.aktivujPripojeni(client.pripojeniId);
+    await spustUcty();
+  }
+  vykresliBurzy();
+  ui.showView('positions');
+  dokresliSeznamJeLiZastaraly();
+  zkontrolujUlozenyKlic();
 }
 
 /**
- * Přepne aplikaci na uložené připojení (v0.55.0): klíč se znovu nezadává.
- * Zatím je aktivní jedno připojení najednou — spojený seznam pozic ze
- * všech burz je další krok.
+ * Účet, jehož Historii uživatel vidí (v0.59.0 — pozice všech účtů běží
+ * pořád, přepíná se jen Historie). Mezipaměť patří jednomu klíči, takže
+ * se při změně účtu vymaže a Historie se načte znovu.
  */
 async function prepniNaPripojeni(id) {
   if (!store.aktivujPripojeni(id)) return;
-  const { apiKey, apiSecret } = store.loadCredentials();
-  const { id: burza, volby } = store.loadBurza();
-  prepniBurzu(burza, volby);
-  // Jiný účet = jiná historie: mezipaměť se při jiném klíči sama vymaže.
+  await spustUcty();
+  const k = klienti.get(id);
+  if (!k) return;
+  client = k;
+  ui.nastavNazevBurzy(client.burza.nazev);
   zapomenHistorii();
-  mezipamet.nastavVlastnika(apiKey);
-  varovaniKlice = null;
-  lastPositions = [];
+  mezipamet.nastavVlastnika(client.apiKey);
   vykresliBurzy();
-  client.stop();
-  client.setCredentials(apiKey, apiSecret);
-  ui.clearError();
-  ui.showLoading();
-  zacatekNacitani = Date.now();
-  ui.showView('positions');
-  dokresliSeznamJeLiZastaraly();
-  await client.start();
+  if (aktivniZalozka === 'history') nactiHistorii();
 }
 
-/** Odebere jedno připojení; aktivní nahradí jiné, nebo nic. */
+/** Odebere jedno připojení; ostatní účty běží dál. */
 async function odeberPripojeni(id) {
   if (!confirm(t('exchanges.confirmRemove'))) return;
   const aktivni = store.aktivniPripojeni() === id;
   store.odeberPripojeni(id);
+  zastavUcet(id);
   if (!aktivni) {
     vykresliBurzy();
     return;
@@ -1427,7 +1606,7 @@ async function odeberPripojeni(id) {
     await prepniNaPripojeni(dalsi.id);
     return;
   }
-  client.stop();
+  zastavVsechnyUcty();
   // Poslední připojení pryč = jako odpojení: i uložená historie účtu.
   store.clearCredentials();
   zapomenHistorii();
@@ -1452,7 +1631,7 @@ function zapomenHistorii() {
 
 function clearCredentials() {
   if (!confirm(t('settings.confirmClear'))) return;
-  client.stop();
+  zastavVsechnyUcty();
   store.clearCredentials();
   zapomenHistorii();
   varovaniKlice = null;
@@ -1466,7 +1645,8 @@ function clearCredentials() {
 /** Z karty pozice. */
 const openChart = (position) => {
   prohlizenyObchod = null;
-  chartBurza = client.burza.id;
+  chartBurza = position.burza || client.burza.id;
+  chartUcet = position.ucet || client.pripojeniId || null;
   chartInterval = intervalUzivatele; // ne ten, který si půjčila Historie
   return otevriGraf(position.symbol, position, null);
 };
@@ -1475,6 +1655,8 @@ const openChart = (position) => {
 const openChartSymbol = (trh) => {
   prohlizenyObchod = null;
   chartBurza = trh?.burza || client.burza.id;
+  // Pár z dlaždice: připojený účet té burzy (pozice, příkazy), jinak bez účtu.
+  chartUcet = klientBurzy(chartBurza)?.pripojeniId || null;
   chartInterval = intervalUzivatele;
   return otevriGraf(trh.symbol, null, trh);
 };
@@ -1485,10 +1667,10 @@ const openChartSymbol = (trh) => {
  * nezdrží, čára jen chvíli vede od levého okraje.
  */
 function nactiOtevreni(position) {
-  if (!position || !client.hasCredentials()) return;
-  client.otevreniPozice(position)
+  if (!position || !grafSUctem()) return;
+  grafKlient().otevreniPozice(position)
     .then((kdy) => {
-      if (chartPosition?.symbol !== position.symbol || !kdy) return;
+      if (chartPosition?.symbol !== position.symbol || chartPosition?.ucet !== position.ucet || !kdy) return;
       chartOtevreno = kdy;
       applyChartLines();
     })
@@ -1503,8 +1685,8 @@ async function otevriGraf(symbol, position, trh) {
    * dat a do té doby vypadal graf jinak (limitky bez množství a barvy).
    * Prohlídka obchodu z Historie pozici záměrně nemá.
    */
-  if (!position && !prohlizenyObchod && grafZAktivni()) {
-    position = lastPositions.find((p) => p.symbol === symbol) || null;
+  if (!position && !prohlizenyObchod && grafSUctem()) {
+    position = lastPositions.find((p) => p.symbol === symbol && p.ucet === chartUcet) || null;
   }
   chartSymbol = symbol;
   chartPosition = position;
@@ -1605,6 +1787,7 @@ function closeChart() {
   chartOrders = [];
   clearInterval(ordersTimer);
   client.setKlineSubscription(null, null);
+  klienti.forEach((k) => k.setKlineSubscription(null, null));
   verejneKlienty.forEach((k) => k.setKlineSubscription(null, null));
   zavriNabidky();
   ui.showChart(false);
@@ -1706,7 +1889,7 @@ async function refreshChartOrders() {
   const symbol = chartSymbol;
   // Bez klíčů příkazy nenačteme; graf samotný je veřejný a běží dál.
   // Graf páru z jiné burzy než připojené: příkazy tam nemáme odkud vzít.
-  if (!symbol || !client.hasCredentials() || !grafZAktivni()) return;
+  if (!symbol || !grafSUctem()) return;
   // Prohlídka uzavřeného obchodu: dnešní příkazy s ním nesouvisí.
   if (prohlizenyObchod) {
     chartOrders = [];
@@ -1714,7 +1897,7 @@ async function refreshChartOrders() {
     return;
   }
   try {
-    const orders = await client.getOpenOrders(symbol);
+    const orders = await grafKlient().getOpenOrders(symbol);
     if (chartSymbol !== symbol) return;
     chartOrders = orders;
     applyChartLines(true);
@@ -2378,10 +2561,12 @@ function odebirejSeznam() {
     if (!podle.has(p.burza)) podle.set(p.burza, []);
     podle.get(p.burza).push(p.symbol);
   }
-  client.setExtraTickers(podle.get(client.burza.id) || []);
-  for (const [b, k] of verejneKlienty) if (b !== client.burza.id && !podle.has(b)) k.setExtraTickers([]);
+  for (const k of new Set([client, ...klienti.values()])) {
+    k.setExtraTickers(klientBurzy(k.burza?.id) === k || k === client ? podle.get(k.burza?.id) || [] : []);
+  }
+  for (const [b, k] of verejneKlienty) if (!klientBurzy(b) && !podle.has(b)) k.setExtraTickers([]);
   for (const [b, symboly] of podle) {
-    if (b === client.burza.id || !verejneDostupne().includes(b)) continue;
+    if (klientBurzy(b) || b === client.burza.id || !verejneDostupne().includes(b)) continue;
     const k = verejnyKlient(b);
     k.setExtraTickers(symboly);
     if (k.naplanujCeny && !k.casovacCen) {
@@ -2402,7 +2587,7 @@ function zivaZmenaTrhu(zmena) {
 
 function zapisZmenyTrhu() {
   zapisTrhuCasovac = null;
-  const pozice = new Map(lastPositions.map((p) => [klicTrhu(client.burza.id, p.symbol), p]));
+  const pozice = new Map(lastPositions.map((p) => [p.trh || klicTrhu(client.burza.id, p.symbol), p]));
   for (const klic of zmeneneTrhy) {
     const dlazdice = document.querySelector(`#watchList .tile[data-klic="${klic}"]`);
     const trh = trhy.find((r) => r.klic === klic);
@@ -2466,7 +2651,7 @@ function vykresliTrhy() {
       metrika: 'volume',
       popisek: popisekKategorie,
       // Hodnota pozice jen u dlaždice burzy, na které pozice je.
-      pozice: new Map(lastPositions.map((p) => [klicTrhu(client.burza.id, p.symbol), p])),
+      pozice: new Map(lastPositions.map((p) => [p.trh || klicTrhu(client.burza.id, p.symbol), p])),
       hide: hideAmounts,
       nazevBurzy: (b) => BURZY[b]?.nazev,
     });
@@ -3083,21 +3268,40 @@ async function prepocitejSkupiny(jenUlozene = false) {
       plneni.set(s, await dotahniPlneni(s, od, jenUlozene));
     } catch { /* bez plnění se nesekupuje */ }
   }));
-  skupinyObchodu = seskupObchody(obchody, plneni, lastPositions);
+  skupinyObchodu = seskupObchody(obchody, plneni, lastPositions.filter((p) => p.ucet === client.pripojeniId));
 }
 
 function otevriSkupinu(skupina) {
   // Otevřený obchod → graf živé pozice; uzavřený → prohlídka od otevření
   // po poslední zavírací příkaz (zahrne i všechny částečné výstupy).
   if (skupina.otevrena) {
-    const poz = lastPositions.find((p) => p.symbol === skupina.symbol);
+    const poz = lastPositions.find((p) => p.symbol === skupina.symbol && p.ucet === client.pripojeniId);
     if (poz) openChart(poz);
-    else openChartSymbol({ symbol: skupina.symbol });
+    else openChartSymbol({ symbol: skupina.symbol, burza: client.burza.id });
   }
   else otevriProhlidku(skupina.vystupy[skupina.vystupy.length - 1]);
 }
 
+/** Víc účtů: nad Historií volba účtu (Historie je zatím po účtech). */
+function vykresliUctyHistorie() {
+  const misto = el('historyAccounts');
+  if (!misto) return;
+  misto.hidden = klienti.size < 2;
+  if (misto.hidden) return;
+  misto.replaceChildren(...[...klienti.keys()].map((id) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `history-ucet ${client.pripojeniId === id ? 'active' : ''}`.trim();
+    b.textContent = nazevUctu(id);
+    b.addEventListener('click', () => {
+      if (client.pripojeniId !== id) prepniNaPripojeni(id);
+    });
+    return b;
+  }));
+}
+
 function vykresliHistorii() {
+  vykresliUctyHistorie();
   ui.renderHistory(skupinyObchodu, hideAmounts, otevriSkupinu);
   const od = historieOd ? new Date(historieOd) : null;
   let text = '';
@@ -3196,6 +3400,7 @@ async function plneniObchoduZTelefonu(obchod) {
 async function otevriProhlidku(obchod) {
   prohlizenyObchod = obchod;
   chartBurza = client.burza.id;
+  chartUcet = client.pripojeniId || null;
 
   /*
    * Nejdřív plnění **jen tohoto obchodu** — od otevření pozice po zavírací
@@ -3432,8 +3637,8 @@ function dokonciGrafZNotifikace() {
   clearTimeout(dokonciGrafZNotifikace.odklad);
   // Zamčeno: otevře se po odemčení (zamek.spust → onOdemceno).
   if (zamek.jeZamceno()) return;
-  const pozice = lastPositions.find((p) => p.symbol === c.symbol) || null;
-  const pozicePrisly = !client.hasCredentials() || client.status.rest === 'ok';
+  const pozice = lastPositions.find((p) => p.symbol === c.symbol && p.burza === 'bybit') || null;
+  const pozicePrisly = !klienti.size || Boolean(souhrnStavu().lastUpdate);
   if (!pozice && !pozicePrisly && Date.now() - c.od < CEKANI_NA_POZICE) {
     dokonciGrafZNotifikace.odklad = setTimeout(dokonciGrafZNotifikace, 250);
     return;
@@ -3446,7 +3651,7 @@ function dokonciGrafZNotifikace() {
   if (uzOtevreny) closeChart();
   if (uzOtevreny) otevriGraf.bezHistorie = true;
   if (pozice) openChart(pozice);
-  else openChartSymbol({ symbol: c.symbol });
+  else openChartSymbol({ symbol: c.symbol, burza: 'bybit' });
 }
 
 /** Nová cena páru — zkontroluje alarmy a ohlásí, co zaznělo. */
@@ -4240,7 +4445,7 @@ function applyChartLines(force = false) {
 
 /** Pozice se mění za běhu — graf musí držet krok s PnL, SL/TP i likvidací. */
 function syncOpenChart(list) {
-  if (!chartSymbol || !grafZAktivni()) return;
+  if (!chartSymbol || !grafSUctem()) return;
 
   /*
    * Pozice otevřená na páru, jehož graf je zrovna otevřený (2026-10-08,
@@ -4252,7 +4457,7 @@ function syncOpenChart(list) {
    */
   if (!chartPosition) {
     if (prohlizenyObchod) return;
-    const nova = list.find((p) => p.symbol === chartSymbol);
+    const nova = list.find(naGrafu);
     if (!nova) return;
     chartPosition = nova;
     chartOtevreno = null;
@@ -4267,7 +4472,7 @@ function syncOpenChart(list) {
   }
 
   const fresh = list.find(
-    (p) => p.symbol === chartPosition.symbol && p.positionIdx === chartPosition.positionIdx,
+    (p) => p.symbol === chartPosition.symbol && p.ucet === chartPosition.ucet && p.positionIdx === chartPosition.positionIdx,
   );
   if (!fresh) {
     // Pozice byla zavřená — graf nechat otevřený, jen bez čar pozice.
@@ -4526,7 +4731,7 @@ async function odhlasUcet() {
   }
   await alarmyServer.odhlasZarizeni();
   await ucet.odhlas();
-  client.stop();
+  zastavVsechnyUcty();
   zaloha.vymazMistniData();
   location.reload();
 }
@@ -4537,7 +4742,7 @@ async function smazUcet() {
     await alarmyServer.odhlasZarizeni();
     await ucet.smazUcet();
     // Účet i jeho zálohy jsou pryč — data v telefonu už nepatří nikomu.
-    client.stop();
+    zastavVsechnyUcty();
     zaloha.vymazMistniData();
     zpravaUctu(t('account.deleted'));
     setTimeout(() => location.reload(), 800);
@@ -4738,7 +4943,6 @@ function vykresliBurzy() {
   const seznam = el('exchangeList');
   if (!seznam) return;
   const pripojeni = store.loadPripojeni();
-  const aktivni = store.aktivniPripojeni();
   const tlacitko = (text, trida, akce) => {
     const b = document.createElement('button');
     b.type = 'button';
@@ -4772,20 +4976,13 @@ function vykresliBurzy() {
     }
     for (const pr of ucty) {
       const radek = document.createElement('div');
-      radek.className = `exchange-row exchange-ucet ${pr.id === aktivni ? 'aktivni' : ''}`.trim();
+      radek.className = 'exchange-row exchange-ucet';
       radek.dataset.pripojeni = pr.id;
       const klic = document.createElement('div');
       klic.className = 'exchange-key';
       klic.textContent = t('exchanges.keyEnding', { end: pr.apiKey.slice(-4) }) + (pr.volby?.demo ? ' · Demo' : '');
       radek.append(klic);
-      if (pr.id === aktivni) {
-        const stitek = document.createElement('span');
-        stitek.className = 'exchange-aktivni';
-        stitek.textContent = t('exchanges.active');
-        radek.append(stitek);
-      } else {
-        radek.append(tlacitko(t('exchanges.switch'), 'secondary-btn', () => prepniNaPripojeni(pr.id)));
-      }
+      // v0.59.0: všechny účty běží najednou — žádné přepínání.
       radek.append(tlacitko(t('exchanges.disconnect'), 'text-btn danger', () => odeberPripojeni(pr.id)));
       blok.append(radek);
     }

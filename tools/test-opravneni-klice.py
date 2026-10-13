@@ -80,7 +80,8 @@ time.sleep(1)
 over('Connection works, the key is valid' in zprava(), f'Test projde ({zprava()[:40]})')
 ev("document.getElementById('saveBtn').click()")
 time.sleep(1.5)
-over(ev("localStorage.getItem('perpdesk.apiKey')") == 'CTECIKLIC123', 'uložen')
+# v0.59.0: nový klíč se přidá k připojeným účtům (účet Historie zůstává).
+over('CTECIKLIC123' in (ev("localStorage.getItem('perpdesk.pripojeni')") or ''), 'uložen mezi připojení')
 
 print('dřív uložený obchodní klíč')
 ev("sessionStorage.setItem('__klic', 'trade')")

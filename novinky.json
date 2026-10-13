@@ -1,15 +1,15 @@
 {
-  "verze": "0.58.2",
+  "verze": "0.59.0",
   "novinky": [
     {
-      "en": "Cleaner settings: every supported exchange in one list with a Connect button, and Binance demo keys are recognised automatically.",
-      "cs": "Přehlednější nastavení: všechny burzy v jednom seznamu s tlačítkem Připojit, demo klíč Binance se pozná sám."
+      "en": "All your connected accounts are live at once — positions from every exchange in one list, each card shows its exchange. No more switching.",
+      "cs": "Všechny připojené účty běží najednou — pozice ze všech burz v jednom seznamu, u každé karty její burza. Žádné přepínání."
     }
   ],
   "opravy": [
     {
-      "en": "Binance: open orders, account overview, connection status and the read-only key check work properly.",
-      "cs": "Binance: otevřené příkazy, přehled účtu, stav spojení a kontrola klíče jen pro čtení fungují správně."
+      "en": "Binance: the diagnostics no longer show under an empty account.",
+      "cs": "Binance: pod prázdným účtem se už neukazuje diagnostika."
     }
   ]
 }

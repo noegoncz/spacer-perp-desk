@@ -399,6 +399,14 @@ function positionCard(p, hide, onSelect, liqThreshold = 10, volby = {}) {
   likvidace.textContent = `${t('position.liqShort')} `
     + (p.liq ? formatPrice(p.liq) : t('position.notSet'));
 
+  // Víc připojených účtů (v0.59.0): u karty i burza.
+  const burza = volby.burza?.(p);
+  if (burza) {
+    const stitek = document.createElement('span');
+    stitek.className = 'pos-burza';
+    stitek.textContent = burza;
+    left.append(stitek);
+  }
   left.append(symbol, badge, velikost, likvidace);
 
   /*
@@ -634,13 +642,18 @@ const STATUS_TRIDA = {
   error: 'error',
 };
 
-export function renderStatus(status) {
+/** Stav spojení: idle / connecting / live / error (i pro dotazování). */
+export function stavSpojeni(status) {
   // Burzy přes CCXT nemají WebSocket, data chodí dotazováním (`poll`):
   // spojení je živé, když poslední dotaz prošel (dřív „Not connected").
-  const ws = status.ws === 'poll'
+  const ws = status?.ws === 'poll'
     ? (status.rest === 'error' ? 'error' : status.lastUpdate || status.rest === 'ok' ? 'live' : 'connecting')
-    : status.ws;
-  const stav = STATUS_TRIDA[ws] === undefined ? 'idle' : ws;
+    : status?.ws;
+  return STATUS_TRIDA[ws] === undefined ? 'idle' : (ws === 'reconnecting' ? 'connecting' : ws);
+}
+
+export function renderStatus(status) {
+  const stav = stavSpojeni(status);
   dom.statusDot.className = `dot ${STATUS_TRIDA[stav]}`;
   dom.statusText.textContent = t(`status.${stav}`);
   dom.lastUpdate.textContent = status.lastUpdate
