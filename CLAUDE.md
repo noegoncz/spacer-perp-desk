@@ -228,6 +228,13 @@ najednou, nikdy nemuset klíč odebírat; limit jen v budoucím předplatném):*
   každého; „Přidat burzu" vždy. Nové připojení se přidá a stane aktivním.
 - ~~Zatím je aktivní jedno připojení najednou.~~ Od v0.59.0 viz krok 4b.
 
+**Binance USDC perpetuály (v0.59.1):** uživatel v EU kvůli MiCA nesmí od
+31. 3. 2025 obchodovat s USDT (Binance mu nabízí převod na USDC). USDⓈ-M
+má 38 perpetuálů v USDC (BTCUSDC, SOLUSDC… stejná minima jako USDT: 5,
+ETH 20, BTC 50). Adaptér má `meny` (Binance `['USDT','USDC']`), pozice,
+zůstatek (součet obou) i páry bere z obou; popisky karty a grafu podle
+páru (`menaParu` v ui.js). Součty přes víc měn jsou ~1:1.
+
 **Krok 4b — všechny účty najednou (v0.59.0, přání uživatele: „přepínat
 a hledat pozice nedává smysl"):**
 - Každé připojení má vlastního klienta (`klienti`: id → adaptér), všichni

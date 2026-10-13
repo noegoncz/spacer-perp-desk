@@ -27,6 +27,10 @@ export class BinanceClient extends CcxtAdapter {
       ...volby,
       ccxtVolby: { ...(volby.ccxtVolby || {}), options: { fetchCurrencies: false } },
     });
+    // USDⓈ-M má páry v USDT i USDC (BTCUSDC…). Uživatelé v EU smí kvůli
+    // MiCA jen USDC (ověřeno u uživatele 2026-10-13) — bez nich by jejich
+    // pozice ani zůstatek nebyly vidět.
+    this.meny = ['USDT', 'USDC'];
   }
 
   popisUctu() {

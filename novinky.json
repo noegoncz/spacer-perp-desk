@@ -1,9 +1,13 @@
 {
-  "verze": "0.59.0",
+  "verze": "0.59.1",
   "novinky": [
     {
       "en": "All your connected accounts are live at once — positions from every exchange in one list, each card shows its exchange. No more switching.",
       "cs": "Všechny připojené účty běží najednou — pozice ze všech burz v jednom seznamu, u každé karty její burza. Žádné přepínání."
+    },
+    {
+      "en": "Binance USDC perpetuals (BTCUSDC, SOLUSDC…) — positions, balance and pairs.",
+      "cs": "Binance perpetuály v USDC (BTCUSDC, SOLUSDC…) — pozice, zůstatek i páry."
     }
   ],
   "opravy": [

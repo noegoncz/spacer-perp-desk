@@ -382,9 +382,9 @@ function positionCard(p, hide, onSelect, liqThreshold = 10, volby = {}) {
   if (hide) {
     velikost.textContent = `(${MASK})`;
   } else {
-    const coin = p.symbol.endsWith('USDT') ? p.symbol.slice(0, -4) : '';
+    const coin = /USD[TC]$/.test(p.symbol) ? p.symbol.slice(0, -4) : '';
     velikost.textContent = `(${formatSize(p.size)}${coin ? ` ${coin}` : ''}`
-      + ` · ${formatUsd(p.value)} USDT)`;
+      + ` · ${formatUsd(p.value)} ${menaParu(p.symbol)})`;
   }
 
   /*
@@ -415,7 +415,7 @@ function positionCard(p, hide, onSelect, liqThreshold = 10, volby = {}) {
    */
   const pnl = document.createElement('div');
   pnl.className = `pos-pnl ${pnlClass(p.pnl)}`;
-  pnl.textContent = hide ? MASK : `${formatSignedUsd(p.pnl)} USDT`;
+  pnl.textContent = hide ? MASK : `${formatSignedUsd(p.pnl)} ${menaParu(p.symbol)}`;
 
   head.append(left, pnl);
 
@@ -435,6 +435,9 @@ function positionCard(p, hide, onSelect, liqThreshold = 10, volby = {}) {
   card.append(patickaRow(p, hide));
   return card;
 }
+
+/** Měna páru pro popisky: „BTCUSDC" → USDC, jinak USDT (v0.59.1). */
+const menaParu = (symbol) => (String(symbol || '').endsWith('USDC') ? 'USDC' : 'USDT');
 
 export function renderPositions(list, hide, onSelect, liqThreshold = 10, volby = {}) {
   dom.list.replaceChildren(
@@ -759,7 +762,7 @@ export function renderHistory(skupiny, hide, onSelect) {
 
       const soucet = el2('div', 'trade-soucet');
       soucet.append(el2('span', '', t('history.total')),
-        el2('span', `trade-pnl ${pnlClass(g.pnl)}`, hide ? MASK : `${formatSignedUsd(g.pnl)} USDT`));
+        el2('span', `trade-pnl ${pnlClass(g.pnl)}`, hide ? MASK : `${formatSignedUsd(g.pnl)} ${menaParu(g.symbol)}`));
 
       karta.append(hlava, kdy, vystupy, soucet);
       karta.addEventListener('click', () => onSelect(g));
@@ -915,7 +918,7 @@ export function renderTiles(trhy, volby) {
     spark.setAttribute('preserveAspectRatio', 'none');
     const zmena = div(`tile-zmena ${pnlClass(trh.changePct)}`, formatPercent(trh.changePct));
     const hodnota = div(`tile-poz ${poz ? pnlClass(poz.pnl) : ''}`.trim(),
-      poz ? (hide ? MASK : `${formatUsd(poz.value)} USDT`) : '');
+      poz ? (hide ? MASK : `${formatUsd(poz.value)} ${menaParu(poz.symbol)}`) : '');
 
     d.append(div('tile-burza', String(nazevPodle?.(trh.burza) || nazevBurzy).toUpperCase()), div('tile-par', trh.symbol), div('tile-sub', sub),
       spark, div('tile-cena', formatPrice(trh.last)), zmena, hodnota);
@@ -968,7 +971,7 @@ export function updateTile(dlazdice, trh, poz, hide) {
   }
   const hodnota = dlazdice.querySelector('.tile-poz');
   if (hodnota) {
-    hodnota.textContent = poz ? (hide ? MASK : `${formatUsd(poz.value)} USDT`) : '';
+    hodnota.textContent = poz ? (hide ? MASK : `${formatUsd(poz.value)} ${menaParu(poz.symbol)}`) : '';
     hodnota.className = `tile-poz ${poz ? pnlClass(poz.pnl) : ''}`.trim();
   }
 }
@@ -1094,7 +1097,7 @@ export function renderChartHeader(symbol, position, hide, trh = null) {
   const ret = returnPercent(position);
   // Dvě části, aby se na úzkém displeji mohly dát pod sebe (CSS).
   const castka = document.createElement('span');
-  castka.textContent = hide ? MASK : `${formatSignedUsd(position.pnl)} USDT`;
+  castka.textContent = hide ? MASK : `${formatSignedUsd(position.pnl)} ${menaParu(position.symbol)}`;
   const procenta = document.createElement('span');
   procenta.textContent = ret ? formatPercent(ret.value) : '';
   dom.chartPnl.replaceChildren(castka, procenta);
@@ -1135,7 +1138,7 @@ export function renderChartInfo(position, hide, burza = '', obrat24h = null) {
     casti.push(b);
   }
   if (position) {
-    casti.push(kus(hide ? MASK : `${formatSize(position.size)} ${mena} · ${formatUsd(position.value)} USDT`));
+    casti.push(kus(hide ? MASK : `${formatSize(position.size)} ${mena} · ${formatUsd(position.value)} ${menaParu(position.symbol)}`));
     if (margin) casti.push(kus(`${t('position.margin')} ${hide ? MASK : formatUsd(margin)}`));
   }
   if (vol) casti.push(kus(`${t('chart.vol24h')} ${zkratkaObratu(vol)}`, 'ci-vol'));

@@ -34,8 +34,11 @@ export class CcxtAdapter {
    */
   constructor(idCcxt, handlers = {}, volby = {}) {
     this.idCcxt = idCcxt;
-    // Měna, ve které se perpetuály vypořádávají (Hyperliquid: USDC).
+    // Měna, ve které se perpetuály vypořádávají (Hyperliquid: USDC),
+    // a všechny, které burza nabízí (Binance: USDT i USDC — v EU jde
+    // kvůli MiCA jen USDC, v0.59.1).
     this.mena = 'USDT';
+    this.meny = null;
     // Burzy, jejichž API nemá CORS (MEXC, soukromá data Gate a Bitget):
     // v APK jdou dotazy nativním HTTP Capacitoru (v0.57.0).
     this.nativniHttp = false;
@@ -98,6 +101,11 @@ export class CcxtAdapter {
     return ex;
   }
 
+  /** Měny vypořádání, jejichž perpetuály adaptér bere. */
+  menyTrhu() {
+    return this.meny || [this.mena];
+  }
+
   /** Úprava instance CCXT před načtením trhů — burza může přepsat. */
   upravCcxt() {}
 
@@ -110,7 +118,7 @@ export class CcxtAdapter {
   trh(symbol) {
     const ex = this.ex;
     const hledany = String(symbol).toUpperCase();
-    return Object.values(ex.markets).find((m) => m.swap && m.linear && m.quote === this.mena
+    return Object.values(ex.markets).find((m) => m.swap && m.linear && this.menyTrhu().includes(m.quote)
       && this.kanonicky(m) === hledany) || null;
   }
 
@@ -252,7 +260,7 @@ export class CcxtAdapter {
       this.positions.clear();
       for (const p of surove) {
         const m = ex.markets[p.symbol];
-        if (!m || !m.linear || m.quote !== this.mena) continue;
+        if (!m || !m.linear || !this.menyTrhu().includes(m.quote)) continue;
         const poz = this.pozice(p);
         if (!poz.size) continue;
         this.positions.set(`${poz.symbol}#${poz.side}`, poz);
@@ -296,9 +304,11 @@ export class CcxtAdapter {
     const b = await ex.fetchBalance();
     // Dotaz prošel = přehled je; i nulová equity je údaj (prázdný futures
     // účet), ne chybějící oprávnění (v0.58.2).
-    const equity = cislo(b?.total?.[this.mena]);
-    const volny = cislo(b?.free?.[this.mena]);
-    const pouzity = cislo(b?.used?.[this.mena]);
+    // Víc měn vypořádání (USDT + USDC) se sčítá — stablecoiny ~1:1.
+    const soucet = (k) => this.menyTrhu().reduce((s, c) => s + cislo(b?.[k]?.[c]), 0);
+    const equity = soucet('total');
+    const volny = soucet('free');
+    const pouzity = soucet('used');
     return {
       ucet: { equity, volny, pouzity, vyuziti: equity > 0 ? (pouzity / equity) * 100 : null, typ: '' },
       chyba: null,
@@ -432,7 +442,7 @@ export class CcxtAdapter {
     return Object.values(vse)
       .filter((tk) => {
         const m = ex.markets[tk.symbol];
-        return m && m.swap && m.linear && m.quote === this.mena && m.active !== false;
+        return m && m.swap && m.linear && this.menyTrhu().includes(m.quote) && m.active !== false;
       })
       .map((tk) => this.ticker(tk))
       .sort((a, b) => b.turnover - a.turnover);
