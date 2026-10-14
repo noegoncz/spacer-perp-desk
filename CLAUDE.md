@@ -275,9 +275,10 @@ graf Binance se načítal dlouho a pak „divně"):**
   bez nového dotazu), na v0.59.2 padá ve 4 bodech (svíčky čekaly 15 s).
 - ⚠ **Testy pouštěj každý v čistém Chromu** (nový `--user-data-dir`).
   Sdílený profil na 9223 přenáší localStorage mezi testy (seznamy, účet)
-  a hromada testů pak „padá" i na starém kódu. ⚠ `test-vyber-burzy.py` (úvodní obrazovka, „nic se
-  neuložilo") a `test-mereni-mazani-a-prepnuti-paru.py` padají už na
-  v0.59.1 — zastaralé po víc připojeních, k opravě.
+  a hromada testů pak „padá" i na starém kódu (v0.59.2 jsem tak mylně
+  označil `test-vyber-burzy.py` za zastaralý — v čistém profilu prochází).
+  `test-mereni-mazani-a-prepnuti-paru.py` počítá s předčtením: graf BTC
+  smí být vidět hned, když jeho svíčky už dorazily (`__btcSvice`).
 
 **Krok 4b — všechny účty najednou (v0.59.0, přání uživatele: „přepínat
 a hledat pozice nedává smysl"):**
