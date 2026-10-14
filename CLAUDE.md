@@ -235,6 +235,27 @@ ETH 20, BTC 50). Adaptér má `meny` (Binance `['USDT','USDC']`), pozice,
 zůstatek (součet obou) i páry bere z obou; popisky karty a grafu podle
 páru (`menaParu` v ui.js). Součty přes víc měn jsou ~1:1.
 
+**Grafy z CCXT burz rychle a správně (v0.59.2, hlášeno uživatelem:
+graf Binance se načítal dlouho a pak „divně"):**
+- ⚠ **Omezovač dotazů CCXT** (`enableRateLimit`) řadí všechny dotazy
+  instance do jedné fronty podle váhy. `ticker/24hr` **bez páru** stojí
+  u Binance 40 jednotek = 2 s fronty — a dotazování cen každé 2 s ji
+  drželo trvale plnou; svíčky grafu v ní čekaly i přes 4 s, pojistka pak
+  odkryla prázdný graf. Binance proto pro ≤ 20 párů stahuje tickery po
+  jednom (`tickeryParu`, váha 1). U nové burzy zkontroluj váhy v CCXT
+  (`noSymbol`) dřív, než něco dotazuješ po 2 s.
+- ⚠ **Graf dostává klíč grafu (`grafKlic()`), ne holý pár** — BTCUSDT
+  na OKX a na Binance knihovna brala jako tentýž symbol, nesmazala data
+  a do příchodu svíček ukazovala svíčky předchozí burzy.
+- **OKX vrací nejvýš 300 svíček od začátku okna** (`maxSvicek`) — s oknem
+  na 500 chybělo posledních 200 svíček a živá svíčka visela za mezerou.
+- Založení instance CCXT je jedno pro souběžné dotazy (`zakladani`), trhy
+  se nestahují víckrát.
+- Měřeno skriptem proti skutečným burzám: otevření grafu Binance 0,5 s
+  (dřív 1,8–4+ s). ⚠ `test-vyber-burzy.py` (úvodní obrazovka, „nic se
+  neuložilo") a `test-mereni-mazani-a-prepnuti-paru.py` padají už na
+  v0.59.1 — zastaralé po víc připojeních, k opravě.
+
 **Krok 4b — všechny účty najednou (v0.59.0, přání uživatele: „přepínat
 a hledat pozice nedává smysl"):**
 - Každé připojení má vlastního klienta (`klienti`: id → adaptér), všichni

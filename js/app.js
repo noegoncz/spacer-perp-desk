@@ -1744,7 +1744,10 @@ async function otevriGraf(symbol, position, trh) {
 
   // Přesnost cen na ose: z pozice, z trhu, u prohlídky obchodu z jeho vstupu
   // (bez toho psala osa jen dvě desetinná místa — 0.30, 0.29, 0.29).
-  chart.setSymbol(symbol, priceDecimals(position?.entry ?? trh?.last ?? prohlizenyObchod?.entry ?? 0));
+  // ⚠ Klíč grafu (burza + pár), ne holý pár: BTCUSDT na OKX a na Binance
+  // jsou dva grafy. S holým párem graf změnu nepoznal, nesmazal svíčky
+  // a do příchodu dat ukazoval svíčky jiné burzy (v0.59.2).
+  chart.setSymbol(grafKlic(), priceDecimals(position?.entry ?? trh?.last ?? prohlizenyObchod?.entry ?? 0));
   if (prohlizenyObchod?.okno) chart.showTradeWindow(prohlizenyObchod.okno.od, prohlizenyObchod.okno.do);
   chart.setInterval(chartInterval); // knihovna si data vyžádá sama
   odebiratZiveSvice(symbol, chartInterval);

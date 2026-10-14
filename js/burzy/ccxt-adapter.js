@@ -72,6 +72,20 @@ export class CcxtAdapter {
   async burzaCcxt() {
     const klic = `${this.apiKey}|${this.apiSecret}|${this.apiPassphrase}`;
     if (this.ex && this.exKlic === klic) return this.ex;
+    /*
+     * Souběžné dotazy (ceny, mini-grafy, svíčky) čekají na jedno založení —
+     * dřív si každý vyrobil vlastní instanci a stáhl seznam trhů znovu
+     * (u Binance stovky kB na každý dotaz při prvním otevření).
+     */
+    if (this.zakladani?.klic !== klic) {
+      const slib = this.zalozBurzu(klic);
+      this.zakladani = { klic, slib };
+      slib.catch(() => { if (this.zakladani?.slib === slib) this.zakladani = null; });
+    }
+    return this.zakladani.slib;
+  }
+
+  async zalozBurzu(klic) {
     const ccxt = await nactiCcxt();
     const ex = new ccxt[this.idCcxt]({
       apiKey: this.apiKey || undefined,
@@ -403,6 +417,9 @@ export class CcxtAdapter {
     const tf = TIMEFRAME[interval];
     if (!tf) return [];
     const s = await this.symbolCcxt(symbol);
+    // Burza se stropem na počet svíček (OKX 300) by vrátila začátek okna
+    // a nejnovější svíčky by chyběly — okno se proto zkrátí na strop.
+    if (this.maxSvicek) limit = Math.min(limit, this.maxSvicek);
     const konec = endTime || Date.now();
     const od = konec - limit * (DELKA_TF[tf] || 3600e3);
     const radky = await ex.fetchOHLCV(s, tf, Math.floor(od), limit, endTime ? { until: Math.ceil(endTime) } : {}); // `until` = sjednocený konec okna CCXT
@@ -465,7 +482,7 @@ export class CcxtAdapter {
     if (!pary.size) return;
     try {
       const symboly = [...pary].map((s) => this.trh(s)?.symbol).filter(Boolean);
-      const vse = await this.ex.fetchTickers(symboly);
+      const vse = await this.tickeryParu(symboly);
       let zmena = false;
       for (const tk of Object.values(vse)) {
         const z = this.ticker(tk);
@@ -480,6 +497,11 @@ export class CcxtAdapter {
       }
       if (zmena) this.emitPositions();
     } catch { /* příště znovu */ }
+  }
+
+  /** Tickery vybraných párů (symboly CCXT) → { symbol: ticker }; burza může přepsat. */
+  async tickeryParu(symboly) {
+    return this.ex.fetchTickers(symboly);
   }
 
   setKlineSubscription(symbol, interval) {

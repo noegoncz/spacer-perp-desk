@@ -37,6 +37,21 @@ export class BinanceClient extends CcxtAdapter {
     return 'USDⓈ-M';
   }
 
+  /**
+   * Tickery pro dotazování po 2 s. ⚠ USDⓈ-M neumí `ticker/24hr` pro výběr
+   * párů — CCXT pak stáhne celý trh, a to Binance počítá jako 40 jednotek
+   * (pár zvlášť 1). Omezovač CCXT za to čeká 2 s, takže při dotazu každé
+   * 2 s byla fronta trvale plná a svíčky grafu v ní čekaly i přes 4 s
+   * (v0.59.2, měřeno). Pro pár párů proto po jednom.
+   */
+  async tickeryParu(symboly) {
+    if (symboly.length > 20) return super.tickeryParu(symboly);
+    const vysledky = await Promise.allSettled(symboly.map((s) => this.ex.fetchTicker(s)));
+    const vse = {};
+    for (const r of vysledky) if (r.status === 'fulfilled' && r.value) vse[r.value.symbol] = r.value;
+    return vse;
+  }
+
   /** Podmíněné příkazy Binance podle typu (STOP_MARKET, TAKE_PROFIT…). */
   typStop(o) {
     const typ = String(o.info?.type || o.info?.origType || o.type || '').toUpperCase();

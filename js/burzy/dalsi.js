@@ -27,6 +27,9 @@ export class OkxClient extends CcxtAdapter {
   constructor(handlers = {}, volby = {}) {
     super('okx', handlers, volby);
     this.typyTrhu = ['swap'];
+    // OKX vrátí nejvýš 300 svíček od začátku okna — s oknem na 500 chybělo
+    // v grafu posledních 200 svíček (v0.59.2, měřeno).
+    this.maxSvicek = 300;
   }
 
   popisUctu() {
