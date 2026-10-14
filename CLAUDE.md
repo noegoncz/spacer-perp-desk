@@ -252,7 +252,30 @@ graf Binance se načítal dlouho a pak „divně"):**
 - Založení instance CCXT je jedno pro souběžné dotazy (`zakladani`), trhy
   se nestahují víckrát.
 - Měřeno skriptem proti skutečným burzám: otevření grafu Binance 0,5 s
-  (dřív 1,8–4+ s). ⚠ `test-vyber-burzy.py` (úvodní obrazovka, „nic se
+  (dřív 1,8–4+ s). ⚠ **Ale jen bez klíče** — na telefonu s připojeným
+  účtem Binance to dál trvalo ~5 s (video uživatele), viz v0.59.3.
+
+**Graf hned i u připojeného účtu (v0.59.3, video uživatele 2026-10-14):**
+- ⚠ **Účet s klíčem má dvě instance CCXT**: soukromou (`burzaCcxt`)
+  a pro veřejná data (`burzaVerejna` — svíčky, ceny, mini-grafy, bez
+  klíče, trhy převezme `setMarkets`). Omezovač CCXT je na instanci;
+  u účtu Binance v jedné frontě stály pozice (5), zůstatek (5) a příkazy
+  bez páru (**40**) každé 3 s a svíčky čekaly ~5 s. Nové veřejné volání
+  v adaptéru → `burzaVerejna()` a `symbolCcxt(s, true)`.
+- Zůstatek a otevřené příkazy u CCXT účtu jen při změně pozic, po návratu
+  do aplikace / ⟳ (`doplnkyHned`, `obnovUcetCely` v app.js), jinak po 30 s
+  (`DOPLNKY_KAZDYCH`) — nový příkaz bez změny pozice se ukáže do 30 s.
+- **Svíčky grafu předčtené** (`sviceDopredu`, `predNactiGrafy` v app.js,
+  přání uživatele): po startu a při vykreslení seznamu pro pozice a páry
+  vybraného seznamu na timeframu uživatele (nejvýš 30, 3 naráz), při
+  dotyku dlaždice hned. Jen v paměti, platí 5 min (u kratšího timeframu
+  jedna svíčka); záznam patří klientovi (demo Binance má jiné ceny).
+  V0.48.0 předčítala jen ceny a mini-grafy, ne svíčky grafu.
+- Test: `tools/test-graf-rychle.py` (plná fronta účtu, předčtení, graf
+  bez nového dotazu), na v0.59.2 padá ve 4 bodech (svíčky čekaly 15 s).
+- ⚠ **Testy pouštěj každý v čistém Chromu** (nový `--user-data-dir`).
+  Sdílený profil na 9223 přenáší localStorage mezi testy (seznamy, účet)
+  a hromada testů pak „padá" i na starém kódu. ⚠ `test-vyber-burzy.py` (úvodní obrazovka, „nic se
   neuložilo") a `test-mereni-mazani-a-prepnuti-paru.py` padají už na
   v0.59.1 — zastaralé po víc připojeních, k opravě.
 

@@ -1,9 +1,13 @@
 {
-  "verze": "0.59.2",
+  "verze": "0.59.3",
   "novinky": [
     {
-      "en": "All your connected accounts are live at once — positions from every exchange in one list, each card shows its exchange. No more switching.",
-      "cs": "Všechny připojené účty běží najednou — pozice ze všech burz v jednom seznamu, u každé karty její burza. Žádné přepínání."
+      "en": "Charts open instantly — candles for your positions and the selected watchlist are loaded in advance.",
+      "cs": "Grafy se otevírají hned — svíčky pro pozice a vybraný seznam se načítají dopředu."
+    },
+    {
+      "en": "All your connected accounts are live at once — positions from every exchange in one list, each card shows its exchange.",
+      "cs": "Všechny připojené účty běží najednou — pozice ze všech burz v jednom seznamu, u každé karty její burza."
     },
     {
       "en": "Binance USDC perpetuals (BTCUSDC, SOLUSDC…) — positions, balance and pairs.",
@@ -12,8 +16,8 @@
   ],
   "opravy": [
     {
-      "en": "Binance charts open much faster.",
-      "cs": "Grafy z Binance se otevírají mnohem rychleji."
+      "en": "Binance charts no longer wait behind account updates.",
+      "cs": "Grafy z Binance už nečekají za aktualizacemi účtu."
     },
     {
       "en": "Switching between the same pair on two exchanges no longer briefly shows the other exchange's chart.",

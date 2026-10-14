@@ -39,7 +39,12 @@ localStorage.setItem('perpdesk.lists', JSON.stringify({ verze: 1, aktivni: 'a',
       ]}}), {status:200, headers:{'Content-Type':'application/json'}}));
     }
     if (u.includes('/v5/market/kline') && u.includes('symbol=BTCUSDT')) {
-      return new Promise((r) => setTimeout(() => r(puvodni(vstup)), 1000));
+      // Kolik dávek svíček grafu BTC už dorazilo (od v0.59.3 je aplikace
+      // předčítá dopředu — graf BTC pak smí být vidět hned, jsou to jeho data).
+      return new Promise((r) => setTimeout(() => r(puvodni(vstup)), 1000)).then((odp) => {
+        if (/limit=500/.test(u)) window.__btcSvice = (window.__btcSvice || 0) + 1;
+        return odp;
+      });
     }
     return puvodni(vstup);
   };
@@ -150,9 +155,9 @@ time.sleep(0.35)  # svíčky BTC přijdou až za vteřinu
 behem = json.loads(ev("""JSON.stringify({
   viditelnost: getComputedStyle(document.getElementById('chartBox')).visibility,
   svicek: window.__graf.getDataList().length,
-  symbol: window.__graf.getSymbol()?.ticker })""") or '{}')
+  symbol: window.__graf.getSymbol()?.ticker, btcDoslo: window.__btcSvice || 0 })""") or '{}')
 print('během čekání na svíčky BTC:', behem)
-if behem.get('viditelnost') != 'hidden' and behem.get('svicek', 0) > 0:
+if behem.get('viditelnost') != 'hidden' and behem.get('svicek', 0) > 0 and not behem.get('btcDoslo'):
     chyby.append('během čekání na nový pár je vidět graf předchozího páru')
 time.sleep(1.5)
 po = json.loads(ev("""JSON.stringify({

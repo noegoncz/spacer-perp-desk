@@ -395,6 +395,12 @@ let client = (() => {
  */
 const klicTrhu = (burza, symbol) => `${burza}:${symbol}`;
 const verejneKlienty = new Map();
+/** Ruční obnova účtu: pozice i zůstatek a příkazy (CCXT je jinak stahuje jen po 30 s). */
+function obnovUcetCely(k) {
+  k.doplnkyHned = true;
+  return k.refresh();
+}
+
 function verejnyKlient(burza) {
   if (!burza) return client;
   const pripojeny = klientBurzy(burza);
@@ -1075,7 +1081,7 @@ function wireEvents() {
     else ukazUvod('burza', true);
   });
   naUdalost('retryBtn', 'click', () => {
-    for (const k of klienti.values()) k.refresh();
+    for (const k of klienti.values()) obnovUcetCely(k);
   });
 
   /*
@@ -1090,7 +1096,7 @@ function wireEvents() {
       if (aktivniZalozka === 'watchlist') await obnovTrhy();
       else if (!klienti.size) openSettings();
       else if (aktivniZalozka === 'history') await obnovHistorii(true);
-      else await Promise.all([...klienti.values()].map((k) => k.refresh()));
+      else await Promise.all([...klienti.values()].map(obnovUcetCely));
     } finally {
       tl?.classList.remove('toci');
     }
@@ -1180,6 +1186,15 @@ function wireEvents() {
       },
       onNabidka: otevriMenuDlazdice,
     });
+    // Dotyk dlaždice: svíčky se začnou stahovat už teď, ne až po zvednutí
+    // prstu (u páru mimo předčtení to ušetří čas klepnutí).
+    el('watchList').addEventListener('touchstart', (e) => {
+      const klic = e.target.closest?.('.tile[data-klic]')?.dataset.klic;
+      const i = klic ? klic.indexOf(':') : -1;
+      if (i < 0) return;
+      const burza = klic.slice(0, i);
+      if (verejneDostupne().includes(burza)) predNactiSvice(verejnyKlient(burza), burza, klic.slice(i + 1));
+    }, { passive: true });
   }
   naUdalost('sheetPairClose', 'click', zavriNabidkyTrhu);
   naUdalost('sheetListClose', 'click', zavriNabidkyTrhu);
@@ -1808,11 +1823,83 @@ function odebiratZiveSvice(symbol, interval) {
   else grafKlient().setKlineSubscription(symbol, interval);
 }
 
+/*
+ * Svíčky grafu předčtené dopředu (v0.59.3, přání uživatele — graf se má
+ * otevřít hned). V0.48.0 předčítala jen ceny a mini-grafy Watchlists;
+ * teď i svíčky grafu pro pozice a páry vybraného seznamu na timeframu
+ * uživatele, po startu a při každém vykreslení seznamu, a při dotyku
+ * dlaždice. Jen v paměti, platí nejvýš 5 minut (u kratšího timeframu
+ * délku jedné svíčky) — poslední svíčku pak opraví živá data.
+ * ⚠ Záznam patří klientovi, který ho stáhl: demo účet Binance má jiné
+ * ceny než ostrá burza, graf proto bere jen svíčky od svého klienta.
+ */
+const SVICE_DOPREDU_PLATI = 5 * 60e3;
+const SVICE_DOPREDU_NAJEDNOU = 3;
+const SVICE_DOPREDU_NEJVIC = 30;
+const sviceDopredu = new Map(); // klíč grafu|interval → { klient, cas, slib }
+let frontaSvic = [];
+let sviceBezi = 0;
+
+const platnostSvic = (interval) => Math.min(SVICE_DOPREDU_PLATI, DELKA_INTERVALU[interval] || SVICE_DOPREDU_PLATI);
+
+/** Čerstvé předčtené svíčky (slib), nebo null. */
+function predctene(klient, burza, symbol, interval) {
+  const z = sviceDopredu.get(`${klicGrafu(burza, symbol)}|${interval}`);
+  return z && z.klient === klient && Date.now() - z.cas < platnostSvic(interval) ? z.slib : null;
+}
+
+function predNactiSvice(klient, burza, symbol, interval = intervalUzivatele) {
+  if (!klient || !symbol || !interval) return null;
+  const hotove = predctene(klient, burza, symbol, interval);
+  if (hotove) return hotove;
+  const klic = `${klicGrafu(burza, symbol)}|${interval}`;
+  const slib = klient.getKlines(symbol, interval, 500);
+  const zaznam = { klient, cas: Date.now(), slib };
+  sviceDopredu.set(klic, zaznam);
+  slib.catch(() => { if (sviceDopredu.get(klic) === zaznam) sviceDopredu.delete(klic); });
+  // Stará data nedržet: paměť jen pro to, co se může hned otevřít.
+  for (const [k, z] of sviceDopredu) if (Date.now() - z.cas > SVICE_DOPREDU_PLATI) sviceDopredu.delete(k);
+  return slib;
+}
+
+/** Na pozadí: pozice, pak páry vybraného seznamu — nejvýš tři dotazy naráz. */
+function predNactiGrafy() {
+  if (!ucet.prihlasen()) return;
+  const polozky = [];
+  for (const p of lastPositions) {
+    const k = klienti.get(p.ucet);
+    if (k) polozky.push([k, p.burza || k.burza?.id, p.symbol]);
+  }
+  for (const x of sestavy.polozkyVPoradi(sestavy.aktivni())) {
+    if (verejneDostupne().includes(x.burza)) polozky.push([verejnyKlient(x.burza), x.burza, x.symbol]);
+  }
+  frontaSvic = polozky.slice(0, SVICE_DOPREDU_NEJVIC);
+  pustFrontuSvic();
+}
+
+function pustFrontuSvic() {
+  while (sviceBezi < SVICE_DOPREDU_NAJEDNOU && frontaSvic.length) {
+    const [k, burza, symbol] = frontaSvic.shift();
+    if (predctene(k, burza, symbol, intervalUzivatele)) continue;
+    const slib = predNactiSvice(k, burza, symbol);
+    if (!slib) continue;
+    sviceBezi += 1;
+    slib.catch(() => {}).finally(() => {
+      sviceBezi -= 1;
+      pustFrontuSvic();
+    });
+  }
+}
+
 async function nactiSviceProInterval(interval) {
   // ⚠ Prohlídka starého obchodu potřebuje svíčky **z jeho doby** (`end`).
   // Bez něj přišlo nejnovějších 500 — na 1m pár hodin — a obchod ze
   // včerejška v datech vůbec nebyl: graf ukázal dnešek bez značek (v0.45.0).
-  const bars = await grafKlient().getKlines(chartSymbol, interval, 500, konecSvicProhlidky(interval));
+  const konec = konecSvicProhlidky(interval);
+  const dopredu = konec === null ? predctene(grafKlient(), chartBurza || client.burza.id, chartSymbol, interval) : null;
+  let bars = null;
+  if (dopredu) bars = await dopredu.catch(() => null);
+  if (!bars) bars = await grafKlient().getKlines(chartSymbol, interval, 500, konec);
   return bars.map((b) => ({
     timestamp: b.time,
     open: b.open,
@@ -2507,6 +2594,7 @@ async function predNactiTrhy() {
       if (!grafyCerstve.has(klic)) grafyFronta.push({ klic, radek: null });
     }
     odbavGrafy();
+    predNactiGrafy(); // svíčky grafu pro pozice a vybraný seznam
   } catch {
     /* nevadí — Watchlists si data stáhnou při otevření */
   } finally {
@@ -2576,6 +2664,7 @@ function odebirejSeznam() {
       k.burzaCcxt().then(() => k.naplanujCeny()).catch(() => {});
     }
   }
+  if (predneceniHotovo) predNactiGrafy(); // jiný seznam / obnova: svíčky jeho párů
 }
 
 function zivaZmenaTrhu(zmena) {

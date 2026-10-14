@@ -44,9 +44,9 @@ export class BinanceClient extends CcxtAdapter {
    * 2 s byla fronta trvale plná a svíčky grafu v ní čekaly i přes 4 s
    * (v0.59.2, měřeno). Pro pár párů proto po jednom.
    */
-  async tickeryParu(symboly) {
-    if (symboly.length > 20) return super.tickeryParu(symboly);
-    const vysledky = await Promise.allSettled(symboly.map((s) => this.ex.fetchTicker(s)));
+  async tickeryParu(ex, symboly) {
+    if (symboly.length > 20) return super.tickeryParu(ex, symboly);
+    const vysledky = await Promise.allSettled(symboly.map((s) => ex.fetchTicker(s)));
     const vse = {};
     for (const r of vysledky) if (r.status === 'fulfilled' && r.value) vse[r.value.symbol] = r.value;
     return vse;
