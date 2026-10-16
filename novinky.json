@@ -1,31 +1,27 @@
 {
-  "verze": "0.59.3",
+  "verze": "0.59.4",
   "novinky": [
+    {
+      "en": "Binance: take profit, stop loss and trailing orders now show on the chart and on the position card.",
+      "cs": "Binance: take profit, stop loss i trailing příkazy jsou teď v grafu i na kartě pozice."
+    },
     {
       "en": "Charts open instantly — candles for your positions and the selected watchlist are loaded in advance.",
       "cs": "Grafy se otevírají hned — svíčky pro pozice a vybraný seznam se načítají dopředu."
-    },
-    {
-      "en": "All your connected accounts are live at once — positions from every exchange in one list, each card shows its exchange.",
-      "cs": "Všechny připojené účty běží najednou — pozice ze všech burz v jednom seznamu, u každé karty její burza."
-    },
-    {
-      "en": "Binance USDC perpetuals (BTCUSDC, SOLUSDC…) — positions, balance and pairs.",
-      "cs": "Binance perpetuály v USDC (BTCUSDC, SOLUSDC…) — pozice, zůstatek i páry."
     }
   ],
   "opravy": [
     {
-      "en": "Binance charts no longer wait behind account updates.",
-      "cs": "Grafy z Binance už nečekají za aktualizacemi účtu."
+      "en": "Order lines on the chart show their real type again (Take Profit, Stop Loss…).",
+      "cs": "Čáry příkazů v grafu zase nesou svůj skutečný typ (Take Profit, Stop Loss…)."
     },
     {
-      "en": "Switching between the same pair on two exchanges no longer briefly shows the other exchange's chart.",
-      "cs": "Přepnutí mezi stejným párem na dvou burzách už na chvíli neukáže graf té druhé burzy."
+      "en": "No more error messages after switching back from another app.",
+      "cs": "Po návratu z jiné aplikace už nevyskakují chybové hlášky."
     },
     {
-      "en": "OKX charts now reach the latest candles.",
-      "cs": "Grafy z OKX už sahají až k posledním svíčkám."
+      "en": "Switching accounts in History is quick and keeps each account's saved trades.",
+      "cs": "Přepnutí účtu v Historii je rychlé a uložené obchody každého účtu zůstávají."
     }
   ]
 }

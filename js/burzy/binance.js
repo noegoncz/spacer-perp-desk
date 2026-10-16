@@ -31,6 +31,9 @@ export class BinanceClient extends CcxtAdapter {
     // MiCA jen USDC (ověřeno u uživatele 2026-10-13) — bez nich by jejich
     // pozice ani zůstatek nebyly vidět.
     this.meny = ['USDT', 'USDC'];
+    // Plnění (`userTrades`) vydá Binance jen za posledních 6 měsíců —
+    // starší okna by byla jen prázdné dotazy navíc.
+    this.plneniNejdal = 180 * 864e5;
   }
 
   popisUctu() {
@@ -52,9 +55,94 @@ export class BinanceClient extends CcxtAdapter {
     return vse;
   }
 
+  /**
+   * ⚠ Podmíněné příkazy (TP, SL, stop, trailing) má Binance od konce roku
+   * 2025 ve **službě Algo Orders** (`/fapi/v1/openAlgoOrders`) — běžný
+   * dotaz na otevřené příkazy je nevrací. Bez toho graf ani karta pozice
+   * neukázaly žádné TP/SL, jen likvidaci (snímky uživatele 2026-10-16).
+   */
+  async otevrenePrikazy(ex, symbolCcxt) {
+    const [bezne, algo] = await Promise.all([
+      ex.fetchOpenOrders(symbolCcxt),
+      ex.fetchOpenOrders(symbolCcxt, undefined, undefined, { trigger: true }),
+    ]);
+    this.zapamatujCelePozice(algo, symbolCcxt);
+    return [...bezne, ...algo];
+  }
+
+  /*
+   * Position TP/SL patří k pozici jako u Bybitu (`stopLoss`, `takeProfit`):
+   * karta pak ukazuje „SL x %" a graf čáru SL/TP pro celou pozici. Příkaz
+   * se stejnou cenou aplikace jako duplicitu nekreslí podruhé.
+   */
+  zapamatujCelePozice(algo, symbolCcxt) {
+    this.celePozice ??= new Map();
+    const nove = new Map();
+    for (const o of algo) {
+      if (!(o.info?.closePosition === true || o.info?.closePosition === 'true')) continue;
+      const m = this.trhyCcxt()[o.symbol];
+      if (!m) continue;
+      const par = this.kanonicky(m);
+      const z = nove.get(par) || {};
+      const cena = Number(o.triggerPrice) || null;
+      if (this.typStop(o) === 'TakeProfit') z.takeProfit = cena;
+      else z.stopLoss = cena;
+      nove.set(par, z);
+    }
+    if (symbolCcxt) {
+      const m = this.trhyCcxt()[symbolCcxt];
+      if (m) {
+        const par = this.kanonicky(m);
+        if (nove.has(par)) this.celePozice.set(par, nove.get(par));
+        else this.celePozice.delete(par);
+      }
+    } else {
+      this.celePozice = nove;
+    }
+    let zmena = false;
+    for (const poz of this.positions.values()) {
+      const z = this.celePozice.get(poz.symbol) || {};
+      const sl = z.stopLoss ?? null;
+      const tp = z.takeProfit ?? null;
+      if (poz.stopLoss !== sl || poz.takeProfit !== tp) {
+        poz.stopLoss = sl;
+        poz.takeProfit = tp;
+        zmena = true;
+      }
+    }
+    if (zmena) this.emitPositions();
+  }
+
+  pozice(p) {
+    const poz = super.pozice(p);
+    const z = this.celePozice?.get(poz.symbol);
+    if (z) {
+      poz.stopLoss = z.stopLoss ?? null;
+      poz.takeProfit = z.takeProfit ?? null;
+    }
+    return poz;
+  }
+
+  /**
+   * „Position TP/SL" (na celou pozici) má `closePosition` a množství 0 —
+   * zavře, co v pozici zrovna je. Množství se proto bere z pozice, jinak
+   * by čára nesla 0 JUP a aplikace by nepoznala, že jde o celou pozici.
+   */
+  prikaz(o) {
+    const z = super.prikaz(o);
+    if (o.info?.closePosition === true || o.info?.closePosition === 'true') {
+      const poz = [...this.positions.values()].find((p) => p.symbol === z.symbol);
+      if (poz) z.qty = poz.size;
+      z.reduceOnly = true;
+      z.celaPozice = true;
+    }
+    return z;
+  }
+
   /** Podmíněné příkazy Binance podle typu (STOP_MARKET, TAKE_PROFIT…). */
   typStop(o) {
-    const typ = String(o.info?.type || o.info?.origType || o.type || '').toUpperCase();
+    // Algo příkazy nesou typ v `orderType`; CCXT z nich dělá obecné „market".
+    const typ = String(o.info?.orderType || o.info?.type || o.info?.origType || o.type || '').toUpperCase();
     if (typ.startsWith('TAKE_PROFIT')) return 'TakeProfit';
     if (typ.startsWith('TRAILING')) return 'TrailingStop';
     if (typ.startsWith('STOP')) return 'StopLoss';
@@ -103,9 +191,9 @@ export class BinanceClient extends CcxtAdapter {
     const zaznamy = [];
     for (let od = startTime; od < endTime; od += TYDEN) {
       const doKdy = Math.min(endTime, od + TYDEN - 1);
-      const davka = await ex.fapiPrivateGetIncome({
+      const davka = await this.soukrome((e) => e.fapiPrivateGetIncome({
         incomeType: 'REALIZED_PNL', startTime: Math.floor(od), endTime: Math.ceil(doKdy), limit: 1000,
-      });
+      }), true);
       zaznamy.push(...(davka || []));
     }
     const pary = new Map(); // id burzy → [min čas, max čas]
@@ -158,7 +246,7 @@ export class BinanceClient extends CcxtAdapter {
     const vse = [];
     for (let od = startTime; od < endTime; od += TYDEN - 1000) {
       const doKdy = Math.min(endTime, od + TYDEN - 1000);
-      vse.push(...await this.ex.fetchMyTrades(symbolCcxt, Math.floor(od), 1000, { endTime: Math.ceil(doKdy) }));
+      vse.push(...await this.soukrome((e) => e.fetchMyTrades(symbolCcxt, Math.floor(od), 1000, { endTime: Math.ceil(doKdy) }), true));
     }
     return vse;
   }

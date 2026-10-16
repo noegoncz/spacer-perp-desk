@@ -7,10 +7,13 @@
  * ho přerostou). Nikdy na server ani do cloudové zálohy (IndexedDB se do
  * zálohy nedostane — ta bere jen `perpdesk.*` z localStorage).
  *
- * Data patří **jednomu účtu Bybitu**: ukládá se otisk API klíče
- * (`nastavVlastnika`) a jiný klíč mezipaměť smaže, ať se historie dvou
- * účtů nesmíchá. Odpojení burzy, zapomenutý PIN i odhlášení mažou
- * všechno (`vymaz`, volá store.clearCredentials a zaloha.vymazMistniData).
+ * Data patří **účtu**: klíče se ukládají pod otiskem API klíče
+ * (`nastavVlastnika`), každý účet má svůj oddíl, ať se historie dvou
+ * účtů nesmíchá. ⚠ Dřív jiný klíč mezipaměť **smazal** — s víc účty
+ * (v0.59) to znamenalo, že každé přepnutí účtu v Historii zahodilo
+ * historii a plnění toho druhého a stahovaly se znovu od nuly (v0.59.4).
+ * Odpojení burzy, zapomenutý PIN i odhlášení mažou všechno (`vymaz`,
+ * volá store.clearCredentials a zaloha.vymazMistniData).
  *
  * Modul nesahá na DOM a o burze nic neví — ukládá, co mu kdo dá.
  */
@@ -61,18 +64,37 @@ async function otisk(text) {
   return [...new Uint8Array(hash)].slice(0, 12).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-/** Mezipaměť pro účet s tímto klíčem; jiný klíč než minule ji vymaže. */
+/** Klíč v úložišti: oddíl účtu + klíč dat. */
+const vOddilu = (ucet, klic) => `u:${ucet}|${klic}`;
+
+/**
+ * Data z doby jednoho účtu (bez oddílu, s `__vlastnik`) se jednou převedou
+ * do oddílu toho účtu — nic se neztratí.
+ */
+async function prevedStareKlice() {
+  const stary = await operace('readonly', (s) => s.get(KLIC_VLASTNIKA));
+  if (!stary) return;
+  const klice = (await operace('readonly', (s) => s.getAllKeys())) || [];
+  for (const k of klice) {
+    if (k === KLIC_VLASTNIKA || String(k).startsWith('u:')) continue;
+    const hodnota = await operace('readonly', (s) => s.get(k));
+    await operace('readwrite', (s) => {
+      s.put(hodnota, vOddilu(stary, k));
+      return s.delete(k);
+    });
+  }
+  await operace('readwrite', (s) => s.delete(KLIC_VLASTNIKA));
+}
+
+/** Mezipaměť pro účet s tímto klíčem (data ostatních účtů zůstávají). */
 export function nastavVlastnika(apiKey) {
   pripraveno = (async () => {
     if (!apiKey) {
       vlastnik = null;
       return;
     }
-    const novy = await otisk(apiKey);
-    const ulozeny = await operace('readonly', (s) => s.get(KLIC_VLASTNIKA));
-    if (ulozeny && ulozeny !== novy) await operace('readwrite', (s) => s.clear());
-    await operace('readwrite', (s) => s.put(novy, KLIC_VLASTNIKA));
-    vlastnik = novy;
+    await prevedStareKlice();
+    vlastnik = await otisk(apiKey);
   })().catch(() => { vlastnik = null; });
   return pripraveno;
 }
@@ -80,18 +102,29 @@ export function nastavVlastnika(apiKey) {
 export async function nacti(klic) {
   await pripraveno;
   if (!vlastnik) return null;
-  return operace('readonly', (s) => s.get(klic));
+  return operace('readonly', (s) => s.get(vOddilu(vlastnik, klic)));
 }
 
 export async function uloz(klic, hodnota) {
   await pripraveno;
   if (!vlastnik) return;
-  await operace('readwrite', (s) => s.put(hodnota, klic));
+  await operace('readwrite', (s) => s.put(hodnota, vOddilu(vlastnik, klic)));
 }
 
 export async function smaz(klic) {
   await pripraveno;
-  await operace('readwrite', (s) => s.delete(klic));
+  if (!vlastnik) return;
+  await operace('readwrite', (s) => s.delete(vOddilu(vlastnik, klic)));
+}
+
+/** Smaže oddíl jednoho účtu (odebrání připojení; ostatní účty zůstávají). */
+export async function smazUcet(apiKey) {
+  if (!apiKey) return;
+  await pripraveno;
+  const predpona = vOddilu(await otisk(apiKey), '');
+  const klice = (await operace('readonly', (s) => s.getAllKeys())) || [];
+  const jeho = klice.filter((k) => String(k).startsWith(predpona));
+  if (jeho.length) await operace('readwrite', (s) => { jeho.forEach((k) => s.delete(k)); });
 }
 
 /** Smaže všechno (odpojení burzy, zapomenutý PIN, odhlášení). */

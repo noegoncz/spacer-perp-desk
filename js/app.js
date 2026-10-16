@@ -687,6 +687,8 @@ async function dotahniPlneni(symbol, od, jenUlozene = false, klient = client) {
   if (jenUlozene) return serazene();
 
   const ted = Date.now();
+  // Burza vydá plnění jen do určité doby zpátky (Binance 6 měsíců).
+  if (klient.plneniNejdal) od = Math.max(od, ted - klient.plneniNejdal);
   // Nové: od posledního stažení (s překryvem) do teď; poprvé posledních 7 dní.
   const noveOd = z.aktualizovano ? Math.max(z.aktualizovano - PREKRYV, ted - 52 * OKNO_PLNENI) : ted - OKNO_PLNENI;
   const okna = [];
@@ -1608,6 +1610,8 @@ async function prepniNaPripojeni(id) {
 async function odeberPripojeni(id) {
   if (!confirm(t('exchanges.confirmRemove'))) return;
   const aktivni = store.aktivniPripojeni() === id;
+  // Uložená historie a plnění odebraného účtu pryč (každý účet má svůj oddíl).
+  mezipamet.smazUcet(store.loadPripojeni().find((x) => x.id === id)?.apiKey);
   store.odeberPripojeni(id);
   zastavUcet(id);
   if (!aktivni) {
@@ -4447,7 +4451,7 @@ function buildChartLines(position, orders) {
       const price = o.trigger ?? o.price;
       if (!price) return null;
       const buy = o.side === 'Buy';
-      const typ = TYP_PRIKAZU[o.stopOrderType] || (buy ? TYP_PRIKAZU.limitBuy : TYP_PRIKAZU.limitSell);
+      const typ = TYP_PRIKAZU[o.stopType] || (buy ? TYP_PRIKAZU.limitBuy : TYP_PRIKAZU.limitSell);
       return {
         price,
         color: buy ? BARVA_CARY.nakup : BARVA_CARY.prodej,
@@ -4502,7 +4506,7 @@ function buildChartLines(position, orders) {
 
     const strana = orderSide(order, position);
     const buy = order.side === 'Buy';
-    const typ = TYP_PRIKAZU[order.stopOrderType] || (buy ? TYP_PRIKAZU.limitBuy : TYP_PRIKAZU.limitSell);
+    const typ = TYP_PRIKAZU[order.stopType] || (buy ? TYP_PRIKAZU.limitBuy : TYP_PRIKAZU.limitSell);
     if (strana === 'tp') {
       lines.push({ price, color: barvaTp, dash: CARKOVANI.tp, title: popisCary(typ, order.qty, price, mena) });
     } else if (strana === 'sl') {

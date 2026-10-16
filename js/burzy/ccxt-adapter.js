@@ -120,6 +120,31 @@ export class CcxtAdapter {
     return this.zakladaniVerejne;
   }
 
+  /**
+   * Instance s klíčem pro **hromadné stahování** (plnění po 7denních
+   * oknech, deník příjmů) — vlastní fronta, ať pozice a příkazy nikdy
+   * nečekají za desítkami dotazů do historie (v0.59.4: graf Binance na
+   * 1W poslal 60 dotazů na plnění po 5 jednotkách = ~15 s fronty a TP/SL,
+   * pozice i Historie čekaly za nimi, až vypršely).
+   */
+  async burzaHromadna() {
+    if (!this.hasCredentials()) return this.burzaCcxt();
+    const klic = `${this.apiKey}|${this.apiSecret}|${this.apiPassphrase}`;
+    if (this.exHromadna && this.exHromadnaKlic === klic) return this.exHromadna;
+    if (this.zakladaniHromadne?.klic !== klic) {
+      const slib = (async () => {
+        const ex = await this.novaInstance(true);
+        await this.nactiTrhy(ex, this.ex || this.exVerejna);
+        this.exHromadna = ex;
+        this.exHromadnaKlic = klic;
+        return ex;
+      })();
+      this.zakladaniHromadne = { klic, slib };
+      slib.catch(() => { if (this.zakladaniHromadne?.slib === slib) this.zakladaniHromadne = null; });
+    }
+    return this.zakladaniHromadne.slib;
+  }
+
   /** Trhy převezme od druhé instance, je-li hotová (seznam trhů je stejný), jinak stáhne. */
   async nactiTrhy(ex, jina) {
     if (jina?.markets) {
@@ -208,6 +233,38 @@ export class CcxtAdapter {
       .replace(/https?:\/\/\S+/g, '')
       .trim();
     return zprava || t('error.network');
+  }
+
+  /**
+   * Soukromý dotaz s jedním tichým opakováním a přeloženou chybou
+   * (v0.59.4, snímky uživatele). Po návratu z jiné aplikace telefon
+   * dotazy pozdrží: podepsaný dotaz pak Binance odmítne jako starý
+   * (-1021, „outside of the recvWindow" — CCXT InvalidNonce) nebo
+   * vyprší síť. Obojí napodruhé projde; u času se navíc změří rozdíl
+   * hodin vůči burze. ⚠ Ven nikdy surová zpráva CCXT: obsahuje adresu
+   * dotazu i s podpisem a uživateli nic neřekne.
+   */
+  async soukrome(fn, hromadne = false) {
+    const ex = await (hromadne ? this.burzaHromadna() : this.burzaCcxt());
+    const c = globalThis.ccxt || {};
+    const je = (err, trida) => typeof c[trida] === 'function' && err instanceof c[trida];
+    try {
+      try {
+        return await fn(ex);
+      } catch (err) {
+        if (!je(err, 'InvalidNonce') && !je(err, 'NetworkError')) throw err;
+        if (je(err, 'InvalidNonce')) {
+          ex.options.adjustForTimeDifference = true;
+          try { await ex.loadTimeDifference?.(); } catch { /* zkusí se i tak */ }
+        }
+        return await fn(ex);
+      }
+    } catch (err) {
+      const chyba = new Error(this.prelozChybu(err));
+      chyba.puvodni = err;
+      chyba.technicky = this.technickyPopis(err);
+      throw chyba;
+    }
   }
 
   /**
@@ -318,7 +375,7 @@ export class CcxtAdapter {
     try {
       this.zapisDiag('pozice');
       const ex = await this.burzaCcxt();
-      const surove = await ex.fetchPositions(undefined, this.volbyPozic());
+      const surove = await this.soukrome((e) => e.fetchPositions(undefined, this.volbyPozic()));
       this.positions.clear();
       for (const p of surove) {
         const m = ex.markets[p.symbol];
@@ -339,8 +396,8 @@ export class CcxtAdapter {
       }
       return true;
     } catch (err) {
-      const zprava = this.prelozChybu(err);
-      this.zapisDiag('chyba', `${zprava} [${this.technickyPopis(err)}]`);
+      const zprava = this.prelozChybu(err.puvodni || err);
+      this.zapisDiag('chyba', `${zprava} [${err.technicky || this.technickyPopis(err)}]`);
       this.setStatus({ rest: 'error' });
       this.handlers.onError?.(zprava);
       return false;
@@ -368,8 +425,7 @@ export class CcxtAdapter {
   obnovUlozeneFundingy() {}
 
   async getWalletBalance() {
-    const ex = await this.burzaCcxt();
-    const b = await ex.fetchBalance();
+    const b = await this.soukrome((ex) => ex.fetchBalance());
     // Dotaz prošel = přehled je; i nulová equity je údaj (prázdný futures
     // účet), ne chybějící oprávnění (v0.58.2).
     // Víc měn vypořádání (USDT + USDC) se sčítá — stablecoiny ~1:1.
@@ -395,7 +451,7 @@ export class CcxtAdapter {
   }
 
   prikaz(o) {
-    const m = this.ex.markets[o.symbol];
+    const m = this.trhyCcxt()[o.symbol];
     return {
       id: String(o.id),
       symbol: m ? this.kanonicky(m) : o.symbol,
@@ -412,13 +468,18 @@ export class CcxtAdapter {
   }
 
   async getOpenOrders(symbol) {
-    const ex = await this.burzaCcxt();
-    return (await ex.fetchOpenOrders(await this.symbolCcxt(symbol))).map((o) => this.prikaz(o));
+    const s = await this.symbolCcxt(symbol);
+    return (await this.soukrome((ex) => this.otevrenePrikazy(ex, s))).map((o) => this.prikaz(o));
   }
 
   async getAllOpenOrders() {
-    const ex = await this.burzaCcxt();
-    return (await ex.fetchOpenOrders()).filter((o) => ex.markets[o.symbol]?.linear).map((o) => this.prikaz(o));
+    const prikazy = await this.soukrome((ex) => this.otevrenePrikazy(ex, undefined));
+    return prikazy.filter((o) => this.trhyCcxt()[o.symbol]?.linear).map((o) => this.prikaz(o));
+  }
+
+  /** Otevřené příkazy CCXT (páru, nebo všech) — burza může přidat další druhy. */
+  async otevrenePrikazy(ex, symbolCcxt) {
+    return ex.fetchOpenOrders(symbolCcxt);
   }
 
   plneni(tr) {
@@ -440,7 +501,7 @@ export class CcxtAdapter {
     const krok = 7 * 864e5 - 1000;
     for (let od = startTime; od < endTime; od += krok) {
       const doKdy = Math.min(endTime, od + krok);
-      const davka = await ex.fetchMyTrades(s, Math.floor(od), 1000, { endTime: Math.ceil(doKdy) });
+      const davka = await this.soukrome((e) => e.fetchMyTrades(s, Math.floor(od), 1000, { endTime: Math.ceil(doKdy) }), true);
       vse.push(...davka);
     }
     const videne = new Set();

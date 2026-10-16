@@ -280,6 +280,37 @@ graf Binance se načítal dlouho a pak „divně"):**
   `test-mereni-mazani-a-prepnuti-paru.py` počítá s předčtením: graf BTC
   smí být vidět hned, když jeho svíčky už dorazily (`__btcSvice`).
 
+**Účet Binance naostro (v0.59.4, první skutečný obchod uživatele
+2026-10-16, JUPUSDT long):**
+- ⚠ **TP/SL, stop a trailing jsou u Binance ve službě Algo Orders**
+  (`/fapi/v1/openAlgoOrders`, od konce 2025) — `fetchOpenOrders` je
+  nevrací; CCXT je dá s `{ trigger: true }` (`otevrenePrikazy` v
+  binance.js stahuje obojí). CCXT z `TAKE_PROFIT_MARKET` udělá typ
+  „market" → typ se čte z `info.orderType`. „Position TP/SL" má
+  `closePosition` a množství 0 → množství z pozice a cena do
+  `stopLoss`/`takeProfit` pozice (jako u Bybitu; duplicitní čára se
+  nekreslí).
+- ⚠ **Popisky čar četly `o.stopOrderType`** (pole Bybitu), model má
+  `stopType` → všechny podmíněné příkazy byly „Limit Buy/Sell"
+  (podle historie kódu nejspíš i u Bybitu od v0.31.0). Opraveno.
+- **Soukromé dotazy CCXT přes `soukrome(fn)`**: -1021 (InvalidNonce —
+  po návratu z jiné aplikace telefon dotaz pozdrží a podpis zestárne)
+  nebo síťová chyba → jednou potichu znovu, u času s `loadTimeDifference`.
+  Ven jen přeložená chyba — **nikdy surová zpráva CCXT** (na snímku
+  uživatele byla v liště celá adresa i s podpisem).
+- **Třetí instance CCXT `burzaHromadna`** pro plnění a deník příjmů:
+  graf Binance na 1W poslal 60 dotazů na plnění (po 5 jednotkách,
+  ~15 s fronty) a pozice, TP/SL i Historie čekaly za nimi, až vypršely
+  („request timed out"). Plnění Binance jen 6 měsíců zpátky
+  (`plneniNejdal`, starší API nevydá).
+- **Mezipaměť po účtech** (`u:<otisk klíče>|klíč` v mezipamet.js): dřív
+  jiný klíč mezipaměť smazal, takže každé přepnutí účtu v Historii
+  zahodilo historii toho druhého. Stará data se jednou převedou do oddílu
+  svého účtu; odebrání připojení maže jen jeho oddíl (`smazUcet`).
+- Test: `tools/test-binance-ucet.py` s podstrčeným soukromým API
+  (`tools/mock-binance.js` — vkládá se za mock-bybit.js; řízení
+  `__binanceChyba1021`, `__binanceDotazy`), na v0.59.3 padá v 11 bodech.
+
 **Krok 4b — všechny účty najednou (v0.59.0, přání uživatele: „přepínat
 a hledat pozice nedává smysl"):**
 - Každé připojení má vlastního klienta (`klienti`: id → adaptér), všichni
@@ -1961,7 +1992,7 @@ záznamy) a **plnění po párech** (`plneni:SYMBOL`).
   `dotahniPlneni`).
 - ⚠ **Jen v telefonu**: ne na server, ne do cloudové zálohy (IndexedDB
   záloha nebere). Patří jednomu účtu Bybitu — ukládá se otisk API klíče
-  (`nastavVlastnika`) a jiný klíč mezipaměť smaže. **Odpojení burzy,
+  (`nastavVlastnika`), od v0.59.4 každý účet ve vlastním oddílu (dřív jiný klíč mezipaměť smazal). **Odpojení burzy,
   zapomenutý PIN (`store.clearCredentials`) i odhlášení
   (`zaloha.vymazMistniData`) ji mažou.**
 - **⟳ podle obrazovky:** Pozice → pozice a účet; Watchlists → ceny

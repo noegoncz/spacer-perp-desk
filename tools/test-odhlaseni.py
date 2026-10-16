@@ -85,10 +85,11 @@ def over(podminka, popis):
 klice = lambda: sorted(json.loads(ev("JSON.stringify(Object.keys(localStorage).filter(k => k.startsWith('perpdesk.')))") or '[]'))
 vidim = lambda i: ev(f"!document.getElementById('{i}').hidden")
 
+# Od v0.59.4 má každý účet v mezipaměti oddíl „u:<otisk>|“ — porovnává se jen klíč dat.
 KLICE_DB = """new Promise((ok) => { const r = indexedDB.open('perpyx-mezipamet', 1);
   r.onupgradeneeded = () => r.result.createObjectStore('data');
   r.onsuccess = () => { const tx = r.result.transaction('data', 'readonly');
-    const k = tx.objectStore('data').getAllKeys(); k.onsuccess = () => { ok(JSON.stringify(k.result)); r.result.close(); }; };
+    const k = tx.objectStore('data').getAllKeys(); k.onsuccess = () => { ok(JSON.stringify(k.result.map((x) => String(x).replace(/^u:[^|]*\|/, '')))); r.result.close(); }; };
   r.onerror = () => ok('[]'); })"""
 klice_db = lambda: json.loads(p.prikaz('Runtime.evaluate', expression=KLICE_DB, awaitPromise=True,
                                       returnByValue=True).get('result', {}).get('value') or '[]')
