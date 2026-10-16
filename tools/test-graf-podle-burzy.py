@@ -11,7 +11,8 @@ Ověřuje:
   * graf JUP z Bybitu má své 2 kresby a 1 alarm,
   * graf JUP z Binance jen svou 1 kresbu a žádný alarm,
   * smazání kreseb na Binance kresby Bybitu nechá,
-  * na server jdou jen alarmy Bybitu (hlídač bere ceny z Bybitu).
+  * na server jdou jen alarmy burz, které hlídač sleduje — Bybit a od
+    v0.59.9 Binance; alarm grafu jiné burzy (OKX) hlídá jen telefon.
 Na starém kódu padá (Binance graf ukazuje kresby Bybitu).
 
 Spuštění: python tools/test-graf-podle-burzy.py http://localhost:8075/index.html
@@ -35,7 +36,8 @@ if (!sessionStorage.getItem('__grafBurzy')) {
   localStorage.setItem('perpdesk.drawings.binance:JUPUSDT', JSON.stringify([cara(0.33, '#22d3ee')]));
   localStorage.setItem('perpdesk.alarms', JSON.stringify([
     { id: 'a1', symbol: 'JUPUSDT', typ: 'cena', price: 0.32, smer: 'any', aktivni: true, opakovat: false },
-    { id: 'a2', symbol: 'binance:XRPUSDT', typ: 'cena', price: 2, smer: 'any', aktivni: true, opakovat: false }]));
+    { id: 'a2', symbol: 'binance:XRPUSDT', typ: 'cena', price: 2, smer: 'any', aktivni: true, opakovat: false },
+    { id: 'a3', symbol: 'okx:XRPUSDT', typ: 'cena', price: 2, smer: 'any', aktivni: true, opakovat: false }]));
 }
 (() => {
   const f = window.fetch;
@@ -119,7 +121,7 @@ for _ in range(10):
     time.sleep(0.5)
 odeslane = ev("window.__odeslaneAlarmy")
 print('na server:', odeslane)
-over(odeslane == ['JUPUSDT'], 'na server jdou jen alarmy Bybitu')
+over(sorted(odeslane or []) == ['JUPUSDT', 'binance:XRPUSDT'], 'na server jdou alarmy Bybitu a Binance, ne OKX')
 
 konzole = ev('(window.__chyby||[]).join(" | ")') or ''
 over(not konzole, f'bez chyb v konzoli ({konzole})')

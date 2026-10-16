@@ -208,9 +208,8 @@ Binance → Gate → MEXC → OKX (+EEA) → Bitget → Hyperliquid, pak vlny 2 
   s podpisem) do UI nepouštět (`prelozChybu`).
 - ⚠ Binance: `options.fetchCurrencies: false` — jinak CCXT s klíčem volá
   spotové `/sapi/` (v Demo Tradingu nejde, chyba při každém klíči).
-- **Zbývá:** serverový hlídač alarmů bere ceny
-  z Bybitu (u Binance páru jsou blízké, ne stejné); WebSocket místo
-  dotazování; víc burz najednou.
+- **Zbývá:** WebSocket místo dotazování. (Serverový hlídač hlídá
+  Binance od v0.59.9, víc burz najednou od v0.59.0.)
 - Test: `tools/test-vyber-burzy.py` (výběr, neplatný klíč, veřejná data
   ze skutečného Binance v aplikaci), `test-uvod.py`.
 
@@ -2804,6 +2803,19 @@ telefon (účet, alarmy) ──PUT /api/account/alarms──▶ perpyx.com (D1)
   čeká na odemčení zámku a na první pozice (nejvýš 8 s); otevřený graf
   jiného páru nahradí bez dalšího záznamu v historii. Test:
   `tools/test-notifikace-graf.py`, na starém kódu padá ve 3 bodech.
+- **Binance na serveru (v0.59.9):** alarmy grafů Binance
+  (`binance:JUPUSDT`) jdou na server taky (`serverHlidaSymbol`,
+  `BURZY_HLIDACE` v alarmy-server.js; ostatní burzy hlídá jen telefon).
+  Hlídač má pro ně **druhé spojení** (`pripojBinance`,
+  `<pár>@miniTicker`, cena `c`), Bybit beze změny — výpadek jedné burzy
+  nezastaví druhou. ⚠ **Tržní data futures Binance jsou na
+  `wss://fstream.binance.com/market/ws`** — stará `/ws` odběr potvrdí,
+  ale data neposílá (2026-10-16; mock by to nechytil). Text push
+  „BTCUSDT (Binance)"; notifikace nese klíč grafu a otevře graf správné
+  burzy (`dokonciGrafZNotifikace`). Test: `test-hlidac.py` (Bybit
+  i Binance naostro; Node přenosný do dočasné složky, `--check` +
+  test před pushem — server si kód stahuje sám), `test-notifikace-graf.py`,
+  `test-graf-podle-burzy.py`.
 - Hlídač se počítá za živý, když se ozval v posledních 3 minutách; jinak
   telefon hlídá i na pozadí sám a nastavení to přizná.
 - Odhlášení i smazání účtu nejdřív odebere telefon z push.

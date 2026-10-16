@@ -39,11 +39,21 @@ export function hlidaServer() {
   return Boolean(stav.hlidacVidet) && Date.now() - new Date(stav.hlidacVidet) < HLIDAC_ZIVY;
 }
 
+/*
+ * Burzy, jejichž ceny hlídač na serveru sleduje (server/hlidac.mjs). Bybit
+ * má holý pár (JUPUSDT), ostatní „burza:pár" (v0.56.1). Binance od
+ * v0.59.9; alarmy grafů ostatních burz hlídá jen telefon.
+ */
+const BURZY_HLIDACE = ['binance'];
+export function serverHlidaSymbol(symbol) {
+  const s = String(symbol || '');
+  const i = s.indexOf(':');
+  return i < 0 || BURZY_HLIDACE.includes(s.slice(0, i));
+}
+
 async function odesli() {
   if (!ucet.prihlasen()) return;
-  // Hlídač bere ceny z Bybitu — alarmy grafů jiných burz (binance:BTCUSDT)
-  // hlídá jen telefon (v0.56.1).
-  const seznam = alarmy.vsechny().filter((a) => !String(a.symbol).includes(':'));
+  const seznam = alarmy.vsechny().filter((a) => serverHlidaSymbol(a.symbol));
   const otisk = JSON.stringify(seznam);
   if (otisk === posledniOdeslane) return;
   try {

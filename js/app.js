@@ -437,8 +437,8 @@ function nazevKlice(klic) {
   const burza = klic.slice(0, i);
   return `${klic.slice(i + 1)} (${BURZY[burza]?.nazev || burza})`;
 }
-/** Server hlídá jen alarmy na Bybitu (bere ceny z Bybitu). */
-const hlidaServerAlarm = (a) => !String(a?.symbol).includes(':') && alarmyServer.hlidaServer();
+/** Hlídá alarm server? Jen burzy, jejichž ceny hlídač sleduje (Bybit, od v0.59.9 Binance). */
+const hlidaServerAlarm = (a) => alarmyServer.serverHlidaSymbol(a?.symbol) && alarmyServer.hlidaServer();
 
 /* ---------- seznam pozic: řazení a filtr ---------- */
 
@@ -3801,21 +3801,25 @@ function dokonciGrafZNotifikace() {
   clearTimeout(dokonciGrafZNotifikace.odklad);
   // Zamčeno: otevře se po odemčení (zamek.spust → onOdemceno).
   if (zamek.jeZamceno()) return;
-  const pozice = lastPositions.find((p) => p.symbol === c.symbol && p.burza === 'bybit') || null;
+  // Symbol z notifikace je klíč grafu: „JUPUSDT" (Bybit), „binance:JUPUSDT" (v0.59.9).
+  const i = String(c.symbol).indexOf(':');
+  const burza = i < 0 ? 'bybit' : c.symbol.slice(0, i);
+  const par = i < 0 ? c.symbol : c.symbol.slice(i + 1);
+  const pozice = lastPositions.find((p) => p.symbol === par && (p.burza || 'bybit') === burza) || null;
   const pozicePrisly = !klienti.size || Boolean(souhrnStavu().lastUpdate);
   if (!pozice && !pozicePrisly && Date.now() - c.od < CEKANI_NA_POZICE) {
     dokonciGrafZNotifikace.odklad = setTimeout(dokonciGrafZNotifikace, 250);
     return;
   }
   grafZNotifikace = null;
-  if (chartSymbol === c.symbol && (chartPosition || !pozice)) return; // už je otevřený
+  if (grafKlic() === c.symbol && (chartPosition || !pozice)) return; // už je otevřený
   // Jiný otevřený graf se nahradí; záznam v historii zůstane jeden, ať
   // tlačítko zpět nevyžaduje dvě klepnutí.
   const uzOtevreny = Boolean(chartSymbol);
   if (uzOtevreny) closeChart();
   if (uzOtevreny) otevriGraf.bezHistorie = true;
   if (pozice) openChart(pozice);
-  else openChartSymbol({ symbol: c.symbol, burza: 'bybit' });
+  else openChartSymbol({ symbol: par, burza });
 }
 
 /** Nová cena páru — zkontroluje alarmy a ohlásí, co zaznělo. */

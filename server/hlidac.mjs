@@ -27,6 +27,10 @@ const API = (process.env.API || 'https://perpyx.com').replace(/\/$/, '');
 const TOKEN = process.env.WATCHER_TOKEN || '';
 const ZKOUSKA = process.env.ZKOUSKA === '1';
 const STREAM = process.env.STREAM || 'wss://stream.bybit.com/v5/public/linear';
+// Binance USDⓈ-M (v0.59.9): alarmy grafů Binance mají symbol „binance:JUPUSDT".
+// ⚠ Tržní data jsou na `/market/ws` — stará `/ws` odběr potvrdí, ale data
+// už neposílá (ověřeno 2026-10-16). Mock by to neodhalil, test jde naostro.
+const STREAM_BINANCE = process.env.STREAM_BINANCE || 'wss://fstream.binance.com/market/ws';
 const OBNOVA_ALARMU = 15000;      // jak často si stáhnout alarmy
 const CASOVE_ALARMY = 5000;       // kontrola alarmů „v čas"
 const PING = 20000;               // Bybit chce ping, jinak spojení zavře
@@ -136,12 +140,13 @@ async function watcherApi(cesta, telo) {
 
 async function obnovAlarmy() {
   try {
-    const info = `par:${ceny.size} ws:${stavWs} alarmu:${alarmy.length} fcm:${stavFcm}`;
+    const info = `par:${ceny.size} ws:${stavWs} bn:${stavBn} alarmu:${alarmy.length} fcm:${stavFcm}`;
     const d = await watcherApi(`/api/watcher/alarms?info=${encodeURIComponent(info)}`);
     alarmy = (d.alarms || []).filter((a) => !spusteneTed.has(`${a.account}:${a.id}`));
     tokeny = d.tokens || {};
     spusteneTed.clear();
     prihlasOdbery();
+    prihlasOdberyBinance();
   } catch (e) {
     log('obnova alarmů selhala:', e.message);
   }
@@ -153,15 +158,24 @@ const ceny = new Map();     // symbol → poslední cena
 
 const formatCeny = (x) => (Number.isFinite(x) ? String(Number(x.toPrecision(6))) : '');
 
+/** „binance:JUPUSDT" → „JUPUSDT (Binance)", Bybit beze změny. */
+function nazevParu(symbol) {
+  const i = String(symbol).indexOf(':');
+  if (i < 0) return symbol;
+  const burza = symbol.slice(0, i);
+  return `${symbol.slice(i + 1)} (${burza === 'binance' ? 'Binance' : burza})`;
+}
+
 function texty(a, cena) {
   const cs = a.jazyk === 'cs';
-  const titulek = `PerpyX · ${a.symbol}`;
+  const par = nazevParu(a.symbol);
+  const titulek = `PerpyX · ${par}`;
   if (a.typ === 'cas') {
     return { titulek, text: a.zprava || (cs ? 'Nastal čas alarmu.' : 'Your time alert is due.') };
   }
   const hladina = formatCeny(uroven(a));
-  const zakladni = cs ? `${a.symbol} dosáhl ${hladina} (cena ${formatCeny(cena)})`
-    : `${a.symbol} reached ${hladina} (price ${formatCeny(cena)})`;
+  const zakladni = cs ? `${par} dosáhl ${hladina} (cena ${formatCeny(cena)})`
+    : `${par} reached ${hladina} (price ${formatCeny(cena)})`;
   return { titulek, text: a.zprava ? `${a.zprava} — ${zakladni}` : zakladni };
 }
 
@@ -217,7 +231,8 @@ let odebirane = new Set();
 let pokus = 0;
 
 function prihlasOdbery() {
-  const chci = new Set(alarmy.filter((a) => a.typ !== 'cas').map((a) => a.symbol));
+  // Jen páry Bybitu (holý symbol); „binance:…" má vlastní spojení níž.
+  const chci = new Set(alarmy.filter((a) => a.typ !== 'cas' && !String(a.symbol).includes(':')).map((a) => a.symbol));
   if (!ws || ws.readyState !== 1) {
     odebirane = new Set();
     return;
@@ -268,6 +283,82 @@ function pripoj() {
     setTimeout(pripoj, cekat);
   });
   ws.addEventListener('error', () => { /* zavření řeší 'close' */ });
+}
+
+/* ---------- živé ceny z Binance (v0.59.9) ---------- */
+
+/*
+ * Vlastní spojení, ať výpadek jedné burzy nezastaví alarmy druhé.
+ * `<pár>@miniTicker` posílá poslední cenu (`c`) po 0,5 s. Binance spojení
+ * po 24 h sám zavře a posílá ping, na který Node (undici) odpovídá sám;
+ * zavření řeší znovupřipojení jako u Bybitu. Nejvýš 200 odběrů na spojení.
+ */
+let wsBn = null;
+let stavBn = 'zavreno';
+let odebiraneBn = new Set();
+let pokusBn = 0;
+let idBn = 0;
+let znovuBn = null;   // čekání na znovupřipojení (nepřipojovat dřív ani dvakrát)
+const BN = 'binance:';
+
+function prihlasOdberyBinance() {
+  const chci = new Set(alarmy.filter((a) => a.typ !== 'cas' && String(a.symbol).startsWith(BN))
+    .map((a) => a.symbol.slice(BN.length)));
+  if (!chci.size && !wsBn) return;          // bez alarmů Binance se nepřipojuje
+  if (!wsBn) {
+    if (!znovuBn) pripojBinance();
+    return;
+  }
+  if (wsBn.readyState !== 1) return;        // po otevření se přihlásí samo
+  const pridat = [...chci].filter((s) => !odebiraneBn.has(s));
+  const odebrat = [...odebiraneBn].filter((s) => !chci.has(s));
+  const tema = (s) => `${s.toLowerCase()}@miniTicker`;
+  for (let i = 0; i < pridat.length; i += 50) {
+    wsBn.send(JSON.stringify({ method: 'SUBSCRIBE', params: pridat.slice(i, i + 50).map(tema), id: ++idBn }));
+  }
+  for (let i = 0; i < odebrat.length; i += 50) {
+    wsBn.send(JSON.stringify({ method: 'UNSUBSCRIBE', params: odebrat.slice(i, i + 50).map(tema), id: ++idBn }));
+  }
+  odebrat.forEach((s) => { odebiraneBn.delete(s); ceny.delete(BN + s); });
+  pridat.forEach((s) => odebiraneBn.add(s));
+}
+
+function pripojBinance() {
+  stavBn = 'pripojuji';
+  odebiraneBn = new Set();
+  const spojeni = new WebSocket(STREAM_BINANCE);
+  wsBn = spojeni;
+  spojeni.addEventListener('open', () => {
+    stavBn = 'otevreno';
+    pokusBn = 0;
+    prihlasOdberyBinance();
+    log('stream Binance otevřen');
+  });
+  spojeni.addEventListener('message', (e) => {
+    let m;
+    try {
+      m = JSON.parse(e.data);
+    } catch {
+      return;
+    }
+    if (m?.e !== '24hrMiniTicker' || !m.s) return;
+    const cena = Number(m.c);
+    if (Number.isFinite(cena) && cena > 0) novaCena(BN + m.s, cena);
+  });
+  spojeni.addEventListener('close', () => {
+    stavBn = 'zavreno';
+    wsBn = null;
+    // Po výpadku by stará cena vyrobila falešné protnutí.
+    for (const k of [...ceny.keys()]) if (k.startsWith(BN)) ceny.delete(k);
+    const cekat = Math.min(60000, 1000 * 2 ** pokusBn++);
+    log(`stream Binance zavřen, znovu za ${cekat / 1000} s`);
+    znovuBn = setTimeout(() => {
+      znovuBn = null;
+      // Bez alarmů Binance se znovu nepřipojuje (připojí ho další obnova).
+      if (!wsBn && alarmy.some((a) => String(a.symbol).startsWith(BN))) pripojBinance();
+    }, cekat);
+  });
+  spojeni.addEventListener('error', () => { /* zavření řeší 'close' */ });
 }
 
 /* ---------- start ---------- */

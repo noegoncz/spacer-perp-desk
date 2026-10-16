@@ -1,6 +1,10 @@
 {
-  "verze": "0.59.8",
+  "verze": "0.59.9",
   "novinky": [
+    {
+      "en": "Binance price alerts now ring even with the screen off, just like Bybit.",
+      "cs": "Cenové alarmy na Binance teď zvoní i se zhasnutým displejem, stejně jako u Bybitu."
+    },
     {
       "en": "Binance: funding on the position card — rate, next payment and total paid since you opened the position.",
       "cs": "Binance: funding na kartě pozice — sazba, příští stržení a celkem zaplaceno od otevření pozice."

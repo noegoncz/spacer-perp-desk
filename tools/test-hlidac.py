@@ -10,7 +10,9 @@ jen ho vypíše. Ověřuje se, že:
   * při protnutí „pošle" push s českým textem a nahlásí zaznění (fired),
   * jednorázový alarm zazní jen jednou,
   * časový alarm zazní bez ohledu na cenu,
-  * alarm účtu bez push tokenu se nehlídá (to řeší už API, tady jen tvar).
+  * alarm účtu bez push tokenu se nehlídá (to řeší už API, tady jen tvar),
+  * alarm grafu Binance („binance:BTCUSDT", v0.59.9) hlídá vlastní stream
+    Binance (skutečná cena) a v textu stojí „BTCUSDT (Binance)".
 
 Potřebuje Node 22: python tools/test-hlidac.py cesta/k/node[.exe]
 """
@@ -25,6 +27,9 @@ TOKEN = 'testovaci-token'
 cena = float(json.load(urllib.request.urlopen(
     'https://api.bybit.com/v5/market/tickers?category=linear&symbol=BTCUSDT', timeout=15))['result']['list'][0]['lastPrice'])
 print('BTC teď:', cena)
+cena_bn = float(json.load(urllib.request.urlopen(
+    'https://fapi.binance.com/fapi/v1/ticker/price?symbol=BTCUSDT', timeout=15))['price'])
+print('BTC na Binance teď:', cena_bn)
 ted = int(time.time() * 1000)
 ALARMY = [
     # Nad a pod cenou — jeden z nich trh protne brzo. Jednorázové.
@@ -33,6 +38,11 @@ ALARMY = [
     {'account': 'u1', 'id': 'pod', 'symbol': 'BTCUSDT', 'typ': 'cena', 'price': cena - 1.5, 'smer': 'any',
      'opakovat': False, 'jazyk': 'cs', 'zprava': 'Test'},
     {'account': 'u1', 'id': 'cas', 'symbol': 'ETHUSDT', 'typ': 'cas', 'cas': ted + 4000, 'jazyk': 'en', 'zprava': ''},
+    # Graf Binance (v0.59.9) — vlastní stream, cena z Binance.
+    {'account': 'u1', 'id': 'bn-nad', 'symbol': 'binance:BTCUSDT', 'typ': 'cena', 'price': cena_bn + 1.5, 'smer': 'any',
+     'opakovat': False, 'jazyk': 'cs', 'zprava': ''},
+    {'account': 'u1', 'id': 'bn-pod', 'symbol': 'binance:BTCUSDT', 'typ': 'cena', 'price': cena_bn - 1.5, 'smer': 'any',
+     'opakovat': False, 'jazyk': 'cs', 'zprava': ''},
 ]
 fired = []
 dotazy = {'alarms': 0}
@@ -72,8 +82,10 @@ p = subprocess.Popen([NODE, os.path.join(KOREN, 'server', 'hlidac.mjs')], env=en
 vystup = []
 threading.Thread(target=lambda: [vystup.append(r) for r in p.stdout], daemon=True).start()
 
-konec = time.time() + 120
-while time.time() < konec and len({f['id'] for f in fired} & {'nad', 'pod'}) < 1 or len(fired) < 2 and time.time() < konec:
+konec = time.time() + 150
+hotovo = lambda: ({f['id'] for f in fired} & {'nad', 'pod'} and {f['id'] for f in fired} & {'bn-nad', 'bn-pod'}
+                  and 'cas' in {f['id'] for f in fired})
+while time.time() < konec and not hotovo():
     time.sleep(1)
 time.sleep(20)   # další obnova alarmů — jednorázový už nesmí zaznít znovu
 p.terminate()
@@ -100,5 +112,10 @@ push = [r for r in vystup if 'ZKOUŠKA push' in r]
 over(any('dosáhl' in r for r in push), 'text push v češtině podle jazyka alarmu')
 over(any('Your time alert is due' in r for r in push), 'časový alarm s anglickým textem')
 over(all(f.get('repeat') is False for f in fired), 'zaznění hlášeno jako jednorázové')
+over(any('stream Binance otevřen' in r for r in vystup), 'stream Binance otevřen (jsou alarmy Binance)')
+binance = [i for i in ids if i.startswith('bn-')]
+over(len(binance) >= 1, f'alarm grafu Binance zazněl při protnutí ceny na Binance ({binance})')
+over(any('BTCUSDT (Binance)' in r for r in push), 'v textu push stojí „BTCUSDT (Binance)"')
+over(not any('tickers.binance' in r for r in vystup), 'páry Binance se neodebírají u Bybitu')
 print()
 print('VÝSLEDEK:', 'VŠE V POŘÁDKU' if not chyby else f'!!! {len(chyby)} chyb')

@@ -111,6 +111,22 @@ ev("history.back()")
 time.sleep(0.8)
 over(not graf().get('otevreny'), 'jedno zpět graf zavře')
 
+# Alarm grafu Binance (v0.59.9): notifikace nese klíč „binance:BTCUSDT" a musí
+# otevřít graf z Binance, ne pár Bybitu.
+ev("window.__klepni('binance:BTCUSDT')")
+info = ''
+for _ in range(20):
+    time.sleep(0.5)
+    info = ev("document.getElementById('chartInfo')?.textContent || ''") or ''
+    if 'Binance' in info:
+        break
+g = graf()
+print('   z notifikace Binance:', g, info[:40])
+over(g.get('otevreny') and g.get('par', '').startswith('BTC') and 'Binance' in info,
+     'notifikace alarmu Binance otevře graf BTCUSDT z Binance')
+ev("history.back()")
+time.sleep(0.8)
+
 konzole = ev('(window.__chyby||[]).join(" | ")') or ''
 over(not konzole, f'bez chyb v konzoli ({konzole})')
 print()
