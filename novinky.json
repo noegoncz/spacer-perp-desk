@@ -1,6 +1,10 @@
 {
-  "verze": "0.59.7",
+  "verze": "0.59.8",
   "novinky": [
+    {
+      "en": "Binance: funding on the position card — rate, next payment and total paid since you opened the position.",
+      "cs": "Binance: funding na kartě pozice — sazba, příští stržení a celkem zaplaceno od otevření pozice."
+    },
     {
       "en": "History: switch between your accounts like watchlists — swipe or tap in the submenu.",
       "cs": "Historie: účty se přepínají jako seznamy ve Watchlists — přejetím prstem nebo v podmenu."

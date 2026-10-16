@@ -28,6 +28,15 @@ const CENY_KAZDYCH = 2000;
 // Zůstatek a otevřené příkazy (u Binance bez páru 40 jednotek) ne s každým
 // dotazem na pozice — jen při změně pozic, na vyžádání, jinak po 30 s.
 const DOPLNKY_KAZDYCH = 30000;
+// Sazba fundingu se mění po hodinách — v paměti 10 minut (jako u Bybitu).
+const FUNDING_PLATI = 600000;
+const TYDEN_MS = 7 * 864e5;
+/** „8h", „1h", „30m" (CCXT `interval`) → minuty; jinak null. */
+const minutIntervalu = (text) => {
+  const m = /^(\d+)\s*([hm])$/i.exec(String(text || ''));
+  if (!m) return null;
+  return Number(m[1]) * (m[2].toLowerCase() === 'h' ? 60 : 1);
+};
 
 export class CcxtAdapter {
   /**
@@ -366,6 +375,9 @@ export class CcxtAdapter {
       positionIdx: 0,
       openedAt: null,
       updatedAt: Date.now(),
+      // Pozice se staví znovu při každém dotazu — funding z paměti se
+      // musí přilepit znovu, jinak by z karty po 3 s zmizel.
+      funding: this.fundingCache?.get(m ? this.kanonicky(m) : '')?.funding || undefined,
     };
   }
 
@@ -413,6 +425,7 @@ export class CcxtAdapter {
 
   refreshExtras() {
     if (!this.hasCredentials()) return;
+    this.refreshFunding().catch(() => { /* funding je doplněk, pozice jedou dál */ });
     this.getWalletBalance()
       .then(({ ucet, chyba }) => this.handlers.onAccount?.(ucet, chyba))
       .catch((err) => this.handlers.onAccount?.(null, this.prelozChybu(err)));
@@ -423,6 +436,105 @@ export class CcxtAdapter {
 
   /** Funding a dopočty z minulého spuštění — u CCXT zatím nic. */
   obnovUlozeneFundingy() {}
+
+  /*
+   * Funding pozic (v0.59.8) — obecně pro burzy přes CCXT, tvar jako
+   * u Bybitu: { rate (podíl), nextAt, minut, zaplaceno: { celkem, pocet,
+   * odKdy } }. Sazba z `fetchFundingRate` (veřejná fronta), zaplacené
+   * z `fetchFundingHistory` (hromadná fronta, u Binance deník příjmů
+   * FUNDING_FEE) od otevření pozice; součet se dopočítává, nepočítá
+   * znovu. Burza bez funding v `schopnosti` nic nestahuje.
+   */
+  async refreshFunding() {
+    if (!this.burza?.schopnosti?.funding) return;
+    this.fundingCache ??= new Map();
+    this.fundingSoucty ??= new Map();
+    const symboly = [...new Set([...this.positions.values()].map((p) => p.symbol))];
+    // Zavřené pozice z paměti pryč.
+    for (const s of [...this.fundingCache.keys()]) if (!symboly.includes(s)) this.fundingCache.delete(s);
+    for (const s of [...this.fundingSoucty.keys()]) if (!symboly.includes(s)) this.fundingSoucty.delete(s);
+    const ted = Date.now();
+    let zmena = false;
+    await Promise.all(symboly.map(async (symbol) => {
+      const ulozene = this.fundingCache.get(symbol);
+      if (ulozene && ted - ulozene.kdy < FUNDING_PLATI) return;
+      // ⚠ Zámluva hned, před prvním await (stejně jako u Bybitu) — jinak
+      // se při dotazech po 3 s rozjede víc běhů na tomtéž páru.
+      this.fundingCache.set(symbol, { kdy: ted, funding: ulozene?.funding || null });
+      try {
+        const funding = await this.getFunding(symbol);
+        if (!funding) return;
+        let zaplaceno = null;
+        if (this.burza.schopnosti.fundingHistorie) {
+          try {
+            const pozice = [...this.positions.values()].find((p) => p.symbol === symbol);
+            const otevreno = await this.otevreniPozice(pozice).catch(() => null);
+            zaplaceno = await this.getFundingPaid(symbol, otevreno);
+          } catch (err) {
+            this.zapisDiag('funding součet', err?.message || String(err));
+          }
+        }
+        this.fundingCache.set(symbol, { kdy: ted, funding: { ...funding, zaplaceno } });
+        zmena = true;
+      } catch {
+        this.fundingCache.delete(symbol); // příště znovu, ne až za 10 minut
+      }
+    }));
+    if (!zmena) return;
+    for (const p of this.positions.values()) {
+      const f = this.fundingCache.get(p.symbol)?.funding;
+      if (f) p.funding = f;
+    }
+    this.emitPositions();
+  }
+
+  async getFunding(symbol) {
+    const ex = await this.burzaVerejna();
+    const s = await this.symbolCcxt(symbol, true);
+    const f = await ex.fetchFundingRate(s);
+    if (!f) return null;
+    const dalsi = cislo(f.nextFundingTimestamp) || cislo(f.fundingTimestamp);
+    return {
+      rate: cislo(f.fundingRate),
+      nextAt: dalsi > Date.now() ? dalsi : null,
+      minut: minutIntervalu(f.interval) || await this.fundingMinut(symbol).catch(() => 480),
+    };
+  }
+
+  /** Interval stržení v minutách, když ho CCXT nedá — burza může přepsat. */
+  async fundingMinut() {
+    return 480;
+  }
+
+  /**
+   * Zaplacený (−) / přijatý (+) funding od otevření pozice; bez známého
+   * otevření za posledních 7 dní. Po týdnech (deníky burz mívají strop
+   * okna), dopočítává se jen to, co přibylo od minula.
+   */
+  async getFundingPaid(symbol, odKdy) {
+    const ted = Date.now();
+    const od = odKdy || ted - TYDEN_MS;
+    let z = this.fundingSoucty.get(symbol);
+    if (!z || z.od !== od) z = { od, doKdy: od, celkem: 0, pocet: 0, odKdy: null, videne: new Set() };
+    const s = await this.symbolCcxt(symbol);
+    for (let start = Math.max(od, z.doKdy - 3600e3); start < ted; start += TYDEN_MS) {
+      const konec = Math.min(ted, start + TYDEN_MS);
+      const davka = await this.soukrome((ex) => ex.fetchFundingHistory(s, Math.floor(start), 1000,
+        { until: Math.ceil(konec) }), true);
+      for (const f of davka || []) {
+        const cas = cislo(f.timestamp);
+        const id = String(f.id ?? `${cas}|${f.amount}`);
+        if (cas < od || z.videne.has(id)) continue;
+        z.videne.add(id);
+        z.celkem += cislo(f.amount);
+        z.pocet += 1;
+        z.odKdy = z.odKdy === null ? cas : Math.min(z.odKdy, cas);
+      }
+    }
+    z.doKdy = ted;
+    this.fundingSoucty.set(symbol, z);
+    return { celkem: z.celkem, pocet: z.pocet, odKdy: z.odKdy };
+  }
 
   async getWalletBalance() {
     const b = await this.soukrome((ex) => ex.fetchBalance());
@@ -522,9 +634,37 @@ export class CcxtAdapter {
     return { plneni: plneni.sort((a, b) => a.time - b.time), otevreno: null };
   }
 
-  /** Čas otevření pozice z plnění — u CCXT zatím neumíme, aplikace to snese. */
-  async otevreniPozice() {
-    return null;
+  /**
+   * Čas otevření pozice z plnění (v0.59.8, pro funding a graf): od teď
+   * dozadu se odečítá, čím se pozice měnila; kde je nula, tam začala.
+   * Nejvýš 4 týdny zpátky, jinak null (funding se pak sečte za 7 dní).
+   * Drží se, dokud se pozice nezmění (směr i velikost).
+   */
+  async otevreniPozice(pozice) {
+    if (!pozice || !(pozice.size > 0) || !this.hasCredentials()) return null;
+    this.otevreniCache ??= new Map();
+    const klic = `${pozice.side}|${pozice.size}`;
+    const z = this.otevreniCache.get(pozice.symbol);
+    if (z && z.klic === klic) return z.slib;
+    const slib = (async () => {
+      const long = pozice.side !== 'Sell';
+      let zbyva = pozice.size;
+      let konec = Date.now();
+      for (let i = 0; i < 4; i += 1) {
+        const od = konec - TYDEN_MS;
+        const plneni = (await this.getExecutions(pozice.symbol, od, konec)).sort((a, b) => b.time - a.time);
+        for (const f of plneni) {
+          zbyva -= (f.buy === long ? 1 : -1) * f.qty;
+          if (zbyva <= pozice.size * 1e-6) return f.time;
+        }
+        konec = od;
+      }
+      return null;
+    })();
+    this.otevreniCache.set(pozice.symbol, { klic, slib });
+    // Neúspěch se nepamatuje (limit dotazů za chvíli povolí).
+    slib.catch(() => { if (this.otevreniCache.get(pozice.symbol)?.slib === slib) this.otevreniCache.delete(pozice.symbol); });
+    return slib;
   }
 
   async getKlines(symbol, interval, limit = 500, endTime = null) {

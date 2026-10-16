@@ -81,11 +81,31 @@
         notionalFloor: 0, maintMarginRatio: 0.01, cum: 0 }] }]);
     }
     if (/\/userTrades$/.test(cesta)) {
-      return json(/symbol=JUPUSDT/.test(u) ? [{ symbol: 'JUPUSDT', id: 501, orderId: 900, side: 'BUY', price: '0.3084',
+      // Pozice otevřená před 3 dny (jedno plnění) — od něj se počítá funding.
+      const q = new URL(u).searchParams;
+      const otevreni = TED - 3 * 864e5;
+      const vOkne = !q.get('startTime') || (otevreni >= Number(q.get('startTime')) && otevreni <= Number(q.get('endTime') || Infinity));
+      return json(/symbol=JUPUSDT/.test(u) && vOkne ? [{ symbol: 'JUPUSDT', id: 501, orderId: 900, side: 'BUY', price: '0.3084',
         qty: '42', realizedPnl: '0', quoteQty: '12.95', commission: '0.005', commissionAsset: 'USDT',
-        time: TED - 300e3, positionSide: 'BOTH', buyer: true, maker: false }] : []);
+        time: otevreni, positionSide: 'BOTH', buyer: true, maker: false }] : []);
     }
-    if (/\/income$/.test(cesta)) return json([]);
+    if (/\/income$/.test(cesta)) {
+      // Funding po 8 h od otevření (před 3 dny), long platí 0.002 USDT.
+      const q = new URL(u).searchParams;
+      if (q.get('incomeType') !== 'FUNDING_FEE') return json([]);
+      window.__binanceIncome = (window.__binanceIncome || []).concat(u.replace(/signature=\w+/, ''));
+      const od = Number(q.get('startTime') || 0);
+      const doKdy = Number(q.get('endTime') || Infinity);
+      const zaznamy = [];
+      for (let i = 1; i <= 9; i += 1) {
+        const cas = TED - 3 * 864e5 + i * 8 * 3600e3 - 60e3;
+        if (cas >= od && cas <= doKdy && cas < TED) {
+          zaznamy.push({ symbol: 'JUPUSDT', incomeType: 'FUNDING_FEE', income: '-0.00200000', asset: 'USDT',
+            info: 'FUNDING_FEE', time: cas, tranId: 9000 + i, tradeId: '' });
+        }
+      }
+      return json(zaznamy);
+    }
     if (/positionSide\/dual$/.test(cesta)) return json({ dualSidePosition: false });
     if (/multiAssetsMargin$/.test(cesta)) return json({ multiAssetsMargin: false });
     return json({});

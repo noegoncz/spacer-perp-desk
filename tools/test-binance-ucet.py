@@ -17,7 +17,7 @@ Na starém kódu padá v bodech 1–3.
 
 Spuštění: python tools/test-binance-ucet.py http://localhost:8075/index.html
 """
-import os, sys, time, json
+import os, re, sys, time, json
 sys.stdout.reconfigure(errors='replace')
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from dotyk import Prohlizec
@@ -161,6 +161,25 @@ ulozeno_po = ev("""new Promise((ok) => { const r = indexedDB.open('perpyx-mezipa
 print('   mezipaměť po:', ulozeno_po)
 hist = [k for k in ulozeno_po if k.endswith('|historie')]
 over(len(hist) >= 2, f'historie obou účtů zůstala v telefonu ({len(hist)} oddíly)')
+
+print('5) funding Binance (v0.59.8)')
+ev("document.querySelector('.tab[data-tab=positions]').click()")
+fund = ''
+for _ in range(30):
+    time.sleep(1)
+    fund = ev("""(() => { const k = [...document.querySelectorAll('.position')].find((x) => /binance/i.test((x.querySelector('.pos-burza') || {}).textContent || ''));
+      const f = k && k.querySelector('.pos-funding'); return f ? f.textContent.replace(/\s+/g, ' ') : ''; })()""") or ''
+    if 'Total' in fund:
+        break
+print('   funding:', fund, '| dotazy:', ev('window.__binanceIncome'))
+# Interval je skutečný z Binance (/fapi/v1/fundingInfo, JUP má 4 h) — jen že tam je.
+over('Funding' in fund and re.search(r'%/\d+ h', fund), 'karta Binance má sazbu fundingu s intervalem')
+over('Next' in fund and 'Day' in fund, 'příští stržení a denní částka')
+# 9 stržení po 0.002 od otevření; první 8 h po otevření → doba „2 d".
+over('Total' in fund and '−0.02' in fund and '(2 d' in fund, 'zaplacený funding od otevření (9 × −0.002)')
+over(all('endTime=' in x for x in (ev('window.__binanceIncome') or ['x'])), 'deník fundingu se ptá po oknech (endTime)')
+ev("document.querySelector('.tab[data-tab=history]').click()")
+time.sleep(2)
 
 print('4) účty v Historii jako seznamy ve Watchlists (v0.59.7)')
 

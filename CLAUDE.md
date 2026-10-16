@@ -184,7 +184,7 @@ Binance → Gate → MEXC → OKX (+EEA) → Bitget → Hyperliquid, pak vlny 2 
   WebSocket přes CCXT pro později). `BinanceClient`: kontrola klíče přes
   `/sapi/v1/account/apiRestrictions`, uzavřené obchody z deníku příjmů
   (REALIZED_PNL) + plnění s realizovaným ziskem, typy SL/TP z `info.type`.
-  Funding zatím ne (`schopnosti.funding: false`).
+  Funding od v0.59.8 (viz níž).
 - **Testování bez rizika: Binance Demo Trading** (`volby.demo`,
   demo-fapi.binance.com, CORS ano). Starý `testnet.binancefuture.com`
   2026-10-12 neodpovídal. Kontraktní test: veřejná data Binance vždy
@@ -208,7 +208,7 @@ Binance → Gate → MEXC → OKX (+EEA) → Bitget → Hyperliquid, pak vlny 2 
   s podpisem) do UI nepouštět (`prelozChybu`).
 - ⚠ Binance: `options.fetchCurrencies: false` — jinak CCXT s klíčem volá
   spotové `/sapi/` (v Demo Tradingu nejde, chyba při každém klíči).
-- **Zbývá:** funding u Binance; serverový hlídač alarmů bere ceny
+- **Zbývá:** serverový hlídač alarmů bere ceny
   z Bybitu (u Binance páru jsou blízké, ne stejné); WebSocket místo
   dotazování; víc burz najednou.
 - Test: `tools/test-vyber-burzy.py` (výběr, neplatný klíč, veřejná data
@@ -348,6 +348,16 @@ a hledat pozice nedává smysl"):**
   vymaže mezipaměť (patří jednomu klíči) a načte Historii znovu. V
   nastavení žádné „Přepnout" ani „Aktivní". Další krok: Historie napříč
   účty (mezipaměť po účtech).
+- **Funding u burz přes CCXT (v0.59.8)** — obecně v `CcxtAdapter`
+  (`refreshFunding`, jen když `schopnosti.funding`): sazba z
+  `fetchFundingRate` (veřejná fronta, 10 min v paměti), interval z CCXT
+  `interval` („8h"), jinak `fundingMinut()` — ⚠ **Binance interval
+  v CCXT nedává**, bere se z `/fapi/v1/fundingInfo` (jen páry mimo 8 h;
+  JUP má 4 h). Zaplacené z `fetchFundingHistory` (hromadná fronta, po
+  7 dnech s `until`, dopočítává se) od otevření pozice; otevření
+  (`otevreniPozice`) z plnění až 4 týdny zpátky, jinak součet za 7 dní.
+  Funding se přilepuje k pozici při každém dotazu (`pozice()`), jinak by
+  z karty po 3 s zmizel. Test: bod 5 v `test-binance-ucet.py`.
 - **Účty v Historii jako seznamy ve Watchlists (v0.59.7, přání
   uživatele):** `ui.renderListBar({ misto: 'historyAccounts', … })` —
   stejná lišta (bez „+ New"), záložka Historie napojená na podmenu

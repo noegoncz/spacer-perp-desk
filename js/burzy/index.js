@@ -39,9 +39,8 @@ export const BURZY = {
     },
   },
   /*
-   * Binance USDⓈ-M přes CCXT (v0.53.0). Zatím jen v kontraktním testu —
-   * výběr burzy v aplikaci přijde v dalším kroku. Živá data dotazováním,
-   * funding zatím ne (doplní se). Testovací prostředí: volby { demo }
+   * Binance USDⓈ-M přes CCXT (v0.53.0, v aplikaci od v0.54.0). Živá data
+   * dotazováním, funding od v0.59.8. Testovací prostředí: volby { demo }
    * (Binance Demo Trading); starý testnet 2026-10-12 neodpovídal.
    */
   binance: {
@@ -55,8 +54,8 @@ export const BURZY = {
       prehledUctu: true,
       plneni: true,
       historieObchodu: true,
-      funding: false,
-      fundingHistorie: false,
+      funding: true,             // sazba, interval a příští stržení (v0.59.8)
+      fundingHistorie: true,     // zaplacený funding z deníku příjmů (FUNDING_FEE)
       kontrolaJenCteni: true,
     },
     regiony: {

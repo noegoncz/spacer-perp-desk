@@ -41,6 +41,20 @@ export class BinanceClient extends CcxtAdapter {
   }
 
   /**
+   * Interval fundingu: CCXT ho u Binance nedává. `/fapi/v1/fundingInfo`
+   * vypisuje jen páry s jiným než výchozím intervalem (8 h) — mění se
+   * zřídka, drží se do konce běhu.
+   */
+  async fundingMinut(symbol) {
+    if (!this.intervalyFundingu) {
+      const ex = await this.burzaVerejna();
+      const seznam = await ex.fapiPublicGetFundingInfo();
+      this.intervalyFundingu = new Map((seznam || []).map((x) => [x.symbol, Number(x.fundingIntervalHours) * 60]));
+    }
+    return this.intervalyFundingu.get(this.trh(symbol)?.id) || 480;
+  }
+
+  /**
    * Tickery pro dotazování po 2 s. ⚠ USDⓈ-M neumí `ticker/24hr` pro výběr
    * párů — CCXT pak stáhne celý trh, a to Binance počítá jako 40 jednotek
    * (pár zvlášť 1). Omezovač CCXT za to čeká 2 s, takže při dotazu každé
