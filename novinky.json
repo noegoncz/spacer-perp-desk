@@ -1,6 +1,10 @@
 {
-  "verze": "0.59.6",
+  "verze": "0.59.7",
   "novinky": [
+    {
+      "en": "History: switch between your accounts like watchlists — swipe or tap in the submenu.",
+      "cs": "Historie: účty se přepínají jako seznamy ve Watchlists — přejetím prstem nebo v podmenu."
+    },
     {
       "en": "Binance: take profit, stop loss and trailing orders now show on the chart and on the position card.",
       "cs": "Binance: take profit, stop loss i trailing příkazy jsou teď v grafu i na kartě pozice."

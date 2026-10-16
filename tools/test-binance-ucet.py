@@ -38,6 +38,7 @@ for c in ('Page.enable', 'Runtime.enable', 'Network.enable'):
     p.prikaz(c)
 p.prikaz('Network.setCacheDisabled', cacheDisabled=True)
 p.prikaz('Emulation.setDeviceMetricsOverride', width=412, height=880, deviceScaleFactor=1, mobile=True)
+p.prikaz('Emulation.setTouchEmulationEnabled', enabled=True, maxTouchPoints=5)
 p.prikaz('Page.addScriptToEvaluateOnNewDocument', source=mock)
 p.prikaz('Page.navigate', url=sys.argv[1])
 time.sleep(5)
@@ -136,13 +137,13 @@ time.sleep(1)
 print('3) Historie: přepnutí účtu')
 ev("document.querySelector('.tab[data-tab=history]').click()")
 time.sleep(4)
-ucty = ev("[...document.querySelectorAll('#historyAccounts .history-ucet')].map((b) => b.textContent)") or []
+ucty = ev("[...document.querySelectorAll('#historyAccounts .list-tab')].map((b) => b.textContent)") or []
 print('   účty:', ucty)
 ulozeno_pred = ev("""new Promise((ok) => { const r = indexedDB.open('perpyx-mezipamet'); r.onsuccess = () => {
   const q = r.result.transaction('data').objectStore('data').getAllKeys(); q.onsuccess = () => ok(q.result.map(String)); }; })""") or []
 print('   mezipaměť před:', ulozeno_pred)
 ev("window.__dlouhe = []")
-ev("[...document.querySelectorAll('#historyAccounts .history-ucet')].find((b) => /binance/i.test(b.textContent)).click()")
+ev("[...document.querySelectorAll('#historyAccounts .list-tab')].find((b) => /binance/i.test(b.textContent)).click()")
 t0 = time.time()
 pozn = ''
 for _ in range(60):
@@ -153,13 +154,43 @@ for _ in range(60):
 print(f'   Binance: „{pozn}“ za {time.time() - t0:.1f} s, dlouhé úlohy: {ev("window.__dlouhe")}')
 over(pozn and 'Loading' not in pozn, 'Historie Binance se načetla')
 over(max(ev("window.__dlouhe") or [0]) < 300, 'hlavní vlákno nezamrzlo (žádná úloha nad 300 ms)')
-ev("[...document.querySelectorAll('#historyAccounts .history-ucet')].find((b) => !/binance/i.test(b.textContent)).click()")
+ev("[...document.querySelectorAll('#historyAccounts .list-tab')].find((b) => !/binance/i.test(b.textContent)).click()")
 time.sleep(4)
 ulozeno_po = ev("""new Promise((ok) => { const r = indexedDB.open('perpyx-mezipamet'); r.onsuccess = () => {
   const q = r.result.transaction('data').objectStore('data').getAllKeys(); q.onsuccess = () => ok(q.result.map(String)); }; })""") or []
 print('   mezipaměť po:', ulozeno_po)
 hist = [k for k in ulozeno_po if k.endswith('|historie')]
 over(len(hist) >= 2, f'historie obou účtů zůstala v telefonu ({len(hist)} oddíly)')
+
+print('4) účty v Historii jako seznamy ve Watchlists (v0.59.7)')
+
+
+def prejed(x1, x2, y):
+    bod = lambda x: [{'x': x, 'y': y, 'radiusX': 12, 'radiusY': 12, 'force': 1, 'id': 1}]
+    p.prikaz('Input.dispatchTouchEvent', type='touchStart', touchPoints=bod(x1))
+    for i in range(1, 11):
+        p.prikaz('Input.dispatchTouchEvent', type='touchMove', touchPoints=bod(x1 + (x2 - x1) * i / 10))
+        time.sleep(0.012)
+    p.prikaz('Input.dispatchTouchEvent', type='touchEnd', touchPoints=[])
+    time.sleep(1.5)
+
+
+aktivni_ucet = lambda: ev("(document.querySelector('#historyAccounts .list-tab.active') || {}).textContent")
+zalozka = lambda: ev("document.querySelector('.tab.active')?.dataset.tab")
+over(ev("document.querySelector('.tabs').classList.contains('s-podzalozkami')"), 'Historie s účty: záložka napojená na podmenu')
+over(ev("!!document.querySelector('#historyAccounts .watch-lists-pas .list-ukazatel')"), 'lišta účtů má ukazatel jako seznamy')
+print('   aktivní účet:', aktivni_ucet())
+prejed(330, 80, 600)
+print('   po přejetí doleva:', aktivni_ucet(), zalozka())
+over(zalozka() == 'history' and 'Binance' in (aktivni_ucet() or ''), 'přejetí doleva přepne na další účet (Binance)')
+prejed(80, 330, 600)
+print('   po přejetí doprava:', aktivni_ucet(), zalozka())
+over(zalozka() == 'history' and 'Bybit' in (aktivni_ucet() or ''), 'přejetí doprava vrátí předchozí účet (Bybit)')
+prejed(80, 330, 600)
+print('   za prvním účtem:', zalozka())
+over(zalozka() == 'watchlist', 'za prvním účtem pokračuje přejetí na Watchlists')
+over(not ev("document.querySelector('.tabs').classList.contains('s-podzalozkami')") or zalozka() == 'watchlist',
+     'podmenu patří k aktivní záložce')
 
 konzole = ev('(window.__chyby||[]).join(" | ")') or ''
 over(not konzole, f'bez chyb v konzoli ({konzole[:200]})')

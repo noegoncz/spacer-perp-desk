@@ -79,12 +79,12 @@ over(len(karty) == 2 and len(set(karty)) == 2 and all('Bybit ••' in k for k 
      'pozice obou účtů v jednom seznamu, každá se štítkem účtu')
 ev("document.querySelector('.tab[data-tab=history]').click()")
 time.sleep(1.5)
-ucty = ev("[...document.querySelectorAll('#historyAccounts .history-ucet')].map((b) => b.textContent + (b.classList.contains('active') ? '*' : ''))") or []
+ucty = ev("[...document.querySelectorAll('#historyAccounts .list-tab')].map((b) => b.textContent + (b.classList.contains('active') ? '*' : ''))") or []
 print('   Historie:', ucty)
 over(len(ucty) == 2 and sum(u.endswith('*') for u in ucty) == 1, 'Historie nabízí volbu účtu')
-ev("document.querySelectorAll('#historyAccounts .history-ucet')[1].click()")
+ev("document.querySelectorAll('#historyAccounts .list-tab')[1].click()")
 time.sleep(1.5)
-over(ev("document.querySelectorAll('#historyAccounts .history-ucet')[1].classList.contains('active')"), 'volba účtu v Historii funguje')
+over(ev("document.querySelectorAll('#historyAccounts .list-tab')[1].classList.contains('active')"), 'volba účtu v Historii funguje')
 over(ev("document.querySelectorAll('.position').length") == 2, 'pozice obou účtů běží dál')
 ev("document.querySelector('.tab[data-tab=positions]').click()")
 time.sleep(0.5)

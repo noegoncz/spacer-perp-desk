@@ -344,10 +344,16 @@ a hledat pozice nedává smysl"):**
   „aktivní burza". Plnění jiného účtu než Historie jen v paměti
   (`plneniCiziho`) — mezipaměť patří jednomu klíči.
 - **Historie je zatím po účtech:** `client` = účet Historie, volí se
-  čipy nad Historií (`#historyAccounts`, `prepniNaPripojeni`); přepnutí
+  lištou nad Historií (`#historyAccounts`, `prepniNaPripojeni`); přepnutí
   vymaže mezipaměť (patří jednomu klíči) a načte Historii znovu. V
   nastavení žádné „Přepnout" ani „Aktivní". Další krok: Historie napříč
   účty (mezipaměť po účtech).
+- **Účty v Historii jako seznamy ve Watchlists (v0.59.7, přání
+  uživatele):** `ui.renderListBar({ misto: 'historyAccounts', … })` —
+  stejná lišta (bez „+ New"), záložka Historie napojená na podmenu
+  (`s-podzalozkami`, jen s víc účty — `historieSUcty`), přejíždění:
+  nejdřív účty, za prvním na Watchlists; přejetím z Watchlists do
+  Historie první účet. Obsah přijede ze strany (`vyberUcetHistorie`).
 - Funding v telefonu jen u účtu Historie; kontrola klíčů jen pro čtení
   u všech účtů při startu.
 - Test: `tools/test-vice-pripojeni.py` (dva účty, štítky, Historie, odebrání).

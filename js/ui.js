@@ -1273,8 +1273,10 @@ function cip(text, aktivni, onClick, trida = '') {
  * Lišta sestav: Vše, vlastní sestavy, „+". Klepnutí na aktivní sestavu
  * otevře její správu (přejmenovat, smazat) — „Vše" správu nemá.
  */
-export function renderListBar({ polozky, aktivni, onSelect, onManage, onNew }) {
-  const lista = document.getElementById('watchLists');
+export function renderListBar({ polozky, aktivni, onSelect, onManage, onNew, misto = 'watchLists' }) {
+  // Stejná lišta slouží i účtům v Historii (v0.59.7, přání uživatele) —
+  // tam bez „+ New" a správy; skupina zůstává uprostřed díky vyvažovačům.
+  const lista = document.getElementById(misto);
   if (!lista) return;
   /*
    * v0.47.0 (přání uživatele — v0.46.0 lišta při každém přepnutí ujížděla):
@@ -1296,7 +1298,7 @@ export function renderListBar({ polozky, aktivni, onSelect, onManage, onNew }) {
     ukazatel.setAttribute('aria-hidden', 'true');
   }
   const prvky = polozky.map(({ id, nazev, pocet }) => {
-    const b = cip(nazev, id === aktivni, () => (id === aktivni ? onManage(id) : onSelect(id)), 'list-tab');
+    const b = cip(nazev, id === aktivni, () => (id === aktivni ? onManage?.(id) : onSelect(id)), 'list-tab');
     b.setAttribute('role', 'tab');
     b.setAttribute('aria-selected', String(id === aktivni));
     b.dataset.id = id;
@@ -1309,13 +1311,17 @@ export function renderListBar({ polozky, aktivni, onSelect, onManage, onNew }) {
     return b;
   });
   // „+ Nový" s textem — samotné plus nenapovídalo, že si seznamy jde zakládat.
-  const plus = cip(`+ ${t('lists.newShort')}`, false, onNew, 'list-tab list-new');
-  plus.setAttribute('aria-label', t('lists.new'));
-  plus.title = t('lists.new');
   pas.replaceChildren(...prvky, ukazatel);
   const vlevo = lista.querySelector('.list-vyvazeni') || Object.assign(document.createElement('span'), { className: 'list-vyvazeni' });
   const vpravo = lista.querySelector('.list-vpravo') || Object.assign(document.createElement('span'), { className: 'list-vpravo' });
-  vpravo.replaceChildren(plus);
+  if (onNew) {
+    const plus = cip(`+ ${t('lists.newShort')}`, false, onNew, 'list-tab list-new');
+    plus.setAttribute('aria-label', t('lists.new'));
+    plus.title = t('lists.new');
+    vpravo.replaceChildren(plus);
+  } else {
+    vpravo.replaceChildren();
+  }
   if (novy || lista.firstElementChild !== vlevo) lista.replaceChildren(vlevo, pas, vpravo);
 
   pas.classList.toggle('preteka', pas.scrollWidth > pas.clientWidth + 1);

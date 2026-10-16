@@ -3093,7 +3093,8 @@ let aktivniZalozka = 'positions';
 
 function prepniZalozku(nazev) {
   aktivniZalozka = nazev;
-  document.querySelector('.tabs')?.classList.toggle('s-podzalozkami', nazev === 'watchlist');
+  document.querySelector('.tabs')?.classList.toggle('s-podzalozkami',
+    nazev === 'watchlist' || (nazev === 'history' && historieSUcty()));
   document.body.classList.toggle('na-trzich', nazev === 'watchlist');
   ui.showView(nazev);
   dokresliSeznamJeLiZastaraly();
@@ -3185,6 +3186,16 @@ function zapojPrejeti() {
         return;
       }
     }
+    // V Historii stejně: nejdřív účty, pak sousední záložka (v0.59.7).
+    if (aktivniZalozka === 'history' && historieSUcty()) {
+      const poradi = [...klienti.keys()];
+      const dalsi = poradi.indexOf(client.pripojeniId) + (dx < 0 ? 1 : -1);
+      if (dalsi >= 0 && dalsi < poradi.length) {
+        prejeto = true;
+        vyberUcetHistorie(poradi[dalsi]);
+        return;
+      }
+    }
 
     const kam = ZALOZKY.indexOf(aktivniZalozka) + (dx < 0 ? 1 : -1);
     if (kam < 0 || kam >= ZALOZKY.length) return;
@@ -3203,6 +3214,14 @@ function zapojPrejeti() {
       const pole = el('watchSearch');
       if (pole) pole.value = '';
       ukazPrvek('watchClearBtn', false);
+    }
+    // Do Historie (zleva, z Watchlists) → první účet, jako u seznamů.
+    if (ZALOZKY[kam] === 'history' && historieSUcty()) {
+      const prvni = [...klienti.keys()][0];
+      if (prvni !== client.pripojeniId) {
+        prepniNaPripojeni(prvni).then(() => prepniZalozku('history'));
+        return;
+      }
     }
     prepniZalozku(ZALOZKY[kam]);
   }, { passive: true });
@@ -3407,22 +3426,42 @@ function otevriSkupinu(skupina) {
   else otevriProhlidku(skupina.vystupy[skupina.vystupy.length - 1]);
 }
 
-/** Víc účtů: nad Historií volba účtu (Historie je zatím po účtech). */
-function vykresliUctyHistorie() {
+/** Má Historie volbu účtu (víc připojení)? Pak vypadá jako podmenu. */
+const historieSUcty = () => klienti.size > 1;
+
+/*
+ * Víc účtů: nad Historií volba účtu (Historie je zatím po účtech). Od
+ * v0.59.7 (přání uživatele) stejná lišta jako seznamy ve Watchlists:
+ * podmenu napojené na záložku, ukazatel pod vybraným, přejíždění prstem.
+ */
+function vykresliUctyHistorie(aktivni = client.pripojeniId) {
   const misto = el('historyAccounts');
   if (!misto) return;
-  misto.hidden = klienti.size < 2;
+  misto.hidden = !historieSUcty();
+  document.querySelector('.tabs')?.classList.toggle('s-podzalozkami',
+    aktivniZalozka === 'watchlist' || (aktivniZalozka === 'history' && historieSUcty()));
   if (misto.hidden) return;
-  misto.replaceChildren(...[...klienti.keys()].map((id) => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = `history-ucet ${client.pripojeniId === id ? 'active' : ''}`.trim();
-    b.textContent = nazevUctu(id);
-    b.addEventListener('click', () => {
-      if (client.pripojeniId !== id) prepniNaPripojeni(id);
-    });
-    return b;
-  }));
+  ui.renderListBar({
+    misto: 'historyAccounts',
+    polozky: [...klienti.keys()].map((id) => ({ id, nazev: nazevUctu(id) })),
+    aktivni,
+    onSelect: vyberUcetHistorie,
+  });
+}
+
+/** Přepnutí účtu v Historii; obsah přijede ze strany jako ve Watchlists. */
+function vyberUcetHistorie(id) {
+  const poradi = [...klienti.keys()];
+  const smer = poradi.indexOf(id) - poradi.indexOf(client.pripojeniId);
+  if (!smer) return;
+  prepniNaPripojeni(id);
+  vykresliUctyHistorie(id); // ukazatel hned, přepnutí účtu doběhne samo
+  const obsah = el('historyList');
+  if (obsah) {
+    obsah.classList.remove('prijezd-zprava', 'prijezd-zleva');
+    void obsah.offsetWidth; // restart animace i při rychlém přejíždění
+    obsah.classList.add(smer > 0 ? 'prijezd-zprava' : 'prijezd-zleva');
+  }
 }
 
 function vykresliHistorii() {
