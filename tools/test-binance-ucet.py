@@ -162,6 +162,40 @@ print('   mezipaměť po:', ulozeno_po)
 hist = [k for k in ulozeno_po if k.endswith('|historie')]
 over(len(hist) >= 2, f'historie obou účtů zůstala v telefonu ({len(hist)} oddíly)')
 
+print('3b) obchod z Binance ukazuje jen svá plnění, i po přepnutí za běhu (v0.59.11)')
+# Historie Bybitu stahuje plnění pomalu; uprostřed přepnutí na Binance.
+ev("""(() => { const f = window.fetch; window.fetch = function (v, o) { const u = String(v && v.url ? v.url : v);
+  if (/execution\/list/.test(u) && window.__pomalyBybit) return new Promise((ok) => setTimeout(ok, 3000)).then(() => f.call(this, v, o));
+  return f.call(this, v, o); }; })()""")
+ev("[...document.querySelectorAll('#historyAccounts .list-tab')].find((b) => !/binance/i.test(b.textContent)).click()")
+time.sleep(0.3)
+ev("window.__pomalyBybit = true; document.querySelector('#historyMore') && document.getElementById('refreshBtn').click()")
+time.sleep(0.5)
+ev("[...document.querySelectorAll('#historyAccounts .list-tab')].find((b) => /binance/i.test(b.textContent)).click()")
+time.sleep(5)
+ev("window.__pomalyBybit = false")
+# Smíchaná data se projeví při čtení z telefonu → přenačíst a otevřít Historii Binance.
+p.prikaz('Page.reload')
+time.sleep(8)
+ev("document.querySelector('.tab[data-tab=history]').click()")
+time.sleep(2)
+ev("[...document.querySelectorAll('#historyAccounts .list-tab')].find((b) => /binance/i.test(b.textContent))?.click()")
+time.sleep(6)
+karta = ev("[...document.querySelectorAll('#historyList .trade')].map((k) => k.textContent.replace(/\s+/g, ' ')).join(' || ')") or ''
+print('   Historie Binance:', karta[:220])
+over('JUPUSDT' in karta, 'Historie Binance má obchody JUPUSDT')
+ev("[...document.querySelectorAll('#historyList .trade')].find((k) => /JUPUSDT/.test(k.textContent) && !k.classList.contains('otevreny')).click()")
+time.sleep(5)
+znacky = ev("window.__graf.getOverlays().filter((o) => o.name === 'tradeMark').map((o) => o.extendData.title || '').join(',')") or ''
+print('   značky v prohlídce:', znacky)
+over(znacky.split(',') == ['I1', 'O1'] or sorted(znacky.split(',')) == ['I1', 'O1'], 'v prohlídce jen jeden vstup a jeden výstup (ne plnění z Bybitu)')
+ev("history.back()")
+time.sleep(1)
+klice = ev("""new Promise((ok) => { const r = indexedDB.open('perpyx-mezipamet'); r.onsuccess = () => {
+  const q = r.result.transaction('data').objectStore('data').getAllKeys(); q.onsuccess = () => ok(q.result.map(String)); }; })""") or []
+bn = [k for k in klice if k.endswith('|plneni:JUPUSDT')]
+print('   uložená plnění JUP:', bn)
+
 print('5) funding Binance (v0.59.8)')
 ev("document.querySelector('.tab[data-tab=positions]').click()")
 fund = ''

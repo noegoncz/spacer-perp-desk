@@ -1,5 +1,5 @@
 {
-  "verze": "0.59.10",
+  "verze": "0.59.11",
   "novinky": [
     {
       "en": "Binance: live prices and live candles — the chart moves with every tick, like Bybit.",
@@ -27,6 +27,10 @@
     }
   ],
   "opravy": [
+    {
+      "en": "History keeps each account's trades and fills strictly separate and no longer reshuffles while loading.",
+      "cs": "Historie drží obchody a plnění každého účtu přísně odděleně a při načítání se už nepřeskládává."
+    },
     {
       "en": "Opening a chart no longer briefly shows the previous position's lines.",
       "cs": "Otevření grafu už na chvíli neukáže čáry předchozí pozice."

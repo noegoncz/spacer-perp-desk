@@ -641,7 +641,13 @@ const OKNO_PLNENI = 7 * 86400e3;
  * svou historickou aktivitu, ne jen poslední týden (2026-10-03). Drží se
  * v paměti po dobu běhu, ať se při přepnutí timeframu nestahuje znovu.
  */
-const plneniPary = new Map();   // symbol → { od, plneni: Map(klíč → plnění) }
+/*
+ * ⚠ Klíč = účet + pár (v0.59.11). Dřív jen pár: dobíhající stahování
+ * plnění JUP z Bybitu po přepnutí Historie na Binance skončilo pod Binance
+ * a prohlídka obchodu z Binance ukázala 16 vstupů a 25 výstupů z Bybitu.
+ */
+const plneniPary = new Map();   // `${klíč účtu}|${pár}` → { od, aktualizovano, plneni: Map(klíč → plnění) }
+const klicPlneniPary = (klient, symbol) => `${klient?.apiKey || ''}|${symbol}`;
 const MAX_OKEN_PLNENI = 60;     // pojistka ~ 14 měsíců na jedno dotažení
 
 /*
@@ -654,35 +660,28 @@ const MAX_OKEN_PLNENI = 60;     // pojistka ~ 14 měsíců na jedno dotažení
 const PREKRYV = 3600e3;
 const klicPlneni = (f) => f.execId || `${f.time}|${f.price}|${f.qty}|${f.buy}`;
 
-const plneniCizich = new Map();   // `${id účtu}|${pár}` → stejný tvar jako plneniPary
-function plneniCiziho(klient, symbol) {
-  const k = `${klient.pripojeniId}|${symbol}`;
-  if (!plneniCizich.has(k)) plneniCizich.set(k, { od: Date.now(), aktualizovano: 0, plneni: new Map() });
-  return plneniCizich.get(k);
-}
-
-async function nactiPlneniZTelefonu(symbol) {
-  let z = plneniPary.get(symbol);
+async function nactiPlneniZTelefonu(symbol, klient = client) {
+  const k = klicPlneniPary(klient, symbol);
+  let z = plneniPary.get(k);
   if (z) return z;
-  const ulozene = await mezipamet.nacti(`plneni:${symbol}`);
-  z = plneniPary.get(symbol);   // mezitím mohl přijít jiný požadavek
+  const ulozene = klient?.apiKey ? await mezipamet.nacti(`plneni:${symbol}`, klient.apiKey) : null;
+  z = plneniPary.get(k);   // mezitím mohl přijít jiný požadavek
   if (z) return z;
   z = ulozene?.plneni
     ? { od: ulozene.od, aktualizovano: ulozene.aktualizovano || 0,
         plneni: new Map(ulozene.plneni.map((f) => [klicPlneni(f), f])) }
     : { od: Date.now(), aktualizovano: 0, plneni: new Map() };
-  plneniPary.set(symbol, z);
+  plneniPary.set(k, z);
   return z;
 }
 
 /**
- * Plnění páru. Účet Historie (`client`) má mezipaměť v telefonu; graf
- * pozice jiného účtu (v0.59.0) drží plnění jen v paměti běhu — mezipaměť
- * patří jednomu klíči.
+ * Plnění páru na účtu `klient` (výchozí účet Historie). Od v0.59.11 má
+ * mezipaměť v telefonu každý účet (oddíl podle klíče), i graf pozice
+ * jiného účtu.
  */
 async function dotahniPlneni(symbol, od, jenUlozene = false, klient = client) {
-  const vlastni = klient === client;
-  const z = vlastni ? await nactiPlneniZTelefonu(symbol) : plneniCiziho(klient, symbol);
+  const z = await nactiPlneniZTelefonu(symbol, klient);
   const serazene = () => [...z.plneni.values()].sort((a, b) => a.time - b.time);
   if (jenUlozene) return serazene();
 
@@ -707,7 +706,9 @@ async function dotahniPlneni(symbol, od, jenUlozene = false, klient = client) {
     .forEach((seznam) => seznam.forEach((f) => z.plneni.set(klicPlneni(f), f)));
   z.od = Math.min(z.od, hranice);
   z.aktualizovano = ted;
-  if (vlastni) mezipamet.uloz(`plneni:${symbol}`, { od: z.od, aktualizovano: z.aktualizovano, plneni: [...z.plneni.values()] });
+  if (klient?.apiKey) {
+    mezipamet.uloz(`plneni:${symbol}`, { od: z.od, aktualizovano: z.aktualizovano, plneni: [...z.plneni.values()] }, klient.apiKey);
+  }
   return serazene();
 }
 
@@ -1035,7 +1036,7 @@ function skonciSnimek() {
 /* Funding pozic z minulého spuštění (js/mezipamet.js, klíč `funding`). */
 let fundingyUlozene = {};
 function ulozFundingy() {
-  mezipamet.uloz('funding', fundingyUlozene);
+  mezipamet.uloz('funding', fundingyUlozene, client.apiKey);
 }
 
 async function connectIfPossible() {
@@ -1057,7 +1058,7 @@ async function connectIfPossible() {
   // Uložený funding hned do klienta — karty ho ukážou s prvními pozicemi,
   // obnoví se na pozadí. Čtení z telefonu trvá milisekundy.
   try {
-    fundingyUlozene = (await mezipamet.nacti('funding')) || {};
+    fundingyUlozene = (await mezipamet.nacti('funding', aktivni?.apiKey || apiKey)) || {};
   } catch { /* bez uloženého fundingu se jen počítá od začátku */ }
   zacatekNacitani = Date.now();
   try {
@@ -1644,6 +1645,8 @@ function zapomenHistorii() {
   historieOd = 0;
   historieAktualizovano = 0;
   historieZTelefonu = false;
+  historieNacita = false; // načítání předchozího účtu doběhne naprázdno
+  historieCekaNaPlneni = false;
   plneniPary.clear();
   fundingyUlozene = {};
   client.ulozeneOtevreni.clear();
@@ -3284,6 +3287,7 @@ const HISTORIE_MAX = 730 * 86400e3;
 let historieOd = 0;          // nejstarší načtený okamžik (0 = nic načteno)
 let historieAktualizovano = 0;  // kdy se naposledy stahovalo až do „teď"
 let historieNacita = false;
+let historieCekaNaPlneni = false; // z telefonu chybí plnění — čeká se na složené obchody (v0.59.11)
 let historieZTelefonu = false;  // zkusilo se už načíst z mezipaměti?
 let skupinyObchodu = [];
 
@@ -3293,12 +3297,19 @@ let skupinyObchodu = [];
  * Načtené období se rozšiřuje jen tlačítkem — nic se nestahuje dopředu.
  */
 function ulozHistorii() {
-  mezipamet.uloz('historie', { od: historieOd, aktualizovano: historieAktualizovano, zaznamy: obchody });
+  mezipamet.uloz('historie', { od: historieOd, aktualizovano: historieAktualizovano, zaznamy: obchody }, client.apiKey);
 }
 
+/*
+ * ⚠ Historie patří účtu, který byl vybraný, když se začala načítat
+ * (v0.59.11). Po každém čekání na síť / telefon se ověří, že je pořád on —
+ * jinak by dobíhající výsledek po přepnutí účtu skončil v Historii jiného.
+ */
 async function nactiHistoriiZTelefonu() {
   historieZTelefonu = true;
-  const h = await mezipamet.nacti('historie');
+  const k = client;
+  const h = await mezipamet.nacti('historie', k.apiKey);
+  if (client !== k) return;
   if (!h?.od || !Array.isArray(h.zaznamy)) return;
   obchody = h.zaznamy;
   historieOd = h.od;
@@ -3312,28 +3323,33 @@ async function nactiHistoriiZTelefonu() {
  */
 async function obnovHistorii(plna = false) {
   if (!client.hasCredentials() || !historieOd || historieNacita) return;
+  const k = client;
   historieNacita = plna;
   if (plna) vykresliHistorii();
   const ted = Date.now();
   const od = plna ? historieOd : Math.max(historieOd, historieAktualizovano - PREKRYV);
   try {
-    const nove = await client.getClosedTrades(od, ted);
+    const nove = await k.getClosedTrades(od, ted);
+    if (client !== k) return; // mezitím jiný účet — výsledek nepatří sem
     if (plna) {
       obchody = [];
       const pary = new Set(nove.map((o) => o.symbol));
       pary.forEach((s) => {
-        plneniPary.delete(s);
-        mezipamet.smaz(`plneni:${s}`);
+        plneniPary.delete(klicPlneniPary(k, s));
+        mezipamet.smaz(`plneni:${s}`, k.apiKey);
       });
     }
     slucObchody(nove);
     historieAktualizovano = ted;
     ulozHistorii();
     await prepocitejSkupiny();
+    if (client !== k) return;
   } catch {
+    if (client !== k) return;
     /* uložený seznam zůstává, nová data přijdou příště */
   }
   historieNacita = false;
+  historieCekaNaPlneni = false;
   if (aktivniZalozka === 'history') vykresliHistorii();
 }
 
@@ -3403,18 +3419,30 @@ function seskupObchody(zaznamy, plneniPodleParu, pozice) {
   }).sort((a, b) => (b.otevrena - a.otevrena) || (b.posledni - a.posledni));
 }
 
+/**
+ * Seskupí záznamy do obchodů podle plnění. Vrací, jestli měla plnění
+ * všechny páry — u `jenUlozene` (z telefonu) to bez nich nejde: obchody
+ * by se ukázaly nesložené a po stažení plnění přeskládaly (v0.59.11).
+ */
 async function prepocitejSkupiny(jenUlozene = false) {
-  const pary = [...new Set(obchody.map((o) => o.symbol))];
+  const k = client;
+  const zaznamy = obchody;
+  const pary = [...new Set(zaznamy.map((o) => o.symbol))];
   const od = historieOd || Date.now() - HISTORIE_START;
   // Plnění pro všechny páry souběžně; bez práva na plnění zůstane každý
   // záznam samostatně (jako dřív).
   const plneni = new Map();
+  let uplne = true;
   await Promise.all(pary.map(async (s) => {
     try {
-      plneni.set(s, await dotahniPlneni(s, od, jenUlozene));
+      if (jenUlozene && !(await nactiPlneniZTelefonu(s, k)).aktualizovano) uplne = false;
+      plneni.set(s, await dotahniPlneni(s, od, jenUlozene, k));
     } catch { /* bez plnění se nesekupuje */ }
   }));
-  skupinyObchodu = seskupObchody(obchody, plneni, lastPositions.filter((p) => p.ucet === client.pripojeniId));
+  if (client !== k) return false; // mezitím jiný účet
+  if (jenUlozene && !uplne) return false; // skupiny z neúplných plnění nepoužít
+  skupinyObchodu = seskupObchody(zaznamy, plneni, lastPositions.filter((p) => p.ucet === k.pripojeniId));
+  return uplne;
 }
 
 function otevriSkupinu(skupina) {
@@ -3471,7 +3499,8 @@ function vykresliHistorii() {
   ui.renderHistory(skupinyObchodu, hideAmounts, otevriSkupinu);
   const od = historieOd ? new Date(historieOd) : null;
   let text = '';
-  if (historieNacita) text = t(obchody.length ? 'history.loadingMore' : 'history.loading');
+  if (historieCekaNaPlneni) text = t('history.loading');
+  else if (historieNacita) text = t(obchody.length ? 'history.loadingMore' : 'history.loading');
   else if (od) text = t(skupinyObchodu.length ? 'history.since' : 'history.noneSince', {
     // Stejný formát jako na kartách obchodů: den.měsíc.rok.
     date: `${od.getDate()}.${od.getMonth() + 1}.${od.getFullYear()}`,
@@ -3487,14 +3516,19 @@ async function nactiStarsiHistorii() {
   vykresliHistorii();
   const doKdy = historieOd || Date.now();
   const od = Math.max(doKdy - (historieOd ? HISTORIE_BLOK : HISTORIE_START), Date.now() - HISTORIE_MAX);
+  const k = client;
   try {
     const ted = Date.now();
-    slucObchody(await client.getClosedTrades(od, doKdy));
+    const nove = await k.getClosedTrades(od, doKdy);
+    if (client !== k) return; // mezitím jiný účet — jeho načítání běží samo
+    slucObchody(nove);
     if (!historieOd) historieAktualizovano = ted;
     historieOd = od;
     ulozHistorii();
     await prepocitejSkupiny();
+    if (client !== k) return;
   } catch (err) {
+    if (client !== k) return;
     historieNacita = false;
     vykresliHistorii();
     ui.showHistoryNote(err.message || t('history.failed'));
@@ -3515,8 +3549,19 @@ async function nactiHistorii() {
     // Uložené obchody hned, bez čekání na burzu.
     await nactiHistoriiZTelefonu();
     if (historieOd) {
-      await prepocitejSkupiny(true);
-      vykresliHistorii();
+      if (await prepocitejSkupiny(true)) {
+        vykresliHistorii();
+      } else {
+        // Plnění v telefonu chybí (vyčištěná mezipaměť): raději „Načítám…"
+        // než nesložené obchody, které se za chvíli přeskládají.
+        vykresliUctyHistorie();
+        ui.renderHistory([], hideAmounts, () => {});
+        ui.showHistoryNote(t('history.loading'));
+        ukazPrvek('historyMore', false);
+        historieCekaNaPlneni = true;
+        obnovHistorii(false);
+        return;
+      }
     }
   }
   if (!historieOd) {

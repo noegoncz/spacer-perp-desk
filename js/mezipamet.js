@@ -20,6 +20,14 @@
 const DB = 'perpyx-mezipamet';
 const UZEL = 'data';
 const KLIC_VLASTNIKA = '__vlastnik';
+/*
+ * Verze obsahu: jiná verze = celá mezipaměť pryč a stáhne se znovu.
+ * 2 (v0.59.11): do v0.59.10 mohlo dobíhající stahování po přepnutí účtu
+ * v Historii uložit plnění jednoho účtu pod druhý (u uživatele obchod
+ * z Binance s plněními JUP z Bybitu) — taková data nejde poznat, proto pryč.
+ */
+const KLIC_VERZE = '__verze';
+const VERZE = 2;
 
 let dbSlib = null;
 let vlastnik = null;          // otisk klíče, dokud není nastavený, nic se neukládá
@@ -86,6 +94,13 @@ async function prevedStareKlice() {
   await operace('readwrite', (s) => s.delete(KLIC_VLASTNIKA));
 }
 
+async function zkontrolujVerzi() {
+  const verze = await operace('readonly', (s) => s.get(KLIC_VERZE));
+  if (verze === VERZE) return;
+  await operace('readwrite', (s) => s.clear());
+  await operace('readwrite', (s) => s.put(VERZE, KLIC_VERZE));
+}
+
 /** Mezipaměť pro účet s tímto klíčem (data ostatních účtů zůstávají). */
 export function nastavVlastnika(apiKey) {
   pripraveno = (async () => {
@@ -93,28 +108,44 @@ export function nastavVlastnika(apiKey) {
       vlastnik = null;
       return;
     }
+    await zkontrolujVerzi();
     await prevedStareKlice();
     vlastnik = await otisk(apiKey);
   })().catch(() => { vlastnik = null; });
   return pripraveno;
 }
 
-export async function nacti(klic) {
+/*
+ * ⚠ Účet výslovně (v0.59.11): `apiKey` určuje oddíl. Bez něj platí
+ * „vlastník" z `nastavVlastnika` (účet Historie) — jenže ten se mění
+ * přepnutím účtu a dobíhající operace by pak četla / zapsala do oddílu
+ * jiného účtu. Volající proto posílá klíč účtu, ke kterému data patří.
+ */
+const otiskyUctu = new Map();
+async function oddil(apiKey) {
   await pripraveno;
-  if (!vlastnik) return null;
-  return operace('readonly', (s) => s.get(vOddilu(vlastnik, klic)));
+  if (!vlastnik) return null;   // bez přihlášeného účtu se nic neukládá
+  if (!apiKey) return vlastnik;
+  if (!otiskyUctu.has(apiKey)) otiskyUctu.set(apiKey, otisk(apiKey));
+  return otiskyUctu.get(apiKey);
 }
 
-export async function uloz(klic, hodnota) {
-  await pripraveno;
-  if (!vlastnik) return;
-  await operace('readwrite', (s) => s.put(hodnota, vOddilu(vlastnik, klic)));
+export async function nacti(klic, apiKey) {
+  const u = await oddil(apiKey);
+  if (!u) return null;
+  return operace('readonly', (s) => s.get(vOddilu(u, klic)));
 }
 
-export async function smaz(klic) {
-  await pripraveno;
-  if (!vlastnik) return;
-  await operace('readwrite', (s) => s.delete(vOddilu(vlastnik, klic)));
+export async function uloz(klic, hodnota, apiKey) {
+  const u = await oddil(apiKey);
+  if (!u) return;
+  await operace('readwrite', (s) => s.put(hodnota, vOddilu(u, klic)));
+}
+
+export async function smaz(klic, apiKey) {
+  const u = await oddil(apiKey);
+  if (!u) return;
+  await operace('readwrite', (s) => s.delete(vOddilu(u, klic)));
 }
 
 /** Smaže oddíl jednoho účtu (odebrání připojení; ostatní účty zůstávají). */

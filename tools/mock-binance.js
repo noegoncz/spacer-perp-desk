@@ -85,13 +85,44 @@
       const q = new URL(u).searchParams;
       const otevreni = TED - 3 * 864e5;
       const vOkne = !q.get('startTime') || (otevreni >= Number(q.get('startTime')) && otevreni <= Number(q.get('endTime') || Infinity));
-      return json(/symbol=JUPUSDT/.test(u) && vOkne ? [{ symbol: 'JUPUSDT', id: 501, orderId: 900, side: 'BUY', price: '0.3084',
-        qty: '42', realizedPnl: '0', quoteQty: '12.95', commission: '0.005', commissionAsset: 'USDT',
-        time: otevreni, positionSide: 'BOTH', buyer: true, maker: false }] : []);
+      if (/symbol=BTCUSDT/.test(u)) {
+        // Uzavřený obchod (v0.59.11): jeden nákup a jeden prodej.
+        const od = Number(q.get('startTime') || 0);
+        const doKdy = Number(q.get('endTime') || Infinity);
+        return json([
+          { symbol: 'BTCUSDT', id: 701, orderId: 801, side: 'BUY', price: '80000', qty: '0.01', realizedPnl: '0',
+            quoteQty: '800', commission: '0.3', commissionAsset: 'USDT', time: TED - 2 * 864e5, positionSide: 'BOTH', buyer: true, maker: false },
+          { symbol: 'BTCUSDT', id: 702, orderId: 802, side: 'SELL', price: '81000', qty: '0.01', realizedPnl: '10',
+            quoteQty: '810', commission: '0.3', commissionAsset: 'USDT', time: TED - 864e5, positionSide: 'BOTH', buyer: false, maker: false },
+        ].filter((x) => x.time >= od && x.time <= doKdy));
+      }
+      if (!/symbol=JUPUSDT/.test(u)) return json([]);
+      const od = Number(q.get('startTime') || 0);
+      const doKdy = Number(q.get('endTime') || Infinity);
+      return json([
+        // Uzavřený obchod na JUP (v0.59.11): jeden nákup, jeden prodej.
+        { symbol: 'JUPUSDT', id: 401, orderId: 851, side: 'BUY', price: '0.3000', qty: '10', realizedPnl: '0',
+          quoteQty: '3', commission: '0.001', commissionAsset: 'USDT', time: TED - 5 * 864e5, positionSide: 'BOTH', buyer: true, maker: false },
+        { symbol: 'JUPUSDT', id: 402, orderId: 852, side: 'SELL', price: '0.3200', qty: '10', realizedPnl: '0.2',
+          quoteQty: '3.2', commission: '0.001', commissionAsset: 'USDT', time: TED - 4 * 864e5, positionSide: 'BOTH', buyer: false, maker: false },
+        // Současná pozice.
+        { symbol: 'JUPUSDT', id: 501, orderId: 900, side: 'BUY', price: '0.3084',
+          qty: '42', realizedPnl: '0', quoteQty: '12.95', commission: '0.005', commissionAsset: 'USDT',
+          time: otevreni, positionSide: 'BOTH', buyer: true, maker: false },
+      ].filter((x) => !q.get('startTime') || (x.time >= od && x.time <= doKdy)));
     }
     if (/\/income$/.test(cesta)) {
       // Funding po 8 h od otevření (před 3 dny), long platí 0.002 USDT.
       const q = new URL(u).searchParams;
+      if (q.get('incomeType') === 'REALIZED_PNL') {
+        const od = Number(q.get('startTime') || 0);
+        const doKdy = Number(q.get('endTime') || Infinity);
+        const zaznamy = [
+          { symbol: 'BTCUSDT', incomeType: 'REALIZED_PNL', income: '10', asset: 'USDT', info: '', time: TED - 864e5, tranId: 8001, tradeId: '702' },
+          { symbol: 'JUPUSDT', incomeType: 'REALIZED_PNL', income: '0.2', asset: 'USDT', info: '', time: TED - 4 * 864e5, tranId: 8002, tradeId: '402' },
+        ];
+        return json(zaznamy.filter((x) => x.time >= od && x.time <= doKdy));
+      }
       if (q.get('incomeType') !== 'FUNDING_FEE') return json([]);
       window.__binanceIncome = (window.__binanceIncome || []).concat(u.replace(/signature=\w+/, ''));
       const od = Number(q.get('startTime') || 0);

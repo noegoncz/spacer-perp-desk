@@ -316,6 +316,25 @@ graf Binance se načítal dlouho a pak „divně"):**
   ~15 s fronty) a pozice, TP/SL i Historie čekaly za nimi, až vypršely
   („request timed out"). Plnění Binance jen 6 měsíců zpátky
   (`plneniNejdal`, starší API nevydá).
+- **Historie a plnění přísně po účtech (v0.59.11, snímek uživatele:
+  obchod z Binance s 16 vstupy a 25 výstupy z Bybitu):** dobíhající
+  stahování po přepnutí účtu v Historii zapsalo plnění Bybitu pod Binance
+  (paměť plnění klíčovaná jen párem, zápis do „aktuálního" oddílu).
+  Teď: `plneniPary` klíč účet + pár (`klicPlneniPary`), mezipaměť dostává
+  **účet výslovně** (`mezipamet.nacti/uloz/smaz(klíč, …, apiKey)`) a
+  Historie po každém čekání ověří, že je pořád u stejného účtu
+  (`client !== k` → zahodit). Graf pozice jiného účtu má teď mezipaměť
+  taky (dřív jen paměť běhu). Smíchaná data nejde poznat → mezipaměť
+  se jednou celá smaže (`VERZE = 2` v mezipamet.js).
+- **Historie se z telefonu nevykreslí nesložená:** bez uložených plnění
+  (vyčištěná mezipaměť) `prepocitejSkupiny(true)` vrátí false → „Načítám…"
+  (`historieCekaNaPlneni`) a pak rovnou složené obchody. Dřív se ukázaly
+  záznamy bez otevřeného obchodu a po stažení plnění se přeskládaly.
+  Test: `test-historie-stabilni.py`, bod 3b `test-binance-ucet.py`
+  (uzavřený obchod JUP na Binance, přepnutí za běhu, přenačtení).
+- **Kontrola nové burzy:** `docs/kontrola-nove-burzy.md` — co ověřím já
+  naostro a co uživatel na telefonu. **Při každé nové burze projít
+  a uživateli dát část B.**
 - **Mezipaměť po účtech** (`u:<otisk klíče>|klíč` v mezipamet.js): dřív
   jiný klíč mezipaměť smazal, takže každé přepnutí účtu v Historii
   zahodilo historii toho druhého. Stará data se jednou převedou do oddílu
