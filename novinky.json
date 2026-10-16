@@ -1,6 +1,10 @@
 {
-  "verze": "0.59.9",
+  "verze": "0.59.10",
   "novinky": [
+    {
+      "en": "Binance: live prices and live candles — the chart moves with every tick, like Bybit.",
+      "cs": "Binance: živé ceny a živá svíčka — graf se hýbe s každým tickem, jako u Bybitu."
+    },
     {
       "en": "Binance price alerts now ring even with the screen off, just like Bybit.",
       "cs": "Cenové alarmy na Binance teď zvoní i se zhasnutým displejem, stejně jako u Bybitu."

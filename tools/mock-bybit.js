@@ -23,7 +23,14 @@ if (!sessionStorage.getItem('__bezKlice') && !sessionStorage.getItem('__mockKlic
   localStorage.setItem('perpdesk.apiSecret','FAKESECRET1234567890abcdef');
   sessionStorage.setItem('__mockKlic', '1');
 }
-window.WebSocket = function(){this.readyState=0;this.send=()=>{};this.close=()=>{};};
+// Bybit dostane falešné spojení (nikdy se neotevře, data jdou dotazem).
+// Ostatní burzy (živý proud Binance, v0.59.10) jdou na skutečnou burzu
+// stejně jako jejich `fetch` níž.
+const __PuvodniWS = window.WebSocket;
+window.WebSocket = function (url, protokoly) {
+  if (!/bybit/i.test(String(url))) return new __PuvodniWS(url, protokoly);
+  this.readyState = 0; this.send = () => {}; this.close = () => {};
+};
 window.WebSocket.OPEN = 1;
 // ⚠ `createdTime` je u Bybitu čas, kdy na páru vznikla pozice POPRVÉ
 // v historii — schválně dávno, aby bylo poznat, že se podle něj čas

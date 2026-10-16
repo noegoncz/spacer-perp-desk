@@ -25,6 +25,9 @@ const cisloNebo = (v) => (v === null || v === undefined || v === '' || !Number.i
 const POZICE_POPREDI = 3000;
 const POZICE_POZADI = 30000;
 const CENY_KAZDYCH = 2000;
+// Živý proud (burza, která ho má — Binance v0.59.10): dotaz se přeskočí,
+// když z proudu přišla cena / svíčka v posledních 6 s.
+const PROUD_CERSTVY = 6000;
 // Zůstatek a otevřené příkazy (u Binance bez páru 40 jednotek) ne s každým
 // dotazem na pozice — jen při změně pozic, na vyžádání, jinak po 30 s.
 const DOPLNKY_KAZDYCH = 30000;
@@ -731,24 +734,44 @@ export class CcxtAdapter {
     this.casovacCen = setInterval(() => this.obnovCeny(), CENY_KAZDYCH);
   }
 
+  /** Páry, jejichž cenu aplikace chce (dlaždice seznamu + pozice). */
+  paryCen() {
+    return new Set([...this.extraTickers, ...[...this.positions.values()].map((p) => p.symbol)]);
+  }
+
+  /** Přišlo z živého proudu v posledních pár vteřinách? (bez proudu nikdy) */
+  zProudu(klic) {
+    return Date.now() - (this.cerstve?.get(klic) || 0) < PROUD_CERSTVY;
+  }
+
+  /** Živý proud — burza, která ho má, přepíše (Binance). */
+  synchronizujOdbery() {}
+
+  /** Nová cena páru → dlaždice (onTicker) a pozice (mark, PnL). Vrací, jestli se pozice změnily. */
+  pouzijCenu(z, mark) {
+    if (this.extraTickers.has(z.symbol)) this.handlers.onTicker?.(z);
+    let zmena = false;
+    for (const p of this.positions.values()) {
+      if (p.symbol !== z.symbol || !mark || p.mark === mark) continue;
+      p.mark = mark;
+      p.pnl = (mark - p.entry) * p.size * (p.side === 'Sell' ? -1 : 1);
+      zmena = true;
+    }
+    return zmena;
+  }
+
   async obnovCeny() {
     if (!this.foreground || (!this.ex && !this.exVerejna)) return;
-    const pary = new Set([...this.extraTickers, ...[...this.positions.values()].map((p) => p.symbol)]);
-    if (!pary.size) return;
+    this.synchronizujOdbery();
+    // Páry, které živý proud právě obsluhuje, se dotazem neptají.
+    const pary = [...this.paryCen()].filter((s) => !this.zProudu(`c:${s}`));
+    if (!pary.length) return;
     try {
-      const symboly = [...pary].map((s) => this.trh(s)?.symbol).filter(Boolean);
+      const symboly = pary.map((s) => this.trh(s)?.symbol).filter(Boolean);
       const vse = await this.tickeryParu(await this.burzaVerejna(), symboly);
       let zmena = false;
       for (const tk of Object.values(vse)) {
-        const z = this.ticker(tk);
-        if (this.extraTickers.has(z.symbol)) this.handlers.onTicker?.(z);
-        for (const p of this.positions.values()) {
-          const mark = cislo(tk.markPrice ?? tk.last);
-          if (p.symbol !== z.symbol || !mark || p.mark === mark) continue;
-          p.mark = mark;
-          p.pnl = (mark - p.entry) * p.size * (p.side === 'Sell' ? -1 : 1);
-          zmena = true;
-        }
+        if (this.pouzijCenu(this.ticker(tk), cislo(tk.markPrice ?? tk.last))) zmena = true;
       }
       if (zmena) this.emitPositions();
     } catch { /* příště znovu */ }
@@ -762,10 +785,12 @@ export class CcxtAdapter {
   setKlineSubscription(symbol, interval) {
     clearInterval(this.casovacSvicky);
     this.svicka = symbol && interval ? { symbol, interval } : null;
+    this.synchronizujOdbery();
     if (!this.svicka) return;
     const { symbol: s, interval: i } = this.svicka;
     this.casovacSvicky = setInterval(async () => {
       if (!this.foreground || this.svicka?.symbol !== s || this.svicka?.interval !== i) return;
+      if (this.zProudu(`k:${s}:${i}`)) return; // živá svíčka jde proudem
       try {
         const posledni = (await this.getKlines(s, i, 2)).pop();
         if (posledni) this.handlers.onKline?.({ ...posledni, closed: false });

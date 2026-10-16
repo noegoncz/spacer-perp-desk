@@ -208,8 +208,17 @@ Binance → Gate → MEXC → OKX (+EEA) → Bitget → Hyperliquid, pak vlny 2 
   s podpisem) do UI nepouštět (`prelozChybu`).
 - ⚠ Binance: `options.fetchCurrencies: false` — jinak CCXT s klíčem volá
   spotové `/sapi/` (v Demo Tradingu nejde, chyba při každém klíči).
-- **Zbývá:** WebSocket místo dotazování. (Serverový hlídač hlídá
-  Binance od v0.59.9, víc burz najednou od v0.59.0.)
+- **Živý proud Binance (v0.59.10):** ceny (`@miniTicker`) a živá svíčka
+  (`@kline_<tf>`) přes `wss://fstream.binance.com/market/ws`
+  (`otevriProud`, `synchronizujOdbery` v binance.js). Obecný adaptér má
+  háčky: `zProudu(klíč)` — pár, pro který proud za 6 s něco poslal, se
+  dotazem neptá; jinak dotazování po 2 s jako záloha. Na pozadí se proud
+  zavře (i u burz bez účtu — `verejneKlienty` dostávají `setForeground`),
+  demo účet proud nemá (jiné ceny). Pozice dál dotazem po 3 s (soukromý
+  proud Binance by chtěl listenKey — zatím ne). ⚠ `mock-bybit.js` od
+  v0.59.10 podstrkuje jen WebSocket Bybitu, ostatní burzy jdou naostro.
+  Test: `tools/test-binance-proud.py` (na v0.59.9 padá v 6 bodech).
+- **Zbývá:** soukromý proud Binance (pozice živě, listenKey).
 - Test: `tools/test-vyber-burzy.py` (výběr, neplatný klíč, veřejná data
   ze skutečného Binance v aplikaci), `test-uvod.py`.
 

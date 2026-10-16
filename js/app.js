@@ -1369,6 +1369,8 @@ function wireEvents() {
   document.addEventListener('visibilitychange', () => {
     const visible = document.visibilityState === 'visible';
     for (const k of klienti.values()) k.setForeground(visible);
+    // I burzy bez účtu (dlaždice, graf) — jejich živý proud se na pozadí zavře.
+    for (const k of verejneKlienty.values()) k.setForeground?.(visible);
     if (visible) {
       for (const k of klienti.values()) k.ensureConnected();
       checkForUpdate();

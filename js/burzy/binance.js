@@ -18,6 +18,13 @@ import { nactiCcxt, nativniFetch } from './ccxt.js';
 
 const cislo = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const TYDEN = 7 * 864e5;
+/*
+ * Živý proud tržních dat (v0.59.10). ⚠ Tržní data futures jsou na
+ * `/market/ws` — stará `/ws` odběr potvrdí, ale data neposílá (ověřeno
+ * 2026-10-16, viz server/hlidac.mjs).
+ */
+const PROUD = 'wss://fstream.binance.com/market/ws';
+const TF = { 1: '1m', 5: '5m', 15: '15m', 30: '30m', 60: '1h', 240: '4h', D: '1d', W: '1w', M: '1M' };
 
 export class BinanceClient extends CcxtAdapter {
   constructor(handlers = {}, volby = {}) {
@@ -38,6 +45,148 @@ export class BinanceClient extends CcxtAdapter {
 
   popisUctu() {
     return 'USDⓈ-M';
+  }
+
+  /* ---------- živý proud: cena (@miniTicker) a svíčka (@kline) ---------- */
+
+  /*
+   * Ceny dlaždic a pozic a živá svíčka grafu chodí proudem místo dotazu
+   * po 2 s (u Bybitu to tak je odjakživa). Dotazování v obecném adaptéru
+   * zůstává jako záloha: pár, pro který proud 6 s mlčí, se zeptá dotazem.
+   * Demo Trading má jiné ceny než ostrá burza → proud jen naostro. Na
+   * pozadí se proud zavře (baterie), po návratu otevře znovu.
+   */
+  chceneTemata() {
+    const temata = new Map(); // téma → klíč čerstvosti
+    if (this.volby.demo || this.volby.testnet || !this.foreground || this.zastaveno) return temata;
+    for (const s of this.paryCen()) {
+      const id = this.trh(s)?.id;
+      if (id) temata.set(`${id.toLowerCase()}@miniTicker`, `c:${s}`);
+    }
+    if (this.svicka && TF[this.svicka.interval]) {
+      const id = this.trh(this.svicka.symbol)?.id;
+      if (id) temata.set(`${id.toLowerCase()}@kline_${TF[this.svicka.interval]}`, `k:${this.svicka.symbol}:${this.svicka.interval}`);
+    }
+    return temata;
+  }
+
+  synchronizujOdbery() {
+    if (typeof WebSocket === 'undefined' || !Object.keys(this.trhyCcxt()).length) return;
+    const chci = this.chceneTemata();
+    if (!this.ws) {
+      if (chci.size && !this.wsZnovu) this.otevriProud();
+      return;
+    }
+    if (this.ws.readyState !== 1) return; // po otevření se zavolá znovu
+    if (!chci.size) {
+      this.ws.close();
+      return;
+    }
+    const pridat = [...chci.keys()].filter((t) => !this.wsOdbery.has(t));
+    const odebrat = [...this.wsOdbery].filter((t) => !chci.has(t));
+    for (let i = 0; i < pridat.length; i += 50) {
+      this.ws.send(JSON.stringify({ method: 'SUBSCRIBE', params: pridat.slice(i, i + 50), id: ++this.wsId }));
+    }
+    for (let i = 0; i < odebrat.length; i += 50) {
+      this.ws.send(JSON.stringify({ method: 'UNSUBSCRIBE', params: odebrat.slice(i, i + 50), id: ++this.wsId }));
+    }
+    odebrat.forEach((t) => this.wsOdbery.delete(t));
+    pridat.forEach((t) => this.wsOdbery.add(t));
+  }
+
+  otevriProud() {
+    this.cerstve ??= new Map();
+    this.wsOdbery = new Set();
+    this.wsId ??= 0;
+    let ws;
+    try {
+      ws = new WebSocket(PROUD);
+    } catch {
+      // Spojení nejde vůbec založit — zkusit později, ne při každém dotazu.
+      this.wsZnovu = setTimeout(() => { this.wsZnovu = null; }, 30000);
+      return;
+    }
+    this.ws = ws;
+    ws.onopen = () => {
+      this.wsPokus = 0;
+      this.synchronizujOdbery();
+    };
+    ws.onmessage = (e) => this.zpravaProudu(e.data);
+    ws.onclose = () => {
+      if (this.ws === ws) this.ws = null;
+      this.wsOdbery = new Set();
+      if (!this.chceneTemata().size) return; // zavřeno schválně (pozadí, nic k odběru)
+      const cekat = Math.min(30000, 1000 * 2 ** (this.wsPokus || 0));
+      this.wsPokus = (this.wsPokus || 0) + 1;
+      clearTimeout(this.wsZnovu);
+      this.wsZnovu = setTimeout(() => {
+        this.wsZnovu = null;
+        this.synchronizujOdbery();
+      }, cekat);
+    };
+    ws.onerror = () => { /* zavření řeší onclose */ };
+  }
+
+  /** Symbol Binance (JUPUSDT) → kanonický pár; u USDⓈ-M stejný text, ale přes trhy. */
+  parZId(id) {
+    this.paryPodleId ??= new Map();
+    if (!this.paryPodleId.has(id)) {
+      const m = Object.values(this.trhyCcxt()).find((x) => x.id === id && x.swap && x.linear);
+      this.paryPodleId.set(id, m ? this.kanonicky(m) : null);
+    }
+    return this.paryPodleId.get(id);
+  }
+
+  zpravaProudu(text) {
+    let m;
+    try {
+      m = JSON.parse(text);
+    } catch {
+      return;
+    }
+    const par = m?.s && this.parZId(m.s);
+    if (!par) return;
+    if (m.e === '24hrMiniTicker') {
+      const posledni = cislo(m.c);
+      if (!posledni) return;
+      this.cerstve.set(`c:${par}`, Date.now());
+      const otevreni = cislo(m.o);
+      const z = {
+        symbol: par,
+        last: posledni,
+        changePct: otevreni ? ((posledni - otevreni) / otevreni) * 100 : 0,
+        turnover: cislo(m.q),
+      };
+      if (this.pouzijCenu(z, posledni)) this.emitPositions();
+    } else if (m.e === 'kline' && m.k) {
+      const k = m.k;
+      const sv = this.svicka;
+      if (!sv || sv.symbol !== par || TF[sv.interval] !== k.i) return;
+      this.cerstve.set(`k:${sv.symbol}:${sv.interval}`, Date.now());
+      this.handlers.onKline?.({
+        time: cislo(k.t), open: cislo(k.o), high: cislo(k.h), low: cislo(k.l), close: cislo(k.c),
+        volume: cislo(k.v), closed: Boolean(k.x),
+      });
+    }
+  }
+
+  setForeground(value) {
+    super.setForeground(value);
+    // Na pozadí proud zavřít (synchronizace bez témat ho zavře), po návratu otevřít.
+    this.synchronizujOdbery();
+  }
+
+  async start() {
+    this.zastaveno = false;
+    return super.start();
+  }
+
+  stop() {
+    this.zastaveno = true; // zavřený proud se už sám nepřipojí
+    super.stop();
+    clearTimeout(this.wsZnovu);
+    this.wsZnovu = null;
+    this.ws?.close();
   }
 
   /**
