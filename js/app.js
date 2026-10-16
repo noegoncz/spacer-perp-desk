@@ -1769,6 +1769,18 @@ async function otevriGraf(symbol, position, trh) {
   chart.setSymbol(grafKlic(), priceDecimals(position?.entry ?? trh?.last ?? prohlizenyObchod?.entry ?? 0));
   if (prohlizenyObchod?.okno) chart.showTradeWindow(prohlizenyObchod.okno.od, prohlizenyObchod.okno.do);
   chart.setInterval(chartInterval); // knihovna si data vyžádá sama
+  /*
+   * ⚠ Čáry nového grafu hned (v0.59.6, video uživatele): instance grafu se
+   * recykluje a čáry předchozího grafu v ní zůstávaly, dokud nedorazily
+   * příkazy nového páru — po přepnutí z pozice na Bybitu na pozici na
+   * Binance byl na grafu Binance chvíli SL a TP z Bybitu. Teď se hned
+   * nakreslí pozice a příkazy, které účet už zná (stahují se průběžně);
+   * čerstvé z burzy je pak jen upřesní.
+   */
+  if (grafSUctem() && !prohlizenyObchod) {
+    chartOrders = (stavUctu.get(chartUcet)?.prikazy || []).filter((o) => o.symbol === symbol);
+  }
+  applyChartLines(true);
   odebiratZiveSvice(symbol, chartInterval);
   chart.restoreDrawings(store.loadDrawings(grafKlic()));
   vykresliAlarmy();

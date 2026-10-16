@@ -11,6 +11,7 @@
  * Řízení z testu:
  *   window.__binanceChyba1021 = n  → n dotazů na příkazy vrátí -1021
  *   window.__binanceDotazy         → seznam cest podepsaných dotazů
+ *   window.__binanceZdrzeniPrikazu → ms, o kolik přijdou příkazy později
  */
 (() => {
   const TED = Date.now();
@@ -49,7 +50,7 @@
     const u = String(vstup && vstup.url ? vstup.url : vstup);
     if (!/fapi\.binance\.com/.test(u) || !/signature=/.test(u)) return puvodni.call(this, vstup, volby);
     const cesta = new URL(u).pathname;
-    window.__binanceDotazy.push(cesta);
+    if (!(volby && volby.__bezZdrzeni)) window.__binanceDotazy.push(cesta);
     if (/\/(openOrders|openAlgoOrders)$/.test(cesta) && window.__binanceChyba1021 > 0) {
       window.__binanceChyba1021 -= 1;
       return json({ code: -1021, msg: 'Timestamp for this request is outside of the recvWindow.' }, 400);
@@ -68,6 +69,10 @@
     if (/\/balance$/.test(cesta)) {
       return json([{ accountAlias: 'x', asset: 'USDT', balance: '100', crossWalletBalance: '100', crossUnPnl: '0.05',
         availableBalance: '99', maxWithdrawAmount: '99', marginAvailable: true, updateTime: TED }]);
+    }
+    if (/\/(openOrders|openAlgoOrders)$/.test(cesta) && window.__binanceZdrzeniPrikazu > 0 && !(volby && volby.__bezZdrzeni)) {
+      const zdrzeni = window.__binanceZdrzeniPrikazu;
+      return new Promise((ok) => setTimeout(ok, zdrzeni)).then(() => window.fetch(vstup, { ...volby, __bezZdrzeni: true }));
     }
     if (/\/openOrders$/.test(cesta)) return json(/symbol=/.test(u) && !/symbol=JUPUSDT/.test(u) ? [] : [LIMITKA]);
     if (/\/openAlgoOrders$/.test(cesta)) return json(/symbol=/.test(u) && !/symbol=JUPUSDT/.test(u) ? [] : ALGO);

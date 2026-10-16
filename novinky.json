@@ -1,5 +1,5 @@
 {
-  "verze": "0.59.5",
+  "verze": "0.59.6",
   "novinky": [
     {
       "en": "Binance: take profit, stop loss and trailing orders now show on the chart and on the position card.",
@@ -11,6 +11,10 @@
     }
   ],
   "opravy": [
+    {
+      "en": "Opening a chart no longer briefly shows the previous position's lines.",
+      "cs": "Otevření grafu už na chvíli neukáže čáry předchozí pozice."
+    },
     {
       "en": "Order lines on the chart show their real type again (Take Profit, Stop Loss…).",
       "cs": "Čáry příkazů v grafu zase nesou svůj skutečný typ (Take Profit, Stop Loss…)."

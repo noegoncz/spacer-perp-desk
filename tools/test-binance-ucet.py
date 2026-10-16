@@ -111,6 +111,28 @@ ev("window.__binanceChyba1021 = 0")
 ev("history.back()")
 time.sleep(1)
 
+print('2b) z grafu Bybitu na graf Binance: žádné čáry z Bybitu (v0.59.6)')
+KARTA = "[...document.querySelectorAll('.position')].find((x) => {burza}.test((x.querySelector('.pos-burza') || {{}}).textContent || '')).click()"
+ev(KARTA.format(burza='/bybit/i'))
+time.sleep(4)
+ev("history.back()")
+time.sleep(1)
+ev("window.__binanceZdrzeniPrikazu = 2500")
+ev(KARTA.format(burza='/binance/i'))
+cizi = set()
+for _ in range(40):
+    time.sleep(0.05)
+    for c in json.loads(ev("""JSON.stringify(window.__graf.getOverlays().filter((o) => o.name === 'positionLine')
+      .map((o) => ({ t: o.extendData.title, c: o.points[0].value })))""") or '[]'):
+        if '2,547' in c['t'] or abs(c['c'] - 0.30135) < 1e-6 or abs(c['c'] - 0.285) < 1e-6:
+            cizi.add(f"{c['t']} @ {c['c']}")
+print('   čáry z Bybitu na grafu Binance:', cizi or 'žádné')
+over(not cizi, 'na grafu Binance se ani na okamžik neobjevily čáry pozice z Bybitu')
+ev("window.__binanceZdrzeniPrikazu = 0")
+time.sleep(3)
+ev("history.back()")
+time.sleep(1)
+
 print('3) Historie: přepnutí účtu')
 ev("document.querySelector('.tab[data-tab=history]').click()")
 time.sleep(4)

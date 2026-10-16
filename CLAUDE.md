@@ -312,6 +312,17 @@ graf Binance se načítal dlouho a pak „divně"):**
   jiný klíč mezipaměť smazal, takže každé přepnutí účtu v Historii
   zahodilo historii toho druhého. Stará data se jednou převedou do oddílu
   svého účtu; odebrání připojení maže jen jeho oddíl (`smazUcet`).
+- **Čáry nového grafu hned (v0.59.6, video uživatele):** recyklovaná
+  instance grafu nesla čáry předchozího grafu, dokud nedorazily příkazy
+  nového páru — po přechodu z pozice Bybitu na pozici Binance byly na
+  grafu Binance chvíli SL/TP/vstup z Bybitu. `otevriGraf` teď hned
+  nakreslí pozici a příkazy, které účet už zná (`stavUctu`), burza je
+  pak upřesní. Test: bod 2b v `test-binance-ucet.py`
+  (`__binanceZdrzeniPrikazu`), na v0.59.5 padá.
+- **Názvy typů příkazů se nesjednocují** (rozhodnutí uživatele
+  2026-10-16): Bybit má „Partial TP/SL", Binance jen „Take Profit /
+  Stop Loss" s množstvím — každá burza po svém, ať to s dalšími burzami
+  není složité.
 - Test: `tools/test-binance-ucet.py` s podstrčeným soukromým API
   (`tools/mock-binance.js` — vkládá se za mock-bybit.js; řízení
   `__binanceChyba1021`, `__binanceDotazy`), na v0.59.3 padá v 11 bodech.
