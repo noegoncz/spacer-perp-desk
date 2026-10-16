@@ -9,8 +9,8 @@ nimi. Ověřuje (Binance ze skutečné burzy, klíč vymyšlený):
   1) adaptér s klíčem má pro veřejná data vlastní instanci,
   2) s plnou frontou soukromé instance (jako na telefonu) přijdou svíčky
      do 2 s,
-  3) aplikace svíčky grafu předčte: po startu je pro dlaždice vybraného
-     seznamu stáhne dopředu a graf z dlaždice se otevře bez dalšího
+  3) aplikace svíčky grafu předčte: po startu je pro dlaždice všech
+     seznamů (v0.59.5) stáhne dopředu a graf z dlaždice se otevře bez dalšího
      dotazu na svíčky (500) a hned.
 Na starém kódu padá v bodech 1–3.
 
@@ -25,7 +25,8 @@ KOREN = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 mock = open(os.path.join(KOREN, 'tools', 'mock-bybit.js'), encoding='utf-8').read()
 mock += """
 localStorage.setItem('perpdesk.lists', JSON.stringify({ verze: 1, aktivni: 'a',
-  seznamy: [{ id: 'a', nazev: 'BTC', polozky: ['binance:BTCUSDT', 'okx:BTCUSDT', 'binance:ETHUSDT'] }] }));
+  seznamy: [{ id: 'a', nazev: 'BTC', polozky: ['binance:BTCUSDT', 'okx:BTCUSDT', 'binance:ETHUSDT'] },
+            { id: 'b', nazev: 'Druhy', polozky: ['binance:SOLUSDT'] }] }));
 """
 
 p = Prohlizec()
@@ -83,6 +84,7 @@ predem = ev("performance.getEntriesByType('resource').filter(e => /klines.*limit
 print('   předčteno:', len(predem))
 over(any('symbol=BTCUSDT' in u for u in predem) and any('symbol=ETHUSDT' in u for u in predem),
      'svíčky Binance pro dlaždice seznamu se stáhly dopředu')
+over(any('symbol=SOLUSDT' in u for u in predem), 'i páry neotevřeného seznamu se stáhly dopředu (v0.59.5)')
 ev("performance.clearResourceTimings()")
 ev("document.querySelector('#watchList .tile[data-klic=\"binance:ETHUSDT\"]').click()")
 t0 = time.time()

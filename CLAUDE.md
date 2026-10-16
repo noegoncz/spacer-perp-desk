@@ -271,6 +271,11 @@ graf Binance se načítal dlouho a pak „divně"):**
   dotyku dlaždice hned. Jen v paměti, platí 5 min (u kratšího timeframu
   jedna svíčka); záznam patří klientovi (demo Binance má jiné ceny).
   V0.48.0 předčítala jen ceny a mini-grafy, ne svíčky grafu.
+  **v0.59.5 (přání uživatele):** po startu i páry **všech seznamů**
+  (`predNactiGrafy(true)`, nejvýš 120); při dalším vykreslení jen pozice
+  a otevřený seznam — jinak by se po vypršení stahovalo dokola na
+  mobilních datech. Fronta se slučuje, ne přepisuje (vykreslení po startu
+  by ostatní seznamy z fronty vyhodilo).
 - Test: `tools/test-graf-rychle.py` (plná fronta účtu, předčtení, graf
   bez nového dotazu), na v0.59.2 padá ve 4 bodech (svíčky čekaly 15 s).
 - ⚠ **Testy pouštěj každý v čistém Chromu** (nový `--user-data-dir`).

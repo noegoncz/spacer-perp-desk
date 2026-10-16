@@ -1839,7 +1839,7 @@ function odebiratZiveSvice(symbol, interval) {
  */
 const SVICE_DOPREDU_PLATI = 5 * 60e3;
 const SVICE_DOPREDU_NAJEDNOU = 3;
-const SVICE_DOPREDU_NEJVIC = 30;
+const SVICE_DOPREDU_NEJVIC = 120;
 const sviceDopredu = new Map(); // klíč grafu|interval → { klient, cas, slib }
 let frontaSvic = [];
 let sviceBezi = 0;
@@ -1866,18 +1866,35 @@ function predNactiSvice(klient, burza, symbol, interval = intervalUzivatele) {
   return slib;
 }
 
-/** Na pozadí: pozice, pak páry vybraného seznamu — nejvýš tři dotazy naráz. */
-function predNactiGrafy() {
+/**
+ * Na pozadí: pozice, pak páry vybraného seznamu — nejvýš tři dotazy naráz.
+ * `vsechnySeznamy` (po startu, přání uživatele 2026-10-16) přidá i páry
+ * ostatních seznamů. Jen jednou za start — při každém vykreslení seznamu
+ * by se po vypršení (5 min) stahovaly znovu a na mobilních datech dokola.
+ */
+function predNactiGrafy(vsechnySeznamy = false) {
   if (!ucet.prihlasen()) return;
   const polozky = [];
+  const videne = new Set();
+  const pridej = (k, burza, symbol) => {
+    const klic = `${klicGrafu(burza, symbol)}|${k?.pripojeniId || ''}`;
+    if (!k || videne.has(klic)) return;
+    videne.add(klic);
+    polozky.push([k, burza, symbol]);
+  };
   for (const p of lastPositions) {
     const k = klienti.get(p.ucet);
-    if (k) polozky.push([k, p.burza || k.burza?.id, p.symbol]);
+    if (k) pridej(k, p.burza || k.burza?.id, p.symbol);
   }
-  for (const x of sestavy.polozkyVPoradi(sestavy.aktivni())) {
-    if (verejneDostupne().includes(x.burza)) polozky.push([verejnyKlient(x.burza), x.burza, x.symbol]);
+  const seznamy = [sestavy.aktivni(), ...(vsechnySeznamy ? sestavy.poradi().filter((id) => id !== sestavy.aktivni()) : [])];
+  for (const id of seznamy) {
+    for (const x of sestavy.polozkyVPoradi(id)) {
+      if (verejneDostupne().includes(x.burza)) pridej(verejnyKlient(x.burza), x.burza, x.symbol);
+    }
   }
-  frontaSvic = polozky.slice(0, SVICE_DOPREDU_NEJVIC);
+  // Nové navrch, ještě nestažené z dřívějška (ostatní seznamy) zůstávají.
+  const zbytek = frontaSvic.filter(([k, burza, symbol]) => !videne.has(`${klicGrafu(burza, symbol)}|${k?.pripojeniId || ''}`));
+  frontaSvic = [...polozky, ...zbytek].slice(0, SVICE_DOPREDU_NEJVIC);
   pustFrontuSvic();
 }
 
@@ -2598,7 +2615,7 @@ async function predNactiTrhy() {
       if (!grafyCerstve.has(klic)) grafyFronta.push({ klic, radek: null });
     }
     odbavGrafy();
-    predNactiGrafy(); // svíčky grafu pro pozice a vybraný seznam
+    predNactiGrafy(true); // svíčky grafu pro pozice a všechny seznamy
   } catch {
     /* nevadí — Watchlists si data stáhnou při otevření */
   } finally {

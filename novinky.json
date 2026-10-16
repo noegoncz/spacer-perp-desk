@@ -1,13 +1,13 @@
 {
-  "verze": "0.59.4",
+  "verze": "0.59.5",
   "novinky": [
     {
       "en": "Binance: take profit, stop loss and trailing orders now show on the chart and on the position card.",
       "cs": "Binance: take profit, stop loss i trailing příkazy jsou teď v grafu i na kartě pozice."
     },
     {
-      "en": "Charts open instantly — candles for your positions and the selected watchlist are loaded in advance.",
-      "cs": "Grafy se otevírají hned — svíčky pro pozice a vybraný seznam se načítají dopředu."
+      "en": "Charts open instantly — candles for your positions and all your watchlists are loaded in advance.",
+      "cs": "Grafy se otevírají hned — svíčky pro pozice a všechny seznamy se načítají dopředu."
     }
   ],
   "opravy": [
