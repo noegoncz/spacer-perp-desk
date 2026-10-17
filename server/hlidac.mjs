@@ -21,7 +21,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { createSign } from 'node:crypto';
-import { uroven, protnuto, dobehla, vyprsel } from '../js/alarmy-logika.js';
+import { uroven, protnuto, dobehla, vyprsel, smerPruniku } from '../js/alarmy-logika.js';
 
 const API = (process.env.API || 'https://perpyx.com').replace(/\/$/, '');
 const TOKEN = process.env.WATCHER_TOKEN || '';
@@ -72,7 +72,7 @@ async function tokenFcm() {
 }
 
 /** Pošle push na jedno zařízení. Vrací 'ok' | 'neplatny' (zařízení už není) | 'chyba'. */
-async function posliPush(token, { titulek, text, data }) {
+async function posliPush(token, { titulek, text, data, ikona = 'ic_stat_perpyx', barva = '#22d3ee' }) {
   if (ZKOUSKA) {
     log('ZKOUŠKA push', token.slice(0, 12), titulek, text);
     return 'ok';
@@ -92,7 +92,7 @@ async function posliPush(token, { titulek, text, data }) {
           notification: {
             channel_id: 'alarms', sound: 'default', default_vibrate_timings: true,
             notification_priority: 'PRIORITY_MAX', tag: data.alarmId,
-            icon: 'ic_stat_perpyx', color: '#22d3ee',
+            icon: ikona, color: barva,
           },
         },
       },
@@ -166,35 +166,51 @@ function nazevParu(symbol) {
   return `${symbol.slice(i + 1)} (${burza === 'binance' ? 'Binance' : burza})`;
 }
 
-function texty(a, cena) {
+/*
+ * Směr průniku (v0.59.12, přání uživatele): v nadpisu ▲ / ▼, v textu
+ * „↑ prorazil" / „↓ propadl pod" a ikonka šipky zelená / červená
+ * (`ic_stat_nahoru` / `ic_stat_dolu` v APK; starší APK bez nich ukáže
+ * výchozí ikonku, jen obarvenou). Zvuk směr nerozlišuje — ten patří
+ * kanálu a nastavení telefonu.
+ */
+const SMER = {
+  nahoru: { znak: '▲', cs: '↑ prorazil', en: '↑ crossed above', ikona: 'ic_stat_nahoru', barva: '#3ee6a4' },
+  dolu: { znak: '▼', cs: '↓ propadl pod', en: '↓ dropped below', ikona: 'ic_stat_dolu', barva: '#ff6b78' },
+};
+
+function texty(a, cena, smer = null) {
   const cs = a.jazyk === 'cs';
   const par = nazevParu(a.symbol);
-  const titulek = `PerpyX · ${par}`;
+  const s = SMER[smer];
+  const titulek = s ? `PerpyX · ${s.znak} ${par}` : `PerpyX · ${par}`;
   if (a.typ === 'cas') {
     return { titulek, text: a.zprava || (cs ? 'Nastal čas alarmu.' : 'Your time alert is due.') };
   }
   const hladina = formatCeny(uroven(a));
-  const zakladni = cs ? `${par} dosáhl ${hladina} (cena ${formatCeny(cena)})`
-    : `${par} reached ${hladina} (price ${formatCeny(cena)})`;
+  const co = s ? s[cs ? 'cs' : 'en'] : (cs ? 'dosáhl' : 'reached');
+  const zakladni = cs ? `${par} ${co} ${hladina} (cena ${formatCeny(cena)})`
+    : `${par} ${co} ${hladina} (price ${formatCeny(cena)})`;
   return { titulek, text: a.zprava ? `${a.zprava} — ${zakladni}` : zakladni };
 }
 
-async function spust(a, cena) {
+async function spust(a, cena, smer = null) {
   const klic = `${a.account}:${a.id}`;
   if (!a.opakovat) {
     spusteneTed.add(klic);
     alarmy = alarmy.filter((x) => x !== a);
   }
-  const { titulek, text } = texty(a, cena);
+  const { titulek, text } = texty(a, cena, smer);
+  const s = SMER[smer];
   const neplatne = [];
   for (const t of tokeny[a.account] || []) {
     const v = await posliPush(t, {
       titulek, text,
-      data: { alarmId: a.id, symbol: a.symbol, price: String(cena ?? ''), at: String(Date.now()) },
+      ...(s ? { ikona: s.ikona, barva: s.barva } : {}),
+      data: { alarmId: a.id, symbol: a.symbol, price: String(cena ?? ''), at: String(Date.now()), smer: smer || '' },
     });
     if (v === 'neplatny') neplatne.push(t);
   }
-  log('alarm', a.symbol, a.typ, a.id, 'zařízení:', (tokeny[a.account] || []).length);
+  log('alarm', a.symbol, a.typ, a.id, smer || '', 'zařízení:', (tokeny[a.account] || []).length);
   try {
     await watcherApi('/api/watcher/fired', {
       account: a.account, id: a.id, at: Date.now(), repeat: Boolean(a.opakovat), invalidTokens: neplatne,
@@ -212,7 +228,7 @@ function novaCena(symbol, cena) {
   const ted = Date.now();
   for (const a of alarmy) {
     if (a.symbol !== symbol || a.typ === 'cas' || vyprsel(a, ted) || dobehla(a, ted)) continue;
-    if (protnuto(a, predchozi, cena, ted)) spust(a, cena);
+    if (protnuto(a, predchozi, cena, ted)) spust(a, cena, smerPruniku(a, predchozi, cena, ted));
   }
 }
 

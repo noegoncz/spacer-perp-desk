@@ -160,6 +160,9 @@ vibrace = ev("window.__vibrace") or 0
 pruh = ev("document.getElementById('errorBar').hidden ? '' : document.getElementById('errorBar').textContent")
 print('po protnutí — pípnutí:', pipnuti, ' vibrace:', vibrace)
 print('pruh v UI:', pruh or '(nic)')
+# Cena přišla zdola nad hladinu → pruh říká směr (v0.59.12).
+smer_v_pruhu = '↑' in (pruh or '')
+print('směr průniku v pruhu (↑):', smer_v_pruhu)
 
 po = ulozene()[0] if ulozene() else {}
 h = hladiny()
@@ -226,7 +229,7 @@ print('chyby v konzoli:', chyby or '(žádné)')
 print()
 
 ok = (kriz and otevreno and zavreno and len(ulozene()) == 1 and predcasne == 0
-      and pipnuti >= 1 and vibrace >= 1 and pruh
+      and pipnuti >= 1 and vibrace >= 1 and pruh and smer_v_pruhu
       and po.get('aktivni') is False and opakovany.get('aktivni') is True
       and zaznelo == 3 and uprava and vejdeSe and po_prepnuti == 1 and not chyby)
 print('VÝSLEDEK:', 'ALARMY FUNGUJÍ' if ok else '!!! ALARMY MAJÍ CHYBU')

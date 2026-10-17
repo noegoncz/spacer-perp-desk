@@ -111,7 +111,7 @@ export function zKresby(symbol, kresba) {
 
 // Výpočty (úroveň, protnutí, doběhnutí) sdílí aplikace se serverovým
 // hlídačem — jsou v alarmy-logika.js, tady se jen znovu vystavují.
-import { rozsahCary, uroven, dobehla, protnuto } from './alarmy-logika.js';
+import { rozsahCary, uroven, dobehla, protnuto, smerPruniku } from './alarmy-logika.js';
 
 export { rozsahCary, uroven, dobehla, protnuto };
 
@@ -180,6 +180,11 @@ export function zkontroluj(symbol, cena, ted = Date.now()) {
       continue;
     }
     if (!protnuto(a, predchozi, cena, ted)) continue;
+    // Směr průniku pro text (nahoru / dolů). Neukládá se — vlastnost je
+    // neenumerovatelná, do úložiště ani na server se nedostane.
+    Object.defineProperty(a, 'smerPruniku', {
+      value: smerPruniku(a, predchozi, cena, ted), configurable: true, writable: true, enumerable: false,
+    });
     a.spusteno = ted;
     if (!a.opakovat) a.aktivni = false;
     spustene.push(a);

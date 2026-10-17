@@ -1,6 +1,10 @@
 {
-  "verze": "0.59.11",
+  "verze": "0.59.12",
   "novinky": [
+    {
+      "en": "Price alerts tell the direction: ↑ crossed above / ↓ dropped below, with a green or red arrow in the notification.",
+      "cs": "Cenové alarmy říkají směr: ↑ prorazil / ↓ propadl pod, v notifikaci se zelenou nebo červenou šipkou."
+    },
     {
       "en": "Binance: live prices and live candles — the chart moves with every tick, like Bybit.",
       "cs": "Binance: živé ceny a živá svíčka — graf se hýbe s každým tickem, jako u Bybitu."

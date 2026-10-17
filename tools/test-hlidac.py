@@ -109,7 +109,8 @@ cenove = [i for i in ids if i in ('nad', 'pod')]
 over(len(cenove) >= 1, f'cenový alarm zazněl při protnutí ({cenove})')
 over(all(ids.count(i) == 1 for i in set(ids)), f'každý jednorázový alarm zazněl jen jednou ({ids})')
 push = [r for r in vystup if 'ZKOUŠKA push' in r]
-over(any('dosáhl' in r for r in push), 'text push v češtině podle jazyka alarmu')
+over(any('prorazil' in r or 'propadl pod' in r for r in push), 'text push v češtině se směrem průniku (v0.59.12)')
+over(any('PerpyX · ▲' in r or 'PerpyX · ▼' in r for r in push), 'v nadpisu push šipka směru ▲ / ▼')
 over(any('Your time alert is due' in r for r in push), 'časový alarm s anglickým textem')
 over(all(f.get('repeat') is False for f in fired), 'zaznění hlášeno jako jednorázové')
 over(any('stream Binance otevřen' in r for r in vystup), 'stream Binance otevřen (jsou alarmy Binance)')

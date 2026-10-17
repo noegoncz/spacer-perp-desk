@@ -125,6 +125,22 @@ jobs:
                 android:pathData="M16.1,18.79L18.79,16.1L7.9,5.21L5.21,7.9Z M18.79,7.9L16.1,5.21L5.21,16.1L7.9,18.79Z" />
           </vector>
           XML
+          # Šipky pro notifikaci alarmu podle směru průniku (v0.59.12):
+          # hlídač posílá ikonu ic_stat_nahoru / ic_stat_dolu.
+          cat > apk/android/app/src/main/res/drawable/ic_stat_nahoru.xml <<'XML'
+          <?xml version="1.0" encoding="utf-8"?>
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+            <path android:fillColor="#FFFFFFFF" android:pathData="M12,3L21,13L15,13L15,21L9,21L9,13L3,13Z" />
+          </vector>
+          XML
+          cat > apk/android/app/src/main/res/drawable/ic_stat_dolu.xml <<'XML'
+          <?xml version="1.0" encoding="utf-8"?>
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+            <path android:fillColor="#FFFFFFFF" android:pathData="M12,21L3,11L9,11L9,3L15,3L15,11L21,11Z" />
+          </vector>
+          XML
           man=apk/android/app/src/main/AndroidManifest.xml
           python3 - <<'PY'
           p = 'apk/android/app/src/main/AndroidManifest.xml'

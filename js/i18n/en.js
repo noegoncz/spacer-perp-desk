@@ -304,6 +304,8 @@ export const en = {
     + 'the app runs, on pairs with an open position or shown in the chart. '
     + 'Alerts are informational and can be delayed or missed.',
   'alarm.hit': '{symbol} reached {price}',
+  'alarm.hitUp': '{symbol} ↑ crossed above {price}',
+  'alarm.hitDown': '{symbol} ↓ dropped below {price}',
   'style.color': 'Colour',
   'style.width': 'Thickness',
   'style.opacity': 'Opacity',

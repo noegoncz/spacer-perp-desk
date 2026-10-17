@@ -295,6 +295,8 @@ export const cs = {
   'alarm.expiresOn': 'Vyprší {date}.',
   'alarm.lastFired': 'Naposled zazněl {time}.',
   'alarm.hit': '{symbol} dosáhl {price}',
+  'alarm.hitUp': '{symbol} ↑ prorazil {price}',
+  'alarm.hitDown': '{symbol} ↓ propadl pod {price}',
   'alarm.hintServer': 'Alarmy hlídá server PerpyX a pošle notifikaci i při zhasnutém '
     + 'displeji. Alarmy jsou informativní a mohou přijít pozdě nebo vůbec.',
   'alarm.hint': 'Server PerpyX teď není dostupný, alarmy proto hlídá jen spuštěná '

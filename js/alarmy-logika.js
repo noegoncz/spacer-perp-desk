@@ -56,5 +56,17 @@ export function protnuto(alarm, predchozi, cena, cas = Date.now()) {
   return nahoru || dolu;
 }
 
+/**
+ * Kterým směrem cena úroveň protnula: 'nahoru' | 'dolu' | null (v0.59.12 —
+ * notifikace a lišta alarmu říkají směr: „↑ prorazil" / „↓ propadl pod").
+ */
+export function smerPruniku(alarm, predchozi, cena, cas = Date.now()) {
+  const u = uroven(alarm, cas);
+  if (!Number.isFinite(u) || !Number.isFinite(predchozi) || !Number.isFinite(cena)) return null;
+  if (predchozi < u && cena >= u) return 'nahoru';
+  if (predchozi > u && cena <= u) return 'dolu';
+  return null;
+}
+
 /** Vypršela platnost alarmu (volba „platí 1 / 7 / 30 dní")? */
 export const vyprsel = (alarm, ted = Date.now()) => Boolean(alarm?.vyprsi) && alarm.vyprsi <= ted;

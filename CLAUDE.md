@@ -2844,6 +2844,16 @@ telefon (účet, alarmy) ──PUT /api/account/alarms──▶ perpyx.com (D1)
   i Binance naostro; Node přenosný do dočasné složky, `--check` +
   test před pushem — server si kód stahuje sám), `test-notifikace-graf.py`,
   `test-graf-podle-burzy.py`.
+- **Směr průniku (v0.59.12, přání uživatele):** `smerPruniku()`
+  v alarmy-logika.js (sdílené s hlídačem) → push: nadpis „PerpyX · ▲ / ▼
+  pár", text „↑ prorazil / ↓ propadl pod" (en „crossed above / dropped
+  below"), malá ikonka `ic_stat_nahoru` / `ic_stat_dolu` (vektor v
+  apk.yml — **vyžaduje nové APK**; starší APK ukáže výchozí ikonku),
+  barva zelená / červená, `data.smer`. V aplikaci totéž v liště
+  (`textAlarmu(a, smer)`; směr nese neenumerovatelná `a.smerPruniku`, do
+  úložiště ani na server nejde). Zvuk směr nerozlišuje — patří kanálu
+  a nastavení telefonu (rozhodnutí uživatele). Test: `test-hlidac.py`,
+  `test-alarmy.py`.
 - Hlídač se počítá za živý, když se ozval v posledních 3 minutách; jinak
   telefon hlídá i na pozadí sám a nastavení to přizná.
 - Odhlášení i smazání účtu nejdřív odebere telefon z push.

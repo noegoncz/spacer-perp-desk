@@ -3783,10 +3783,13 @@ function ozviSe(alarm, text, { zvuk = !hlidaServerAlarm(alarm) } = {}) {
 }
 
 /** Text, který uživatel uvidí: jeho vlastní zpráva, jinak co se stalo. */
-function textAlarmu(a) {
-  if (a.zprava) return a.zprava;
+/** Text alarmu; u cenového se směrem průniku (v0.59.12): „↑ prorazil" / „↓ propadl pod". */
+function textAlarmu(a, smer = a?.smerPruniku) {
+  const sipka = smer === 'nahoru' ? '↑' : smer === 'dolu' ? '↓' : '';
+  if (a.zprava) return sipka ? `${sipka} ${a.zprava}` : a.zprava;
   if (a.typ === 'cas') return t('alarm.timeHit', { symbol: nazevKlice(a.symbol) });
-  return t('alarm.hit', { symbol: nazevKlice(a.symbol), price: formatPrice(alarmy.uroven(a)) });
+  const klic = smer === 'nahoru' ? 'alarm.hitUp' : smer === 'dolu' ? 'alarm.hitDown' : 'alarm.hit';
+  return t(klic, { symbol: nazevKlice(a.symbol), price: formatPrice(alarmy.uroven(a)) });
 }
 
 /** Kdy se alarm naposledy ohlásil v telefonu — proti dvojímu zvonění s push. */
@@ -3815,8 +3818,11 @@ async function pushDoAplikace(data) {
   const alarm = (id && alarmy.najdi(id)) || { id, symbol: data?.symbol || '', typ: 'cena', zprava: '' };
   if (!nedavno) {
     ohlaseneAlarmy.set(id, Date.now());
-    const text = alarm.price || alarm.typ === 'cas' ? textAlarmu(alarm)
-      : t('alarm.hit', { symbol: alarm.symbol, price: data?.price || '' });
+    // Směr průniku posílá hlídač (v0.59.12).
+    const smer = data?.smer === 'nahoru' || data?.smer === 'dolu' ? data.smer : null;
+    const text = alarm.price || alarm.typ === 'cas' ? textAlarmu(alarm, smer)
+      : t(smer === 'nahoru' ? 'alarm.hitUp' : smer === 'dolu' ? 'alarm.hitDown' : 'alarm.hit',
+        { symbol: nazevKlice(alarm.symbol), price: data?.price || '' });
     ozviSe(alarm, text);
     ui.showNotice(text);
   }
