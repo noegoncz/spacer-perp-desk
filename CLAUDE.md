@@ -2576,6 +2576,56 @@ která celý zápis dělá přijatelně bezpečným.
 
 Pořadí, jak se na to má chodit. Odškrtnuté jsou hotové.
 
+### Stav k 2026-10-17 (v0.59.12) — odkud pokračovat
+
+**Binance je hotová, čeká na ověření uživatelem na telefonu.** Za
+v0.59.1–0.59.12: rychlé grafy (vlastní fronty CCXT, předčtení svíček
+všech seznamů), TP/SL z Algo Orders, funding, alarmy na serveru, živý
+proud (`/market/ws`), Historie po účtech (záložky jako Watchlists), směr
+průniku alarmu (▲/▼, ↑ prorazil / ↓ propadl pod, šipka v notifikaci —
+nové APK sestavené 2026-10-17 a uživatel potvrdil, že funguje).
+
+- **Ověření Binance (21 kroků)** dělá uživatel v zaškrtávací stránce
+  https://claude.ai/artifact/TTz1j8iCN2QiDzUPJY6BR3 — stav, poznámky
+  a screenshoty jsou v její databázi, kolekce `kroky`, dokumenty
+  `k01`…`k21` (`{ stav: 'ok'|'chyba'|'', poznamka, obrazky: [assetId] }`;
+  obrázek je `/_blob/<id>`). **Až uživatel napíše, že je hotovo:
+  přečíst `ArtifactData list kroky` a projít, co „nesedí".** Kroky jsou
+  podle `docs/kontrola-nove-burzy.md` část B.
+- **Pak další burza: Hyperliquid** (ověří se bez účtu přes veřejnou
+  adresu peněženky). U každé nové burzy projít `docs/kontrola-nove-burzy.md`
+  (část A já naostro, část B dát uživateli jako zaškrtávací stránku).
+- **Zapsané na později** (paměť `pripominky-pozdeji`): čára aktuální ceny
+  v prohlídce obchodu jako v živém grafu se štítkem „Current price";
+  větší mini-graf v dlaždici Watchlists; vylepšit hledání párů; vzhled
+  grafu k páru. Pak funkce Historie (statistiky, poznámky, confluence,
+  hodnocení výstupů — nápad uživatele z 2026-10-10).
+- **Node pro test hlídače** (`tools/test-hlidac.py`) na počítači není:
+  přenosný Node 22 z nodejs.org (zip, ověřit SHA256 proti SHASUMS256.txt)
+  do dočasné složky, rozbalit jen `node.exe` (Expand-Archive padá na
+  dlouhých cestách — Python `zipfile`). Server si `server/` stahuje sám
+  do 3 min → před pushem vždy `node --check` a test naostro.
+- **Testy pouštět v čistém Chromu** (nový profil pro každý test), jinak
+  si přenášejí localStorage a „padají" i na starém kódu.
+
+### Propagace (2026-10-17)
+
+- **Discord banner** `design/discord/perpyx-discord-banner.png`
+  (1360 × 480, poměr 17:6), zdroj `design/discord/banner.html` (renderuje
+  se headless Chromem ze serveru v kořeni repa, snímky z
+  `web/public/img/`). Logo + „Beta · perpyx.com", „Your perp positions on
+  every exchange — charts & alerts on your phone.", věta z webu o Foldu,
+  vpravo Watchlists, zavřený telefon s Pozicemi a rozevřený Fold s grafem
+  (úzké rámečky — uživatel nechtěl „staré telefony"). Levý dolní roh
+  volný kvůli avataru. ⚠ **Banner v Discordu chce Nitro, uživatel ho
+  nemá** — obrázek se hodí jinam (záhlaví X, web, Discord serveru).
+- **Discord profil uživatele** (osobní, od 2021, propojené X @noegoncz
+  s ~10 500 sledujícími): navržené bio „Building PerpyX — a mobile app to
+  watch your perp positions across exchanges (Bybit, Binance…). Beta:
+  perpyx.com" + odkaz na Medium, vlastní status „🛠️ Building PerpyX —
+  beta at perpyx.com". Rady: na serverech jen v #showcase / #self-promo,
+  pomáhat a appku zmínit, později vlastní server PerpyX pro betatestery.
+
 ### Stav k 2026-09-29 večer (v0.23.2, APK 1.0.7) — odkud pokračovat
 
 **Hotovo** (podrobnosti v sekcích výš): pevný podpis APK · web perpyx.com
