@@ -1,6 +1,18 @@
 {
-  "verze": "0.59.12",
+  "verze": "0.59.13",
   "novinky": [
+    {
+      "en": "Each chart remembers its own timeframe and zoom — BTC opens on 1D, JUP on 15m, just as you left them.",
+      "cs": "Každý graf si pamatuje svůj timeframe a přiblížení — BTC se otevře na 1D, JUP na 15m, jak jsi je nechal."
+    },
+    {
+      "en": "Bigger mini-charts in watchlist tiles.",
+      "cs": "Větší mini-grafy v dlaždicích Watchlists."
+    },
+    {
+      "en": "Trade review from History shows today's price as a solid “Current price” line.",
+      "cs": "Prohlídka obchodu z Historie ukazuje dnešní cenu plnou linkou „Aktuální cena“."
+    },
     {
       "en": "Price alerts tell the direction: ↑ crossed above / ↓ dropped below, with a green or red arrow in the notification.",
       "cs": "Cenové alarmy říkají směr: ↑ prorazil / ↓ propadl pod, v notifikaci se zelenou nebo červenou šipkou."
@@ -20,14 +32,6 @@
     {
       "en": "History: switch between your accounts like watchlists — swipe or tap in the submenu.",
       "cs": "Historie: účty se přepínají jako seznamy ve Watchlists — přejetím prstem nebo v podmenu."
-    },
-    {
-      "en": "Binance: take profit, stop loss and trailing orders now show on the chart and on the position card.",
-      "cs": "Binance: take profit, stop loss i trailing příkazy jsou teď v grafu i na kartě pozice."
-    },
-    {
-      "en": "Charts open instantly — candles for your positions and all your watchlists are loaded in advance.",
-      "cs": "Grafy se otevírají hned — svíčky pro pozice a všechny seznamy se načítají dopředu."
     }
   ],
   "opravy": [

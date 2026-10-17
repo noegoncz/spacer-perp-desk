@@ -1715,6 +1715,13 @@ async function otevriGraf(symbol, position, trh) {
   chartSymbol = symbol;
   chartPosition = position;
   chartOtevreno = null;
+  /*
+   * Vzhled grafu po párech (v0.59.13, přání uživatele): timeframe a šířka
+   * svíček, na kterých uživatel pár naposledy nechal. Prohlídka obchodu
+   * si interval volí sama podle délky obchodu.
+   */
+  const vzhled = prohlizenyObchod ? null : store.loadChartView()[grafKlic()];
+  if (vzhled?.interval) chartInterval = vzhled.interval;
   chartTrh = trh;
   chartObrat = trh?.turnover ?? null;
   chartOrders = [];
@@ -1752,6 +1759,8 @@ async function otevriGraf(symbol, position, trh) {
       onSelectionChanged: zobrazPaletu,
       onAlarmTapped: (id) => otevriAlarm(alarmy.najdi(id)),
       onStyleChanged: (styl) => store.saveDrawStyle(styl),
+      // Šířka svíček po zoomu dvěma prsty — pamatuje se k páru.
+      onZoomChanged: (sirka) => { if (!prohlizenyObchod) store.saveChartView(grafKlic(), { sirka }); },
     });
     chart.setLastStyle(store.loadDrawStyle());
     chart.onLongPress(ukazRychlyAlarm);
@@ -1771,6 +1780,7 @@ async function otevriGraf(symbol, position, trh) {
   // ⚠ Klíč grafu (burza + pár), ne holý pár: BTCUSDT na OKX a na Binance
   // jsou dva grafy. S holým párem graf změnu nepoznal, nesmazal svíčky
   // a do příchodu dat ukazoval svíčky jiné burzy (v0.59.2).
+  chart.setBarWidth(vzhled?.sirka ?? null);
   chart.setSymbol(grafKlic(), priceDecimals(position?.entry ?? trh?.last ?? prohlizenyObchod?.entry ?? 0));
   if (prohlizenyObchod?.okno) chart.showTradeWindow(prohlizenyObchod.okno.od, prohlizenyObchod.okno.do);
   chart.setInterval(chartInterval); // knihovna si data vyžádá sama
@@ -1869,7 +1879,12 @@ function predctene(klient, burza, symbol, interval) {
   return z && z.klient === klient && Date.now() - z.cas < platnostSvic(interval) ? z.slib : null;
 }
 
-function predNactiSvice(klient, burza, symbol, interval = intervalUzivatele) {
+/** Timeframe, na kterém se graf páru otevře: jeho vlastní, jinak naposledy zvolený. */
+function intervalParu(burza, symbol) {
+  return store.loadChartView()[klicGrafu(burza, symbol)]?.interval || intervalUzivatele;
+}
+
+function predNactiSvice(klient, burza, symbol, interval = intervalParu(burza, symbol)) {
   if (!klient || !symbol || !interval) return null;
   const hotove = predctene(klient, burza, symbol, interval);
   if (hotove) return hotove;
@@ -1918,7 +1933,7 @@ function predNactiGrafy(vsechnySeznamy = false) {
 function pustFrontuSvic() {
   while (sviceBezi < SVICE_DOPREDU_NAJEDNOU && frontaSvic.length) {
     const [k, burza, symbol] = frontaSvic.shift();
-    if (predctene(k, burza, symbol, intervalUzivatele)) continue;
+    if (predctene(k, burza, symbol, intervalParu(burza, symbol))) continue;
     const slib = predNactiSvice(k, burza, symbol);
     if (!slib) continue;
     sviceBezi += 1;
@@ -2008,7 +2023,10 @@ async function zmenInterval(interval) {
   pripraveneSvice = bars ? { interval, bars } : null;
   chartInterval = interval;
   // Volba timeframu při prohlídce obchodu z Historie je jen pro tu prohlídku.
-  if (!prohlizenyObchod) intervalUzivatele = interval;
+  if (!prohlizenyObchod) {
+    intervalUzivatele = interval;
+    store.saveChartView(grafKlic(), { interval });
+  }
   chart.setInterval(interval);
   odebiratZiveSvice(chartSymbol, interval);
 }

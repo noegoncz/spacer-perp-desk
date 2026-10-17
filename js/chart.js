@@ -1504,6 +1504,8 @@ export function createPriceChart(container, layer, handlers = {}) {
   chart.setTimezone('Europe/Prague');
 
   const VYCHOZI_SIRKA_SVICE = 10;
+  // Šířka svíček páru (zoom), na kterou se pohled srovnává — viz setBarWidth.
+  let sirkaSvice = VYCHOZI_SIRKA_SVICE;
 
   /** Vykreslí čáry pozice. Volá se i po výměně dat při změně intervalu. */
   function vykresliCary(lines) {
@@ -1640,7 +1642,7 @@ export function createPriceChart(container, layer, handlers = {}) {
   }
 
   function srovnejPohled() {
-    chart.setBarSpace(VYCHOZI_SIRKA_SVICE);
+    chart.setBarSpace(sirkaSvice);
     if (!posunNaCil()) chart.scrollToRealTime(0);
   }
 
@@ -2303,6 +2305,9 @@ export function createPriceChart(container, layer, handlers = {}) {
       vychoziVzdalenost = 0;
       chart.setScrollEnabled(true);
       chart.setZoomEnabled(true);
+      // Zoom si pár pamatuje (v0.59.13) — i při změně timeframu.
+      sirkaSvice = chart.getBarSpace().bar;
+      handlers.onZoomChanged?.(sirkaSvice);
     };
     document.addEventListener('touchend', konec, { passive: true });
     document.addEventListener('touchcancel', konec, { passive: true });
@@ -2475,6 +2480,16 @@ export function createPriceChart(container, layer, handlers = {}) {
           zivyCallback = null;
         },
       });
+    },
+
+    /**
+     * Šířka svíček, na kterou se graf srovná při otevření a změně
+     * timeframu (uložený zoom páru); `null` = výchozí.
+     */
+    setBarWidth(sirka) {
+      sirkaSvice = Number.isFinite(sirka)
+        ? Math.min(SIRKA_SVICE_MAX, Math.max(SIRKA_SVICE_MIN, sirka))
+        : VYCHOZI_SIRKA_SVICE;
     },
 
     setSymbol(ticker, pricePrecision) {

@@ -211,6 +211,26 @@ export function saveDrawStyle(styl) {
   write('perpdesk.drawStyle', JSON.stringify(styl || null));
 }
 
+/*
+ * Vzhled grafu po párech (v0.59.13, přání uživatele, jako TabTrader):
+ * timeframe a šířka svíček. Klíč = klíč grafu (`JUPUSDT`, `binance:BTCUSDT`).
+ */
+export function loadChartView() {
+  try {
+    const v = JSON.parse(read('perpdesk.chartView') || '{}');
+    return v && typeof v === 'object' ? v : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveChartView(klic, zmena) {
+  if (!klic) return;
+  const v = loadChartView();
+  v[klic] = { ...v[klic], ...zmena };
+  write('perpdesk.chartView', JSON.stringify(v));
+}
+
 /**
  * Cenové alarmy. Schválně **jeden společný seznam** se symbolem u každého
  * alarmu, ne rozdělený po párech: hlídat se musí i pár, který zrovna není

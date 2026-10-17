@@ -2595,11 +2595,29 @@ nové APK sestavené 2026-10-17 a uživatel potvrdil, že funguje).
 - **Pak další burza: Hyperliquid** (ověří se bez účtu přes veřejnou
   adresu peněženky). U každé nové burzy projít `docs/kontrola-nove-burzy.md`
   (část A já naostro, část B dát uživateli jako zaškrtávací stránku).
-- **Zapsané na později** (paměť `pripominky-pozdeji`): čára aktuální ceny
-  v prohlídce obchodu jako v živém grafu se štítkem „Current price";
-  větší mini-graf v dlaždici Watchlists; vylepšit hledání párů; vzhled
-  grafu k páru. Pak funkce Historie (statistiky, poznámky, confluence,
-  hodnocení výstupů — nápad uživatele z 2026-10-10).
+- **Drobnosti v0.59.13 (hotové 2026-10-17):**
+  - **Prohlídka obchodu: dnešní cena** — overlay `cenaTed` (chart.js,
+    `setCurrentPrice`): plná neutrální linka přes celou šířku, štítek
+    „Current price" na čáře, cenovka na ose; vestavěná značka poslední
+    ceny se v prohlídce skryje (ukazovala cenu konce načtených svíček).
+    Cenu dodává `obnovCenuTed` (ticker při otevření a po 20 s). Test:
+    `test-historie-obchod.py`.
+  - **Větší mini-graf v dlaždici**: v mřížce vlevo od ceny přes dva
+    řádky (hodnota pozice vpravo vedle objemu), široké až 260 × 46 px.
+    ⚠ `drawSparkline` dřív přepsal `class` a smazal `tile-spark` — graf
+    pak neměl velikost dlaždice vůbec.
+  - **Vzhled grafu k páru** (uživatel vybral timeframe + zoom):
+    `perpdesk.chartView` = `{ klíčGrafu: { interval, sirka } }`
+    (store.js). Nový pár dostane naposledy zvolený timeframe
+    (`intervalParu`, i pro předčítání svíček) a výchozí šířku. Zoom
+    dvěma prsty se ukládá po zvednutí prstů (`onZoomChanged`) a drží se
+    i přes změnu timeframu (`setBarWidth`). Posun se neukládá — graf
+    se dál otevírá u nejnovějších svíček. Prohlídka obchodu nic
+    neukládá. Test: `test-vzhled-grafu-k-paru.py`.
+- **Zapsané na později** (paměť `pripominky-pozdeji`): vylepšit hledání
+  párů (uživatel 2026-10-17 zatím bez preference). Pak funkce Historie
+  (statistiky, poznámky, confluence, hodnocení výstupů — nápad
+  uživatele z 2026-10-10).
 - **Node pro test hlídače** (`tools/test-hlidac.py`) na počítači není:
   přenosný Node 22 z nodejs.org (zip, ověřit SHA256 proti SHASUMS256.txt)
   do dočasné složky, rozbalit jen `node.exe` (Expand-Archive padá na
