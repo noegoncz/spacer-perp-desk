@@ -41,22 +41,23 @@
     border: 1px solid rgba(34, 211, 238, 0.45); background: rgba(34, 211, 238, 0.08);
   }
   .telefon {
-    position: absolute; width: 150px; height: 300px; border-radius: 22px; padding: 6px;
+    /* Úzký rámeček jako u dnešních telefonů: displej skoro až k hraně. */
+    position: absolute; width: 150px; height: 300px; border-radius: 22px; padding: 2px;
     background: #1a2233; border: 1px solid #2c3850;
     box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.03);
   }
-  .telefon img { width: 100%; height: 100%; object-fit: cover; object-position: top; border-radius: 16px; display: block; }
+  .telefon img { width: 100%; height: 100%; object-fit: cover; object-position: top; border-radius: 20px; display: block; }
   /* Příběh vpravo: vzadu Watchlists, rozevřený Fold s grafem, před ním
      zavřený telefon (úzký vnější displej) s Pozicemi. */
   .t-trhy { width: 108px; height: 230px; right: 236px; top: 30px; transform: rotate(-9deg); opacity: 0.42; }
   .t-fold { width: 196px; height: 245px; right: 18px; top: 12px; transform: rotate(4deg); border-radius: 18px; }
-  .t-fold img { border-radius: 12px; }
+  .t-fold img { border-radius: 16px; }
   .t-fold::after {   /* pant rozevřeného Foldu */
-    content: ""; position: absolute; left: 50%; top: 6px; bottom: 6px; width: 1px;
+    content: ""; position: absolute; left: 50%; top: 2px; bottom: 2px; width: 1px;
     background: linear-gradient(transparent, rgba(255, 255, 255, 0.10) 15%, rgba(255, 255, 255, 0.10) 85%, transparent);
   }
   .t-pozice { width: 102px; height: 224px; right: 168px; top: 40px; transform: rotate(-3deg); border-radius: 18px; }
-  .t-pozice img { border-radius: 13px; }
+  .t-pozice img { border-radius: 16px; }
 </style></head>
 <body>
 <div class="banner">
