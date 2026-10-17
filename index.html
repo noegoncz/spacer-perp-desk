@@ -827,13 +827,13 @@
            připojit klíčem, je „brzy". -->
       <div class="exchange-pick" id="exchangePick"></div>
       <div id="exchangeForm">
-      <label for="apiKey" data-i18n="settings.apiKey">API key</label>
+      <label for="apiKey" id="apiKeyLabel" data-i18n="settings.apiKey">API key</label>
       <input type="text" id="apiKey" autocomplete="off" autocapitalize="off"
              autocorrect="off" spellcheck="false" inputmode="text"
              data-i18n-ph="settings.apiKeyPlaceholder" placeholder="e.g. AbCdEf123456">
 
-      <label for="apiSecret" data-i18n="settings.apiSecret">API secret</label>
-      <div class="secret-row">
+      <label for="apiSecret" id="apiSecretLabel" data-i18n="settings.apiSecret">API secret</label>
+      <div class="secret-row" id="apiSecretRow">
         <input type="password" id="apiSecret" autocomplete="off" autocapitalize="off"
                autocorrect="off" spellcheck="false">
         <button type="button" id="revealBtn" class="icon-btn" data-i18n-aria="settings.revealSecret">👁</button>
@@ -852,6 +852,14 @@
           <li data-i18n="settings.helpBinance2">Restrictions: keep only Enable Reading ticked.</li>
           <li data-i18n="settings.helpBinance3">Leave Futures, Spot &amp; Margin Trading, transfers and withdrawals unticked.</li>
           <li data-i18n="settings.help5">Leave the IP restriction empty — mobile networks change IP.</li>
+        </ol>
+      </details>
+      <details class="help" id="helpHyperliquid" hidden open>
+        <summary data-i18n="settings.helpTitleHyperliquid">Where to find your Hyperliquid address</summary>
+        <ol>
+          <li data-i18n="settings.helpHl1">Hyperliquid → top right: your wallet address (0x…). Copy it and paste it here.</li>
+          <li data-i18n="settings.helpHl2">No API key needed — PerpyX only reads your public account. It can’t trade or withdraw.</li>
+          <li data-i18n="settings.helpHl3">Trading from a sub-account or vault? Paste the address that holds the positions.</li>
         </ol>
       </details>
       <details class="help" id="helpBybit">

@@ -978,7 +978,7 @@ function registrovatLinkuPnl() {
       const procenta = vstup ? ((cena - vstup) / vstup) * 100 * smer : 0;
       const znamenko = zisk >= 0 ? '+' : '−';
       const usdt = pnlInfo.skryt ? '••••' : `${znamenko}${Math.abs(zisk).toFixed(2)}`;
-      const text = `${usdt} USDT | ${znamenko}${Math.abs(procenta).toFixed(2)} %`;
+      const text = `${usdt} ${pnlInfo.kotace || 'USDT'} | ${znamenko}${Math.abs(procenta).toFixed(2)} %`;
       return [stitekNaCare(text, zisk >= 0 ? BARVA_ZISKU : BARVY.pokles, bounding.width - 4, Math.round(y) + 0.5, 0.85)];
     },
   });

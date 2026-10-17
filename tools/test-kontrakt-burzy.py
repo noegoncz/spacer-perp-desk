@@ -17,6 +17,9 @@ v proměnných prostředí — klíč se nikam neukládá ani nevypisuje:
     BINANCE_DEMO_KEY, BINANCE_DEMO_SECRET  (Binance Demo Trading,
     demo-fapi.binance.com; starý testnet.binancefuture.com 2026-10-12
     neodpovídal). Veřejná data jdou vždy z ostré burzy.
+Hyperliquid (v0.60.0) se připojuje adresou peněženky a účet je veřejný —
+soukromá data jdou vždy naostro: adresa z HL_ADRESA, jinak test vybere
+z veřejného žebříčku účet s pozicemi, TP/SL a obchody za poslední týden.
 
 Spuštění: python tools/test-kontrakt-burzy.py http://localhost:8075/index.html
 """
@@ -37,6 +40,38 @@ p.prikaz('Page.addScriptToEvaluateOnNewDocument', source=mock)
 p.prikaz('Page.navigate', url=sys.argv[1])
 time.sleep(5)
 
+def adresa_hyperliquid():
+    """Veřejný účet s pozicemi, podmíněnými příkazy a zavřenými obchody za 7 dní."""
+    if os.environ.get('HL_ADRESA'):
+        return os.environ['HL_ADRESA']
+    import urllib.request
+
+    def dotaz(url, telo=None):
+        req = urllib.request.Request(url, data=json.dumps(telo).encode() if telo else None,
+                                     headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'})
+        return json.loads(urllib.request.urlopen(req, timeout=60).read())
+    try:
+        radky = dotaz('https://stats-data.hyperliquid.xyz/Mainnet/leaderboard').get('leaderboardRows', [])
+    except Exception:
+        return ''
+    radky.sort(key=lambda r: -float(r.get('accountValue') or 0))
+    ted = int(time.time() * 1000)
+    for r in radky[:300]:
+        a = r['ethAddress']
+        info = lambda typ, **x: dotaz('https://api.hyperliquid.xyz/info', {'type': typ, 'user': a, **x})
+        if not info('clearinghouseState').get('assetPositions'):
+            continue
+        plneni = info('userFillsByTime', startTime=ted - 7 * 864 * 10 ** 5)
+        if not any('Close' in f.get('dir', '') for f in plneni):
+            continue
+        if any(o.get('isTrigger') for o in info('frontendOpenOrders')):
+            return a
+    return ''
+
+
+HL_ADRESA = adresa_hyperliquid()
+print('Hyperliquid: veřejný účet', (HL_ADRESA[:6] + '…' + HL_ADRESA[-4:]) if HL_ADRESA else '— nenalezen (jen veřejná data)')
+
 KONFIG = {
     'bybit': {'klic': ['KONTRAKT', 'KONTRAKT'], 'volby': {}, 'par': 'JUPUSDT'},
     'binance': {'klic': [os.environ.get('BINANCE_DEMO_KEY', ''), os.environ.get('BINANCE_DEMO_SECRET', '')],
@@ -46,7 +81,7 @@ KONFIG = {
     'bitget': {'par': 'BTCUSDT', 'verejne': True},
     'gate': {'par': 'BTCUSDT', 'verejne': True},
     'mexc': {'par': 'BTCUSDT', 'verejne': True},
-    'hyperliquid': {'par': 'BTCUSDC', 'verejne': True},
+    'hyperliquid': {'klic': [HL_ADRESA, ''], 'adresa': True, 'par': 'BTCUSDC', 'verejne': True},
 }
 
 vysledek = p.prikaz('Runtime.evaluate', awaitPromise=True, returnByValue=True, expression=r"""
@@ -70,7 +105,7 @@ vysledek = p.prikaz('Runtime.evaluate', awaitPromise=True, returnByValue=True, e
     for (const m of model.METODY) if (typeof a[m] !== 'function') r.chyby.push(`chybí metoda ${m}`);
     if (!a.burza || !a.burza.nazev || !a.burza.schopnosti || !a.burza.regiony) r.chyby.push('chybí popis burzy (nazev, schopnosti, regiony)');
     const par = k.par || 'JUPUSDT';
-    const maKlic = Boolean(k.klic && k.klic[0] && k.klic[1]);
+    const maKlic = Boolean(k.klic && k.klic[0] && (k.klic[1] || k.adresa));
     // Veřejná data vždy z ostré burzy (demo / testnet je nemusí mít úplná).
     const v = k.verejne ? vytvorBurzu(id, {}, {}) : a;
     try {
@@ -91,14 +126,36 @@ vysledek = p.prikaz('Runtime.evaluate', awaitPromise=True, returnByValue=True, e
         if (chybaPozic) r.chyby.push('refresh: ' + chybaPozic);
         r.pocty.pozice = pozice.length;
         for (const x of pozice) r.chyby.push(...model.zkontroluj('pozice', x));
-        const pr = await a.getOpenOrders(par);
+        // Účet adresou (Hyperliquid) je cizí veřejný účet — příkazy a plnění
+        // na páru, který opravdu obchoduje, a podmíněné příkazy musí přijít.
+        let parUctu = par;
+        if (k.adresa) {
+          const vse = await a.getAllOpenOrders();
+          r.pocty.vsechnyPrikazy = vse.length;
+          r.pocty.podminene = vse.filter((o) => o.stopType).length;
+          if (!r.pocty.podminene) r.chyby.push('Hyperliquid: žádný TP/SL mezi příkazy');
+          for (const x of vse) r.chyby.push(...model.zkontroluj('prikaz', x));
+          const ob7 = await a.getClosedTrades(Date.now() - 7 * 864e5, Date.now());
+          parUctu = ob7[0]?.symbol || pozice[0]?.symbol || par;
+          const ucet = await a.getWalletBalance();
+          if (!(ucet?.ucet?.equity > 0)) r.chyby.push('Hyperliquid: přehled účtu bez equity');
+          await a.refreshFunding();
+          // Funding se dopočítává i na pozadí (refreshExtras po refresh) — počkat.
+          await new Promise((ok) => setTimeout(ok, 5000));
+          const sF = pozice.find((x) => x.funding);
+          r.pocty.funding = sF ? `${sF.symbol} ${sF.funding.rate} /${sF.funding.minut} min, zaplaceno ${sF.funding.zaplaceno?.celkem}` : 'žádný';
+          if (!sF || sF.funding.minut !== 60) r.chyby.push('Hyperliquid: funding pozice chybí nebo nemá interval 1 h');
+          if (!pozice.length) r.chyby.push('Hyperliquid: veřejný účet bez pozic');
+        }
+        const pr = await a.getOpenOrders(parUctu);
         r.pocty.prikaz = pr.length;
         for (const x of pr) r.chyby.push(...model.zkontroluj('prikaz', x));
         const ted = Date.now();
         const ob = await a.getClosedTrades(ted - 7 * 864e5, ted);
         r.pocty.obchod = ob.length;
         for (const x of ob) r.chyby.push(...model.zkontroluj('obchod', x));
-        const pl = await a.getExecutions(par, ted - 7 * 864e5, ted);
+        const pl = await a.getExecutions(parUctu, ted - 7 * 864e5, ted);
+        if (k.adresa && (!ob.length || !pl.length)) r.chyby.push('Hyperliquid: žádné uzavřené obchody / plnění za 7 dní');
         r.pocty.plneni = pl.length;
         for (const x of pl) r.chyby.push(...model.zkontroluj('plneni', x));
         if (!k.verejne) {

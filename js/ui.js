@@ -181,7 +181,8 @@ function patickaRow(p, hide) {
     const doba = f.zaplaceno.odKdy ? Date.now() - f.zaplaceno.odKdy : 0;
     const kratce = trvani(doba).split(' ').slice(0, 2).join(' ');
     radek.append(polozka(t('funding.totalShort'),
-      hide ? MASK : `${celkem < 0 ? '−' : '+'}${formatUsd(Math.abs(celkem))} (${kratce})`,
+      // Bez známého otevření (Hyperliquid dá součet, ale ne čas) jen částka.
+      hide ? MASK : `${celkem < 0 ? '−' : '+'}${formatUsd(Math.abs(celkem))}${doba > 0 ? ` (${kratce})` : ''}`,
       `hodnota ${celkem < 0 ? 'platis' : 'dostavas'}`));
   }
   return radek;

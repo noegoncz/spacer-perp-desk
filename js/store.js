@@ -119,12 +119,12 @@ export function pridejPripojeni({ burza, volby = {}, apiKey, apiSecret }) {
   const seznam = loadPripojeni();
   const stare = seznam.find((p) => p.burza === burza && p.apiKey === apiKey.trim());
   if (stare) {
-    Object.assign(stare, { volby, apiSecret: apiSecret.trim() });
+    Object.assign(stare, { volby, apiSecret: (apiSecret || '').trim() });
     ulozPripojeni(seznam);
     return stare.id;
   }
   const id = `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
-  seznam.push({ id, burza, volby, apiKey: apiKey.trim(), apiSecret: apiSecret.trim() });
+  seznam.push({ id, burza, volby, apiKey: apiKey.trim(), apiSecret: (apiSecret || '').trim() });
   ulozPripojeni(seznam);
   return id;
 }
@@ -173,9 +173,12 @@ export function clearCredentials() {
   vymazMezipamet();
 }
 
+/** Adresa peněženky (Hyperliquid) — připojení bez secretu (v0.60.0). */
+export const jeAdresa = (text) => /^0x[0-9a-fA-F]{40}$/.test(String(text || '').trim());
+
 export function hasCredentials() {
   const { apiKey, apiSecret } = loadCredentials();
-  return Boolean(apiKey && apiSecret);
+  return Boolean(apiKey && (apiSecret || jeAdresa(apiKey)));
 }
 
 /**

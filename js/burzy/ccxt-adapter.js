@@ -389,16 +389,9 @@ export class CcxtAdapter {
     this.diag.pokusu += 1;
     try {
       this.zapisDiag('pozice');
-      const ex = await this.burzaCcxt();
-      const surove = await this.soukrome((e) => e.fetchPositions(undefined, this.volbyPozic()));
+      const nove = await this.stahniPozice();
       this.positions.clear();
-      for (const p of surove) {
-        const m = ex.markets[p.symbol];
-        if (!m || !m.linear || !this.menyTrhu().includes(m.quote)) continue;
-        const poz = this.pozice(p);
-        if (!poz.size) continue;
-        this.positions.set(`${poz.symbol}#${poz.side}`, poz);
-      }
+      for (const poz of nove) this.positions.set(`${poz.symbol}#${poz.side}`, poz);
       this.zapisDiag(`hotovo, pozic: ${this.positions.size}`);
       this.setStatus({ rest: 'ok', lastUpdate: Date.now() });
       this.emitPositions();
@@ -419,6 +412,23 @@ export class CcxtAdapter {
     } finally {
       this.naplanujPozice();
     }
+  }
+
+  /**
+   * Otevřené pozice v modelu PerpyX. Burza, která má pozice mimo
+   * sjednocené `fetchPositions` (Hyperliquid — i se zůstatkem v jednom
+   * dotazu), přepíše.
+   */
+  async stahniPozice() {
+    const ex = await this.burzaCcxt();
+    const surove = await this.soukrome((e) => e.fetchPositions(undefined, this.volbyPozic()));
+    return surove
+      .filter((p) => {
+        const m = ex.markets[p.symbol];
+        return m && m.linear && this.menyTrhu().includes(m.quote);
+      })
+      .map((p) => this.pozice(p))
+      .filter((poz) => poz.size);
   }
 
   /** Volby pro fetchPositions — burza může přepsat. */
@@ -670,8 +680,18 @@ export class CcxtAdapter {
     return slib;
   }
 
-  async getKlines(symbol, interval, limit = 500, endTime = null) {
-    const ex = await this.burzaVerejna();
+  /**
+   * Instance pro práci na pozadí (předčtení svíček, mini-grafy) — u většiny
+   * burz veřejná; Hyperliquid má vlastní frontu, ať graf otevřený prstem
+   * nečeká za desítkami předčítaných párů.
+   */
+  burzaPredem() {
+    return this.burzaVerejna();
+  }
+
+  /** `volby.predem` = předčtení na pozadí (app.js `predNactiSvice`). */
+  async getKlines(symbol, interval, limit = 500, endTime = null, volby = {}) {
+    const ex = await (volby?.predem ? this.burzaPredem() : this.burzaVerejna());
     const tf = TIMEFRAME[interval];
     if (!tf) return [];
     const s = await this.symbolCcxt(symbol, true);
@@ -687,7 +707,7 @@ export class CcxtAdapter {
   }
 
   async getSparkline(symbol) {
-    const ex = await this.burzaVerejna();
+    const ex = await this.burzaPredem();
     const radky = await ex.fetchOHLCV(await this.symbolCcxt(symbol, true), '1h', undefined, 24);
     return radky.map((r) => cislo(r[4]));
   }

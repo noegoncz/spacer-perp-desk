@@ -29,6 +29,7 @@ const SHELL = [
   './js/burzy/ccxt-adapter.js',
   './js/burzy/binance.js',
   './js/burzy/dalsi.js',
+  './js/burzy/hyperliquid.js',
   './js/store.js',
   './js/format.js',
   './js/ui.js',

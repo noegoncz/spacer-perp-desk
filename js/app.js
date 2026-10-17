@@ -813,6 +813,7 @@ function nastavLinkuPnl() {
       size: chartPosition.size,
       long: chartPosition.side !== 'Sell',
       mena: String(chartPosition.symbol || '').replace(/USDT$|USDC$/, ''),
+      kotace: /USDC$/.test(String(chartPosition.symbol || '')) ? 'USDC' : 'USDT',
       skryt: hideAmounts,
     }
     : null);
@@ -1040,9 +1041,9 @@ function ulozFundingy() {
 }
 
 async function connectIfPossible() {
-  const { apiKey, apiSecret } = store.loadCredentials();
+  const { apiKey } = store.loadCredentials();
 
-  if (!apiKey || !apiSecret) {
+  if (!store.hasCredentials()) {
     ui.showPlaceholder(t('positions.noKeys'), t('exchanges.connect'));
     ui.showView('positions');
     // Bez klíče pozice nepřijdou — Watchlists se předčtou i tak.
@@ -1432,17 +1433,31 @@ function openSettings() {
   ui.showView('settings');
 }
 
+/** Vybraná burza se připojuje adresou peněženky (Hyperliquid), ne klíčem. */
+const adresouVybrana = () => Boolean(BURZY[vybranaBurza]?.adresa);
+
 function readForm() {
   return {
     apiKey: el('apiKey').value.trim(),
-    apiSecret: el('apiSecret').value.trim(),
+    apiSecret: adresouVybrana() ? '' : el('apiSecret').value.trim(),
   };
+}
+
+/** Chybějící údaje ve formuláři → hláška, jinak null. */
+function chybiVeFormulari({ apiKey, apiSecret }) {
+  if (adresouVybrana()) {
+    if (!apiKey) return t('settings.fillAddress');
+    if (!store.jeAdresa(apiKey)) return t('settings.badAddress');
+    return null;
+  }
+  return !apiKey || !apiSecret ? t('settings.fillBoth') : null;
 }
 
 async function testCredentials() {
   const { apiKey, apiSecret } = readForm();
-  if (!apiKey || !apiSecret) {
-    ui.showSettingsMessage(t('settings.fillBoth'), false);
+  const chybi = chybiVeFormulari({ apiKey, apiSecret });
+  if (chybi) {
+    ui.showSettingsMessage(chybi, false);
     return;
   }
 
@@ -1518,6 +1533,24 @@ function vyberBurzuVUvodu(id) {
   });
   ukazPrvek('helpBybit', id === 'bybit');
   ukazPrvek('helpBinance', id === 'binance');
+  ukazPrvek('helpHyperliquid', id === 'hyperliquid');
+  /*
+   * Hyperliquid (v0.60.0): místo klíče a secretu jen adresa peněženky.
+   * Texty jdou přes data-i18n, ať je přepnutí jazyka nevrátí na „API key".
+   */
+  const adresou = Boolean(BURZY[id]?.adresa);
+  ukazPrvek('apiSecretLabel', !adresou);
+  ukazPrvek('apiSecretRow', !adresou);
+  const popisek = el('apiKeyLabel');
+  if (popisek) {
+    popisek.dataset.i18n = adresou ? 'settings.walletAddress' : 'settings.apiKey';
+    popisek.textContent = t(popisek.dataset.i18n);
+  }
+  const pole = el('apiKey');
+  if (pole) {
+    pole.dataset.i18nPh = adresou ? 'settings.walletPlaceholder' : 'settings.apiKeyPlaceholder';
+    pole.placeholder = t(pole.dataset.i18nPh);
+  }
   ui.clearSettingsMessage();
 }
 
@@ -1545,8 +1578,9 @@ async function otestujVybranou(apiKey, apiSecret) {
 
 async function saveAndConnect() {
   const { apiKey, apiSecret } = readForm();
-  if (!apiKey || !apiSecret) {
-    ui.showSettingsMessage(t('settings.fillBoth'), false);
+  const chybi = chybiVeFormulari({ apiKey, apiSecret });
+  if (chybi) {
+    ui.showSettingsMessage(chybi, false);
     return;
   }
 
@@ -1889,7 +1923,8 @@ function predNactiSvice(klient, burza, symbol, interval = intervalParu(burza, sy
   const hotove = predctene(klient, burza, symbol, interval);
   if (hotove) return hotove;
   const klic = `${klicGrafu(burza, symbol)}|${interval}`;
-  const slib = klient.getKlines(symbol, interval, 500);
+  // `predem`: burza s přísným limitem (Hyperliquid) to pošle frontou na pozadí.
+  const slib = klient.getKlines(symbol, interval, 500, null, { predem: true });
   const zaznam = { klient, cas: Date.now(), slib };
   sviceDopredu.set(klic, zaznam);
   slib.catch(() => { if (sviceDopredu.get(klic) === zaznam) sviceDopredu.delete(klic); });
@@ -2288,7 +2323,7 @@ function otevriVrstvy() {
   const volba = document.createElement('div');
   volba.className = 'nabidka-volba';
   const mena = String(chartSymbol || '').replace(/USDT$|USDC$/, '') || 'COIN';
-  [[false, mena], [true, 'USDT']].forEach(([usdt, popis]) => {
+  [[false, mena], [true, kotaceGrafu()]].forEach(([usdt, popis]) => {
     const b = document.createElement('button');
     b.type = 'button';
     b.textContent = popis;
@@ -4589,16 +4624,18 @@ function orderSide(order, position) {
  * přepínače v liště nástrojů (v0.42.0, `hodnotyVUsdt`).
  */
 let hodnotyVUsdt = store.loadJson('perpdesk.lineUnit', 'coin') === 'usdt';
+/** Měna, ve které je pár grafu: USDC (Hyperliquid, BTCUSDC na Binance), jinak USDT. */
+const kotaceGrafu = () => (/USDC$/.test(String(chartSymbol || '')) ? 'USDC' : 'USDT');
 function popisCary(typ, qty, price, mena) {
   if (!(qty > 0)) return typ;
   if (hideAmounts) return `${typ} ${MASK_CARY}`;
-  return hodnotyVUsdt ? `${typ} ${formatUsd(qty * price)} USDT` : `${typ} ${formatSize(qty)} ${mena}`;
+  return hodnotyVUsdt ? `${typ} ${formatUsd(qty * price)} ${kotaceGrafu()}` : `${typ} ${formatSize(qty)} ${mena}`;
 }
 
 function oznacJednotku() {
   const mena = String(chartSymbol || '').replace(/USDT$|USDC$/, '') || 'COIN';
   const text = el('unitBtnText');
-  if (text) text.textContent = hodnotyVUsdt ? 'USDT' : mena;
+  if (text) text.textContent = hodnotyVUsdt ? kotaceGrafu() : mena;
 }
 
 function buildChartLines(position, orders) {
@@ -5241,7 +5278,9 @@ function vykresliBurzy() {
       radek.dataset.pripojeni = pr.id;
       const klic = document.createElement('div');
       klic.className = 'exchange-key';
-      klic.textContent = t('exchanges.keyEnding', { end: pr.apiKey.slice(-4) }) + (pr.volby?.demo ? ' · Demo' : '');
+      klic.textContent = (burza.adresa
+        ? t('exchanges.walletShort', { adresa: `${pr.apiKey.slice(0, 6)}…${pr.apiKey.slice(-4)}` })
+        : t('exchanges.keyEnding', { end: pr.apiKey.slice(-4) })) + (pr.volby?.demo ? ' · Demo' : '');
       radek.append(klic);
       // v0.59.0: všechny účty běží najednou — žádné přepínání.
       radek.append(tlacitko(t('exchanges.disconnect'), 'text-btn danger', () => odeberPripojeni(pr.id)));

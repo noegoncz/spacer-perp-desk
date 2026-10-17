@@ -16,7 +16,8 @@
  */
 import { BybitClient } from '../bybit.js';
 import { BinanceClient } from './binance.js';
-import { OkxClient, BitgetClient, GateClient, MexcClient, HyperliquidClient } from './dalsi.js';
+import { OkxClient, BitgetClient, GateClient, MexcClient } from './dalsi.js';
+import { HyperliquidClient } from './hyperliquid.js';
 
 export const BURZY = {
   bybit: {
@@ -72,7 +73,31 @@ export const BURZY = {
   bitget: verejna('bitget', 'Bitget', (h, v) => new BitgetClient(h, v), 'https://api.bitget.com'),
   gate: verejna('gate', 'Gate', (h, v) => new GateClient(h, v), 'https://api.gateio.ws'),
   mexc: { ...verejna('mexc', 'MEXC', (h, v) => new MexcClient(h, v), 'https://contract.mexc.com'), jenVApk: true },
-  hyperliquid: verejna('hyperliquid', 'Hyperliquid', (h, v) => new HyperliquidClient(h, v), 'https://api.hyperliquid.xyz'),
+  /*
+   * Hyperliquid (v0.60.0, js/burzy/hyperliquid.js): připojuje se **adresou
+   * peněženky** (`adresa: true`) — účet je veřejný, nic se nepodepisuje,
+   * takže jen pro čtení z principu. Ceny a svíčka živě proudem.
+   */
+  hyperliquid: {
+    id: 'hyperliquid',
+    nazev: 'Hyperliquid',
+    vytvor: (handlers, volby) => new HyperliquidClient(handlers, volby),
+    adresa: true,
+    schopnosti: {
+      zivePozice: false,       // pozice dotazem po 3 s (cena pozice živě proudem)
+      zivaCena: true,
+      zivaSvicka: true,
+      prehledUctu: true,
+      plneni: true,
+      historieObchodu: true,
+      funding: true,           // každou hodinu
+      fundingHistorie: true,   // zaplacené od otevření dává burza sama
+      kontrolaJenCteni: true,  // adresa nic nepodepisuje
+    },
+    regiony: {
+      global: { nazev: 'Global', api: 'https://api.hyperliquid.xyz' },
+    },
+  },
 };
 
 /** Popis burzy, která zatím dává jen veřejná data (bez připojení klíče). */

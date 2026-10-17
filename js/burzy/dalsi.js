@@ -1,5 +1,6 @@
 /*
- * Další sada burz přes CCXT (v0.57.0): OKX, Bitget, Gate, MEXC, Hyperliquid.
+ * Další sada burz přes CCXT (v0.57.0): OKX, Bitget, Gate, MEXC.
+ * (Hyperliquid má od v0.60.0 vlastní soubor js/burzy/hyperliquid.js.)
  *
  * Zatím jen **veřejná data** — Watchlists, ceny, mini-grafy a graf páru,
  * bez klíče. Připojení klíče (soukromá data) se zapne, až se u každé
@@ -94,17 +95,5 @@ export class MexcClient extends CcxtAdapter {
 
   popisUctu() {
     return 'Futures';
-  }
-}
-
-export class HyperliquidClient extends CcxtAdapter {
-  constructor(handlers = {}, volby = {}) {
-    super('hyperliquid', handlers, volby);
-    this.typyTrhu = ['swap'];
-    this.mena = 'USDC';
-  }
-
-  popisUctu() {
-    return 'Perps';
   }
 }

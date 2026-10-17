@@ -103,7 +103,8 @@ time.sleep(0.5)
 print('připojení klíčem')
 tlacitka = ev("[...document.querySelectorAll('.exchange-btn')].map((b) => (b.dataset.burza || b.textContent.trim()) + (b.disabled ? ':x' : ''))") or []
 print('   úvod:', tlacitka)
-over(not any(x.startswith(('okx', 'bitget', 'gate', 'mexc', 'hyperliquid')) and not x.endswith(':x') for x in tlacitka),
+# Hyperliquid jde od v0.60.0 připojit adresou (tools/test-hyperliquid.py).
+over(not any(x.startswith(('okx', 'bitget', 'gate', 'mexc')) and not x.endswith(':x') for x in tlacitka),
      'nové burzy zatím nejde připojit klíčem')
 
 konzole = ev('(window.__chyby||[]).join(" | ")') or ''

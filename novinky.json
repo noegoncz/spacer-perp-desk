@@ -1,6 +1,10 @@
 {
-  "verze": "0.59.15",
+  "verze": "0.60.0",
   "novinky": [
+    {
+      "en": "Hyperliquid: connect with just your wallet address — no API key. Positions, TP/SL, funding, history and live charts.",
+      "cs": "Hyperliquid: připojíš ho jen adresou peněženky, bez API klíče. Pozice, TP/SL, funding, historie i živé grafy."
+    },
     {
       "en": "Each chart remembers its own timeframe and zoom — BTC opens on 1D, JUP on 15m, just as you left them.",
       "cs": "Každý graf si pamatuje svůj timeframe a přiblížení — BTC se otevře na 1D, JUP na 15m, jak jsi je nechal."
@@ -24,14 +28,6 @@
     {
       "en": "Binance price alerts now ring even with the screen off, just like Bybit.",
       "cs": "Cenové alarmy na Binance teď zvoní i se zhasnutým displejem, stejně jako u Bybitu."
-    },
-    {
-      "en": "Binance: funding on the position card — rate, next payment and total paid since you opened the position.",
-      "cs": "Binance: funding na kartě pozice — sazba, příští stržení a celkem zaplaceno od otevření pozice."
-    },
-    {
-      "en": "History: switch between your accounts like watchlists — swipe or tap in the submenu.",
-      "cs": "Historie: účty se přepínají jako seznamy ve Watchlists — přejetím prstem nebo v podmenu."
     }
   ],
   "opravy": [

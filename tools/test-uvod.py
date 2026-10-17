@@ -98,9 +98,11 @@ ev("(() => { const i = document.getElementById('accountCode'); i.value = '123456
 time.sleep(1.5)
 over(vidim('onboarding') and vidim('onbExchange') and not vidim('onbLogin'), 'po přihlášení krok Připoj burzu')
 burzy = ev("[...document.querySelectorAll('.exchange-btn')].map((b) => b.textContent.trim() + (b.disabled ? ':x' : ''))")
-# v0.54.0: Bybit a Binance jdou vybrat, ostatní „brzy".
-over(burzy and burzy[:2] == ['Bybit', 'Binance'] and all(b.endswith(':x') for b in burzy[2:]),
-     f'Bybit a Binance jdou vybrat, ostatní „brzy" ({burzy})')
+# v0.54.0: Bybit a Binance jdou vybrat, ostatní „brzy"; v0.60.0 i Hyperliquid (adresou).
+pripojitelne = ['Bybit', 'Binance', 'Hyperliquid']
+over(burzy and [b for b in burzy if not b.endswith(':x')] == pripojitelne
+     and all(b.endswith(':x') for b in burzy if b not in pripojitelne),
+     f'Bybit, Binance a Hyperliquid jdou vybrat, ostatní „brzy" ({burzy})')
 ev("document.getElementById('onbSkipBtn').click()")
 time.sleep(0.4)
 over(not vidim('onboarding'), 'přeskočit jde')
@@ -113,8 +115,10 @@ time.sleep(0.4)
 over(not ev("document.querySelector('#exchangeList .exchange-row[data-pripojeni]')"), 'bez burzy: žádný připojený účet, jen Připojit')
 burzy = ev("[...document.querySelectorAll('#exchangeList .exchange-blok')].map((b) => b.dataset.burza + ':' + (b.querySelector('.secondary-btn') ? 'connect' : 'soon'))") or []
 print('   burzy v nastavení:', burzy)
-over(burzy[:2] == ['bybit:connect', 'binance:connect'] and len(burzy) >= 5 and all(x.endswith(':soon') for x in burzy[2:]),
-     'v nastavení všechny burzy pod sebou: Bybit a Binance s Připojit, ostatní „brzy"')
+spojit = ['bybit:connect', 'binance:connect', 'hyperliquid:connect']
+over([x for x in burzy if x.endswith(':connect')] == spojit and len(burzy) >= 5
+     and all(x.endswith(':soon') for x in burzy if x not in spojit),
+     'v nastavení všechny burzy pod sebou: Bybit, Binance a Hyperliquid s Připojit, ostatní „brzy"')
 ev("document.querySelector('#exchangeList .exchange-blok[data-burza=bybit] .secondary-btn').click()")
 time.sleep(0.3)
 over(vidim('onbExchange') and vidim('onbCloseBtn') and not vidim('onbSkipBtn') and not vidim('exchangePick'),

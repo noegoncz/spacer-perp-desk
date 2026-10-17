@@ -119,7 +119,8 @@ js/burzy/index.js       # seznam burz: adaptér, schopnosti, regiony
 js/burzy/ccxt.js        # líné načtení CCXT (vendor/ccxt), převod timeframů
 js/burzy/ccxt-adapter.js # obecný adaptér nad CCXT → společný model
 js/burzy/binance.js     # Binance USDⓈ-M (CCXT + kontrola klíče, uzavřené obchody)
-js/burzy/dalsi.js       # OKX, Bitget, Gate, MEXC, Hyperliquid (zatím veřejná data)
+js/burzy/dalsi.js       # OKX, Bitget, Gate, MEXC (zatím veřejná data)
+js/burzy/hyperliquid.js # Hyperliquid: připojení adresou peněženky, živý proud
 js/store.js             # localStorage: klíče + nastavení
 js/format.js            # formátování čísel, cen, časů (podle jazyka)
 js/i18n.js              # ⚠ překlady; texty nikdy přímo v kódu ani v HTML
@@ -491,6 +492,48 @@ nabízí jen Bybit a Binance). Sonda z prohlížeče 2026-10-12:
 - **Zbývá k připojení klíčem:** pole pro heslo (OKX, Bitget), adresa
   peněženky (Hyperliquid), kontrola jen pro čtení u Bitget / Gate / MEXC,
   ověření na skutečných účtech (uživatel má Gate a MEXC; OKX a Bitget nezmínil).
+
+**Hyperliquid (v0.60.0, `js/burzy/hyperliquid.js`) — připojení adresou
+peněženky:** účet je veřejný (blockchain), nic se nepodepisuje → jen pro
+čtení z principu. Ověřeno naostro 2026-10-17 na veřejných účtech
+z žebříčku (bez účtu uživatele).
+- **Adresa místo klíče:** `BURZY.hyperliquid.adresa = true` → formulář
+  ukáže jen pole „Wallet address" (`vyberBurzuVUvodu`, data-i18n se
+  přepisuje, ať změna jazyka nevrátí „API key"), kontrola formátu
+  `store.jeAdresa`; uloží se `apiKey = adresa`, `apiSecret = ''`
+  (`store.hasCredentials` adresu bez secretu bere). V nastavení
+  „Wallet 0x1234…abcd".
+- **Data:** `/info` s `user` (CCXT `publicPostInfo`, instance vždy bez
+  údajů). `clearinghouseState` (váha 2) = pozice + účet + zaplacený
+  funding od otevření (`cumFunding.sinceOpen`, kladné = zaplaceno →
+  model záporně); mark = `positionValue / |szi|`. `frontendOpenOrders`
+  (20) = příkazy i TP/SL (`isPositionTpsl`, množství 0 → velikost pozice,
+  `celaPozice`, SL/TP pozice). Plnění `userFillsByTime` (2000 na dotaz,
+  burza drží 10 000 posledních) **pro celý účet** → paměť plnění
+  (`plneniZPameti`, dotazy za sebou, konec se dotahuje nejdřív po 20 s).
+  Uzavřené obchody z plnění s `dir` Close / „>" / Liquidat, zisk
+  `closedPnl` (bez poplatků, jako Binance). Funding každou hodinu, sazba
+  z jednoho `metaAndAssetCtxs` pro všechny pozice (`kontextyTrhu`).
+  Coin v API = `info.name` (`kPEPE` → pár `KPEPEUSDC`).
+- **Živý proud** `wss://api.hyperliquid.xyz/ws` bez přihlášení:
+  `activeAssetCtx` (cena, změna 24 h z `prevDayPx`, obrat) a `candle`;
+  ping po 50 s. Pár s odběrem na živém spojení se dotazem neptá ani když
+  svíčka chvíli mlčí (`zProudu` override). Pozice dotazem po 3 s.
+- ⚠ **Limit 1200 vah / min na IP** a CCXT řadí dotazy instance podle
+  váhy (svíčky 20+ = ~1 s). Proto: záloha cen jen `allMids` (2) a nejvýš
+  po 10 s; **čtvrtá instance `burzaPredem()`** (háček v obecném adaptéru)
+  pro předčtení svíček (`getKlines(…, { predem: true })` z
+  `predNactiSvice`), mini-grafy a stav trhů — u účtu s 20 pozicemi
+  jinak graf otevřený prstem čekal přes 20 s za předčítáním.
+- ⚠ `novaInstance` nesmí ani dočasně mazat `this.apiKey` — instance se
+  zakládají souběžně a dotaz mezitím poslal `user: ''` (422).
+- Popisky v grafu podle měny páru (`kotaceGrafu()`, `pnlInfo.kotace`):
+  USDC u Hyperliquidu i BTCUSDC na Binance (dřív natvrdo USDT).
+- Alarmy Hyperliquidu hlídá jen telefon (hlídač na serveru: Bybit, Binance).
+- Testy: `test-hyperliquid.py` (naostro: připojení adresou, pozice,
+  funding, graf + proud, počty dotazů, Historie, odpojení; adresa
+  `HL_ADRESA` nebo z veřejného žebříčku), `test-kontrakt-burzy.py`
+  (soukromá data Hyperliquidu vždy naostro).
 
 ### `js/bybit.js` je izolovaný záměrně
 
@@ -2592,8 +2635,8 @@ nové APK sestavené 2026-10-17 a uživatel potvrdil, že funguje).
   obrázek je `/_blob/<id>`). **Až uživatel napíše, že je hotovo:
   přečíst `ArtifactData list kroky` a projít, co „nesedí".** Kroky jsou
   podle `docs/kontrola-nove-burzy.md` část B.
-- **Pak další burza: Hyperliquid** (ověří se bez účtu přes veřejnou
-  adresu peněženky). U každé nové burzy projít `docs/kontrola-nove-burzy.md`
+- **Hyperliquid hotový (v0.60.0, 2026-10-17)** — připojení adresou
+  peněženky, viz sekce Hyperliquid výš; čeká na ověření uživatelem (část B). U každé nové burzy projít `docs/kontrola-nove-burzy.md`
   (část A já naostro, část B dát uživateli jako zaškrtávací stránku).
 - **Drobnosti v0.59.13 (hotové 2026-10-17):**
   - **Prohlídka obchodu: dnešní cena** — overlay `cenaTed` (chart.js,
