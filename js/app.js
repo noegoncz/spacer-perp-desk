@@ -2013,8 +2013,30 @@ async function zmenInterval(interval) {
   odebiratZiveSvice(chartSymbol, interval);
 }
 
+/*
+ * Dnešní cena v prohlídce obchodu (přání uživatele 2026-10-16): svíčky
+ * prohlídky končí kus po zavření obchodu, takže poslední cena grafu není
+ * dnešní. Cena se dotáhne tickerem při otevření a s každým obnovením
+ * příkazů (20 s); mimo prohlídku se linka sundá.
+ */
+async function obnovCenuTed() {
+  if (!chart) return;
+  const obchod = prohlizenyObchod;
+  if (!obchod || !chartSymbol) {
+    chart.setCurrentPrice(null);
+    return;
+  }
+  const symbol = chartSymbol;
+  try {
+    const tk = await grafKlient().getTicker(symbol);
+    if (prohlizenyObchod !== obchod || chartSymbol !== symbol) return;
+    chart.setCurrentPrice(tk?.last);
+  } catch { /* bez dnešní ceny se prohlídka obejde */ }
+}
+
 async function refreshChartOrders() {
   const symbol = chartSymbol;
+  obnovCenuTed();
   // Bez klíčů příkazy nenačteme; graf samotný je veřejný a běží dál.
   // Graf páru z jiné burzy než připojené: příkazy tam nemáme odkud vzít.
   if (!symbol || !grafSUctem()) return;

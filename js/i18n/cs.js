@@ -196,6 +196,7 @@ export const cs = {
   'source.low': 'Minimum',
   'chart.moreTools': 'Další nástroje',
   'chart.vol24h': 'Objem 24h',
+  'chart.currentPrice': 'Aktuální cena',
   'chart.unit': 'Hodnoty v coinu, nebo v USDT',
   'chart.tools': 'Kreslicí nástroje',
   'chart.cursor': 'Kurzor',

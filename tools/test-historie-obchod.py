@@ -114,6 +114,18 @@ if not okno:
 elif not (okno['vidim'][0] <= okno['od'] and okno['do'] <= okno['vidim'][1]):
     chyby.append('obchod není celý ve výřezu grafu')
 
+# Dnešní cena (přání uživatele 2026-10-16): plná linka „Current price"
+# z tickeru, ne vestavěná čárkovaná značka ceny konce načtených svíček.
+ted = json.loads(ev("""JSON.stringify((() => { const g = window.__graf;
+  const o = g.getOverlays().find((x) => x.name === 'cenaTed');
+  return { cena: o ? o.points[0].value : null,
+    vestavena: g.getStyles().candle.priceMark.last.show }; })())""") or '{}')
+print('dnešní cena v prohlídce:', ted)
+if not ted.get('cena'):
+    chyby.append('prohlídka nemá linku dnešní ceny (overlay cenaTed)')
+if ted.get('vestavena'):
+    chyby.append('v prohlídce zůstala vestavěná značka ceny konce svíček')
+
 interval = ev("document.querySelector('.interval-btn.active')?.dataset.interval")
 print('zvolený interval:', interval)
 # Obchod trval dva dny — minutové svíčky by ho roztáhly na stovky obrazovek.
@@ -131,6 +143,11 @@ time.sleep(1.5)
 ev("document.querySelector('.position').click()")
 time.sleep(4)
 po_historii = ev("document.querySelector('.interval-btn.active')?.dataset.interval")
+po_ted = json.loads(ev("""JSON.stringify({ n: window.__graf.getOverlays().filter((x) => x.name === 'cenaTed').length,
+  vestavena: window.__graf.getStyles().candle.priceMark.last.show })""") or '{}')
+print('běžný graf po prohlídce:', po_ted)
+if po_ted.get('n') or not po_ted.get('vestavena'):
+    chyby.append('linka dnešní ceny z prohlídky zůstala v běžném grafu')
 print('graf pozice otevřený po prohlídce z Historie, interval:', po_historii)
 if po_historii != '240':
     chyby.append(f'po prohlídce z Historie zůstal její interval ({po_historii}) i pro běžný graf')

@@ -64,6 +64,9 @@ const BARVY = {
  */
 const BARVA_ZISKU = '#3ee6a4';
 
+/** Linka dnešní ceny v prohlídce obchodu — neutrální, obchod už neběží. */
+const BARVA_CENY_TED = '#c7d2e0';
+
 /** Délka jedné svíčky v ms — pro odpočet do jejího uzavření. */
 const DELKA_OBDOBI = {
   1: 60e3, 5: 300e3, 15: 900e3, 30: 1800e3, 60: 3600e3, 240: 14400e3,
@@ -977,6 +980,37 @@ function registrovatLinkuPnl() {
       const usdt = pnlInfo.skryt ? '••••' : `${znamenko}${Math.abs(zisk).toFixed(2)}`;
       const text = `${usdt} USDT | ${znamenko}${Math.abs(procenta).toFixed(2)} %`;
       return [stitekNaCare(text, zisk >= 0 ? BARVA_ZISKU : BARVY.pokles, bounding.width - 4, Math.round(y) + 0.5, 0.85)];
+    },
+  });
+
+  /*
+   * Aktuální cena v prohlídce obchodu z Historie (přání uživatele
+   * 2026-10-16): svíčky končí kus po zavření obchodu, takže vestavěná
+   * značka poslední ceny ukazovala cenu z konce načtených svíček (červená
+   * čárkovaná) — ne dnešní cenu. Místo ní plná linka přes celou šířku
+   * jako linka aktuální ceny u pozice, se štítkem „Current price" na čáře
+   * a cenovkou na ose. Cenu dodává app.js (`setCurrentPrice`).
+   */
+  K().registerOverlay({
+    name: 'cenaTed',
+    totalStep: 1,
+    needDefaultPointFigure: false,
+    needDefaultXAxisFigure: false,
+    needDefaultYAxisFigure: false,
+    createPointFigures: ({ coordinates, bounding }) => {
+      const y = coordinates?.[0]?.y;
+      if (!Number.isFinite(y)) return [];
+      const yy = Math.round(y) + 0.5;
+      return [
+        { type: 'line', attrs: { coordinates: [{ x: 0, y: yy }, { x: bounding.width, y: yy }] },
+          styles: { style: 'solid', color: BARVA_CENY_TED, size: 1 } },
+        stitekNaCare(t('chart.currentPrice'), BARVA_CENY_TED, bounding.width - 4, yy, 0.85),
+      ];
+    },
+    createYAxisFigures: ({ chart, overlay, coordinates }) => {
+      const cena = overlay.points?.[0]?.value;
+      if (!Number.isFinite(cena) || !coordinates?.[0]) return [];
+      return [cenovkaNaOse(chart, cena, coordinates[0].y, BARVA_CENY_TED)];
     },
   });
 
@@ -2448,6 +2482,8 @@ export function createPriceChart(container, layer, handlers = {}) {
       cilPohledu = null;
       oknoObchodu = null;
       chart.removeOverlay({ groupId: 'okno' });
+      // Dnešní cenu prohlídky obchodu dodá app.js znovu (obnovCenuTed).
+      this.setCurrentPrice(null);
       /*
        * ⚠ Instance grafu se mezi otevřeními recykluje, takže do příchodu
        * svíček nového páru ukazovala **graf předchozího páru** — na telefonu
@@ -2573,6 +2609,30 @@ export function createPriceChart(container, layer, handlers = {}) {
       chart.setStyles({
         candle: { priceMark: { last: { line: { show: !ukazat } } } },
       });
+    },
+
+    /**
+     * Dnešní cena v prohlídce obchodu (overlay `cenaTed`). `null` linku
+     * sundá a vrátí vestavěnou značku poslední ceny.
+     */
+    setCurrentPrice(cena) {
+      const ok = Number.isFinite(cena) && cena > 0;
+      if (!ok) {
+        chart.removeOverlay({ groupId: 'cenaTed' });
+        chart.setStyles({ candle: { priceMark: { last: { show: true } } } });
+        return;
+      }
+      const [stara] = chart.getOverlays({ groupId: 'cenaTed' });
+      if (stara) {
+        chart.overrideOverlay({ id: stara.id, points: [{ value: cena }] });
+      } else {
+        chart.createOverlay({
+          name: 'cenaTed', groupId: 'cenaTed', zLevel: 3, lock: true,
+          points: [{ value: cena }],
+        });
+      }
+      // Cena konce načtených svíček (s odpočtem) by mátla — dnešní je jinde.
+      chart.setStyles({ candle: { priceMark: { last: { show: false } } } });
     },
 
     /* ---------- hladiny alarmů ---------- */
