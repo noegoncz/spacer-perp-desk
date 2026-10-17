@@ -84,7 +84,10 @@ export async function onRequestPut({ request, env }) {
     const pouzity = await env.DB.prepare('SELECT 1 FROM subscribers WHERE ref = ? LIMIT 1').bind(ja.ref_nick).first();
     if (pouzity) return json(request, { ok: false, error: 'locked' }, 409);
   }
-  const obsazena = await env.DB.prepare('SELECT 1 FROM accounts WHERE ref_nick = ? AND id != ?').bind(nick, ucet.id).first();
+  // Obsazená i přezdívkou cizího zájemce z webu (vlastní přihláška nevadí).
+  const obsazena = await env.DB.prepare(`SELECT 1 FROM accounts WHERE ref_nick = ? AND id != ?
+      UNION SELECT 1 FROM subscribers WHERE ref_nick = ? AND email != (SELECT email FROM accounts WHERE id = ?) LIMIT 1`)
+    .bind(nick, ucet.id, nick, ucet.id).first();
   if (obsazena) return json(request, { ok: false, error: 'taken' }, 409);
   try {
     await env.DB.prepare('UPDATE accounts SET ref_nick = ? WHERE id = ?').bind(nick, ucet.id).run();

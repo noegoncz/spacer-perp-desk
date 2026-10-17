@@ -216,7 +216,7 @@ export const cs = {
   'alarm.new': 'Nový alarm',
   'invite.button': 'Pozvat',
   'invite.title': 'Pozvi přátele',
-  'invite.lead': 'Za každého přítele, který se přidá a bude PerpyX aktivně používat, získáš bonusový čas Pro, až bude PerpyX placený. Čím víc přátel, tím víc.',
+  'invite.lead': 'Pošli PerpyX obchodníkům, kterým by se hodil. Pokud si ho traderi oblíbí — a my pevně věříme, že ano — první podporovatelé, kteří mu pomohli vyrůst, budou při spuštění Pro náležitě odměněni.',
   'invite.nickLabel': 'Vyber si jméno pro pozvánky',
   'invite.nickPh': 'tvojejmeno',
   'invite.nickHint': '3–20 písmen, čísel nebo pomlček. Přátelé ho uvidí, když otevřou tvůj odkaz.',

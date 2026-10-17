@@ -220,7 +220,7 @@ export const en = {
   'alarm.new': 'New alert',
   'invite.button': 'Invite',
   'invite.title': 'Invite friends',
-  'invite.lead': 'Each friend who joins and actively uses PerpyX earns you bonus Pro time once PerpyX goes paid. The more friends, the more you get.',
+  'invite.lead': "Share PerpyX with traders who'd find it useful. If PerpyX grows into something traders love, and we truly believe it will, early supporters who helped it grow will be properly rewarded when Pro launches.",
   'invite.nickLabel': 'Choose your invite name',
   'invite.nickPh': 'yourname',
   'invite.nickHint': '3–20 letters, numbers or dashes. Friends will see it when they open your link.',

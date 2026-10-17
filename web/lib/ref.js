@@ -40,10 +40,66 @@ export function zamaskuj(email) {
   return s.slice(0, 2) + s.slice(2).replace(/[^.]/g, '*');
 }
 
-/** Účet zvoucího podle přezdívky (nebo null). */
+/**
+ * Účet zvoucího podle přezdívky (nebo null). Přezdívka může patřit
+ * i zájemci z webu (subscribers.ref_nick, 2026-10-18) — pak se hledá účet
+ * se stejným e-mailem (zájemce se mezitím přihlásil v aplikaci).
+ */
 export async function zvouciPodlePrezdivky(env, nick) {
   if (!nick || chybaPrezdivky(nick) === 'invalid') return null;
-  return env.DB.prepare('SELECT id, ref_nick FROM accounts WHERE ref_nick = ?').bind(nick).first();
+  const ucet = await env.DB.prepare('SELECT id, ref_nick FROM accounts WHERE ref_nick = ?').bind(nick).first();
+  if (ucet) return ucet;
+  const z = await env.DB.prepare("SELECT email FROM subscribers WHERE ref_nick = ? AND status = 'confirmed'")
+    .bind(nick).first();
+  if (!z) return null;
+  return env.DB.prepare('SELECT id, ref_nick FROM accounts WHERE email = ?').bind(z.email).first();
+}
+
+/**
+ * Komu patří odkaz: účtu, nebo potvrzenému zájemci z webu. Vrací
+ * { email, ref_nick } nebo null. Pro zápis na webu a proužek „Invited by".
+ */
+export async function vlastnikOdkazu(env, nick) {
+  if (!nick || chybaPrezdivky(nick) === 'invalid') return null;
+  const ucet = await env.DB.prepare('SELECT email, ref_nick FROM accounts WHERE ref_nick = ?').bind(nick).first();
+  if (ucet) return ucet;
+  return env.DB.prepare("SELECT email, ref_nick FROM subscribers WHERE ref_nick = ? AND status = 'confirmed'")
+    .bind(nick).first();
+}
+
+/** Všechny přezdívky jednoho člověka (účet i přihláška na webu mají každý svou). */
+export async function prezdivkyEmailu(env, email) {
+  const [u, z] = await Promise.all([
+    env.DB.prepare('SELECT ref_nick FROM accounts WHERE email = ?').bind(email).first(),
+    env.DB.prepare('SELECT ref_nick FROM subscribers WHERE email = ?').bind(email).first(),
+  ]);
+  return [...new Set([u?.ref_nick, z?.ref_nick].filter(Boolean))];
+}
+
+const ZNAKY = 'abcdefghjkmnpqrstuvwxyz23456789';
+const nahodne = (n) => {
+  const b = new Uint8Array(n);
+  crypto.getRandomValues(b);
+  return [...b].map((x) => ZNAKY[x % ZNAKY.length]).join('');
+};
+
+/**
+ * Přezdívka pro zájemce z webu: první čtyři znaky e-mailu (aby odkaz
+ * poznal jako svůj) a tři náhodné — celá adresa se z odkazu poznat nedá.
+ * Unikátní napříč účty i zájemci.
+ */
+export async function novaPrezdivkaZajemce(env, email) {
+  let zaklad = String(email || '').split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 4);
+  if (zaklad.length < 2) zaklad = 'px';
+  for (let i = 0; i < 12; i += 1) {
+    const nick = `${i < 8 ? zaklad : 'px'}-${nahodne(3)}`;
+    if (chybaPrezdivky(nick)) continue;
+    const obsazena = await env.DB.prepare(
+      'SELECT 1 FROM accounts WHERE ref_nick = ? UNION SELECT 1 FROM subscribers WHERE ref_nick = ? LIMIT 1',
+    ).bind(nick, nick).first();
+    if (!obsazena) return nick;
+  }
+  return null;
 }
 
 /**
@@ -56,9 +112,26 @@ export async function sparujPriZalozeni(env, ucetId, email) {
   ).bind(email).first();
   if (!prihlaska?.ref) return;
   const zvouci = await zvouciPodlePrezdivky(env, prihlaska.ref);
-  if (!zvouci || zvouci.id === ucetId) return;
+  if (zvouci && zvouci.id !== ucetId) {
+    await env.DB.prepare(`INSERT OR IGNORE INTO referrals (referred_id, referrer_id, source, joined_at)
+        VALUES (?, ?, 'web', ?)`).bind(ucetId, zvouci.id, ted()).run();
+  }
+}
+
+/**
+ * Nový účet zájemce, který už měl odkaz z webu (2026-10-18): účet převezme
+ * jeho přezdívku (odkaz platí dál) a spárují se ti, kdo se přes ten odkaz
+ * zapsali a v aplikaci se přihlásili dřív než on.
+ */
+export async function prevezmiOdkazZajemce(env, ucetId, email) {
+  const z = await env.DB.prepare('SELECT ref_nick FROM subscribers WHERE email = ? AND ref_nick IS NOT NULL')
+    .bind(email).first();
+  if (!z?.ref_nick) return;
+  await env.DB.prepare('UPDATE accounts SET ref_nick = ? WHERE id = ? AND ref_nick IS NULL')
+    .bind(z.ref_nick, ucetId).run();
   await env.DB.prepare(`INSERT OR IGNORE INTO referrals (referred_id, referrer_id, source, joined_at)
-      VALUES (?, ?, 'web', ?)`).bind(ucetId, zvouci.id, ted()).run();
+      SELECT a.id, ?, 'web', ? FROM subscribers s JOIN accounts a ON a.email = s.email
+      WHERE s.ref = ? AND a.id != ?`).bind(ucetId, ted(), z.ref_nick, ucetId).run();
 }
 
 /** Po každé denní aktivitě: má pozvaný už dost různých dní? → stupeň 3. */

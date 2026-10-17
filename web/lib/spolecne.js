@@ -5,6 +5,14 @@ export const ODESILATEL = 'PerpyX <hello@perpyx.com>';
 export const ODPOVED_NA = 'hello@perpyx.com';
 export const VERZE_SOUHLASU = '2026-09-28';
 
+/*
+ * Burzy — všude stejná věta (web, e-maily; 2026-10-18). Další burzy
+ * v pořadí podle objemu derivátů a oblíbenosti; při připojení další
+ * burzy upravit tady i na webu (index.html, „Works with").
+ */
+export const BURZY_ZIVE = 'Bybit, Binance and Hyperliquid';
+export const BURZY_DALSI = 'OKX, Bitget, Gate, MEXC and more are on the way.';
+
 const hlavicky = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
 export const odpoved = (telo, status = 200) =>
   new Response(JSON.stringify(telo), { status, headers: hlavicky });
@@ -56,7 +64,7 @@ export function potvrzovaciMail(token) {
 <tr><td style="padding-bottom:24px;font-size:22px;font-weight:800;letter-spacing:0.2px">Perpy<span style="color:#7c5cff">X</span></td></tr>
 <tr><td style="font-size:22px;font-weight:700;padding-bottom:12px">Confirm your email</td></tr>
 <tr><td style="font-size:16px;line-height:1.6;color:#3b4656;padding-bottom:16px">Someone — hopefully you — asked to join the PerpyX beta with this address. Confirm it and we'll invite you when the next beta round opens.</td></tr>
-<tr><td style="font-size:16px;line-height:1.6;color:#3b4656;padding-bottom:28px">PerpyX is a read-only Android app for monitoring Bybit perpetual positions: live PnL, stop-loss and take-profit levels, funding and price alarms. Beta testers get early access and a direct line to shape what comes next. We'll only email you about the beta and major updates.</td></tr>
+<tr><td style="font-size:16px;line-height:1.6;color:#3b4656;padding-bottom:28px">PerpyX is an Android app for keeping an eye on your perpetual positions on ${BURZY_ZIVE}: live PnL, stop-loss and take-profit levels, funding and price alerts. ${BURZY_DALSI} Beta testers get early access and a direct line to shape what comes next. We'll only email you about the beta and major updates.</td></tr>
 <tr><td style="padding-bottom:28px"><a href="${esc(odkaz)}" style="display:inline-block;background:#6d5cff;background-image:linear-gradient(135deg,#22d3ee,#7c5cff);color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;padding:14px 26px;border-radius:12px">Confirm my email</a></td></tr>
 <tr><td style="font-size:13px;line-height:1.6;color:#6b7788;padding-bottom:20px">Or open this link: <a href="${esc(odkaz)}" style="color:#5b4ee0;word-break:break-all">${esc(odkaz)}</a></td></tr>
 <tr><td style="font-size:14px;line-height:1.6;color:#3b4656;border-top:1px solid #e6e9ef;padding-top:20px">Didn't sign up? Just ignore this email — you won't hear from us, and the address is deleted after 30 days.</td></tr>
@@ -72,10 +80,11 @@ Confirm it and we'll invite you when the next beta round opens:
 
 ${odkaz}
 
-PerpyX is a read-only Android app for monitoring Bybit perpetual positions:
-live PnL, stop-loss and take-profit levels, funding and price alarms. Beta
-testers get early access and a direct line to shape what comes next. We'll
-only email you about the beta and major updates.
+PerpyX is an Android app for keeping an eye on your perpetual positions on
+${BURZY_ZIVE}: live PnL, stop-loss and take-profit levels, funding and
+price alerts. ${BURZY_DALSI} Beta testers get early access and a direct
+line to shape what comes next. We'll only email you about the beta and major
+updates.
 
 Didn't sign up? Just ignore this email — you won't hear from us, and the
 address is deleted after 30 days.
@@ -98,17 +107,25 @@ Unsubscribe: ${odhlasit}`;
  *  (Email Routing), takže osobní adresa nemusí být ve veřejném repu. */
 export const SPRAVCE = 'hello@perpyx.com';
 
-/** Uvítání po potvrzení: potvrzuje, že je zájemce na seznamu, a co čekat. */
-export function uvitaciMail(token) {
+/**
+ * Uvítání po potvrzení: potvrzuje, že je zájemce na seznamu, a co čekat.
+ * `nick` = jeho odkaz pro přátele (perpyx.com/ref/<nick>) do P.S.
+ */
+export function uvitaciMail(token, nick = null) {
   const odhlasit = `${WEB}/unsubscribe?t=${token}`;
+  const odkaz = nick ? `${WEB}/ref/${nick}` : null;
+  const ps = odkaz
+    ? `<tr><td style="font-size:14px;line-height:1.6;color:#3b4656;border-top:1px solid #e6e9ef;padding-top:18px">P.S. Know someone who trades perps? Your link: <a href="${esc(odkaz)}" style="color:#5b4ee0">${esc(odkaz.replace('https://', ''))}</a> — friends who join with it help you get in sooner. If PerpyX takes off, and we believe it will, early supporters will be properly rewarded.</td></tr>`
+    : '';
   const html = `<!doctype html><html><body style="margin:0;background:#f3f5f9;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0d1420">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f5f9;padding:32px 12px"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:16px;padding:36px 32px">
 <tr><td style="padding-bottom:24px;font-size:22px;font-weight:800;letter-spacing:0.2px">Perpy<span style="color:#7c5cff">X</span></td></tr>
 <tr><td style="font-size:22px;font-weight:700;padding-bottom:12px">You're on the beta list</td></tr>
 <tr><td style="font-size:16px;line-height:1.6;color:#3b4656;padding-bottom:16px">Thanks for confirming your email. We'll write to you when the next beta round opens, with a download link and a short guide to getting started.</td></tr>
-<tr><td style="font-size:16px;line-height:1.6;color:#3b4656;padding-bottom:16px">What you'll need: an Android phone and a <strong>read-only</strong> Bybit API key. PerpyX never asks for trading or withdrawal permissions, and your key stays on your phone.</td></tr>
-<tr><td style="font-size:16px;line-height:1.6;color:#3b4656;padding-bottom:8px">Questions or ideas? Just reply to this email — it comes straight to the developer.</td></tr>
+<tr><td style="font-size:16px;line-height:1.6;color:#3b4656;padding-bottom:16px">What you'll need: an Android phone and an account on ${BURZY_ZIVE.replace(' and ', ' or ')}. PerpyX never asks for trading or withdrawal permissions, and your keys stay on your phone. ${BURZY_DALSI}</td></tr>
+<tr><td style="font-size:16px;line-height:1.6;color:#3b4656;padding-bottom:16px">Questions or ideas? Just reply to this email — it goes straight to the people building PerpyX. Inside the app there's a feedback button on every screen, so you can send a note or a screenshot the moment something bugs you. That's how PerpyX keeps getting better for everyone.</td></tr>
+${ps}
 </table>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px"><tr><td style="font-size:12px;line-height:1.6;color:#8a95a5;padding:18px 8px;text-align:center">
 PerpyX · Roman Spacek, Czech Republic · <a href="${WEB}/privacy" style="color:#8a95a5">Privacy</a> · <a href="${esc(odhlasit)}" style="color:#8a95a5">Unsubscribe</a>
@@ -119,13 +136,19 @@ PerpyX · Roman Spacek, Czech Republic · <a href="${WEB}/privacy" style="color:
 Thanks for confirming your email. We'll write to you when the next beta
 round opens, with a download link and a short guide to getting started.
 
-What you'll need: an Android phone and a read-only Bybit API key. PerpyX
-never asks for trading or withdrawal permissions, and your key stays on
-your phone.
+What you'll need: an Android phone and an account on ${BURZY_ZIVE.replace(' and ', ' or ')}.
+PerpyX never asks for trading or withdrawal permissions, and your keys stay
+on your phone. ${BURZY_DALSI}
 
-Questions or ideas? Just reply to this email — it comes straight to the
-developer.
-
+Questions or ideas? Just reply to this email — it goes straight to the
+people building PerpyX. Inside the app there's a feedback button on every
+screen, so you can send a note or a screenshot the moment something bugs
+you. That's how PerpyX keeps getting better for everyone.
+${odkaz ? `
+P.S. Know someone who trades perps? Your link: ${odkaz}
+Friends who join with it help you get in sooner. If PerpyX takes off, and we
+believe it will, early supporters will be properly rewarded.
+` : ''}
 PerpyX · Roman Spacek, Czech Republic · ${WEB}/privacy
 Unsubscribe: ${odhlasit}`;
   return {
@@ -136,6 +159,45 @@ Unsubscribe: ${odhlasit}`;
       'List-Unsubscribe': `<${WEB}/api/unsubscribe?t=${token}>`,
       'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
     },
+  };
+}
+
+/**
+ * Zvoucímu: přítel se přes jeho odkaz zapsal a potvrdil e-mail (nejvýš
+ * jednou denně, viz api/confirm). `token` = jeho přihláška na webu kvůli
+ * odhlášení; účet bez přihlášky ho nemá.
+ */
+export function pratelMail(pocet, token = null) {
+  const odhlasit = token ? `${WEB}/unsubscribe?t=${token}` : null;
+  const pata = odhlasit
+    ? `PerpyX · Roman Spacek, Czech Republic · <a href="${WEB}/privacy" style="color:#8a95a5">Privacy</a> · <a href="${esc(odhlasit)}" style="color:#8a95a5">Unsubscribe</a>`
+    : `PerpyX · Roman Spacek, Czech Republic · <a href="${WEB}/privacy" style="color:#8a95a5">Privacy</a> · You get this because you shared your PerpyX link.`;
+  const html = `<!doctype html><html><body style="margin:0;background:#f3f5f9;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0d1420">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f5f9;padding:32px 12px"><tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:16px;padding:36px 32px">
+<tr><td style="padding-bottom:24px;font-size:22px;font-weight:800;letter-spacing:0.2px">Perpy<span style="color:#7c5cff">X</span></td></tr>
+<tr><td style="font-size:16px;line-height:1.6;color:#3b4656;padding-bottom:14px">Someone joined the PerpyX beta waitlist with your link. Thanks for spreading the word — it means a lot for a small project like this.</td></tr>
+<tr><td style="font-size:14px;line-height:1.6;color:#6b7788">Friends who joined with your link so far: <strong style="color:#0d1420">${Number(pocet) || 1}</strong></td></tr>
+</table>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px"><tr><td style="font-size:12px;line-height:1.6;color:#8a95a5;padding:18px 8px;text-align:center">
+${pata}
+</td></tr></table>
+</td></tr></table></body></html>`;
+  const text = `Someone joined the PerpyX beta waitlist with your link. Thanks for
+spreading the word — it means a lot for a small project like this.
+
+Friends who joined with your link so far: ${Number(pocet) || 1}
+
+PerpyX · Roman Spacek, Czech Republic · ${WEB}/privacy${odhlasit ? `
+Unsubscribe: ${odhlasit}` : ''}`;
+  return {
+    predmet: 'A friend joined the PerpyX waitlist',
+    html,
+    text,
+    ...(token ? { hlavickyMailu: {
+      'List-Unsubscribe': `<${WEB}/api/unsubscribe?t=${token}>`,
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    } } : {}),
   };
 }
 

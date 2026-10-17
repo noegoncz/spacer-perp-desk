@@ -1,5 +1,5 @@
 {
-  "verze": "0.60.0",
+  "verze": "0.60.1",
   "novinky": [
     {
       "en": "Hyperliquid: connect with just your wallet address — no API key. Positions, TP/SL, funding, history and live charts.",

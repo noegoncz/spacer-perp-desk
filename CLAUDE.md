@@ -630,6 +630,31 @@ a v zásadách „Invites".
 - Testy: `tools/test-pozvanky.py` (aplikace, API podstrčené),
   `tools/test-referraly-server.py` (naostro, `AUTH_TEST_KEY`; testovací
   účty smí v `ping` zapsat jiný den).
+- **Odkaz už pro zájemce z webu (2026-10-18, rozhodnutí uživatele —
+  „ať to nepůsobí, že hladovím po uživatelích"):** kdo potvrdí e-mail,
+  dostane přezdívku `subscribers.ref_nick` (první 4 znaky e-mailu + 3
+  náhodné, `noeg-7k2`; `novaPrezdivkaZajemce`, migrace 0008) — ukáže se
+  na stránce po potvrzení pod čarou a v P.S. uvítacího e-mailu. Kdo přes
+  odkaz přivede potvrzeného zájemce, jde při rozesílání pozvánek do bety
+  dřív (pořadí se navenek neukazuje; pozvánky posílá provozovatel ručně).
+  Zvoucí dostane e-mail „A friend joined" s počtem, **nejvýš jeden denně**
+  (`ref_notices`, `oznamZvoucimu` v api/confirm.js). Přihlásí-li se
+  zájemce v aplikaci, účet přezdívku převezme a spárují se dřívější
+  pozvaní (`prevezmiOdkazZajemce`). `vlastnikOdkazu` (web) zná přezdívky
+  účtů i zájemců; `zvouciPodlePrezdivky` vrací vždy účet. Texty: odměna
+  bez čísel („properly rewarded… as long as you like it yourself") +
+  zpětná vazba z aplikace („goes straight to the people building
+  PerpyX" — uživatel nechce mluvit o jedné osobě). Náhled schválený
+  uživatelem: https://claude.ai/artifact/7hUyzkJ9JA8cjaj4DVrWrA.
+  Zásady (Invites) doplněné. **Pořadí do bety:**
+  `SELECT s.email, (SELECT COUNT(*) FROM subscribers f WHERE f.ref = s.ref_nick AND f.status = 'confirmed') AS pratel FROM subscribers s WHERE s.status = 'confirmed' ORDER BY pratel DESC, s.confirmed_at`.
+- **Burzy všude stejná věta** (`BURZY_ZIVE`, `BURZY_DALSI` ve
+  web/lib/spolecne.js + „Works with / Connecting next" na webu): Bybit,
+  Binance, Hyperliquid; další OKX, Bitget, Gate, MEXC „and more" (podle
+  objemu derivátů a oblíbenosti). **Při připojení další burzy upravit
+  obojí.** Web už nepíše „Not affiliated with Bybit", ale „with any exchange".
+- ⚠ Web neměl `[hidden] { display: none !important }` — tlačítko
+  „Confirm my email" (`.btn`) zůstávalo po potvrzení vidět. Doplněno.
 - Později: **Install Referrer z Google Play** jako třetí pojistka
   a bonus za pozvaného, který si koupí předplatné.
 

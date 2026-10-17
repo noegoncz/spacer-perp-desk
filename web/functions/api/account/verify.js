@@ -2,7 +2,7 @@
 // Účet vznikne při prvním přihlášení — registrace zvlášť není.
 
 import { json, otisk, nahodneHex, ted, CHYB_ZA_DEN } from '../../../lib/ucet.js';
-import { sparujPriZalozeni } from '../../../lib/ref.js';
+import { sparujPriZalozeni, prevezmiOdkazZajemce } from '../../../lib/ref.js';
 
 const POKUSU = 5;
 
@@ -47,6 +47,7 @@ export async function onRequestPost({ request, env }) {
     // Zapsal se na webu přes odkaz od někoho? Spárovat (stupeň 2).
     try {
       await sparujPriZalozeni(env, ucet.id, email);
+      await prevezmiOdkazZajemce(env, ucet.id, email);
     } catch (e) {
       console.error('referral', e); // přihlášení nesmí kvůli doporučení selhat
     }

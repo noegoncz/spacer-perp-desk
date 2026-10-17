@@ -1,3 +1,5 @@
+/* Atribut hidden vždy schová — jinak ho přebije display tlačítek (.btn). */
+[hidden] { display: none !important; }
 /* Web PerpyX. Bez písem a skriptů třetích stran — stránka nic nenačítá
    odjinud, takže návštěvníka nikdo cizí nesleduje a není potřeba lišta
    s cookies. */
@@ -212,6 +214,13 @@ input[type=email]:focus { outline: 2px solid rgba(34, 211, 238, 0.6); outline-of
 .consent input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--violet); }
 .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 .msg { min-height: 1.5em; font-size: 0.95rem; margin: 0; }
+/* Odkaz pro přátele na stránce po potvrzení (2026-10-18): vedlejší, pod čarou. */
+.share { margin-top: 28px; padding-top: 22px; border-top: 1px solid rgba(139, 151, 171, 0.18); display: grid; gap: 12px; }
+.share p { margin: 0; }
+.share-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.share-row code { flex: 1 1 220px; min-width: 0; padding: 11px 14px; border-radius: 10px; font-size: 1rem;
+  background: rgba(17, 24, 35, 0.8); border: 1px solid rgba(139, 151, 171, 0.25); overflow-wrap: anywhere; }
+.form-ref { margin: 4px 0 0; font-size: 0.88rem; color: var(--muted, #9fb0c3); }
 .msg.ok { color: #5eead4; }
 .msg.err { color: #ff8a8a; }
 .btn[disabled] { opacity: 0.6; cursor: wait; transform: none; }

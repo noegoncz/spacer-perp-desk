@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PerpyX — your perpetuals at a glance</title>
-<meta name="description" content="PerpyX is a superfast Android app for monitoring crypto perpetual positions — Bybit today, Binance, Hyperliquid and OKX next: live PnL, SL/TP ladders, funding, push price alerts even with the screen off, live watchlists, trade history with every partial exit and a touch-first chart. Join the beta.">
+<meta name="description" content="PerpyX is a superfast Android app for monitoring crypto perpetual positions on Bybit, Binance and Hyperliquid — OKX, Bitget, Gate, MEXC and more on the way: live PnL, SL/TP ladders, funding, push price alerts even with the screen off, live watchlists, trade history with every partial exit and a touch-first chart. Join the beta.">
 <meta name="theme-color" content="#0b0f14">
 <link rel="icon" href="/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="/icon-192.png">
@@ -13,7 +13,7 @@
 <meta property="og:image" content="https://perpyx.com/img/graf-fold.webp?v=4">
 <meta property="og:type" content="website">
 <link rel="canonical" href="https://perpyx.com/">
-<link rel="stylesheet" href="/style.css?v=10">
+<link rel="stylesheet" href="/style.css?v=12">
 </head>
 <body>
 
@@ -68,12 +68,16 @@
           <div class="ex-group">
             <span class="ex-label">Works with</span>
             <span class="ex live">Bybit</span>
+            <span class="ex live">Binance</span>
+            <span class="ex live">Hyperliquid</span>
           </div>
           <div class="ex-group">
-            <span class="ex-label">Coming soon</span>
-            <span class="ex">Binance</span>
-            <span class="ex">Hyperliquid</span>
+            <span class="ex-label">Connecting next</span>
             <span class="ex">OKX</span>
+            <span class="ex">Bitget</span>
+            <span class="ex">Gate</span>
+            <span class="ex">MEXC</span>
+            <span class="ex-label">and more…</span>
           </div>
         </div>
       </div>
@@ -172,8 +176,9 @@
         <ul class="checks">
           <li><div><strong>It can't trade.</strong> PerpyX only reads positions, orders and balances. It has no code path that places an order.</div></li>
           <li><div><strong>Keys stay on your phone.</strong> Your API key and secret are stored on the device, never on our servers.</div></li>
-          <li><div><strong>Signed locally.</strong> Each request is signed on the phone; only the signature travels to Bybit, never the secret.</div></li>
-          <li><div><strong>Read-only, enforced.</strong> PerpyX checks the key's permissions and refuses one that can trade or withdraw. You can revoke it on Bybit at any time.</div></li>
+          <li><div><strong>Signed locally.</strong> Each request is signed on the phone; only the signature travels to the exchange, never the secret.</div></li>
+          <li><div><strong>Read-only, enforced.</strong> PerpyX checks the key's permissions and refuses one that can trade or withdraw. You can revoke it on the exchange at any time.</div></li>
+          <li><div><strong>Hyperliquid without a key.</strong> Just paste your public wallet address — nothing to sign, nothing that could move funds.</div></li>
           <li><div><strong>Alerts without your keys.</strong> The alert server only gets your alert levels and pairs. It watches public prices — it never sees your keys, positions or balance.</div></li>
           <li><div><strong>Optional app lock.</strong> A PIN, with your fingerprint as a shortcut, so nobody holding your unlocked phone sees your positions.</div></li>
         </ul>
@@ -181,7 +186,7 @@
       <div class="flow" aria-hidden="true">
         <div class="step lock"><div><b>Your phone</b><span>API key + secret stay here</span></div></div>
         <div class="arrow">↓ signed request only</div>
-        <div class="step"><div><b>Bybit API</b><span>read-only: positions, orders, balance</span></div></div>
+        <div class="step"><div><b>Exchange API</b><span>read-only: positions, orders, balance</span></div></div>
         <div class="arrow">↓ live data</div>
         <div class="step"><div><b>PerpyX</b><span>PnL, ladders, funding, chart, alerts</span></div></div>
         <div class="arrow">↑ push when an alert fires</div>
@@ -198,7 +203,7 @@
       </div>
       <div class="roadmap">
         <div class="card"><span class="tag">Next</span><h3>Trade stats</h3><p>Deeper stats and evaluation of your trades — what works for you and what doesn't.</p></div>
-        <div class="card"><span class="tag">Next</span><h3>More exchanges</h3><p>Binance, Hyperliquid and OKX — all your positions across exchanges in one list.</p></div>
+        <div class="card"><span class="tag">Next</span><h3>More exchanges</h3><p>OKX, Bitget, Gate, MEXC and more — all your positions across exchanges in one list.</p></div>
         <div class="card"><span class="tag">Next</span><h3>RSI divergences</h3><p>Bullish and bearish divergences marked right on the chart.</p></div>
         <div class="card"><span class="tag">Planned</span><h3>Divergence scanner</h3><p>Scans your watchlists on the server and pings you when a setup appears.</p></div>
         <div class="card"><span class="tag">Planned</span><h3>Google Play</h3><p>A public release on Google Play after the beta.</p></div>
@@ -209,10 +214,10 @@
   <section id="disclaimer" class="disclaimer-section">
     <div class="wrap">
       <p class="disclaimer"><strong>Important.</strong> PerpyX is a monitoring tool. It only displays
-        data from your Bybit account and public market data, never places orders and is
+        data from your exchange accounts and public market data, never places orders and is
         <strong>not financial advice</strong>. Data can be delayed or incomplete, and price alarms are
         informational — they can be delayed or missed, so don't rely on them alone to manage risk.
-        PerpyX is an independent project, not affiliated with Bybit.</p>
+        PerpyX is an independent project, not affiliated with any exchange.</p>
     </div>
   </section>
 
@@ -233,6 +238,7 @@
           <label class="consent"><input type="checkbox" name="consent" id="consent" required>
             <span>I agree that PerpyX may email me about the beta and product updates. I can unsubscribe at any time. See the <a href="/privacy">privacy policy</a>.</span></label>
           <p class="ref-note" id="refNote" hidden>Invited by <b id="refNick2"></b></p>
+          <p class="form-ref">Got a friend's link? Use it — you'll both get in a little sooner.</p>
           <p class="msg" id="msg" role="status" aria-live="polite"></p>
         </form>
       </div>
@@ -242,7 +248,7 @@
 
 <footer>
   <div class="wrap">
-    <div>© 2026 PerpyX · Not affiliated with Bybit. Not financial advice.</div>
+    <div>© 2026 PerpyX · Not affiliated with any exchange. Not financial advice.</div>
     <nav><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="#beta">Beta</a></nav>
   </div>
 </footer>

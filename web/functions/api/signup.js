@@ -8,7 +8,7 @@
 import {
   odpoved, ciziPuvod, novyToken, posliPostu, potvrzovaciMail, VERZE_SOUHLASU,
 } from '../../lib/spolecne.js';
-import { normalizuj, zvouciPodlePrezdivky } from '../../lib/ref.js';
+import { normalizuj, vlastnikOdkazu } from '../../lib/ref.js';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DEN = 86400e3;
@@ -41,8 +41,9 @@ export async function onRequestPost({ request, env }) {
   const ted = new Date();
   try {
     // Přezdívka z odkazu perpyx.com/ref/… — jen existující; neznámá se tiše zahodí.
-    const zvouci = await zvouciPodlePrezdivky(env, normalizuj(data.ref));
-    const ref = zvouci ? zvouci.ref_nick : null;
+    // Přezdívka účtu i zájemce z webu; vlastní odkaz se nepočítá.
+    const zvouci = await vlastnikOdkazu(env, normalizuj(data.ref));
+    const ref = zvouci && zvouci.email !== email ? zvouci.ref_nick : null;
 
     // Nepotvrzené přihlášky starší 30 dní pryč (slibuje to i e-mail).
     await env.DB.prepare("DELETE FROM subscribers WHERE status = 'pending' AND created_at < ?")
