@@ -54,7 +54,7 @@ def over(podminka, popis):
 def dlazdice():
     return json.loads(ev("""JSON.stringify([...document.querySelectorAll('#watchList .tile')].map((t) => ({
       klic: t.dataset.klic, burza: t.querySelector('.tile-burza').textContent,
-      cena: t.querySelector('.tile-cena').textContent, graf: !!t.querySelector('.watch-spark polyline') })))""") or '[]')
+      cena: t.querySelector('.tile-cena').textContent, graf: !!t.querySelector('.watch-spark .spark-cara') })))""") or '[]')
 
 
 ev("document.querySelector('.tab[data-tab=watchlist]').click()")

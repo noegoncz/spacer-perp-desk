@@ -1057,6 +1057,47 @@ function vytvorDelic({ sbaleno, onClick }) {
 
 let citacSparku = 0;
 
+/*
+ * Vyhlazená křivka (v0.59.15, přání uživatele — bez ostrých vrcholů):
+ * monotónní kubická interpolace (Fritsch–Carlson). Na rozdíl od obyčejné
+ * spline nepřestřelí — vrchol křivky je pořád skutečné maximum, nevznikne
+ * hrb nad nejvyšší cenou. `ys` v souřadnicích SVG, body po `dx`.
+ */
+function hladkaKrivka(ys, dx) {
+  const n = ys.length;
+  const f = (v) => v.toFixed(2);
+  if (n < 2) return `M0,${f(ys[0] ?? 0)}`;
+  const d = [];
+  for (let i = 0; i < n - 1; i += 1) d.push((ys[i + 1] - ys[i]) / dx);
+  const m = ys.map((_, i) => {
+    if (i === 0) return d[0];
+    if (i === n - 1) return d[n - 2];
+    return d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2;
+  });
+  for (let i = 0; i < n - 1; i += 1) {
+    if (d[i] === 0) {
+      m[i] = 0;
+      m[i + 1] = 0;
+      continue;
+    }
+    const a = m[i] / d[i];
+    const b = m[i + 1] / d[i];
+    const s = a * a + b * b;
+    if (s > 9) {
+      const t = 3 / Math.sqrt(s);
+      m[i] = t * a * d[i];
+      m[i + 1] = t * b * d[i];
+    }
+  }
+  let cesta = `M0,${f(ys[0])}`;
+  for (let i = 0; i < n - 1; i += 1) {
+    const x0 = i * dx;
+    const x1 = x0 + dx;
+    cesta += ` C${f(x0 + dx / 3)},${f(ys[i] + (m[i] * dx) / 3)} ${f(x1 - dx / 3)},${f(ys[i + 1] - (m[i + 1] * dx) / 3)} ${f(x1)},${f(ys[i + 1])}`;
+  }
+  return cesta;
+}
+
 /** Mini-graf trendu za 24 h. Zelený, když cena skončila výš než začala. */
 export function drawSparkline(radek, hodnoty) {
   const svg = radek.querySelector('.watch-spark');
@@ -1070,12 +1111,13 @@ export function drawSparkline(radek, hodnoty) {
   // cena vpravo dole pak leží na výplni, ne přes křivku (jako Coinbase).
   const dole = svg.classList.contains('tile-spark') ? 12 : 22;
 
-  const body = hodnoty
-    .map((v, i) => `${(i * krok).toFixed(1)},${(dole - ((v - min) / rozsah) * (dole - 1)).toFixed(1)}`)
-    .join(' ');
+  const ys = hodnoty.map((v) => dole - ((v - min) / rozsah) * (dole - 1));
+  const krivka = hladkaKrivka(ys, krok);
+  const konecX = ((hodnoty.length - 1) * krok).toFixed(2);
 
-  const cara = document.createElementNS(SVG_NS, 'polyline');
-  cara.setAttribute('points', body);
+  const cara = document.createElementNS(SVG_NS, 'path');
+  cara.setAttribute('d', krivka);
+  cara.setAttribute('class', 'spark-cara');
   /*
    * Výplň pod křivkou s přechodem do ztracena (v0.59.14, podle snímku
    * uživatele). Přechod má vlastní id v každém grafu — sdílené id by
@@ -1096,8 +1138,8 @@ export function drawSparkline(radek, hodnoty) {
     prechod.append(z);
   }
   defs.append(prechod);
-  const plocha = document.createElementNS(SVG_NS, 'polygon');
-  plocha.setAttribute('points', `0,24 ${body} ${((hodnoty.length - 1) * krok).toFixed(1)},24`);
+  const plocha = document.createElementNS(SVG_NS, 'path');
+  plocha.setAttribute('d', `${krivka} L${konecX},24 L0,24 Z`);
   plocha.setAttribute('class', 'spark-plocha');
   plocha.setAttribute('fill', `url(#${id})`);
   svg.replaceChildren(defs, plocha, cara);

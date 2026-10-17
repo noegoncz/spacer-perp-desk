@@ -644,9 +644,9 @@ main {
 .watch-change { text-align: right; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
 
 .watch-spark { width: 58px; height: 24px; display: block; }
-.watch-spark polyline { fill: none; stroke-width: 1.5; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
-.watch-spark.up polyline { stroke: var(--long); }
-.watch-spark.down polyline { stroke: var(--short); }
+.watch-spark polyline, .watch-spark .spark-cara { fill: none; stroke-width: 1.5; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
+.watch-spark.up polyline, .watch-spark.up .spark-cara { stroke: var(--long); }
+.watch-spark.down polyline, .watch-spark.down .spark-cara { stroke: var(--short); }
 
 /* Dělicí tlačítko mezi oblíbenými a zbytkem seznamu. */
 .watch-divider {
@@ -2510,6 +2510,12 @@ details.advanced { margin-top: 14px; }
    Foldu stejně (v0.36.1, jako TabTrader); na rozevřeném jsou jen širší. */
 .watch-list.tiles.mrizka { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .watch-list.tiles.siroke { grid-template-columns: minmax(0, 1fr); }
+/* Rozevřený Fold (v0.59.15, přání uživatele): dvakrát tolik sloupců —
+   dlaždice vypadají stejně jako na zavřeném displeji, jen se jich vejde víc. */
+@media (min-width: 560px) {
+  .watch-list.tiles.mrizka { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .watch-list.tiles.siroke { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 
 /*
  * Dlaždice (v0.59.14, návrh uživatele): pevná výška stejná na zavřeném
@@ -2570,7 +2576,17 @@ details.advanced { margin-top: 14px; }
 .tile-poz { font-size: 0.66rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 .tile-telo { position: relative; flex: 1; min-height: 0; }
-.tile .tile-spark { position: absolute; left: 0; top: 6px; width: 100%; height: calc(100% - 6px); }
+/* Graf odsazený ~10 % z obou stran, nabíhá z průhledna a končí do ztracena
+   (v0.59.15, přání uživatele). */
+.tile .tile-spark {
+  position: absolute;
+  left: 10%;
+  top: 6px;
+  width: 80%;
+  height: calc(100% - 6px);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 22%, #000 78%, transparent);
+          mask-image: linear-gradient(90deg, transparent, #000 22%, #000 78%, transparent);
+}
 .tile-cenovka {
   position: absolute;
   right: 10px;

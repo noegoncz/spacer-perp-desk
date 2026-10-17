@@ -1,13 +1,13 @@
 {
-  "verze": "0.59.14",
+  "verze": "0.59.15",
   "novinky": [
     {
       "en": "Each chart remembers its own timeframe and zoom — BTC opens on 1D, JUP on 15m, just as you left them.",
       "cs": "Každý graf si pamatuje svůj timeframe a přiblížení — BTC se otevře na 1D, JUP na 15m, jak jsi je nechal."
     },
     {
-      "en": "New watchlist tiles: pair, exchange and category on top, a full-width chart with a soft fill below — same height folded or unfolded.",
-      "cs": "Nové dlaždice Watchlists: nahoře pár, burza a kategorie, pod nimi graf přes celou šířku s jemnou výplní — stejně vysoké na zavřeném i rozevřeném Foldu."
+      "en": "New watchlist tiles: pair, exchange and category on top, a smooth chart with a soft fill below. On the unfolded Fold twice as many tiles fit side by side.",
+      "cs": "Nové dlaždice Watchlists: nahoře pár, burza a kategorie, pod nimi vyhlazený graf s jemnou výplní. Na rozevřeném Foldu se jich vejde vedle sebe dvakrát víc."
     },
     {
       "en": "Trade review from History shows today's price as a solid “Current price” line.",

@@ -1783,8 +1783,8 @@ aktivní sestavu → přejmenovat / smazat.
     přidané mají fajfku, podruhé → „už je v seznamu". Bublina hlášení
     v Trzích uhne nad + (`body.na-trzich`).
   - Záložka se od v0.36.1 jmenuje **Watchlists** (česky Seznamy). Mřížka
-    má vždy **2 sloupce**, široké **1** — na zavřeném i rozevřeném Foldu
-    (jako TabTrader); na rozevřeném jsou dlaždice jen širší.
+    má na zavřeném Foldu **2 sloupce**, široké **1**; na rozevřeném od
+    v0.59.15 dvojnásobek (viz Drobnosti v0.59.13–15).
   - **Podržet dlaždici** (`js/dlazdice.js`, dotykové události): táhnout →
     **výměna místa** s dlaždicí pod prstem (`sestavy.prohod`, v0.36.1); pustit bez
     pohybu → nabídka (odebrat ze seznamu / do jiného seznamu). ⚠ Klepnutí
@@ -2611,6 +2611,12 @@ nové APK sestavené 2026-10-17 a uživatel potvrdil, že funguje).
     přechod s vlastním id v každém grafu), cena a změna vpravo dole na
     výplni. **Objem se v dlaždici seznamu neukazuje** (jen metrika
     řazení v „All"). Rozložení mřížka / široké = jen počet sloupců.
+    **v0.59.15:** od 560 px šířky dvojnásobek sloupců (mřížka 4, široké
+    2) — dlaždice vypadají stejně jako na zavřeném displeji. Graf
+    odsazený 10 % z obou stran, maska z průhledna do ztracena, křivka
+    vyhlazená monotónní kubickou interpolací (`hladkaKrivka` v ui.js —
+    nepřestřelí nad skutečné maximum). Čára je `path.spark-cara`, ne
+    `polyline` (testy na to sahají).
     ⚠ `drawSparkline` dřív přepsal `class` a smazal `tile-spark` — graf
     pak neměl velikost dlaždice vůbec.
   - **Vzhled grafu k páru** (uživatel vybral timeframe + zoom):

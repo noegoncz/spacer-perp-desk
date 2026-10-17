@@ -56,7 +56,7 @@ def over(podminka, popis):
 def dlazdice(klic):
     return ev(f"""(() => {{ const t = document.querySelector('#watchList .tile[data-klic="{klic}"]'); if (!t) return null;
       return {{ burza: t.querySelector('.tile-burza').textContent, cena: t.querySelector('.tile-cena').textContent,
-               graf: !!t.querySelector('.watch-spark polyline'),
+               graf: !!t.querySelector('.watch-spark .spark-cara'),
                hodnota: (t.querySelector('.tile-pozice') || {{}}).textContent || '',
                stejna: t.__oznacena === true }}; }})()""")
 

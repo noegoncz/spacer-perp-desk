@@ -72,7 +72,7 @@ def over(podminka, popis):
 
 DLAZDICE = """JSON.stringify([...document.querySelectorAll('#watchList .tile')].map((t) => ({
   s: t.dataset.symbol, cena: (t.querySelector('.tile-cena') || {}).textContent || '',
-  graf: !!t.querySelector('.watch-spark polyline') })))"""
+  graf: !!t.querySelector('.watch-spark .spark-cara') })))"""
 
 print('1) předčtení po startu')
 p.prikaz('Page.navigate', url=sys.argv[1])
