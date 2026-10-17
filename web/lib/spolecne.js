@@ -12,6 +12,7 @@ export const VERZE_SOUHLASU = '2026-09-28';
  */
 export const BURZY_ZIVE = 'Bybit, Binance and Hyperliquid';
 export const BURZY_DALSI = 'OKX, Bitget, Gate, MEXC and more are on the way.';
+export const BURZY_POCET = 3; // kolik burz už běží (text „3 exchanges live today")
 
 const hlavicky = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
 export const odpoved = (telo, status = 200) =>
@@ -62,10 +63,15 @@ export function potvrzovaciMail(token) {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f5f9;padding:32px 12px"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:16px;padding:36px 32px">
 <tr><td style="padding-bottom:24px;font-size:22px;font-weight:800;letter-spacing:0.2px">Perpy<span style="color:#7c5cff">X</span></td></tr>
-<tr><td style="font-size:22px;font-weight:700;padding-bottom:12px">Confirm your email</td></tr>
-<tr><td style="font-size:16px;line-height:1.6;color:#3b4656;padding-bottom:16px">Someone — hopefully you — asked to join the PerpyX beta with this address. Confirm it and we'll invite you when the next beta round opens.</td></tr>
-<tr><td style="font-size:16px;line-height:1.6;color:#3b4656;padding-bottom:28px">PerpyX is an Android app for keeping an eye on your perpetual positions on ${BURZY_ZIVE}: live PnL, stop-loss and take-profit levels, funding and price alerts. ${BURZY_DALSI} Beta testers get early access and a direct line to shape what comes next. We'll only email you about the beta and major updates.</td></tr>
-<tr><td style="padding-bottom:28px"><a href="${esc(odkaz)}" style="display:inline-block;background:#6d5cff;background-image:linear-gradient(135deg,#22d3ee,#7c5cff);color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;padding:14px 26px;border-radius:12px">Confirm my email</a></td></tr>
+<tr><td style="font-size:24px;font-weight:800;padding-bottom:12px">One click and you're in.</td></tr>
+<tr><td style="font-size:16px;line-height:1.6;color:#3b4656;padding-bottom:22px">Someone (hopefully you) asked to join the PerpyX beta with this address. Confirm it and you're on the list for the next beta round.</td></tr>
+<tr><td style="font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#7c5cff;padding-bottom:10px">Why it's worth it</td></tr>
+<tr><td style="font-size:16px;line-height:1.6;color:#3b4656;padding-bottom:10px"><strong style="color:#0d1420">Early access, more to play with.</strong> Beta members get extras in the app that future basic accounts won't have.</td></tr>
+<tr><td style="font-size:16px;line-height:1.6;color:#3b4656;padding-bottom:10px"><strong style="color:#0d1420">Your voice shapes the app.</strong> Every piece of feedback you send from the app goes straight to the people building PerpyX, and the good ideas ship fast.</td></tr>
+<tr><td style="font-size:16px;line-height:1.6;color:#3b4656;padding-bottom:26px"><strong style="color:#0d1420">Bring your crew.</strong> Once you confirm, you get your own invite link. Challenge your trading friends, near and far, to join you. The more of them who come along, the sooner you're in, and early supporters will be properly rewarded.</td></tr>
+<tr><td style="padding-bottom:26px"><a href="${esc(odkaz)}" style="display:inline-block;background:#6d5cff;background-image:linear-gradient(135deg,#22d3ee,#7c5cff);color:#ffffff;text-decoration:none;font-weight:700;font-size:17px;padding:15px 30px;border-radius:12px">Confirm my spot</a></td></tr>
+<tr><td style="font-size:15px;line-height:1.6;color:#3b4656;padding-bottom:22px;background:#f6f4ff;border-radius:12px;padding:14px 16px"><strong style="color:#0d1420">${BURZY_POCET} exchanges live today</strong> — ${BURZY_ZIVE}. ${BURZY_DALSI} PerpyX keeps an eye on your perpetual positions: live PnL, stop-loss and take-profit levels, funding and price alerts that reach you even with the screen off.</td></tr>
+<tr><td style="height:20px;line-height:20px">&nbsp;</td></tr>
 <tr><td style="font-size:13px;line-height:1.6;color:#6b7788;padding-bottom:20px">Or open this link: <a href="${esc(odkaz)}" style="color:#5b4ee0;word-break:break-all">${esc(odkaz)}</a></td></tr>
 <tr><td style="font-size:14px;line-height:1.6;color:#3b4656;border-top:1px solid #e6e9ef;padding-top:20px">Didn't sign up? Just ignore this email — you won't hear from us, and the address is deleted after 30 days.</td></tr>
 </table>
@@ -73,18 +79,26 @@ export function potvrzovaciMail(token) {
 PerpyX · Roman Spacek, Czech Republic · <a href="${WEB}/privacy" style="color:#8a95a5">Privacy</a> · <a href="${esc(odhlasit)}" style="color:#8a95a5">Unsubscribe</a>
 </td></tr></table>
 </td></tr></table></body></html>`;
-  const text = `Confirm your email
+  const text = `One click and you're in.
 
-Someone — hopefully you — asked to join the PerpyX beta with this address.
-Confirm it and we'll invite you when the next beta round opens:
+Someone (hopefully you) asked to join the PerpyX beta with this address.
+Confirm it and you're on the list for the next beta round:
 
 ${odkaz}
 
-PerpyX is an Android app for keeping an eye on your perpetual positions on
-${BURZY_ZIVE}: live PnL, stop-loss and take-profit levels, funding and
-price alerts. ${BURZY_DALSI} Beta testers get early access and a direct
-line to shape what comes next. We'll only email you about the beta and major
-updates.
+Why it's worth it
+- Early access, more to play with. Beta members get extras in the app that
+  future basic accounts won't have.
+- Your voice shapes the app. Every piece of feedback you send from the app
+  goes straight to the people building PerpyX, and the good ideas ship fast.
+- Bring your crew. Once you confirm, you get your own invite link. Challenge
+  your trading friends, near and far, to join you. The more of them who come
+  along, the sooner you're in, and early supporters will be properly rewarded.
+
+${BURZY_POCET} exchanges live today — ${BURZY_ZIVE}. ${BURZY_DALSI}
+PerpyX keeps an eye on your perpetual positions: live PnL, stop-loss and
+take-profit levels, funding and price alerts that reach you even with the
+screen off.
 
 Didn't sign up? Just ignore this email — you won't hear from us, and the
 address is deleted after 30 days.
@@ -92,7 +106,7 @@ address is deleted after 30 days.
 PerpyX · Roman Spacek, Czech Republic · ${WEB}/privacy
 Unsubscribe: ${odhlasit}`;
   return {
-    predmet: 'Confirm your PerpyX beta signup',
+    predmet: 'Confirm your spot in the PerpyX beta 🚀',
     html,
     text,
     // Odhlášení jedním klepnutím přímo z poštovního klienta (RFC 8058).
