@@ -1,0 +1,70 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@500;600&display=swap">
+<style>
+  :root { --bg: #0b0f16; --text: #e6edf5; --dim: #8b97ab; --cyan: #22d3ee; --violet: #7c5cff; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 680px; height: 240px; background: var(--bg); overflow: hidden; }
+  .banner {
+    position: relative; width: 680px; height: 240px; overflow: hidden;
+    background:
+      radial-gradient(420px 260px at 610px -40px, rgba(34, 211, 238, 0.20), transparent 70%),
+      radial-gradient(380px 240px at 380px 300px, rgba(124, 92, 255, 0.22), transparent 70%),
+      var(--bg);
+  }
+  /* jemná mřížka jako v grafu */
+  .mrizka {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(139, 151, 171, 0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(139, 151, 171, 0.07) 1px, transparent 1px);
+    background-size: 34px 34px;
+    -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 55%, transparent 85%);
+            mask-image: linear-gradient(90deg, #000 0%, #000 55%, transparent 85%);
+  }
+  .text { position: absolute; left: 32px; top: 30px; display: flex; flex-direction: column; gap: 9px; }
+  .znacka { display: flex; align-items: center; gap: 12px; }
+  .znacka svg { width: 46px; height: 46px; filter: drop-shadow(0 0 12px rgba(34, 211, 238, 0.35)); }
+  .nazev { font: 700 40px/1 Sora, "Segoe UI", sans-serif; color: var(--text); letter-spacing: -0.02em; }
+  .nazev span {
+    background: linear-gradient(135deg, var(--cyan), var(--violet));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .slogan { font: 600 16px/1.3 Inter, "Segoe UI", sans-serif; color: var(--text); max-width: 330px; }
+  .slogan b { color: var(--cyan); font-weight: 600; }
+  .beta {
+    align-self: flex-start; margin-top: 2px; padding: 4px 10px; border-radius: 999px;
+    font: 600 12px/1.2 Inter, "Segoe UI", sans-serif; color: var(--cyan); letter-spacing: 0.02em;
+    border: 1px solid rgba(34, 211, 238, 0.45); background: rgba(34, 211, 238, 0.08);
+  }
+  .telefon {
+    position: absolute; width: 150px; height: 300px; border-radius: 22px; padding: 6px;
+    background: #1a2233; border: 1px solid #2c3850;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.03);
+  }
+  .telefon img { width: 100%; height: 100%; object-fit: cover; object-position: top; border-radius: 16px; display: block; }
+  .t1 { right: 128px; top: 26px; transform: rotate(-7deg); opacity: 0.55; }
+  .t2 { right: 28px; top: 14px; transform: rotate(5deg); }
+</style></head>
+<body>
+<div class="banner">
+  <div class="mrizka"></div>
+  <div class="telefon t1"><img src="../../web/public/img/pozice.webp" alt=""></div>
+  <div class="telefon t2"><img src="../../web/public/img/graf.webp" alt=""></div>
+  <div class="text">
+    <div class="znacka">
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <defs><linearGradient id="g" x1="8" y1="8" x2="92" y2="92" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#22d3ee"/><stop offset="100%" stop-color="#7c5cff"/></linearGradient></defs>
+        <g transform="translate(50,50)">
+          <g transform="rotate(-45)"><rect x="-32" y="-8" width="22" height="16" rx="4" fill="url(#g)"/><rect x="10" y="-8" width="22" height="16" rx="4" fill="url(#g)"/></g>
+          <g transform="rotate(45)"><rect x="-32" y="-8" width="64" height="16" rx="4" fill="url(#g)"/></g>
+        </g>
+      </svg>
+      <div class="nazev">Perpy<span>X</span></div>
+    </div>
+    <div class="slogan">Your perp positions on <b>every exchange</b> — charts &amp; alerts on your phone.</div>
+    <div class="beta">Beta · perpyx.com</div>
+  </div>
+</div>
+</body></html>
