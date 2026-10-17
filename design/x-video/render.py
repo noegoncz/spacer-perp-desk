@@ -4,17 +4,20 @@ sys.path.insert(0, r'C:\Users\roman\Projekty\spacer-perp-desk\tools')
 from dotyk import Prohlizec
 
 KDE = os.path.dirname(os.path.abspath(__file__))
-SCENY = {'uvod-nahled': 2.2, 'uvod': 2.2, 'zaver': 3.2}  # délka v sekundách
+SCENY = {'uvod-nahled': 2.2, 'zaver': 3.6}  # délka v sekundách
+# Parametry šablony (pozadí, podtitul, burzy, perky): python render.py "pozadi=pozadi.png&perky=…"
+EXTRA = ('&' + sys.argv[1]) if len(sys.argv) > 1 else ''
+VYSKA = int(os.environ.get('VYSKA', '1164'))
 FPS = 30
 
 p = Prohlizec()
 for c in ('Page.enable', 'Runtime.enable'):
     p.prikaz(c)
-p.prikaz('Emulation.setDeviceMetricsOverride', width=1080, height=1164, deviceScaleFactor=1, mobile=False)
+p.prikaz('Emulation.setDeviceMetricsOverride', width=1080, height=VYSKA, deviceScaleFactor=1, mobile=False)
 for scena, delka in SCENY.items():
     slozka = os.path.join(KDE, scena)
     os.makedirs(slozka, exist_ok=True)
-    p.prikaz('Page.navigate', url=f'http://localhost:8078/karty.html?scena={scena}')
+    p.prikaz('Page.navigate', url=f'http://localhost:8078/karty.html?scena={scena}{EXTRA}')
     time.sleep(3)
     p.prikaz('Runtime.evaluate', expression='document.fonts.ready.then(() => 1)', awaitPromise=True)
     for i in range(int(delka * FPS)):

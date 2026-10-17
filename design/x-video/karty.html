@@ -3,6 +3,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@500;600&display=block" rel="stylesheet">
 <style>
   html, body { margin: 0; width: 1080px; height: 1164px; overflow: hidden; background: #0b0f14; }
+  /* Pozadí ze záběru aplikace (?pozadi=obrázek, 2026-10-17): ztlumené
+     a lehce rozmazané, ať logo vynikne a aplikace je pořád poznat. */
+  .pozadi { position: absolute; inset: -20px; background-size: cover; background-position: center top;
+            filter: blur(2.5px) brightness(.68) saturate(1.15); transform-origin: 50% 40%; }
+  .pozadi-zavoj { position: absolute; inset: 0;
+            background: radial-gradient(ellipse at 50% 45%, rgba(11,15,20,.62) 0%, rgba(11,15,20,.42) 45%, rgba(11,15,20,.70) 100%); }
+  .burzy { margin-top: 22px; font-size: 32px; font-weight: 600; color: #cfd9e6; letter-spacing: 1px; }
+  .burzy b { color: #22d3ee; font-weight: 600; }
   body { font-family: Inter, 'Segoe UI', sans-serif; color: #e6edf5; }
   .scena { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
   /* jemná záře za logem */
@@ -31,6 +39,7 @@
   </defs>
 </svg>
 
+<div id="pozadi"></div>
 <div class="scena" id="scena"></div>
 
 <script>
@@ -45,18 +54,27 @@ function X(id) {
     <g transform="rotate(45)"><rect class="${id}b" x="-32" y="-8" width="64" height="16" rx="4" fill="url(#g)"/></g>
   </g></svg>`;
 }
-const scena = new URLSearchParams(location.search).get('scena') || 'uvod';
+const parametry = new URLSearchParams(location.search);
+const scena = parametry.get('scena') || 'uvod';
 const el = document.getElementById('scena');
+if (parametry.get('pozadi')) {
+  document.getElementById('pozadi').innerHTML = `<div class="pozadi" style="background-image:url('${parametry.get('pozadi')}')"></div><div class="pozadi-zavoj"></div>`;
+}
+// Text pod logem a v závěru jde přepsat parametrem (každé video jiná zpráva).
+const podtitul = parametry.get('podtitul') || 'Your perpetuals, at a glance.';
+const burzy = parametry.get('burzy');
+const perky = parametry.get('perky') || 'Early testers get serious perks.';
 if (scena === 'uvod' || scena === 'uvod-nahled') {
   el.innerHTML = `<div class="zare"></div><div class="dlazdice">${X('d')}</div>
     <div class="znacka"><span>Perpy</span>${X('w')}</div>
-    <div class="podtitul">Your perpetuals, at a glance.</div>`;
+    <div class="podtitul">${podtitul}</div>${burzy ? `<div class="burzy">${burzy}</div>` : ''}`;
 } else {
-  el.innerHTML = `<div class="zare"></div>
-    <div class="znacka" style="margin-top:0"><span>Perpy</span>${X('w')}</div>
+  // Závěr: tkané X se poskládá jako v úvodu, pak nápis a výzva (2026-10-17).
+  el.innerHTML = `<div class="zare"></div><div class="dlazdice" style="width:220px;height:220px;border-radius:48px">${X('d')}</div>
+    <div class="znacka" style="margin-top:36px"><span>Perpy</span>${X('w')}</div>
     <div class="beta">Join the beta</div>
     <div class="web"><span>perpyx.com</span></div>
-    <div class="perky">Early testers get serious perks.</div>`;
+    <div class="perky">${perky}</div>`;
 }
 const E = 'cubic-bezier(.2,.8,.2,1)';
 const anim = (sel, kf, delay, dur) => document.querySelectorAll(sel).forEach((n) =>
@@ -67,7 +85,8 @@ if (scena === 'uvod-nahled') {
    * berou první snímek jako náhled videu, a ten pak není černý. Jen
    * jemné přiblížení a zesílení záře, nic se neskládá.
    */
-  anim('.dlazdice, .znacka, .podtitul', [{ transform: 'scale(.95)' }, { transform: 'scale(1)' }], 0, 2200);
+  anim('.dlazdice, .znacka, .podtitul, .burzy', [{ transform: 'scale(.95)' }, { transform: 'scale(1)' }], 0, 2200);
+  anim('.pozadi', [{ transform: 'scale(1.06)' }, { transform: 'scale(1)' }], 0, 2200);
   anim('.zare', [{ opacity: 0.6, transform: 'scale(.9)' }, { opacity: 1, transform: 'scale(1.05)' }], 0, 2200);
 } else if (scena === 'uvod') {
   anim('.zare', [{ opacity: 0, transform: 'scale(.6)' }, { opacity: 1, transform: 'scale(1)' }], 0, 900);
@@ -80,12 +99,17 @@ if (scena === 'uvod-nahled') {
   anim('.wa1, .wa2, .wb', [{ opacity: 0 }, { opacity: 1 }], 820, 480);
   anim('.podtitul', [{ opacity: 0, transform: 'translateY(18px)' }, { opacity: 1, transform: 'none' }], 1150, 450);
 } else {
-  anim('.zare', [{ opacity: 0 }, { opacity: 1 }], 0, 600);
-  anim('.znacka', [{ opacity: 0, transform: 'translateY(26px)' }, { opacity: 1, transform: 'none' }], 100, 450);
-  anim('.wa1, .wa2, .wb', [{ opacity: 0 }, { opacity: 1 }], 100, 450);
-  anim('.beta', [{ opacity: 0, transform: 'scale(.9)' }, { opacity: 1, transform: 'scale(1)' }], 450, 450);
-  anim('.web', [{ opacity: 0, transform: 'translateY(18px)' }, { opacity: 1, transform: 'none' }], 750, 450);
-  anim('.perky', [{ opacity: 0 }, { opacity: 1 }], 1050, 450);
+  anim('.pozadi', [{ transform: 'scale(1)' }, { transform: 'scale(1.08)' }], 0, 3600);
+  anim('.zare', [{ opacity: 0, transform: 'scale(.6)' }, { opacity: 1, transform: 'scale(1)' }], 0, 900);
+  anim('.dlazdice', [{ opacity: 0, transform: 'scale(.6) rotate(-12deg)' }, { opacity: 1, transform: 'scale(1.08) rotate(0)' }, { transform: 'scale(1)' }], 0, 600);
+  anim('.da1', [{ transform: 'translateX(22px)', opacity: 0 }, { transform: 'none', opacity: 1 }], 200, 420);
+  anim('.da2', [{ transform: 'translateX(-22px)', opacity: 0 }, { transform: 'none', opacity: 1 }], 200, 420);
+  anim('.db', [{ transform: 'scaleX(0)', opacity: 0.3 }, { transform: 'scaleX(1)', opacity: 1 }], 480, 450);
+  anim('.znacka', [{ opacity: 0, transform: 'translateY(26px)' }, { opacity: 1, transform: 'none' }], 760, 450);
+  anim('.wa1, .wa2, .wb', [{ opacity: 0 }, { opacity: 1 }], 760, 450);
+  anim('.beta', [{ opacity: 0, transform: 'scale(.8)' }, { opacity: 1, transform: 'scale(1.06)' }, { transform: 'scale(1)' }], 1100, 500);
+  anim('.web', [{ opacity: 0, transform: 'translateY(18px)' }, { opacity: 1, transform: 'none' }], 1400, 450);
+  anim('.perky', [{ opacity: 0 }, { opacity: 1 }], 1700, 450);
 }
 // Řízení času zvenku (snímek po snímku).
 document.getAnimations().forEach((a) => a.pause());

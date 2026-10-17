@@ -18,3 +18,8 @@ Rozměry jiné nahrávky změř dřív (snímek přes `ffmpeg -ss 6 -frames:v 1`
 jemné přiblížení), ne `uvod` (logo se skládá z tmy → černý náhled).
 
 Hotová videa ani snímky do repa nepatří.
+
+**Pozadí ze záběru aplikace (2026-10-17):** `python render.py "pozadi=pozadi.png&burzy=…&perky=…"`
+— snímek z nahrávky (`ffmpeg -ss 30 -i video.mp4 -frames:v 1 -vf crop=1080:1164:0:52 pozadi.png`)
+leží za logem ztlumený a lehce rozmazaný; závěr logo poskládá jako úvod.
+Nahrávka z rozevřeného Foldu 1080 × 1298: ořez `crop=1080:1164:0:52`.
