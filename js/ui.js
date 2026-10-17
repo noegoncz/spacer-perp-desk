@@ -1056,8 +1056,11 @@ export function drawSparkline(radek, hodnoty) {
   const cara = document.createElementNS(SVG_NS, 'polyline');
   cara.setAttribute('points', body);
   svg.replaceChildren(cara);
-  svg.setAttribute('class',
-    `watch-spark ${hodnoty[hodnoty.length - 1] >= hodnoty[0] ? 'up' : 'down'}`);
+  // ⚠ classList, ne přepsání `class` — dlaždice nese i `tile-spark`
+  // a s ním svou velikost (dřív se přepisem ztratila a graf byl malý).
+  const roste = hodnoty[hodnoty.length - 1] >= hodnoty[0];
+  svg.classList.toggle('up', roste);
+  svg.classList.toggle('down', !roste);
 }
 
 export function showWatchNote(text) {
