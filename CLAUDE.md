@@ -2602,8 +2602,15 @@ nové APK sestavené 2026-10-17 a uživatel potvrdil, že funguje).
     ceny se v prohlídce skryje (ukazovala cenu konce načtených svíček).
     Cenu dodává `obnovCenuTed` (ticker při otevření a po 20 s). Test:
     `test-historie-obchod.py`.
-  - **Větší mini-graf v dlaždici**: v mřížce vlevo od ceny přes dva
-    řádky (hodnota pozice vpravo vedle objemu), široké až 260 × 46 px.
+  - **Dlaždice Watchlists nově (v0.59.14, návrh uživatele podle
+    snímku Coinbase):** pevná výška 120 px na zavřeném i rozevřeném
+    Foldu (liší se jen šířkou). Nahoře jemně podbarvená hlavička
+    `.tile-hlava`: vlevo pár a pod ním burza, vpravo kategorie coinu
+    a hodnota pozice. Pod ní graf přes celou plochu: křivka v horní
+    polovině, pod ní výplň s přechodem do ztracena (`spark-plocha`,
+    přechod s vlastním id v každém grafu), cena a změna vpravo dole na
+    výplni. **Objem se v dlaždici seznamu neukazuje** (jen metrika
+    řazení v „All"). Rozložení mřížka / široké = jen počet sloupců.
     ⚠ `drawSparkline` dřív přepsal `class` a smazal `tile-spark` — graf
     pak neměl velikost dlaždice vůbec.
   - **Vzhled grafu k páru** (uživatel vybral timeframe + zoom):

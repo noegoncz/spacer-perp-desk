@@ -2511,11 +2511,18 @@ details.advanced { margin-top: 14px; }
 .watch-list.tiles.mrizka { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .watch-list.tiles.siroke { grid-template-columns: minmax(0, 1fr); }
 
+/*
+ * Dlaždice (v0.59.14, návrh uživatele): pevná výška stejná na zavřeném
+ * i rozevřeném Foldu — liší se jen šířkou (delší graf). Nahoře jemně
+ * podbarvená hlavička (pár, burza / kategorie, pozice), pod ní graf přes
+ * celou plochu s výplní a vpravo dole cena se změnou.
+ */
 .tile {
   position: relative;
-  display: grid;
-  gap: 2px 8px;
-  padding: 9px 10px 9px 12px;
+  display: flex;
+  flex-direction: column;
+  height: 120px;
+  overflow: hidden;
   border-radius: 10px;
   border-left: 3px solid transparent;
   background: var(--surface);
@@ -2530,69 +2537,66 @@ details.advanced { margin-top: 14px; }
 .tile.tile-long { border-left-color: var(--long); }
 .tile.tile-short { border-left-color: var(--short); }
 
-/* Název páru má přednost: v mřížce celý řádek. Graf vyplní místo vlevo
-   od ceny přes dva řádky (v0.59.13, přání uživatele — dřív malý vedle
-   burzy a pod ním prázdno); hodnota pozice je vpravo vedle objemu. */
-.mrizka .tile {
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas:
-    "burza burza"
-    "par par"
-    "sub poz"
-    "spark cena"
-    "spark zmena";
+.tile-hlava {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px 5px 11px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.035);
 }
-.mrizka .tile-poz { justify-self: end; align-self: center; }
-/* Široké: název podle obsahu, graf vyplní, co zbude. */
-.siroke .tile {
-  grid-template-columns: auto minmax(36px, 1fr) auto;
-  grid-template-areas:
-    "burza spark cena"
-    "par spark cena"
-    "sub spark zmena"
-    "poz spark zmena";
-  align-items: center;
-}
-.tile-burza { grid-area: burza; font-size: 0.62rem; letter-spacing: 0.06em; color: var(--text-dim); }
+.tile-vlevo, .tile-vpravo { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.tile-vlevo { flex-shrink: 0; max-width: 70%; }
+.tile-vpravo { align-items: flex-end; text-align: right; }
 .tile-par {
-  grid-area: par;
   min-width: 0;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 650;
+  line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.tile-burza { font-size: 0.58rem; letter-spacing: 0.06em; color: var(--text-dim); }
 .tile-sub {
-  grid-area: sub;
-  min-width: 0;
-  font-size: 0.66rem;
+  max-width: 100%;
+  font-size: 0.64rem;
+  line-height: 1.5;
   color: var(--text-dim);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.tile .tile-spark { grid-area: spark; width: 100%; height: 100%; min-height: 34px; align-self: stretch; }
-.siroke .tile .tile-spark { max-width: 260px; height: 46px; justify-self: center; padding: 0 6px; }
+.tile-poz { font-size: 0.66rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.tile-telo { position: relative; flex: 1; min-height: 0; }
+.tile .tile-spark { position: absolute; left: 0; top: 6px; width: 100%; height: calc(100% - 6px); }
+.tile-cenovka {
+  position: absolute;
+  right: 10px;
+  bottom: 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  /* Cena leží přes graf — obtažení pozadím, ať ji křivka nepřeškrtne. */
+  text-shadow: 0 0 2px var(--surface), 0 0 4px var(--surface), 0 0 8px var(--surface);
+}
+.tile-cena {
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.tile-zmena { font-size: 0.74rem; line-height: 1.2; font-variant-numeric: tabular-nums; }
+/* Výplň mini-grafu: barva trendu do ztracena (jen v dlaždici). */
+.spark-plocha { stroke: none; }
+.watch-spark.up .spark-stop-horni { stop-color: var(--long); stop-opacity: 0.3; }
+.watch-spark.down .spark-stop-horni { stop-color: var(--short); stop-opacity: 0.3; }
+.watch-spark .spark-stop-dolni { stop-color: var(--surface); stop-opacity: 0; }
+.watch-spark:not(.tile-spark) .spark-plocha { display: none; }
 /* Volné místo pod dlaždicemi, ať poslední nezakrývá tlačítko +. */
 .watch-list.tiles.lze-presouvat { padding-bottom: 76px; }
-.tile-cena {
-  grid-area: cena;
-  justify-self: end;
-  align-self: end;
-  font-size: 1.12rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-.tile-zmena { grid-area: zmena; justify-self: end; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
-.tile-poz {
-  grid-area: poz;
-  align-self: end;
-  font-size: 0.7rem;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
 .tile-star {
   position: absolute;
   top: 2px;
@@ -2600,8 +2604,8 @@ details.advanced { margin-top: 14px; }
   width: 32px;
   height: 32px;
 }
-/* V „All" je vpravo nahoře záložka — graf a cena jí uhnou. */
-.tile:has(.tile-star) { padding-right: 36px; }
+/* V „All" je vpravo nahoře záložka — hlavička jí uhne. */
+.tile:has(.tile-star) .tile-hlava { padding-right: 38px; }
 
 /* Podržená dlaždice zvednutá nad ostatní, cíl přesunu orámovaný. */
 .tile.drzena {

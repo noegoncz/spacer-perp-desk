@@ -911,7 +911,14 @@ export function renderTiles(trhy, volby) {
     const poz = pozice?.get(trh.klic || trh.symbol);
     if (poz) d.classList.add(poz.side === 'Sell' ? 'tile-short' : 'tile-long');
 
-    const sub = [textMetriky(trh, metrika), popisek ? popisek(trh.symbol) : ''].filter(Boolean).join(' · ');
+    /*
+     * Rozvržení (v0.59.14, návrh uživatele): nahoře jemně podbarvená
+     * hlavička — vlevo pár a pod ním burza, vpravo kategorie coinu
+     * a hodnota pozice; zbytek dlaždice je graf s výplní a vpravo dole
+     * cena se změnou. Objem se ve vlastním seznamu neukazuje (jen metrika
+     * řazení v „All").
+     */
+    const sub = [onToggleFav ? textMetriky(trh, metrika) : '', popisek ? popisek(trh.symbol) : ''].filter(Boolean).join(' · ');
     const spark = document.createElementNS(SVG_NS, 'svg');
     spark.setAttribute('class', 'watch-spark tile-spark');
     spark.setAttribute('viewBox', '0 0 58 24');
@@ -920,8 +927,17 @@ export function renderTiles(trhy, volby) {
     const hodnota = div(`tile-poz ${poz ? pnlClass(poz.pnl) : ''}`.trim(),
       poz ? (hide ? MASK : `${formatUsd(poz.value)} ${menaParu(poz.symbol)}`) : '');
 
-    d.append(div('tile-burza', String(nazevPodle?.(trh.burza) || nazevBurzy).toUpperCase()), div('tile-par', trh.symbol), div('tile-sub', sub),
-      spark, div('tile-cena', formatPrice(trh.last)), zmena, hodnota);
+    const vlevo = div('tile-vlevo');
+    vlevo.append(div('tile-par', trh.symbol), div('tile-burza', String(nazevPodle?.(trh.burza) || nazevBurzy).toUpperCase()));
+    const vpravo = div('tile-vpravo');
+    vpravo.append(div('tile-sub', sub), hodnota);
+    const hlava = div('tile-hlava');
+    hlava.append(vlevo, vpravo);
+    const cena = div('tile-cenovka');
+    cena.append(div('tile-cena', formatPrice(trh.last)), zmena);
+    const telo = div('tile-telo');
+    telo.append(spark, cena);
+    d.append(hlava, telo);
 
     if (onToggleFav) {
       const hvezda = document.createElement('button');
@@ -1039,6 +1055,8 @@ function vytvorDelic({ sbaleno, onClick }) {
   return btn;
 }
 
+let citacSparku = 0;
+
 /** Mini-graf trendu za 24 h. Zelený, když cena skončila výš než začala. */
 export function drawSparkline(radek, hodnoty) {
   const svg = radek.querySelector('.watch-spark');
@@ -1048,14 +1066,41 @@ export function drawSparkline(radek, hodnoty) {
   const max = Math.max(...hodnoty);
   const rozsah = max - min || 1;
   const krok = hodnoty.length > 1 ? 58 / (hodnoty.length - 1) : 58;
+  // V dlaždici vede křivka jen horní částí grafu a pod ní je výplň —
+  // cena vpravo dole pak leží na výplni, ne přes křivku (jako Coinbase).
+  const dole = svg.classList.contains('tile-spark') ? 12 : 22;
 
   const body = hodnoty
-    .map((v, i) => `${(i * krok).toFixed(1)},${(22 - ((v - min) / rozsah) * 20).toFixed(1)}`)
+    .map((v, i) => `${(i * krok).toFixed(1)},${(dole - ((v - min) / rozsah) * (dole - 1)).toFixed(1)}`)
     .join(' ');
 
   const cara = document.createElementNS(SVG_NS, 'polyline');
   cara.setAttribute('points', body);
-  svg.replaceChildren(cara);
+  /*
+   * Výplň pod křivkou s přechodem do ztracena (v0.59.14, podle snímku
+   * uživatele). Přechod má vlastní id v každém grafu — sdílené id by
+   * při překreslení jednoho grafu sebralo barvu ostatním.
+   */
+  const id = `spark-${++citacSparku}`;
+  const defs = document.createElementNS(SVG_NS, 'defs');
+  const prechod = document.createElementNS(SVG_NS, 'linearGradient');
+  prechod.setAttribute('id', id);
+  prechod.setAttribute('x1', '0');
+  prechod.setAttribute('y1', '0');
+  prechod.setAttribute('x2', '0');
+  prechod.setAttribute('y2', '1');
+  for (const [offset, tridaZastavky] of [['0', 'spark-stop-horni'], ['1', 'spark-stop-dolni']]) {
+    const z = document.createElementNS(SVG_NS, 'stop');
+    z.setAttribute('offset', offset);
+    z.setAttribute('class', tridaZastavky);
+    prechod.append(z);
+  }
+  defs.append(prechod);
+  const plocha = document.createElementNS(SVG_NS, 'polygon');
+  plocha.setAttribute('points', `0,24 ${body} ${((hodnoty.length - 1) * krok).toFixed(1)},24`);
+  plocha.setAttribute('class', 'spark-plocha');
+  plocha.setAttribute('fill', `url(#${id})`);
+  svg.replaceChildren(defs, plocha, cara);
   // ⚠ classList, ne přepsání `class` — dlaždice nese i `tile-spark`
   // a s ním svou velikost (dřív se přepisem ztratila a graf byl malý).
   const roste = hodnoty[hodnoty.length - 1] >= hodnoty[0];

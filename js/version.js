@@ -7,5 +7,5 @@
  * `__BUILD_ID__` nahradí deploy workflow krátkým SHA commitu. Když v UI vidíš
  * „dev", běží to z lokálního serveru, ne z Pages.
  */
-self.APP_VERSION = '0.59.13';
+self.APP_VERSION = '0.59.14';
 self.APP_BUILD = '__BUILD_ID__';
