@@ -61,8 +61,10 @@ STAV = """JSON.stringify((() => {
   return {
     karta: !$('stat30').hidden, ucet: !$('accountSummary').hidden,
     pnl: $('stat30Pnl').textContent, detail: $('stat30Detail').textContent,
-    body: $('stat30Graf').querySelectorAll('circle').length,
-    cara: !!$('stat30Graf').querySelector('path'),
+    body: $('stat30Graf').querySelectorAll('.stat30-cara').length,
+    tecky: $('stat30Graf').querySelectorAll('circle').length,
+    barva: $('stat30Graf').classList.contains('up') || $('stat30Graf').classList.contains('down'),
+    cara: /C/.test($('stat30Graf').querySelector('.stat30-cara')?.getAttribute('d') || ''),
     nastroje: !$('positionTools').hidden, tlacitko: !$('positionToolsBtn').hidden,
     svitı: $('positionToolsBtn').classList.contains('aktivni'), tecka: !$('positionToolsDot').hidden,
   };
@@ -77,7 +79,9 @@ for _ in range(30):
 print('  ', stav)
 over(not stav.get('ucet'), 'přehled účtu (Equity / Free / Margin) je schovaný')
 over(stav.get('karta'), 'karta „Last 30 days" je vidět')
-over(stav.get('body', 0) >= 1 and stav.get('cara'), f"křivka s tečkou za každé zavření ({stav.get('body')})")
+over(stav.get('body') == 1 and stav.get('cara'), 'plynulá křivka (jako v dlaždici)')
+over(stav.get('tecky') == 0, 'bez teček za jednotlivá zavření')
+over(stav.get('barva'), 'barva podle trendu (up / down)')
 over('closes' in (stav.get('detail') or ''), f"počet uzavření a úspěšnost ({stav.get('detail')})")
 over(any(ch.isdigit() for ch in stav.get('pnl', '')), f"součet za 30 dní ({stav.get('pnl')})")
 over(not stav.get('nastroje') and stav.get('tlacitko'), 'řazení a filtr schované pod tlačítkem')

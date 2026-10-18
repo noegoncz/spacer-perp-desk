@@ -496,31 +496,56 @@ function kresliKrivku30(body, od, doKdy) {
   const svg = dom.stat30Graf;
   const w = Math.max(120, Math.round(svg.getBoundingClientRect().width) || 312);
   const h = 56;
-  const okraj = 5;
-  // Průběžný součet; osa od nuly, ať je vidět, jestli je měsíc v plusu.
+  /*
+   * Plynulá křivka jako v dlaždici Watchlists (v0.62.1, přání uživatele —
+   * schody s tečkou za každé zavření vypadaly špatně). Průběžný součet se
+   * vede přímo mezi zavřeními, vzorkuje rovnoměrně a vyhladí stejnou monotónní interpolací jako mini-graf;
+   * barva podle součtu za 30 dní, pod křivkou výplň do ztracena.
+   */
+  // Body: začátek okna (0), každé zavření (průběžný součet), konec okna.
+  // Mezi nimi přímo, vzorkované rovnoměrně — schody působily neklidně.
+  const serazene = [...body].sort((p, q) => p.t - q.t);
   let kum = 0;
-  const kroky = body.map((b) => ({ t: b.t, v: (kum += b.pnl) }));
-  const min = Math.min(0, ...kroky.map((k) => k.v));
-  const max = Math.max(0, ...kroky.map((k) => k.v));
+  const uzly = [{ t: od, v: 0 }];
+  serazene.forEach((b) => uzly.push({ t: Math.max(od, Math.min(doKdy, b.t)), v: (kum += b.pnl) }));
+  uzly.push({ t: doKdy, v: kum });
+  const POCET = 48;
+  const vzorky = [];
+  let j = 0;
+  for (let k = 0; k <= POCET; k += 1) {
+    const cas = od + ((doKdy - od) * k) / POCET;
+    while (j < uzly.length - 2 && uzly[j + 1].t <= cas) j += 1;
+    const [a, b] = [uzly[j], uzly[j + 1]];
+    const podil = b.t > a.t ? Math.min(1, Math.max(0, (cas - a.t) / (b.t - a.t))) : 1;
+    vzorky.push(a.v + (b.v - a.v) * podil);
+  }
+  const min = Math.min(...vzorky);
+  const max = Math.max(...vzorky);
   const rozpeti = max - min || 1;
-  const x = (cas) => okraj + ((cas - od) / Math.max(1, doKdy - od)) * (w - 2 * okraj);
-  const y = (v) => okraj + (1 - (v - min) / rozpeti) * (h - 2 * okraj);
-  let d = `M${okraj} ${y(0).toFixed(1)}`;
-  kroky.forEach((k) => {
-    d += `H${x(k.t).toFixed(1)}V${y(k.v).toFixed(1)}`;
-  });
-  d += `H${w - okraj}`;
-  const SVG = 'http://www.w3.org/2000/svg';
+  const nahore = 4;
+  const dole = h * 0.62;
+  const ys = vzorky.map((v) => dole - ((v - min) / rozpeti) * (dole - nahore));
+  const dx = w / (vzorky.length - 1);
+  const krivka = hladkaKrivka(ys, dx);
   const prvek = (tag, atributy) => {
-    const e = document.createElementNS(SVG, tag);
+    const e = document.createElementNS(SVG_NS, tag);
     Object.entries(atributy).forEach(([k, v]) => e.setAttribute(k, v));
     return e;
   };
+  const prechod = prvek('linearGradient', { id: 'stat30-prechod', x1: 0, y1: 0, x2: 0, y2: 1 });
+  prechod.append(
+    prvek('stop', { offset: 0, class: 'spark-stop-horni' }),
+    prvek('stop', { offset: 1, class: 'spark-stop-dolni' }),
+  );
+  const defs = prvek('defs', {});
+  defs.append(prechod);
   svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  svg.classList.toggle('up', kum >= 0);
+  svg.classList.toggle('down', kum < 0);
   svg.replaceChildren(
-    prvek('line', { x1: 0, x2: w, y1: y(0), y2: y(0), class: 'stat30-nula' }),
-    prvek('path', { d, class: `stat30-cara ${kum >= 0 ? 'zisk' : 'ztrata'}` }),
-    ...kroky.map((k) => prvek('circle', { cx: x(k.t).toFixed(1), cy: y(k.v).toFixed(1), r: 2.4, class: 'stat30-bod' })),
+    defs,
+    prvek('path', { d: `${krivka} L${w},${h} L0,${h} Z`, class: 'spark-plocha', fill: 'url(#stat30-prechod)' }),
+    prvek('path', { d: krivka, class: 'spark-cara stat30-cara' }),
   );
 }
 

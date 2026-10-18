@@ -846,11 +846,18 @@ main {
 }
 .stat30-graf { display: block; width: 100%; height: 56px; }
 .stat30-graf:empty { display: none; }
-.stat30-nula { stroke: var(--border); stroke-width: 1; }
-.stat30-cara { fill: none; stroke-width: 1.6; stroke-linejoin: round; }
-.stat30-cara.zisk { stroke: var(--long); }
-.stat30-cara.ztrata { stroke: var(--short); }
-.stat30-bod { fill: var(--text); }
+/* Křivka jako mini-graf dlaždice (v0.62.1): barva trendu, výplň do ztracena,
+   okraje se vytrácejí. */
+.stat30-graf {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+          mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+.stat30-cara { fill: none; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
+.stat30-graf.up .stat30-cara { stroke: var(--long); }
+.stat30-graf.down .stat30-cara { stroke: var(--short); }
+.stat30-graf.up .spark-stop-horni { stop-color: var(--long); stop-opacity: 0.28; }
+.stat30-graf.down .spark-stop-horni { stop-color: var(--short); stop-opacity: 0.28; }
+.stat30-graf .spark-stop-dolni { stop-color: var(--surface); stop-opacity: 0; }
 .stat30 .list-tools {
   margin: 4px 0 4px;
   padding-top: 10px;

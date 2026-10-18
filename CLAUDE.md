@@ -598,7 +598,10 @@ Zaškrtávací stránka (23 kroků, v0.61.0): 18 sedí. Opraveno:
   (`PREHLED_UCTU_SKRYTY` v ui.js, kód zůstal). Karta `#stat30` „Last 30
   days": součet uzavřených obchodů všech účtů, počet uzavření, úspěšnost,
   nejlepší; křivka = schody průběžného součtu, tečka za každé zavření
-  (`renderStat30`, překreslí se při změně šířky). Bod = zavírací příkaz
+  (`renderStat30`, překreslí se při změně šířky).
+  **v0.62.1 (uživatel: „vypadá blbě"):** křivka jako mini-graf dlaždice —
+  plynulá (přímo mezi zavřeními, 48 vzorků, `hladkaKrivka`), bez teček,
+  zelená / červená podle součtu za 30 dní, výplň do ztracena. Bod = zavírací příkaz
   (částečné zavření je bod navíc — skládání do obchodů by chtělo plnění
   všech párů všech účtů). Data `getClosedTrades` každého klienta za 30 dní,
   v `perpdesk.stat30` (mimo zálohu), ze sítě nejvýš po 15 min, po ⟳
