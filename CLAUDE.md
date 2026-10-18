@@ -565,6 +565,29 @@ statistiky a shrnutí v lidské řeči — „co mi to o mně jako traderovi ř�
   výchozí vypnuto) — přijde s nativními notifikacemi.
 - Test: `tools/test-denik.py`.
 
+### Ověření Binance uživatelem (2026-10-18) a opravy v0.61.1
+
+Zaškrtávací stránka (23 kroků, v0.61.0): 18 sedí. Opraveno:
+- **Zisk obchodu Binance po poplatcích.** `realizedPnl` (plnění i deník
+  příjmů) poplatky nemá, Position History Binance ano (uživatel: −0.42 vs
+  −0.44, −0.25 vs −0.27; BNFCR = kredit Binance pro EU v USD, ~1:1).
+  Plnění mají volitelné pole `fee` (`poplatek()` v ccxt-adapter.js, jen
+  stablecoiny — poplatek v BNB se vynechá). Záznam zavíracího příkazu má
+  odečtený poplatek zavření (binance.js), poplatky otevíracích plnění
+  odečte Historie poměrně podle množství (`seskupObchody`, příznak
+  adaptéru `poplatkyOtevreni`). Bybit to nepotřebuje (`closedPnl` je
+  s poplatky), Hyperliquid se nechal (jeho aplikace ukazuje bez poplatků).
+  Mezipaměť `VERZE = 3` (uložená plnění bez `fee`). Test:
+  `test-binance-ucet.py` bod 3b (na v0.61.0 padá).
+- **Výpadek sítě nejde do lišty chyb** (`jePrechodnaChyba`: error.network,
+  error.timeout, error.offline — i u neodchycených chyb). Stav v hlavičce
+  stačí; lišta jen pro chyby, se kterými má uživatel něco udělat.
+- **Text push alarmu:** jen „↑ prorazil 0.29028" — pár je v nadpisu,
+  druhá cena (poslední obchod) zmizela (`texty` v server/hlidac.mjs).
+- Zbývá z ověření: přehled účtu (Equity/Free/Margin) — uživatel zvažuje
+  zrušit; problikávání v prohlídce obchodu (pošle video); ikonka šipky
+  v notifikaci ve stylu loga (nové APK).
+
 ### `js/bybit.js` je izolovaný záměrně
 
 Veškerá komunikace s burzou (REST i WebSocket) je **jen** v tomto modulu.

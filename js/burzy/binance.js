@@ -13,7 +13,7 @@
  *    staví se z deníku příjmů (REALIZED_PNL, bez nutnosti znát pár)
  *    a plnění s realizovaným ziskem, jeden záznam na zavírací příkaz.
  */
-import { CcxtAdapter } from './ccxt-adapter.js';
+import { CcxtAdapter, poplatek } from './ccxt-adapter.js';
 import { nactiCcxt, nativniFetch } from './ccxt.js';
 
 const cislo = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -41,6 +41,9 @@ export class BinanceClient extends CcxtAdapter {
     // Plnění (`userTrades`) vydá Binance jen za posledních 6 měsíců —
     // starší okna by byla jen prázdné dotazy navíc.
     this.plneniNejdal = 180 * 864e5;
+    // Zisk obchodu bez poplatků otevíracích plnění — Historie je odečte
+    // z plnění (`fee`), ať součet sedí s Position History Binance.
+    this.poplatkyOtevreni = true;
   }
 
   popisUctu() {
@@ -374,10 +377,14 @@ export class BinanceClient extends CcxtAdapter {
         const pnl = cislo(tr.info?.realizedPnl);
         if (!pnl) continue; // otevírací plnění — realizovaný zisk nemá
         const id = String(tr.order);
-        const z = podlePrikazu.get(id) || { qty: 0, hodnota: 0, pnl: 0, cas: 0, strana: tr.side };
+        const z = podlePrikazu.get(id) || { qty: 0, hodnota: 0, pnl: 0, hrube: 0, cas: 0, strana: tr.side };
         z.qty += cislo(tr.amount);
         z.hodnota += cislo(tr.amount) * cislo(tr.price);
-        z.pnl += pnl;
+        z.hrube += pnl;
+        // Binance v realizedPnl poplatky nemá, jeho Position History ano
+        // (ověřeno uživatelem 2026-10-18: −0.42 vs −0.44). Poplatek
+        // zavíracího plnění tady, otevíracích v Historii (`poplatkyOtevreni`).
+        z.pnl += pnl - (poplatek(tr) || 0);
         z.cas = Math.max(z.cas, cislo(tr.timestamp));
         podlePrikazu.set(id, z);
       }
@@ -385,7 +392,7 @@ export class BinanceClient extends CcxtAdapter {
         if (!z.qty) continue;
         const exit = z.hodnota / z.qty;
         const long = String(z.strana).toLowerCase() === 'sell'; // long se zavírá prodejem
-        const entry = exit - z.pnl / (z.qty * (long ? 1 : -1));
+        const entry = exit - z.hrube / (z.qty * (long ? 1 : -1));
         vysledek.push({
           id,
           symbol: this.kanonicky(trh),

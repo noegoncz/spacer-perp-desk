@@ -184,6 +184,10 @@ time.sleep(6)
 karta = ev("[...document.querySelectorAll('#historyList .trade')].map((k) => k.textContent.replace(/\s+/g, ' ')).join(' || ')") or ''
 print('   Historie Binance:', karta[:220])
 over('JUPUSDT' in karta, 'Historie Binance má obchody JUPUSDT')
+# Binance dává realizedPnl bez poplatků, jeho Position History s nimi
+# (uživatel 2026-10-18: −0.42 vs −0.44). Mock: zisk 0.2, poplatky 0.02 + 0.03.
+uzavreny = next((x for x in karta.split(' || ') if 'JUPUSDT' in x and 'Open' not in x), '')
+over('Total+0.15' in uzavreny, f'uzavřený obchod po poplatcích otevření i zavření (+0.15): {uzavreny[-60:]}')
 ev("[...document.querySelectorAll('#historyList .trade')].find((k) => /JUPUSDT/.test(k.textContent) && !k.classList.contains('otevreny')).click()")
 time.sleep(5)
 znacky = ev("window.__graf.getOverlays().filter((o) => o.name === 'tradeMark').map((o) => o.extendData.title || '').join(',')") or ''

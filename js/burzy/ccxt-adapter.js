@@ -22,6 +22,19 @@ const cislo = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const cisloNebo = (v) => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) || Number(v) === 0
   ? null : Number(v));
 
+/*
+ * Poplatek plnění v měně kotace (kladný = zaplacený), nebo null. Jen
+ * stablecoiny (~1:1 s USDT) — poplatek v BNB přepočítat neumíme a raději
+ * ho vynecháme, než abychom ho započítali špatně. BNFCR je kredit Binance
+ * pro EU (MiCA), vedený v USD.
+ */
+const MENY_POPLATKU = new Set(['USDT', 'USDC', 'BNFCR', 'FDUSD', 'USD']);
+export function poplatek(tr) {
+  const f = tr?.fee;
+  if (!f || !Number.isFinite(Number(f.cost)) || !MENY_POPLATKU.has(String(f.currency || '').toUpperCase())) return null;
+  return Number(f.cost);
+}
+
 const POZICE_POPREDI = 3000;
 const POZICE_POZADI = 30000;
 const CENY_KAZDYCH = 2000;
@@ -615,6 +628,7 @@ export class CcxtAdapter {
       time: cislo(tr.timestamp),
       orderId: String(tr.order ?? tr.id),
       execId: String(tr.id),
+      fee: poplatek(tr),
     };
   }
 

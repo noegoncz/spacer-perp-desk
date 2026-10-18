@@ -1,55 +1,19 @@
 {
-  "verze": "0.61.0",
+  "verze": "0.61.1",
   "novinky": [
     {
-      "en": "Trade journal: tap “Why?” on a position to note your setup, confluences and confidence — stop-loss and risk are saved automatically.",
-      "cs": "Deník obchodů: klepni na „Proč?“ u pozice a zapiš setup, confluence a jistotu — stop-loss a riziko se uloží samo."
+      "en": "Binance trade results in History now include trading fees, so they match Position History on Binance.",
+      "cs": "Výsledky obchodů Binance v Historii teď zahrnují poplatky, takže sedí s Position History na Binance."
     },
     {
-      "en": "After a trade closes, review it in History: why it closed, whether you followed your plan, and the lesson. Result in R included.",
-      "cs": "Po zavření obchodu ho zhodnoť v Historii: proč skončil, jestli jsi dodržel plán a co si odnášíš. Výsledek i v R."
-    },
-    {
-      "en": "Hyperliquid: connect with just your wallet address — no API key. Positions, TP/SL, funding, history and live charts.",
-      "cs": "Hyperliquid: připojíš ho jen adresou peněženky, bez API klíče. Pozice, TP/SL, funding, historie i živé grafy."
-    },
-    {
-      "en": "Each chart remembers its own timeframe and zoom — BTC opens on 1D, JUP on 15m, just as you left them.",
-      "cs": "Každý graf si pamatuje svůj timeframe a přiblížení — BTC se otevře na 1D, JUP na 15m, jak jsi je nechal."
-    },
-    {
-      "en": "New watchlist tiles: pair, exchange and category on top, a smooth chart with a soft fill below. On the unfolded Fold twice as many tiles fit side by side.",
-      "cs": "Nové dlaždice Watchlists: nahoře pár, burza a kategorie, pod nimi vyhlazený graf s jemnou výplní. Na rozevřeném Foldu se jich vejde vedle sebe dvakrát víc."
-    },
-    {
-      "en": "Trade review from History shows today's price as a solid “Current price” line.",
-      "cs": "Prohlídka obchodu z Historie ukazuje dnešní cenu plnou linkou „Aktuální cena“."
-    },
-    {
-      "en": "Price alerts tell the direction: ↑ crossed above / ↓ dropped below, with a green or red arrow in the notification.",
-      "cs": "Cenové alarmy říkají směr: ↑ prorazil / ↓ propadl pod, v notifikaci se zelenou nebo červenou šipkou."
+      "en": "Shorter alert notifications: just the direction and your alert level.",
+      "cs": "Kratší notifikace alarmů: jen směr a hladina alarmu."
     }
   ],
   "opravy": [
     {
-      "en": "History keeps each account's trades and fills strictly separate and no longer reshuffles while loading.",
-      "cs": "Historie drží obchody a plnění každého účtu přísně odděleně a při načítání se už nepřeskládává."
-    },
-    {
-      "en": "Opening a chart no longer briefly shows the previous position's lines.",
-      "cs": "Otevření grafu už na chvíli neukáže čáry předchozí pozice."
-    },
-    {
-      "en": "Order lines on the chart show their real type again (Take Profit, Stop Loss…).",
-      "cs": "Čáry příkazů v grafu zase nesou svůj skutečný typ (Take Profit, Stop Loss…)."
-    },
-    {
-      "en": "No more error messages after switching back from another app.",
-      "cs": "Po návratu z jiné aplikace už nevyskakují chybové hlášky."
-    },
-    {
-      "en": "Switching accounts in History is quick and keeps each account's saved trades.",
-      "cs": "Přepnutí účtu v Historii je rychlé a uložené obchody každého účtu zůstávají."
+      "en": "A brief connection drop no longer shows an error bar — the status at the top says it all.",
+      "cs": "Krátký výpadek spojení už neukáže lištu s chybou — stačí stav nahoře."
     }
   ]
 }

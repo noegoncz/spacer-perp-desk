@@ -236,12 +236,21 @@ const HANDLERY = {
     }
   },
   onError(message) {
-    ui.showError(message);
+    // Výpadek sítě (návrat z jiné aplikace, přepnutí Wi-Fi) do lišty chyb
+    // nepatří — stav v hlavičce ukáže Reconnecting a spojení se obnoví
+    // samo (v0.61.1, přání uživatele u všech burz). Lišta jen pro chyby,
+    // se kterými má uživatel něco udělat (klíč, oprávnění, hodiny).
+    if (!jePrechodnaChyba(message)) ui.showError(message);
     if (lastPositions.length === 0) {
       ui.showPlaceholder(t('positions.failed'), t('action.openSettings'));
     }
   },
 };
+
+function jePrechodnaChyba(message) {
+  const m = String(message || '');
+  return ['error.network', 'error.timeout', 'error.offline'].some((k) => m.endsWith(t(k)));
+}
 
 /*
  * Všechny připojené účty najednou (v0.59.0, přání uživatele: „chceme mít
@@ -1133,7 +1142,9 @@ function odemkniZvuk() {
  * ukáže v liště.
  */
 function hlidejTicheChyby() {
-  const ukaz = (popis) => ui.showError(`⚠ ${popis}`);
+  const ukaz = (popis) => {
+    if (!jePrechodnaChyba(popis)) ui.showError(`⚠ ${popis}`);
+  };
   window.addEventListener('error', (e) => ukaz(e.message || 'chyba'));
   window.addEventListener('unhandledrejection', (e) => {
     const duvod = e.reason;
@@ -3601,9 +3612,12 @@ function historieNaKonci() {
 }
 
 /** Záznamy zavíracích příkazů → obchody (skupiny výstupů). */
-function seskupObchody(zaznamy, plneniPodleParu, pozice) {
+function seskupObchody(zaznamy, plneniPodleParu, pozice, poplatkyOtevreni = false) {
   const skupiny = new Map();
   const podleParu = new Map();
+  // Poplatky otevíracích plnění podle obchodu (jen burzy, jejichž záznam
+  // je nemá — Binance, `poplatkyOtevreni`): { fee, qty } na číslo obchodu.
+  const oteviraci = new Map();
   zaznamy.forEach((z) => {
     if (!podleParu.has(z.symbol)) podleParu.set(z.symbol, []);
     podleParu.get(z.symbol).push(z);
@@ -3618,6 +3632,14 @@ function seskupObchody(zaznamy, plneniPodleParu, pozice) {
       let k = 0;
       [...plneni].sort((a, b) => b.time - a.time).forEach((f) => {
         if (!epizoda.has(f.orderId)) epizoda.set(f.orderId, k);
+        // `velikost` je teď pozice po tomhle plnění: nákup do longu nebo
+        // prodej do shortu ji otevíral / navyšoval.
+        if (poplatkyOtevreni && (f.buy ? velikost > 0 : velikost < 0)) {
+          const o = oteviraci.get(`${symbol}|${k}`) || { fee: 0, qty: 0 };
+          o.fee += Number(f.fee) || 0;
+          o.qty += f.qty;
+          oteviraci.set(`${symbol}|${k}`, o);
+        }
         velikost -= f.buy ? f.qty : -f.qty;
         if (Math.abs(velikost) < 1e-9 || Math.abs(Number(velikost.toFixed(8))) === 0) {
           otevreni.set(k, f.time);
@@ -3639,7 +3661,12 @@ function seskupObchody(zaznamy, plneniPodleParu, pozice) {
           vystupy: [],
         });
       }
-      skupiny.get(klic).vystupy.push(z);
+      // Výstup nese poměrnou část otevíracích poplatků (jako záznam Bybitu),
+      // ať řádky dávají součet. Záznam sám se nemění (patří mezipaměti).
+      const o = k === undefined ? null : oteviraci.get(`${symbol}|${k}`);
+      skupiny.get(klic).vystupy.push(o && o.qty > 0 && o.fee
+        ? { ...z, pnl: z.pnl - o.fee * Math.min(1, z.qty / o.qty) }
+        : z);
     });
   });
   return [...skupiny.values()].map((g) => {
@@ -3674,7 +3701,8 @@ async function prepocitejSkupiny(jenUlozene = false) {
   }));
   if (client !== k) return false; // mezitím jiný účet
   if (jenUlozene && !uplne) return false; // skupiny z neúplných plnění nepoužít
-  skupinyObchodu = seskupObchody(zaznamy, plneni, lastPositions.filter((p) => p.ucet === k.pripojeniId));
+  skupinyObchodu = seskupObchody(zaznamy, plneni, lastPositions.filter((p) => p.ucet === k.pripojeniId),
+    Boolean(k.poplatkyOtevreni));
   return uplne;
 }
 

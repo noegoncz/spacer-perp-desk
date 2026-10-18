@@ -186,10 +186,11 @@ function texty(a, cena, smer = null) {
   if (a.typ === 'cas') {
     return { titulek, text: a.zprava || (cs ? 'Nastal čas alarmu.' : 'Your time alert is due.') };
   }
+  // Jen hladina alarmu (v0.61.1, přání uživatele): pár stojí v nadpisu
+  // a druhá cena (poslední obchod) se od hladiny lišila jen o drobné.
   const hladina = formatCeny(uroven(a));
   const co = s ? s[cs ? 'cs' : 'en'] : (cs ? 'dosáhl' : 'reached');
-  const zakladni = cs ? `${par} ${co} ${hladina} (cena ${formatCeny(cena)})`
-    : `${par} ${co} ${hladina} (price ${formatCeny(cena)})`;
+  const zakladni = `${co} ${hladina}`;
   return { titulek, text: a.zprava ? `${a.zprava} — ${zakladni}` : zakladni };
 }
 

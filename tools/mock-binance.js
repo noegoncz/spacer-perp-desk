@@ -101,10 +101,11 @@
       const doKdy = Number(q.get('endTime') || Infinity);
       return json([
         // Uzavřený obchod na JUP (v0.59.11): jeden nákup, jeden prodej.
+        // Poplatky 0.02 + 0.03 → v Historii +0.15, ne +0.20 (v0.61.1).
         { symbol: 'JUPUSDT', id: 401, orderId: 851, side: 'BUY', price: '0.3000', qty: '10', realizedPnl: '0',
-          quoteQty: '3', commission: '0.001', commissionAsset: 'USDT', time: TED - 5 * 864e5, positionSide: 'BOTH', buyer: true, maker: false },
+          quoteQty: '3', commission: '0.02', commissionAsset: 'USDT', time: TED - 5 * 864e5, positionSide: 'BOTH', buyer: true, maker: false },
         { symbol: 'JUPUSDT', id: 402, orderId: 852, side: 'SELL', price: '0.3200', qty: '10', realizedPnl: '0.2',
-          quoteQty: '3.2', commission: '0.001', commissionAsset: 'USDT', time: TED - 4 * 864e5, positionSide: 'BOTH', buyer: false, maker: false },
+          quoteQty: '3.2', commission: '0.03', commissionAsset: 'USDT', time: TED - 4 * 864e5, positionSide: 'BOTH', buyer: false, maker: false },
         // Současná pozice.
         { symbol: 'JUPUSDT', id: 501, orderId: 900, side: 'BUY', price: '0.3084',
           qty: '42', realizedPnl: '0', quoteQty: '12.95', commission: '0.005', commissionAsset: 'USDT',

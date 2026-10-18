@@ -25,9 +25,11 @@ const KLIC_VLASTNIKA = '__vlastnik';
  * 2 (v0.59.11): do v0.59.10 mohlo dobíhající stahování po přepnutí účtu
  * v Historii uložit plnění jednoho účtu pod druhý (u uživatele obchod
  * z Binance s plněními JUP z Bybitu) — taková data nejde poznat, proto pryč.
+ * 3 (v0.61.1): plnění nesou poplatek (`fee`) a uzavřené obchody Binance
+ * jsou po poplatcích — uložené bez nich by součty v Historii nesrovnaly.
  */
 const KLIC_VERZE = '__verze';
-const VERZE = 2;
+const VERZE = 3;
 
 let dbSlib = null;
 let vlastnik = null;          // otisk klíče, dokud není nastavený, nic se neukládá
