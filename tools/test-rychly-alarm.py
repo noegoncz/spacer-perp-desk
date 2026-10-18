@@ -101,8 +101,20 @@ if stitek.get('text'):
     over(stitek['text'] == ocek, f"procenta od aktuální ceny ({stitek['text']} vs {ocek})")
     over(abs(stitek['stred'] - y2) < 4 and stitek['prave'] <= stitek['osa'] + 1,
          'štítek stojí u ceny kříže vlevo od cenové osy')
+# Cena alarmu = cena kříže, který knihovna nakreslila (v0.62.3 — na
+# telefonu prst při zvedání ujel a alarm vznikl vedle kříže).
+ev("""window.__kriz = null; window.__graf.subscribeAction('onCrosshairChange', (d) => {
+  const c = d?.crosshair || d; if (c?.paneId === 'candle_pane') window.__kriz = c.y; })""")
+dotyk('touchMove', x, y2 + 0.4); time.sleep(0.1)
+cena_krize = ev("""(() => { if (window.__kriz == null) return null;
+  const b = window.__graf.convertFromPixel([{ x: 10, y: window.__kriz }], { paneId: 'candle_pane' });
+  return (Array.isArray(b) ? b[0] : b).value; })()""")
 dotyk('touchEnd', x, y2)
 time.sleep(0.6)
+nabidka = ev("document.getElementById('quickMenuPrice').textContent") or ''
+print('   cena kříže:', cena_krize, ' nabídka:', nabidka)
+over(cena_krize is not None and nabidka.split()[0].replace(',', '') == ('%.5f' % cena_krize),
+     'cena v nabídce = cena kříže knihovny')
 over(ev("document.querySelector('.krizek-procenta').hidden"), 'po puštění štítek s procenty zmizí')
 over(viditelne(), 'po puštění je u ceny nabídka alarmu')
 text = ev("document.getElementById('quickMenuPrice').textContent") or ''

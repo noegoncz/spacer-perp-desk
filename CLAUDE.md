@@ -636,7 +636,20 @@ Zaškrtávací stránka (23 kroků, v0.61.0): 18 sedí. Opraveno:
   `test-hlidac.py`.
 - **Ikonka alarmu** znovu: zaoblený čtvereček jako dlaždice loga
   (rx 22) s vyříznutou průhlednou šipkou ↑ / ↓ (`fillType evenOdd`)
-  — X se šipkou z v0.62.0 uživatel odmítl jako zmatené. Nové APK. Bod = zavírací příkaz
+  — X se šipkou z v0.62.0 uživatel odmítl jako zmatené. Nové APK.
+  ⚠ Při té úpravě se v apk.yml zdvojil blok (index konce hledal první
+  `man=…` před ikonami) a stará ikonka přepsala novou — APK 1.0.11 mělo
+  starou. Opraveno v 1.0.12. Při úpravách workflow hledat konec bloku
+  **od** jeho začátku (`s.index(x, a)`).
+- **v0.62.3:** `@capacitor/local-notifications` 8 má výchozí
+  `isExactNotification: true` a při každém `schedule` bez povolení
+  přesných alarmů otevřel nastavení „Budíky a připomenutí" (i když se
+  notifikace ukazuje hned). `ukazMistni` posílá `false`; oprávnění
+  `SCHEDULE_EXACT_ALARM` apk.yml z manifestu odebírá (`tools:node="remove"`).
+  **Rychlý alarm na kříži:** cena se bere z polohy kříže knihovny
+  (`onCrosshairChange`), ne z `touchend` — prst při zvedání ujede
+  a alarm vznikal vedle čárkovaného kříže (telefon; v CDP to nejde
+  napodobit, test hlídá shodu s křížem). Bod = zavírací příkaz
   (částečné zavření je bod navíc — skládání do obchodů by chtělo plnění
   všech párů všech účtů). Data `getClosedTrades` každého klienta za 30 dní,
   v `perpdesk.stat30` (mimo zálohu), ze sítě nejvýš po 15 min, po ⟳

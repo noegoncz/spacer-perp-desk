@@ -121,6 +121,10 @@ export async function ukazMistni({ titulek, text, smer = null, data = {} }) {
         smallIcon: IKONY[smer] || 'ic_stat_perpyx',
         iconColor: BARVY[smer] || '#22d3ee',
         extra: data,
+        // ⚠ Bez tohohle plugin (výchozí true) při každé notifikaci otevřel
+        // nastavení „Budíky a připomenutí" — přesné načasování chce jen
+        // notifikace naplánovaná na čas, tahle se ukazuje hned (v0.62.3).
+        isExactNotification: false,
       }],
     });
     return true;

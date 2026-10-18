@@ -2361,6 +2361,18 @@ export function createPriceChart(container, layer, handlers = {}) {
   }
   const skryjProcenta = () => { if (stitekProcent) stitekProcent.hidden = true; };
 
+  /*
+   * Poslední poloha kříže knihovny (v0.62.3, telefon uživatele: alarm
+   * vznikl kousek vedle čárkovaného kříže). Prst při zvedání ujede o pár
+   * pixelů a `touchend` hlásí tu ujetou polohu, kdežto kříž zůstal na
+   * posledním `touchmove` — cena se proto bere z kříže, který je vidět.
+   */
+  let posledniKriz = null;
+  chart.subscribeAction('onCrosshairChange', (d) => {
+    const c = d?.crosshair || d;
+    posledniKriz = c?.paneId === HLAVNI_PANEL && Number.isFinite(c?.y) ? { y: c.y, cas: Date.now() } : null;
+  });
+
   function zapojDlouhyStisk() {
     let start = null;
     container.addEventListener('touchstart', (e) => {
@@ -2398,7 +2410,12 @@ export function createPriceChart(container, layer, handlers = {}) {
       if (s) clearTimeout(s.casovac);
       if (!s || s.zruseno || e.touches.length || !naDlouhyStisk) return;
       if (Date.now() - s.cas < DLOUHY_STISK_MS) return;
-      const bod = bodPodPrstem(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+      let bod = bodPodPrstem(s.posledni.x, s.posledni.y);
+      if (bod && posledniKriz && posledniKriz.cas >= s.cas) {
+        const plocha = chart.getSize(HLAVNI_PANEL, 'main');
+        const r = container.getBoundingClientRect();
+        bod = bodPodPrstem(s.posledni.x, r.top + plocha.top + posledniKriz.y) || bod;
+      }
       if (bod) {
         const posledni = chart.getDataList().slice(-1)[0]?.close;
         naDlouhyStisk({ ...bod, pct: posledni > 0 ? (bod.value / posledni - 1) * 100 : null });
