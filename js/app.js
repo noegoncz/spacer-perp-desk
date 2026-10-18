@@ -21,6 +21,8 @@ import * as zaloha from './zaloha.js';
 import * as ucet from './ucet.js';
 import * as zamek from './zamek.js';
 import * as pozvanky from './pozvanky.js';
+import * as denik from './denik.js';
+import * as denikUi from './denik-ui.js';
 import * as alarmyServer from './alarmy-server.js';
 import * as hlaseni from './hlaseni.js';
 import { zapojDlazdice } from './dlazdice.js';
@@ -161,6 +163,19 @@ const HANDLERY = {
   },
   onPositions(list) {
     lastPositions = list;
+    // Čas otevření pro deník jen u běžících pozic (zavřená a znovu
+    // otevřená pozice je nový obchod).
+    // Jen u účtů, které už pozice nahlásily (po startu přichází postupně).
+    let smazano = false;
+    for (const k of [...otevreniProDenik.keys()]) {
+      const ucetK = k.split('|')[0];
+      const nahlasil = stavUctu.get(ucetK)?.status?.lastUpdate || !klienti.has(ucetK);
+      if (nahlasil && !list.some((p) => klicOtevreni(p) === k)) {
+        otevreniProDenik.delete(k);
+        smazano = true;
+      }
+    }
+    if (smazano) ulozOtevreniProDenik();
     skonciSnimek();
     naplanujVykresleniPozic();
     ulozSnimek();
@@ -525,6 +540,142 @@ function dokresliSeznamJeLiZastaraly() {
   if (seznamZastaraly && seznamJeVidet()) vykresliPozice();
 }
 
+/* ---------- deník obchodů (v0.61.0, js/denik.js) ---------- */
+
+/*
+ * Čas otevření běžící pozice = klíč její poznámky (stejný čas spočítá
+ * Historie, takže poznámka se po zavření najde u obchodu). Dohledává se
+ * jednou za pozici z plnění, na pozadí; do té doby náhradní klíč.
+ */
+/*
+ * Zjištěné časy se pamatují i v telefonu (`perpdesk.denikOtevreni`), ať
+ * je souhrn poznámky na kartě vidět hned po startu, ne až po dohledání
+ * z plnění. Zavřená pozice se z paměti maže (onPositions).
+ */
+const KLIC_OTEVRENI = 'perpdesk.denikOtevreni';
+const otevreniProDenik = new Map(Object.entries(store.loadJson(KLIC_OTEVRENI, {}) || {})
+  .filter(([, v]) => typeof v === 'number'));
+const klicOtevreni = (p) => `${p.ucet}|${p.symbol}|${p.side}`;
+const ulozOtevreniProDenik = () => store.saveJson(KLIC_OTEVRENI,
+  Object.fromEntries([...otevreniProDenik].filter(([, v]) => typeof v === 'number')));
+
+function otevreniPoziceProDenik(p) {
+  const k = klicOtevreni(p);
+  if (otevreniProDenik.has(k)) return otevreniProDenik.get(k);
+  otevreniProDenik.set(k, 'ceka');
+  const klient = klienti.get(p.ucet);
+  (klient?.otevreniPozice?.(p) || Promise.resolve(null))
+    .then((cas) => {
+      otevreniProDenik.set(k, cas || null);
+      if (cas) ulozOtevreniProDenik();
+    })
+    .catch(() => otevreniProDenik.delete(k))
+    .finally(() => naplanujVykresleniPozic());
+  return 'ceka';
+}
+
+const burzaPozice = (p) => p.burza || klienti.get(p.ucet)?.burza?.id || client.burza.id;
+const nazevObchodu = (symbol, long) => `${symbol} ${t(long ? 'position.long' : 'position.short').toLowerCase()}`;
+
+function poznamkaPozice(p) {
+  const cas = otevreniPoziceProDenik(p);
+  const otevreno = typeof cas === 'number' ? cas : null;
+  return { otevreno, poznamka: denik.najdi(burzaPozice(p), p.symbol, otevreno, p.side) };
+}
+
+/** Souhrn poznámky na kartě pozice. */
+function denikPozice(p) {
+  const { poznamka } = poznamkaPozice(p);
+  return denikUi.souhrn(poznamka, { pridat: `＋ ${t('journal.why')}`, onClick: () => otevriPoznamkuPozice(p) });
+}
+
+async function otevriPoznamkuPozice(p) {
+  let { otevreno } = poznamkaPozice(p);
+  if (!otevreno) {
+    try { otevreno = await klienti.get(p.ucet)?.otevreniPozice?.(p); } catch { otevreno = null; }
+    if (otevreno) {
+      otevreniProDenik.set(klicOtevreni(p), otevreno);
+      ulozOtevreniProDenik();
+    }
+  }
+  const burza = burzaPozice(p);
+  const poznamka = denik.najdi(burza, p.symbol, otevreno, p.side);
+  denikUi.otevriVstup({
+    klic: poznamka?.klic || denik.klic(burza, p.symbol, otevreno, p.side),
+    nazev: nazevObchodu(p.symbol, p.side !== 'Sell'),
+    poznamka,
+    automaticky: denik.automatickyVstup(p, intervalParu(burza, p.symbol)),
+    mena: /USDC$/.test(p.symbol) ? 'USDC' : 'USDT',
+    obchodBezi: true,
+    onUlozeno: () => vykresliPozice(),
+  });
+}
+
+/** Volby Historie: souhrn poznámky a zhodnocení u každého obchodu. */
+function volbyHistorie() {
+  return { denik: denikSkupiny };
+}
+
+function poznamkaSkupiny(g) {
+  const burza = client.burza.id;
+  const side = g.long ? 'Buy' : 'Sell';
+  return { burza, side, poznamka: denik.najdi(burza, g.symbol, g.otevreno, side, g.zavreno) };
+}
+
+function denikSkupiny(g) {
+  const { poznamka } = poznamkaSkupiny(g);
+  const review = !g.otevrena && denik.nastaveni().stitekReview && !poznamka?.zhodnoceni;
+  return denikUi.souhrn(poznamka, {
+    review,
+    pridat: `＋ ${t(g.otevrena ? 'journal.why' : 'journal.reviewAdd')}`,
+    onClick: () => otevriPoznamkuSkupiny(g),
+  });
+}
+
+function prekresliHistorii() {
+  if (skupinyObchodu.length) ui.renderHistory(skupinyObchodu, hideAmounts, otevriSkupinu, volbyHistorie());
+}
+
+function otevriPoznamkuSkupiny(g) {
+  const { burza, side, poznamka } = poznamkaSkupiny(g);
+  const klic = poznamka?.klic || denik.klic(burza, g.symbol, g.otevreno, side);
+  const mena = /USDC$/.test(g.symbol) ? 'USDC' : 'USDT';
+  const poz = g.otevrena ? lastPositions.find((x) => x.symbol === g.symbol && x.ucet === client.pripojeniId) : null;
+  const vstup = () => denikUi.otevriVstup({
+    klic,
+    nazev: nazevObchodu(g.symbol, g.long),
+    poznamka: denik.najdi(burza, g.symbol, g.otevreno, side, g.zavreno),
+    automaticky: poz ? denik.automatickyVstup(poz, intervalParu(burza, g.symbol)) : { entry: g.vystupy[0]?.entry ?? null },
+    mena,
+    obchodBezi: Boolean(g.otevrena),
+    onUlozeno: prekresliHistorii,
+  });
+  if (g.otevrena) {
+    vstup();
+    return;
+  }
+  denikUi.otevriZhodnoceni({
+    klic,
+    nazev: nazevObchodu(g.symbol, g.long),
+    poznamka,
+    pnl: g.pnl,
+    mena,
+    otevreno: g.otevreno,
+    zavreno: g.zavreno,
+    onUlozeno: prekresliHistorii,
+    onVstup: vstup,
+  });
+}
+
+/** Přepínač štítku „Review" v nastavení. */
+function vykresliPrepinacDeniku() {
+  const btn = el('journalReviewBtn');
+  if (!btn) return;
+  const on = denik.nastaveni().stitekReview !== false;
+  btn.classList.toggle('on', on);
+  btn.setAttribute('aria-pressed', String(on));
+}
+
 /** Překreslí seznam pozic i lištu nad ním podle aktuálního řazení a filtru. */
 function vykresliPozice() {
   casPoslednihoSeznamu = Date.now();
@@ -536,6 +687,7 @@ function vykresliPozice() {
     equity: ucetStav.ucet?.equity ?? null,
     // Víc účtů: u karty i burza (u dvou účtů na jedné burze konec klíče).
     burza: klienti.size > 1 ? (p) => nazevUctu(p.ucet) : null,
+    denik: denikPozice,
   });
 
   /*
@@ -1113,7 +1265,7 @@ function wireEvents() {
     vykresliPozice();
     // Skrývání částek platí i pro přehled účtu, ne jen pro karty.
     ui.renderAccount(ucetStav.ucet, ucetStav.chyba, hideAmounts);
-    if (skupinyObchodu.length) ui.renderHistory(skupinyObchodu, hideAmounts, otevriSkupinu);
+    if (skupinyObchodu.length) ui.renderHistory(skupinyObchodu, hideAmounts, otevriSkupinu, volbyHistorie());
     if (chartSymbol) {
       ui.renderChartHeader(chartSymbol, chartPosition, hideAmounts, chartTrh);
       ui.renderChartInfo(chartPosition, hideAmounts, popisBurzy(), chartObrat);
@@ -1361,6 +1513,11 @@ function wireEvents() {
     vykresliPozice();
   });
 
+  naUdalost('journalReviewBtn', 'click', () => {
+    denik.nastav({ stitekReview: denik.nastaveni().stitekReview === false });
+    vykresliPrepinacDeniku();
+    prekresliHistorii();
+  });
   naUdalost('sltpAlertsBtn', 'click', () => {
     sltpUpozorneni = !sltpUpozorneni;
     store.saveSltpAlerts(sltpUpozorneni);
@@ -1425,6 +1582,7 @@ function openSettings() {
   const prah = el('liqThreshold');
   if (prah) prah.value = String(prahLikvidace);
   vykresliPrepinacSltp();
+  vykresliPrepinacDeniku();
   // Dostupnost otisku se zjišťuje asynchronně — při otevření nastavení
   // znovu, ať řádek s otiskem odpovídá tomu, co telefon umí teď.
   rezimZamku = null;
@@ -3571,7 +3729,7 @@ function vyberUcetHistorie(id) {
 
 function vykresliHistorii() {
   vykresliUctyHistorie();
-  ui.renderHistory(skupinyObchodu, hideAmounts, otevriSkupinu);
+  ui.renderHistory(skupinyObchodu, hideAmounts, otevriSkupinu, volbyHistorie());
   const od = historieOd ? new Date(historieOd) : null;
   let text = '';
   if (historieCekaNaPlneni) text = t('history.loading');
@@ -4545,6 +4703,7 @@ function krokZpet() {
     zavriNabidkyTrhu();
     zavriHlaseni();
     pozvanky.zavri();
+    denikUi.zavri();
     skryjRychlyAlarm();
     return true;
   }

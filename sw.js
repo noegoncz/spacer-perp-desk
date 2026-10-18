@@ -31,6 +31,8 @@ const SHELL = [
   './js/burzy/dalsi.js',
   './js/burzy/hyperliquid.js',
   './js/store.js',
+  './js/denik.js',
+  './js/denik-ui.js',
   './js/format.js',
   './js/ui.js',
   './js/chart.js',

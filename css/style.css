@@ -2847,3 +2847,62 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
   padding: 4px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 700;
   color: var(--accent); background: rgba(76, 154, 255, 0.14);
 }
+
+/* ---------- deník obchodů (v0.61.0, js/denik-ui.js) ---------- */
+.denik-sheet { gap: 14px; }
+.denik-titul { display: flex; flex-direction: column; gap: 2px; }
+.denik-pod { font-size: 0.8rem; font-weight: 400; color: var(--text-dim); }
+.denik-skupina { display: flex; flex-direction: column; gap: 7px; }
+.denik-label { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); }
+.denik-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.denik-sheet .chip, .denik-souhrn .chip {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 6px 12px;
+  border: 1px solid var(--border); border-radius: 999px; background: transparent; color: var(--text);
+  font: inherit; font-size: 0.86rem; cursor: pointer;
+}
+.denik-sheet .chip.on, .denik-souhrn .chip.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); }
+.denik-sheet .chip.pridat, .denik-souhrn .chip.pridat { color: var(--accent); border-style: dashed; }
+.denik-smazat { color: var(--short, #ea3943); font-weight: 700; padding-left: 2px; }
+.denik-novy { display: flex; gap: 8px; margin-top: 8px; }
+.denik-novy[hidden] { display: none; }
+.denik-pole {
+  flex: 1; min-width: 0; min-height: 40px; padding: 8px 12px; border-radius: 10px;
+  background: var(--bg); color: var(--text); border: 1px solid var(--border); font: inherit; font-size: 0.92rem;
+}
+.denik-cisla { display: flex; gap: 8px; }
+.denik-cislo {
+  width: 44px; height: 40px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--surface-2); color: var(--text-dim); font: inherit; font-weight: 700; cursor: pointer;
+}
+.denik-cislo.on { background: var(--accent); color: #061224; border-color: var(--accent); }
+.denik-text { min-height: 74px; }
+.denik-auto {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); gap: 8px 14px;
+  background: var(--bg); border-radius: 10px; padding: 10px 12px; font-size: 0.86rem;
+}
+.denik-auto div { display: flex; flex-direction: column; gap: 2px; }
+.denik-auto span { font-size: 0.7rem; color: var(--text-dim); }
+.denik-auto b { font-variant-numeric: tabular-nums; }
+.denik-behem { display: flex; flex-direction: column; gap: 6px; }
+.denik-behem-radek { display: flex; gap: 8px; align-items: baseline; font-size: 0.88rem; }
+.denik-behem-radek b { font-size: 0.75rem; color: var(--text-dim); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.denik-behem-radek span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.denik-x { margin-left: auto; color: var(--text-dim); }
+.denik-ulozit { min-height: 46px; }
+.denik-tlacitka { display: flex; gap: 10px; flex-wrap: wrap; }
+.denik-tlacitka > * { flex: 1 1 140px; }
+.denik-vysledek { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; background: var(--bg); border-radius: 12px; padding: 10px 14px; }
+.denik-vysledek-vpravo { text-align: right; }
+.denik-r { font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.denik-pnl { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* souhrn na kartě pozice / obchodu */
+.denik-souhrn {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px;
+  padding: 6px 8px; border-radius: 10px; background: var(--surface-2); cursor: pointer;
+}
+.denik-souhrn:has(> .chip.pridat:only-child) { background: transparent; padding: 0; }
+.denik-souhrn .chip.mini { min-height: 26px; padding: 2px 9px; font-size: 0.76rem; }
+.denik-souhrn .denik-review { border-color: #f0b90b; color: #f0b90b; }
+.denik-ikona { font-size: 0.9rem; }
+.denik-citace { font-size: 0.8rem; color: var(--text-dim); min-width: 0; overflow-wrap: anywhere; }

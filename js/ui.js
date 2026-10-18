@@ -434,6 +434,9 @@ function positionCard(p, hide, onSelect, liqThreshold = 10, volby = {}) {
   if (zebrik) card.append(ladderRow(zebrik, p, hide));
 
   card.append(patickaRow(p, hide));
+  // Deník obchodů (v0.61.0): souhrn poznámky nebo tlačítko „Why?".
+  const denik = volby.denik?.(p);
+  if (denik) card.append(denik);
   return card;
 }
 
@@ -721,7 +724,7 @@ const datum = (ts) => {
   return `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`;
 };
 
-export function renderHistory(skupiny, hide, onSelect) {
+export function renderHistory(skupiny, hide, onSelect, volby = {}) {
   const el2 = (tag, trida, text = '') => {
     const e = document.createElement(tag);
     if (trida) e.className = trida;
@@ -766,6 +769,9 @@ export function renderHistory(skupiny, hide, onSelect) {
         el2('span', `trade-pnl ${pnlClass(g.pnl)}`, hide ? MASK : `${formatSignedUsd(g.pnl)} ${menaParu(g.symbol)}`));
 
       karta.append(hlava, kdy, vystupy, soucet);
+      // Deník obchodů (v0.61.0): poznámky a zhodnocení obchodu.
+      const denik = volby.denik?.(g);
+      if (denik) karta.append(denik);
       karta.addEventListener('click', () => onSelect(g));
       return karta;
     }),

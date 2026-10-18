@@ -29,7 +29,7 @@ const NEZALOHOVAT = new Set([
   'perpdesk.lock',
   'perpdesk.pushToken',
   // Poslední známé pozice pro okamžitý start — patří jen tomuto telefonu.
-  'perpdesk.startSnimek',
+  'perpdesk.startSnimek', 'perpdesk.denikOtevreni',
   'perpdesk.trhySnimek',
   // Burza patří ke klíči — ten se nezálohuje, tak ani ona.
   'perpdesk.burza',

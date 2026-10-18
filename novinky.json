@@ -1,6 +1,14 @@
 {
-  "verze": "0.60.1",
+  "verze": "0.61.0",
   "novinky": [
+    {
+      "en": "Trade journal: tap “Why?” on a position to note your setup, confluences and confidence — stop-loss and risk are saved automatically.",
+      "cs": "Deník obchodů: klepni na „Proč?“ u pozice a zapiš setup, confluence a jistotu — stop-loss a riziko se uloží samo."
+    },
+    {
+      "en": "After a trade closes, review it in History: why it closed, whether you followed your plan, and the lesson. Result in R included.",
+      "cs": "Po zavření obchodu ho zhodnoť v Historii: proč skončil, jestli jsi dodržel plán a co si odnášíš. Výsledek i v R."
+    },
     {
       "en": "Hyperliquid: connect with just your wallet address — no API key. Positions, TP/SL, funding, history and live charts.",
       "cs": "Hyperliquid: připojíš ho jen adresou peněženky, bez API klíče. Pozice, TP/SL, funding, historie i živé grafy."
@@ -20,14 +28,6 @@
     {
       "en": "Price alerts tell the direction: ↑ crossed above / ↓ dropped below, with a green or red arrow in the notification.",
       "cs": "Cenové alarmy říkají směr: ↑ prorazil / ↓ propadl pod, v notifikaci se zelenou nebo červenou šipkou."
-    },
-    {
-      "en": "Binance: live prices and live candles — the chart moves with every tick, like Bybit.",
-      "cs": "Binance: živé ceny a živá svíčka — graf se hýbe s každým tickem, jako u Bybitu."
-    },
-    {
-      "en": "Binance price alerts now ring even with the screen off, just like Bybit.",
-      "cs": "Cenové alarmy na Binance teď zvoní i se zhasnutým displejem, stejně jako u Bybitu."
     }
   ],
   "opravy": [

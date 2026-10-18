@@ -135,6 +135,8 @@ js/sestavy.js           # sestavy coinů v Trzích + kategorie z CoinGecko (bez 
 js/zaloha.js            # záloha a obnova dat do souboru (bez API klíčů)
 js/ucet.js              # účet PerpyX: přihlášení kódem, cloudová záloha, denní aktivita
 js/zamek.js             # volitelný zámek aplikace: PIN + otisk prstu
+js/denik.js             # deník obchodů: poznámky k obchodům, model + úložiště (bez DOM)
+js/denik-ui.js          # deník obchodů: okna (vstup, během, zhodnocení), souhrn na kartách
 js/app.js               # orchestrace, lifecycle, update service workeru
 vendor/                 # KLineChart + licence, stažené v repu (ne CDN)
 tools/                  # testy přes DevTools Protocol, bez API klíčů (viz tools/README.md)
@@ -534,6 +536,34 @@ z žebříčku (bez účtu uživatele).
   funding, graf + proud, počty dotazů, Historie, odpojení; adresa
   `HL_ADRESA` nebo z veřejného žebříčku), `test-kontrakt-burzy.py`
   (soukromá data Hyperliquidu vždy naostro).
+
+### Deník obchodů (v0.61.0, fáze 1 — přání uživatele 2026-10-18)
+
+Náhled schválený uživatelem: https://claude.ai/artifact/Uio2yWvkCyeEXHshaAEvih
+(fáze 1 poznámky + zhodnocení, fáze 2 tabulka deníku s filtry, fáze 3
+statistiky a shrnutí v lidské řeči — „co mi to o mně jako traderovi říká").
+- **Karta pozice:** „Why?" → okno `denikUi.otevriVstup`: setup (jeden),
+  confluence (víc), jistota 1–5, text „proč teď", automaticky vstup, SL,
+  TP, riziko 1R (|vstup − SL| × velikost), plánovaný R:R, timeframe
+  (`denik.automatickyVstup`, uloží se s první poznámkou a dál se nemění).
+  Poznámky během obchodu s časem (v okně). Souhrn na kartě klepnutím
+  otevře okno (⚠ `stopPropagation`, jinak by karta otevřela graf).
+- **Historie:** u obchodu souhrn; uzavřený bez zhodnocení má štítek
+  „Review" (vypnutelný v Nastavení → Obecné, `journalReviewBtn`).
+  Zhodnocení: důvod zavření, plán ano/částečně/ne, hodnocení 1–5, lekce;
+  výsledek v R = PnL / riziko ze vstupní poznámky.
+- **Klíč poznámky** = burza + pár + čas otevírajícího plnění
+  (`denik.klic`) — stejný čas spočítá Historie (`seskupObchody.otevreno`)
+  i adaptér (`otevreniPozice`); `najdi` toleruje rozdíl 2 min a náhradní
+  klíč `…:?:Buy` (čas ještě neznámý) přesune k obchodu. Čas otevření běžící
+  pozice se pamatuje v `perpdesk.denikOtevreni` (nezálohuje se — obsahuje
+  id připojení; maže se se zavřením pozice).
+- Data v `perpdesk.denik` → cloudová záloha účtu (nikdy na burzu).
+  Výchozí setupy a confluence v jazyce aplikace při prvním použití;
+  uživatel přidává / maže (Edit v okně).
+- Push připomenutí zhodnocení zatím není (rozhodnutí: volba v nastavení,
+  výchozí vypnuto) — přijde s nativními notifikacemi.
+- Test: `tools/test-denik.py`.
 
 ### `js/bybit.js` je izolovaný záměrně
 

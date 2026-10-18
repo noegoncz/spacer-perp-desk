@@ -46,7 +46,7 @@ const BEZ_ZALOHY = new Set([KEY_API, KEY_SECRET, KEY_BURZA, KEY_BURZA_VOLBY, KEY
   'perpdesk.coinCategories',
   // Poslední známé pozice pro okamžitý start: zapisují se každých 20 s
   // a do zálohy nepatří (js/app.js, ulozSnimek).
-  'perpdesk.startSnimek',
+  'perpdesk.startSnimek', 'perpdesk.denikOtevreni',
   // Poslední známé ceny a mini-grafy párů ve Watchlists (js/app.js).
   'perpdesk.trhySnimek']);
 const posluchaci = new Set();
