@@ -339,7 +339,7 @@ export const cs = {
   'alarm.pickInChart': 'Vybrat v grafu',
   'alarm.notifTitle': 'Alarm {symbol}',
   'alarm.needFuture': 'Vyber čas v budoucnosti.',
-  'alarm.timeHit': '{symbol}: nastal nastavený čas',
+  'alarm.timeHit': 'Nastal nastavený čas',
   'alarm.trendHint': 'Úroveň drží čáru, takže se mění s časem. Alarm platí jen do konce čáry, tedy do {date}.',
   'alarm.trendEnded': 'Čára doběhla, takže se alarm sám vypnul. Posuň ho, nebo nakresli novou.',
   'alarm.condition': 'Podmínka',
@@ -364,9 +364,6 @@ export const cs = {
   'alarm.needPrice': 'Nejdřív zadej cenu větší než nula.',
   'alarm.expiresOn': 'Vyprší {date}.',
   'alarm.lastFired': 'Naposled zazněl {time}.',
-  'alarm.hit': '{symbol} dosáhl {price}',
-  'alarm.hitUp': '{symbol} ↑ prorazil {price}',
-  'alarm.hitDown': '{symbol} ↓ propadl pod {price}',
   'alarm.hintServer': 'Alarmy hlídá server PerpyX a pošle notifikaci i při zhasnutém '
     + 'displeji. Alarmy jsou informativní a mohou přijít pozdě nebo vůbec.',
   'alarm.hint': 'Server PerpyX teď není dostupný, alarmy proto hlídá jen spuštěná '
@@ -469,8 +466,8 @@ export const cs = {
   'settings.liqThreshold': 'Varovat při likvidaci od',
   'settings.liqThresholdHint': 'Karta zčervená, když se cena přiblíží likvidaci na tuhle vzdálenost.',
   'settings.sltpAlerts': 'Upozornit při zásahu SL/TP',
-  'sltp.stopLossHit': '{symbol}: zasažen stop loss na {price}',
-  'sltp.takeProfitHit': '{symbol}: zasažen take profit na {price}',
+  'sltp.stopLossHit': 'Zasažen stop loss na {price}',
+  'sltp.takeProfitHit': 'Zasažen take profit na {price}',
 
   'indicator.VPROFILE': 'Volume profile',
   'indicatorDesc.VPROFILE': 'Kde se obchodoval objem, podle ceny',

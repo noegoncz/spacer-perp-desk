@@ -174,8 +174,8 @@ function nazevParu(symbol) {
  * kanálu a nastavení telefonu.
  */
 const SMER = {
-  nahoru: { znak: '▲', cs: '↑ prorazil', en: '↑ crossed above', ikona: 'ic_stat_nahoru', barva: '#3ee6a4' },
-  dolu: { znak: '▼', cs: '↓ propadl pod', en: '↓ dropped below', ikona: 'ic_stat_dolu', barva: '#ff6b78' },
+  nahoru: { znak: '▲', sipka: '↑', ikona: 'ic_stat_nahoru', barva: '#3ee6a4' },
+  dolu: { znak: '▼', sipka: '↓', ikona: 'ic_stat_dolu', barva: '#ff6b78' },
 };
 
 function texty(a, cena, smer = null) {
@@ -186,11 +186,10 @@ function texty(a, cena, smer = null) {
   if (a.typ === 'cas') {
     return { titulek, text: a.zprava || (cs ? 'Nastal čas alarmu.' : 'Your time alert is due.') };
   }
-  // Jen hladina alarmu (v0.61.1, přání uživatele): pár stojí v nadpisu
-  // a druhá cena (poslední obchod) se od hladiny lišila jen o drobné.
+  // Jen šipka a hladina alarmu, „↑ 0.29028" (v0.62.1, přání uživatele —
+  // „prorazil / propadl pod" pryč). Pár stojí v nadpisu.
   const hladina = formatCeny(uroven(a));
-  const co = s ? s[cs ? 'cs' : 'en'] : (cs ? 'dosáhl' : 'reached');
-  const zakladni = `${co} ${hladina}`;
+  const zakladni = s ? `${s.sipka} ${hladina}` : hladina;
   return { titulek, text: a.zprava ? `${a.zprava} — ${zakladni}` : zakladni };
 }
 

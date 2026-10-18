@@ -24,6 +24,7 @@ import * as pozvanky from './pozvanky.js';
 import * as denik from './denik.js';
 import * as denikUi from './denik-ui.js';
 import * as alarmyServer from './alarmy-server.js';
+import * as push from './push.js';
 import * as hlaseni from './hlaseni.js';
 import { zapojDlazdice } from './dlazdice.js';
 import * as mezipamet from './mezipamet.js';
@@ -868,9 +869,8 @@ function zkontrolujSltp(list) {
 }
 
 function ohlasZasah(klic, symbol, cena) {
-  const text = t(klic, { symbol, price: formatPrice(cena) });
-  ozviSe({ symbol, id: `sltp-${symbol}` }, text, { zvuk: true });
-  ui.showNotice(text);
+  const text = t(klic, { price: formatPrice(cena) });
+  ozviSe({ symbol, id: `sltp-${symbol}` }, text);
 }
 
 /**
@@ -1208,20 +1208,9 @@ function boot() {
   });
   zapojPrejeti();
   zapojTlacitkoZpet();
-  odemkniZvuk();
+  push.zapojMistni((data) => otevriGrafZNotifikace(data?.symbol));
   hlidejCasoveAlarmy();
   connectIfPossible();
-}
-
-/**
- * Prohlížeč nepustí zvuk, dokud uživatel na stránku nesáhne. Kontext se
- * proto probudí při prvním dotyku — ve chvíli, kdy má alarm zaznít, už
- * uživatel telefon v ruce mít nemusí.
- */
-function odemkniZvuk() {
-  const probud = () => pripravZvuk();
-  document.addEventListener('pointerdown', probud, { once: true, passive: true });
-  document.addEventListener('touchstart', probud, { once: true, passive: true });
 }
 
 /**
@@ -4084,109 +4073,38 @@ const datumCas = (ms) => new Date(ms).toLocaleString(getLocale(), {
 });
 
 /**
- * Zvuk alarmu přes WebAudio — v repozitáři žádný soubor není, tón si
- * prohlížeč spočítá sám.
- *
- * ⚠ Sinus na 880 Hz byl v telefonu v kapse skoro neslyšet. Alarm musí být
- * pronikavý, ne hezký: obdélníková vlna je plná vyšších harmonických, na
- * které je sluch (a reproduktor telefonu) citlivější, a tón skáče mezi dvěma
- * výškami — kolísání si ucho všimne spíš než stálého pípnutí.
+ * Odezva alarmu v telefonu (v0.62.1, přání uživatele): **vždy jen
+ * standardní notifikace telefonu**, stejná jako push se zhasnutým
+ * displejem — nadpis „PerpyX · ▲ pár", text „↑ cena", ikonka se šipkou,
+ * zvuk a vibrace podle kanálu. Dřív v otevřené aplikaci houkala vlastní
+ * houkačka z WebAudio a vyskočil pruh; push ze serveru Android v popředí
+ * sám neukáže. Bez nativního pluginu (prohlížeč, starší APK) aspoň pruh
+ * a zavibrování.
  */
-let zvukovyKontext = null;
-
-/** (posun v sekundách, frekvence) — houkačka, ne cinknutí. */
-const TONY_ALARMU = [
-  [0, 988], [0.18, 1319], [0.36, 988], [0.54, 1319], [0.72, 988], [0.9, 1319],
-];
-const DELKA_TONU = 0.16;
-const HLASITOST = 0.9;
-
-/**
- * Prohlížeč nespustí zvuk, dokud uživatel na stránku nesáhl. Kontext se
- * proto vyrábí a probouzí při prvním dotyku, ne až ve chvíli, kdy alarm
- * zazvoní — tehdy už uživatel telefon v ruce mít nemusí.
- */
-function pripravZvuk() {
-  try {
-    const Kontext = window.AudioContext || window.webkitAudioContext;
-    if (!Kontext) return null;
-    zvukovyKontext = zvukovyKontext || new Kontext();
-    if (zvukovyKontext.state === 'suspended') zvukovyKontext.resume?.();
-    return zvukovyKontext;
-  } catch {
-    return null;
-  }
-}
-
-function zapipej() {
-  const kontext = pripravZvuk();
-  if (!kontext) return;
-  try {
-    const start = kontext.currentTime;
-    TONY_ALARMU.forEach(([odstup, frekvence]) => {
-      const ton = kontext.createOscillator();
-      const hlasitost = kontext.createGain();
-      ton.type = 'square';
-      ton.frequency.value = frekvence;
-      // Náběh a doznění, ať to necvakne. Nula v exponenciále nejde, proto 0.0001.
-      hlasitost.gain.setValueAtTime(0.0001, start + odstup);
-      hlasitost.gain.exponentialRampToValueAtTime(HLASITOST, start + odstup + 0.01);
-      hlasitost.gain.exponentialRampToValueAtTime(0.0001, start + odstup + DELKA_TONU);
-      ton.connect(hlasitost).connect(kontext.destination);
-      ton.start(start + odstup);
-      ton.stop(start + odstup + DELKA_TONU + 0.01);
-    });
-  } catch {
-    // Zvuk je bonus; vibrace, notifikace a pruh v UI fungují i bez něj.
-  }
-}
-
-/**
- * Systémová notifikace.
- *
- * ⚠ Musí jít přes **service worker**, ne přes `new Notification()` — mobilní
- * Chrome konstruktor nepodporuje a vyhodí výjimku. Doručí se, jen dokud
- * stránka žije (i na pozadí); notifikace se zavřenou aplikací potřebuje APK.
- */
-async function ukazNotifikaci(alarm, text) {
-  if (!('Notification' in window) || Notification.permission !== 'granted') return;
-  try {
-    const registrace = await navigator.serviceWorker?.getRegistration();
-    if (!registrace?.showNotification) return;
-    await registrace.showNotification(t('alarm.notifTitle', { symbol: nazevKlice(alarm.symbol) }), {
-      body: text,
-      icon: 'icons/icon-192.png',
-      badge: 'icons/icon-192.png',
-      tag: `alarm-${alarm.id}`,
-      vibrate: [120, 70, 120],
-      requireInteraction: true, // ať nezmizí dřív, než se na telefon podíváš
-    });
-  } catch {
-    // Notifikace je bonus, ostatní odezva běží dál.
-  }
-}
-
-/**
- * Odezva v telefonu. Alarmy doručuje server pushem (i se zhasnutým
- * displejem), takže volby zvuk / vibrace / notifikace u alarmu zmizely
- * (v0.25.0, rozhodnutí uživatele). V otevřené aplikaci stačí pruh
- * a zavibrování; pípnutí z aplikace zůstává jen jako záloha, když server
- * alarmy zrovna nehlídá — a pro zásah SL/TP, ten server nehlídá vůbec.
- */
-function ozviSe(alarm, text, { zvuk = !hlidaServerAlarm(alarm) } = {}) {
+async function ozviSe(alarm, text, smer = null) {
+  const nazev = nazevKlice(alarm.symbol);
+  const znak = smer === 'nahoru' ? '▲ ' : smer === 'dolu' ? '▼ ' : '';
+  const ukazano = await push.ukazMistni({
+    titulek: `PerpyX · ${znak}${nazev}`,
+    text,
+    smer,
+    data: { alarmId: alarm.id || '', symbol: alarm.symbol || '' },
+  });
+  if (ukazano) return;
   navigator.vibrate?.([120, 70, 120, 70, 200]);
-  if (zvuk) zapipej();
-  ukazNotifikaci(alarm, text);
+  ui.showNotice(`${nazev}: ${text}`);
 }
 
-/** Text, který uživatel uvidí: jeho vlastní zpráva, jinak co se stalo. */
-/** Text alarmu; u cenového se směrem průniku (v0.59.12): „↑ prorazil" / „↓ propadl pod". */
-function textAlarmu(a, smer = a?.smerPruniku) {
-  const sipka = smer === 'nahoru' ? '↑' : smer === 'dolu' ? '↓' : '';
-  if (a.zprava) return sipka ? `${sipka} ${a.zprava}` : a.zprava;
-  if (a.typ === 'cas') return t('alarm.timeHit', { symbol: nazevKlice(a.symbol) });
-  const klic = smer === 'nahoru' ? 'alarm.hitUp' : smer === 'dolu' ? 'alarm.hitDown' : 'alarm.hit';
-  return t(klic, { symbol: nazevKlice(a.symbol), price: formatPrice(alarmy.uroven(a)) });
+/**
+ * Text notifikace bez páru (ten je v nadpisu): jen šipka a hladina,
+ * „↑ 0.29028" (v0.62.1, přání uživatele — „prorazil / propadl pod" pryč).
+ * Vlastní zpráva uživatele zůstává, hladina za ní.
+ */
+function textAlarmu(a, smer = a?.smerPruniku, cena = null) {
+  const sipka = smer === 'nahoru' ? '↑ ' : smer === 'dolu' ? '↓ ' : '';
+  if (a.typ === 'cas') return a.zprava || t('alarm.timeHit');
+  const hladina = `${sipka}${cena ?? formatPrice(alarmy.uroven(a))}`;
+  return a.zprava ? `${a.zprava} — ${hladina}` : hladina;
 }
 
 /** Kdy se alarm naposledy ohlásil v telefonu — proti dvojímu zvonění s push. */
@@ -4200,8 +4118,7 @@ function ohlasAlarmy(spustene) {
     // Aplikace na pozadí + alarmy hlídá server → ozve se push ze serveru
     // (doručí ho Android i do spícího telefonu). Telefon by zvonil podruhé.
     if (document.visibilityState !== 'visible' && hlidaServerAlarm(a)) continue;
-    ozviSe(a, text);
-    ui.showNotice(text);
+    ozviSe(a, text, a.smerPruniku);
   }
 }
 
@@ -4217,11 +4134,10 @@ async function pushDoAplikace(data) {
     ohlaseneAlarmy.set(id, Date.now());
     // Směr průniku posílá hlídač (v0.59.12).
     const smer = data?.smer === 'nahoru' || data?.smer === 'dolu' ? data.smer : null;
+    // Alarm, který telefon nezná (smazaný mezitím), má hladinu z pushe.
     const text = alarm.price || alarm.typ === 'cas' ? textAlarmu(alarm, smer)
-      : t(smer === 'nahoru' ? 'alarm.hitUp' : smer === 'dolu' ? 'alarm.hitDown' : 'alarm.hit',
-        { symbol: nazevKlice(alarm.symbol), price: data?.price || '' });
-    ozviSe(alarm, text);
-    ui.showNotice(text);
+      : textAlarmu(alarm, smer, data?.price || '');
+    ozviSe(alarm, text, smer);
   }
   if (await alarmyServer.stahniStav()) vykresliAlarmy();
 }

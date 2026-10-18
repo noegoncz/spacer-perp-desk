@@ -1,27 +1,23 @@
 {
-  "verze": "0.62.1",
+  "verze": "0.62.2",
   "novinky": [
     {
-      "en": "Positions show your last 30 days: total from closed trades, win rate and a smooth curve in the colour of your trend. Sort and filter now hide under one button.",
-      "cs": "Pozice ukazují posledních 30 dní: součet uzavřených obchodů, úspěšnost a plynulou křivku v barvě tvého trendu. Řazení a filtr jsou schované pod jedním tlačítkem."
+      "en": "Positions start with one compact summary: open PnL and the last 30 days (trades, win rate, small trend curve). Sort and filter sit in the same box.",
+      "cs": "Pozice začínají jedním úsporným souhrnem: otevřené PnL a posledních 30 dní (obchody, úspěšnost, malá křivka trendu). Řazení a filtr jsou ve stejném bloku."
     },
     {
-      "en": "History numbers exits O1, O2… like the chart and shows trading fees on their own line above the total.",
-      "cs": "Historie čísluje výstupy O1, O2… jako v grafu a poplatky ukazuje na vlastním řádku nad součtem."
+      "en": "Alerts are always a regular phone notification, even with the app open — no more in-app beeping. Text is just the arrow and the price.",
+      "cs": "Alarm je vždy běžná notifikace telefonu, i s otevřenou aplikací — žádné pípání v aplikaci. Text je jen šipka a cena."
     },
     {
-      "en": "New alert icon in the notification bar: the PerpyX X with an arrow up or down (needs the new APK).",
-      "cs": "Nová ikonka alarmu v liště notifikací: X z loga PerpyX se šipkou nahoru nebo dolů (s novým APK)."
+      "en": "New alert icon: an arrow cut out of the PerpyX tile (needs the new APK).",
+      "cs": "Nová ikonka alarmu: šipka vyříznutá v dlaždici PerpyX (s novým APK)."
     }
   ],
   "opravy": [
     {
-      "en": "Opening a trade from History no longer flashes the previous chart.",
-      "cs": "Otevření obchodu z Historie už neprobliká předchozím grafem."
-    },
-    {
-      "en": "Equity, Free and Margin are gone from Positions for now.",
-      "cs": "Equity, Free a Margin z Pozic zatím zmizely."
+      "en": "Trades from History open instantly without flashing.",
+      "cs": "Obchody z Historie se otevírají hned a bez problikávání."
     }
   ]
 }

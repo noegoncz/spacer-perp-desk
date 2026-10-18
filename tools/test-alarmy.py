@@ -46,6 +46,13 @@ window.AudioContext = function () {
   k.createOscillator = () => { window.__pipnuti += 1; return puvodni(); };
   return k;
 };
+// Nativní plugin místních notifikací (APK) podstrčený — od v0.62.1 se alarm
+// ozve jen systémovou notifikací, žádná houkačka ani pruh v aplikaci.
+window.__notif = [];
+window.Capacitor = { isNativePlatform: () => true, Plugins: { LocalNotifications: {
+  createChannel: async () => {}, addListener: () => {},
+  schedule: async (o) => { window.__notif.push(...o.notifications); },
+} } };
 localStorage.removeItem('perpdesk.alarms');
 """
 
@@ -157,12 +164,18 @@ print('pípnutí po první ceně (má být 0):', predcasne)
 posli_cenu(round(uroven + 0.004, 5))
 pipnuti = ev("window.__pipnuti") or 0
 vibrace = ev("window.__vibrace") or 0
+time.sleep(0.3)
+notif = ev("JSON.stringify(window.__notif)") or '[]'
+import json as _json
+notif = _json.loads(notif)
+print('systémové notifikace:', [(n.get('title'), n.get('body'), n.get('smallIcon')) for n in notif])
+notifikace_ok = (len(notif) == 1 and notif[0]['body'].startswith('↑ ') and '▲' in notif[0]['title']
+                 and notif[0].get('channelId') == 'alarms' and notif[0].get('smallIcon') == 'ic_stat_nahoru')
 pruh = ev("document.getElementById('errorBar').hidden ? '' : document.getElementById('errorBar').textContent")
 print('po protnutí — pípnutí:', pipnuti, ' vibrace:', vibrace)
 print('pruh v UI:', pruh or '(nic)')
 # Cena přišla zdola nad hladinu → pruh říká směr (v0.59.12).
-smer_v_pruhu = '↑' in (pruh or '')
-print('směr průniku v pruhu (↑):', smer_v_pruhu)
+print('notifikace „PerpyX · ▲ pár" / „↑ cena", kanál alarms, ikonka nahoru:', notifikace_ok)
 
 po = ulozene()[0] if ulozene() else {}
 h = hladiny()
@@ -187,12 +200,13 @@ ev("document.getElementById('alarmSaveBtn').click()")
 time.sleep(0.6)
 # Tři přechody přes hladinu (dolů, nahoru, dolů) = tři zaznění. Počítají se
 # přes vibrace: těch je jedna na zaznění, kdežto tónů má houkačka víc.
-pred = ev("window.__vibrace") or 0
+pred = len(_json.loads(ev("JSON.stringify(window.__notif)") or '[]'))
 posli_cenu(round(uroven - 0.01, 5))
 posli_cenu(round(uroven + 0.01, 5))
 posli_cenu(round(uroven - 0.01, 5))
 opakovany = ulozene()[0] if ulozene() else {}
-zaznelo = (ev("window.__vibrace") or 0) - pred
+time.sleep(0.3)
+zaznelo = len(_json.loads(ev("JSON.stringify(window.__notif)") or '[]')) - pred
 print('opakovaný alarm — zůstal zapnutý:', opakovany.get('aktivni'),
       ' zaznění:', zaznelo, '(mají být 3)')
 print()
@@ -229,7 +243,7 @@ print('chyby v konzoli:', chyby or '(žádné)')
 print()
 
 ok = (kriz and otevreno and zavreno and len(ulozene()) == 1 and predcasne == 0
-      and pipnuti >= 1 and vibrace >= 1 and pruh and smer_v_pruhu
+      and pipnuti == 0 and not pruh and notifikace_ok
       and po.get('aktivni') is False and opakovany.get('aktivni') is True
       and zaznelo == 3 and uprava and vejdeSe and po_prepnuti == 1 and not chyby)
 print('VÝSLEDEK:', 'ALARMY FUNGUJÍ' if ok else '!!! ALARMY MAJÍ CHYBU')

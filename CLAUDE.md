@@ -601,7 +601,42 @@ Zaškrtávací stránka (23 kroků, v0.61.0): 18 sedí. Opraveno:
   (`renderStat30`, překreslí se při změně šířky).
   **v0.62.1 (uživatel: „vypadá blbě"):** křivka jako mini-graf dlaždice —
   plynulá (přímo mezi zavřeními, 48 vzorků, `hladkaKrivka`), bez teček,
-  zelená / červená podle součtu za 30 dní, výplň do ztracena. Bod = zavírací příkaz
+  zelená / červená podle součtu za 30 dní, výplň do ztracena.
+
+**v0.62.2 — připomínky uživatele po ověření v0.62.0 (2026-10-18):**
+- **Souhrn nad pozicemi = jeden blok** `#prehled` (uživatel: dvě karty
+  pod sebou mátly): řádek 1 „Open +PnL · n pos." + tlačítko filtru,
+  řádek 2 „30D +součet · n trades · win % (· best jen ≥ 560 px)" a malá
+  křivka (56 / 120 px). Blok se schová přes CSS `:has`, když nemá řádek.
+  **Počet celých obchodů**: body statistiky nesou klíč obchodu účet + pár
+  + směr + průměrný vstup (`toPrecision(5)`) — částečná zavření jedné
+  pozice mají stejný vstup; přikoupení obchod rozdělí (plnění všech párů
+  se kvůli tomu nestahují). `stat30[id].verze = 2`. Tečka u filtru
+  zmizela (svítila pořád), tlačítko svítí jen rozbalené.
+- **Problikávání prohlídky obchodu — příčina:** každé otevření stáhlo
+  svíčky **dvakrát** souběžně. `getBars` shazoval `cekaNaLoader` hned na
+  začátku (knihovna ho volá synchronně v `setSymbol`/`setPeriod`), takže
+  `zajistiNacteni` poslal přes `resetData` druhý dotaz; na telefonu se
+  graf odkryl s první odpovědí a druhá ho na snímek hodila na dnešek
+  (ETHFI ve videu). Teď se příznak shodí až s daty a po `callback` se
+  prohlídka posune na okno ve stejné úloze. Prázdná plocha před svíčkami:
+  `predNactiProhlidky` po vykreslení Historie předčte svíčky prvních
+  6 uzavřených obchodů (klíč i s koncem okna); okno sahající do dneška
+  bere nejnovější svíčky (`konecSvicObchodu` → null, sdílí předčtení
+  živého grafu). „Current price" hned ze známé ceny (trhy, pozice).
+  Test: `test-historie-obchod.py` — nejvýš jeden dotaz na svíčky (na
+  v0.62.1 dva).
+- **Alarm = vždy systémová notifikace** (uživatel: „nic víc, nic méně"):
+  WebAudio houkačka, pruh a notifikace přes service worker zmizely.
+  `ozviSe` → `push.ukazMistni` (`@capacitor/local-notifications`, kanál
+  `alarms`, ikonka podle směru, klepnutí otevře graf — `zapojMistni`).
+  Bez pluginu (prohlížeč, starší APK) jen pruh + vibrace. Push v pozadí
+  beze změny. Text **jen šipka a hladina** („↑ 0.29028", server
+  i aplikace), pár v nadpisu. Test: `test-alarmy.py` (podstrčený plugin),
+  `test-hlidac.py`.
+- **Ikonka alarmu** znovu: zaoblený čtvereček jako dlaždice loga
+  (rx 22) s vyříznutou průhlednou šipkou ↑ / ↓ (`fillType evenOdd`)
+  — X se šipkou z v0.62.0 uživatel odmítl jako zmatené. Nové APK. Bod = zavírací příkaz
   (částečné zavření je bod navíc — skládání do obchodů by chtělo plnění
   všech párů všech účtů). Data `getClosedTrades` každého klienta za 30 dní,
   v `perpdesk.stat30` (mimo zálohu), ze sítě nejvýš po 15 min, po ⟳

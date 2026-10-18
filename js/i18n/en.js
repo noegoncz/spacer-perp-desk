@@ -343,7 +343,7 @@ export const en = {
   'alarm.pickInChart': 'Pick in chart',
   'alarm.notifTitle': '{symbol} alert',
   'alarm.needFuture': 'Pick a time in the future.',
-  'alarm.timeHit': '{symbol}: the time you set is here',
+  'alarm.timeHit': 'The time you set is here',
   'alarm.trendHint': 'The level follows the line, so it moves with time. The alert is only live until the line ends on {date}.',
   'alarm.trendEnded': 'The line has ended, so this alert has switched itself off. Move it or draw a new one.',
   'alarm.condition': 'Condition',
@@ -373,9 +373,6 @@ export const en = {
   'alarm.hint': 'The PerpyX server is not reachable right now, so alerts only fire while '
     + 'the app runs, on pairs with an open position or shown in the chart. '
     + 'Alerts are informational and can be delayed or missed.',
-  'alarm.hit': '{symbol} reached {price}',
-  'alarm.hitUp': '{symbol} ↑ crossed above {price}',
-  'alarm.hitDown': '{symbol} ↓ dropped below {price}',
   'style.color': 'Colour',
   'style.width': 'Thickness',
   'style.opacity': 'Opacity',
@@ -474,8 +471,8 @@ export const en = {
   'settings.liqThreshold': 'Liquidation warning at',
   'settings.liqThresholdHint': 'The card turns red when the price gets this close to liquidation.',
   'settings.sltpAlerts': 'Alert on SL/TP hit',
-  'sltp.stopLossHit': '{symbol}: stop loss hit at {price}',
-  'sltp.takeProfitHit': '{symbol}: take profit hit at {price}',
+  'sltp.stopLossHit': 'Stop loss hit at {price}',
+  'sltp.takeProfitHit': 'Take profit hit at {price}',
 
   'indicator.VPROFILE': 'Volume profile',
   'indicatorDesc.VPROFILE': 'Where the volume traded, by price',

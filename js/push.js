@@ -70,3 +70,61 @@ export async function povoleno() {
     return 'unsupported';
   }
 }
+
+/*
+ * Místní systémová notifikace alarmu (v0.62.1, přání uživatele: „ve všech
+ * případech standardní notifikace telefonu, nic víc, nic méně"). Push ze
+ * serveru Android v otevřené aplikaci sám neukáže a dřív se místo něj
+ * pouštěla houkačka z WebAudio. Teď stejná notifikace jako se zhasnutým
+ * displejem: kanál `alarms`, ikonka se šipkou, klepnutí otevře graf.
+ * Plugin `@capacitor/local-notifications` (apk.yml) — starší APK ho nemá.
+ */
+const L = () => self.Capacitor?.Plugins?.LocalNotifications;
+
+export const mistniPodporovano = () => Boolean(L() && self.Capacitor?.isNativePlatform?.());
+
+const IKONY = { nahoru: 'ic_stat_nahoru', dolu: 'ic_stat_dolu' };
+const BARVY = { nahoru: '#3ee6a4', dolu: '#ff6b78' };
+let mistniPripraveno = null;
+
+function pripravMistni(onKlepnuti) {
+  if (!mistniPripraveno) {
+    mistniPripraveno = (async () => {
+      const l = L();
+      // Stejný kanál jako push (kanál je v Androidu jeden pro celou aplikaci).
+      await l.createChannel?.({
+        id: 'alarms', name: t('push.channel'), description: t('push.channelDesc'),
+        importance: 5, visibility: 1, vibration: true, lights: true,
+      }).catch(() => {});
+      l.addListener('localNotificationActionPerformed', (a) => onKlepnuti?.(a?.notification?.extra || {}));
+    })();
+  }
+  return mistniPripraveno;
+}
+
+/** Zapojí klepnutí na místní notifikace (při startu, ať funguje i po probuzení). */
+export function zapojMistni(onKlepnuti) {
+  if (mistniPodporovano()) pripravMistni(onKlepnuti).catch(() => {});
+}
+
+/** Ukáže notifikaci; vrací false, když to telefon neumí (pak ať se aplikace ozve sama). */
+export async function ukazMistni({ titulek, text, smer = null, data = {} }) {
+  if (!mistniPodporovano()) return false;
+  try {
+    await pripravMistni();
+    await L().schedule({
+      notifications: [{
+        id: Math.floor(Math.random() * 2e9),
+        title: titulek,
+        body: text,
+        channelId: 'alarms',
+        smallIcon: IKONY[smer] || 'ic_stat_perpyx',
+        iconColor: BARVY[smer] || '#22d3ee',
+        extra: data,
+      }],
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
