@@ -4075,7 +4075,8 @@ const datumCas = (ms) => new Date(ms).toLocaleString(getLocale(), {
 /**
  * Odezva alarmu v telefonu (v0.62.1, přání uživatele): **vždy jen
  * standardní notifikace telefonu**, stejná jako push se zhasnutým
- * displejem — nadpis „PerpyX · ▲ pár", text „↑ cena", ikonka se šipkou,
+ * displejem — nadpis „PerpyX · pár", text „Price crossed above cena",
+ * směr ukazuje ikonka se šipkou,
  * zvuk a vibrace podle kanálu. Dřív v otevřené aplikaci houkala vlastní
  * houkačka z WebAudio a vyskočil pruh; push ze serveru Android v popředí
  * sám neukáže. Bez nativního pluginu (prohlížeč, starší APK) aspoň pruh
@@ -4083,9 +4084,8 @@ const datumCas = (ms) => new Date(ms).toLocaleString(getLocale(), {
  */
 async function ozviSe(alarm, text, smer = null) {
   const nazev = nazevKlice(alarm.symbol);
-  const znak = smer === 'nahoru' ? '▲ ' : smer === 'dolu' ? '▼ ' : '';
   const ukazano = await push.ukazMistni({
-    titulek: `PerpyX · ${znak}${nazev}`,
+    titulek: `PerpyX · ${nazev}`,
     text,
     smer,
     data: { alarmId: alarm.id || '', symbol: alarm.symbol || '' },
@@ -4096,14 +4096,14 @@ async function ozviSe(alarm, text, smer = null) {
 }
 
 /**
- * Text notifikace bez páru (ten je v nadpisu): jen šipka a hladina,
- * „↑ 0.29028" (v0.62.1, přání uživatele — „prorazil / propadl pod" pryč).
- * Vlastní zpráva uživatele zůstává, hladina za ní.
+ * Text notifikace bez páru (ten je v nadpisu): krátká věta s hladinou,
+ * „Price crossed above 0.29028" (v0.62.4, přání uživatele; směr ukazuje
+ * i ikonka). Vlastní zpráva uživatele zůstává, věta za ní.
  */
 function textAlarmu(a, smer = a?.smerPruniku, cena = null) {
-  const sipka = smer === 'nahoru' ? '↑ ' : smer === 'dolu' ? '↓ ' : '';
   if (a.typ === 'cas') return a.zprava || t('alarm.timeHit');
-  const hladina = `${sipka}${cena ?? formatPrice(alarmy.uroven(a))}`;
+  const klic = smer === 'nahoru' ? 'alarm.crossedAbove' : smer === 'dolu' ? 'alarm.droppedBelow' : 'alarm.reached';
+  const hladina = t(klic, { price: cena ?? formatPrice(alarmy.uroven(a)) });
   return a.zprava ? `${a.zprava} — ${hladina}` : hladina;
 }
 

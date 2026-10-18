@@ -649,7 +649,14 @@ Zaškrtávací stránka (23 kroků, v0.61.0): 18 sedí. Opraveno:
   **Rychlý alarm na kříži:** cena se bere z polohy kříže knihovny
   (`onCrosshairChange`), ne z `touchend` — prst při zvedání ujede
   a alarm vznikal vedle čárkovaného kříže (telefon; v CDP to nejde
-  napodobit, test hlídá shodu s křížem). Bod = zavírací příkaz
+  napodobit, test hlídá shodu s křížem).
+- **v0.62.4 (uživatel po zkoušce na telefonu):** v nadpisu notifikace
+  jen „PerpyX · pár", bez ▲/▼ (směr ukazuje ikonka), text krátká věta
+  „Price crossed above / Price dropped below {hladina}" (cs „Cena
+  překročila / propadla pod"), server i aplikace (`alarm.crossedAbove`…).
+  **Širší ikonka v liště nejde:** malá ikonka notifikace má v Androidu
+  čtvercové místo 24 dp, širší obrázek se zmenší (uživatel chtěl logo X
+  + šipku vedle sebe). Bod = zavírací příkaz
   (částečné zavření je bod navíc — skládání do obchodů by chtělo plnění
   všech párů všech účtů). Data `getClosedTrades` každého klienta za 30 dní,
   v `perpdesk.stat30` (mimo zálohu), ze sítě nejvýš po 15 min, po ⟳

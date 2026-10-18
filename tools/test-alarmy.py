@@ -169,13 +169,14 @@ notif = ev("JSON.stringify(window.__notif)") or '[]'
 import json as _json
 notif = _json.loads(notif)
 print('systémové notifikace:', [(n.get('title'), n.get('body'), n.get('smallIcon')) for n in notif])
-notifikace_ok = (len(notif) == 1 and notif[0]['body'].startswith('↑ ') and '▲' in notif[0]['title']
+notifikace_ok = (len(notif) == 1 and notif[0]['body'].startswith('Price crossed above ')
+                 and notif[0]['title'] == 'PerpyX · JUPUSDT'
                  and notif[0].get('channelId') == 'alarms' and notif[0].get('smallIcon') == 'ic_stat_nahoru')
 pruh = ev("document.getElementById('errorBar').hidden ? '' : document.getElementById('errorBar').textContent")
 print('po protnutí — pípnutí:', pipnuti, ' vibrace:', vibrace)
 print('pruh v UI:', pruh or '(nic)')
 # Cena přišla zdola nad hladinu → pruh říká směr (v0.59.12).
-print('notifikace „PerpyX · ▲ pár" / „↑ cena", kanál alarms, ikonka nahoru:', notifikace_ok)
+print('notifikace „PerpyX · pár" / „Price crossed above cena", kanál alarms, ikonka nahoru:', notifikace_ok)
 
 po = ulozene()[0] if ulozene() else {}
 h = hladiny()
