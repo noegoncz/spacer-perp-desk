@@ -48,7 +48,7 @@ jobs:
         # App: systémové tlačítko zpět (v0.51.0) — bez něj Android aplikaci
         # při „zpět" rovnou zavřel; s ním rozhoduje aplikace (js/app.js,
         # krokZpet) a na začátku se jen minimalizuje.
-        # Local notifications (v0.62.1): alarm v otevřené aplikaci jako běžná
+        # Local notifications (v0.62.2): alarm v otevřené aplikaci jako běžná
         # systémová notifikace (push v popředí Android sám neukáže).
         run: npm install --no-audit --no-fund @capacitor/core@latest @capacitor/cli@latest @capacitor/android@latest @capacitor/app@latest @capacitor/filesystem@latest @capacitor/share@latest @capgo/capacitor-native-biometric@latest @capacitor/push-notifications@latest @capacitor/local-notifications@latest
 
@@ -129,7 +129,7 @@ jobs:
           XML
           # Šipky pro notifikaci alarmu podle směru průniku (v0.59.12):
           # hlídač posílá ikonu ic_stat_nahoru / ic_stat_dolu.
-          # v0.62.1 (přání uživatele — X se šipkou z v0.62.0 bylo zmatené):
+          # v0.62.2 (přání uživatele — X se šipkou z v0.62.0 bylo zmatené):
           # zaoblený čtvereček jako dlaždice loga (rx 22 ze 100) s vyříznutou
           # průhlednou šipkou nahoru / dolů (evenOdd = šipka je díra).
           cat > apk/android/app/src/main/res/drawable/ic_stat_nahoru.xml <<'XML'
@@ -149,97 +149,6 @@ jobs:
           </vector>
           XML
           man=apk/android/app/src/main/AndroidManifest.xml
-          grep -o 'android:allowBackup="[a-z]*"' "$man"
-          sed -i 's#android:allowBackup="true"#android:allowBackup="false" android:fullBackupContent="false" android:dataExtractionRules="@xml/data_extraction_rules"#' "$man"
-          mkdir -p apk/android/app/src/main/res/xml
-          cat > apk/android/app/src/main/res/xml/data_extraction_rules.xml <<'XML'
-          <?xml version="1.0" encoding="utf-8"?>
-          <data-extraction-rules>
-            <cloud-backup>
-              <exclude domain="root" path="." />
-              <exclude domain="file" path="." />
-              <exclude domain="database" path="." />
-              <exclude domain="sharedpref" path="." />
-              <exclude domain="external" path="." />
-            </cloud-backup>
-            <device-transfer>
-              <exclude domain="root" path="." />
-              <exclude domain="file" path="." />
-              <exclude domain="database" path="." />
-              <exclude domain="sharedpref" path="." />
-              <exclude domain="external" path="." />
-            </device-transfer>
-          </data-extraction-rules>
-          XML
-          grep -q 'android:allowBackup="false"' "$man"
-          grep -q 'dataExtractionRules' "$man"
-          grep -o 'android:allowBackup="[a-z]*"[^>]*' "$man"
-
-      # Push notifikace (alarmy se zhasnutým displejem, server/hlidac.mjs).
-      # google-services.json je z projektu Firebase; šablona Capacitoru si
-      # plugin Google Services zapne sama, když soubor v app/ najde.
-      # K tomu jednobarevná ikonka do stavové lišty — barevné logo by
-      # Android ukázal jako bílý čtvereček.
-      - name: Firebase a ikonka notifikací
-        env:
-          GS: ${{ secrets.GOOGLE_SERVICES_JSON }}
-        run: |
-          if [ -z "$GS" ]; then
-            echo "::warning::Chybí GOOGLE_SERVICES_JSON — push notifikace nebudou fungovat."
-            exit 0
-          fi
-          printf '%s' "$GS" > apk/android/app/google-services.json
-          python3 - <<'PY'
-          import json
-          d = json.load(open('apk/android/app/google-services.json'))
-          balicky = [c['client_info']['android_client_info']['package_name'] for c in d['client']]
-          assert 'io.github.noegoncz.perpyx' in balicky, balicky
-          print('Firebase projekt:', d['project_info']['project_id'])
-          PY
-          grep -n "google-services" apk/android/app/build.gradle apk/android/build.gradle
-          mkdir -p apk/android/app/src/main/res/drawable
-          cat > apk/android/app/src/main/res/drawable/ic_stat_perpyx.xml <<'XML'
-          <?xml version="1.0" encoding="utf-8"?>
-          <vector xmlns:android="http://schemas.android.com/apk/res/android"
-              android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
-            <path android:fillColor="#FFFFFFFF"
-                android:pathData="M16.1,18.79L18.79,16.1L7.9,5.21L5.21,7.9Z M18.79,7.9L16.1,5.21L5.21,16.1L7.9,18.79Z" />
-          </vector>
-          XML
-          # Šipky pro notifikaci alarmu podle směru průniku (v0.59.12):
-          # hlídač posílá ikonu ic_stat_nahoru / ic_stat_dolu.
-          # v0.62.0 (volba uživatele, varianta 3): tkané X z loga, stoupající
-          # pruh končí hrotem (↗, u poklesu zrcadlově ↘), druhý pruh průhledný
-          # (Android bere u malé ikonky jen alfu, takže je vidět tlumeně).
-          cat > apk/android/app/src/main/res/drawable/ic_stat_nahoru.xml <<'XML'
-          <?xml version="1.0" encoding="utf-8"?>
-          <vector xmlns:android="http://schemas.android.com/apk/res/android"
-              android:width="24dp" android:height="24dp" android:viewportWidth="100" android:viewportHeight="100">
-            <group android:pivotX="50" android:pivotY="50" android:rotation="45">
-              <path android:fillColor="#FFFFFFFF" android:fillAlpha="0.4" android:pathData="M22,42H36A4,4 0,0 1 40,46V54A4,4 0,0 1 36,58H22A4,4 0,0 1 18,54V46A4,4 0,0 1 22,42ZM64,42H78A4,4 0,0 1 82,46V54A4,4 0,0 1 78,58H64A4,4 0,0 1 60,54V46A4,4 0,0 1 64,42Z" />
-            </group>
-            <group android:pivotX="50" android:pivotY="50" android:rotation="-45">
-              <path android:fillColor="#FFFFFFFF" android:pathData="M22,42H68A4,4 0,0 1 72,46V54A4,4 0,0 1 68,58H22A4,4 0,0 1 18,54V46A4,4 0,0 1 22,42Z" />
-              <path android:fillColor="#FFFFFFFF" android:strokeColor="#FFFFFFFF" android:strokeWidth="5" android:strokeLineJoin="round" android:pathData="M66,31L92,50L66,69Z" />
-            </group>
-          </vector>
-          XML
-          cat > apk/android/app/src/main/res/drawable/ic_stat_dolu.xml <<'XML'
-          <?xml version="1.0" encoding="utf-8"?>
-          <vector xmlns:android="http://schemas.android.com/apk/res/android"
-              android:width="24dp" android:height="24dp" android:viewportWidth="100" android:viewportHeight="100">
-            <group android:pivotY="50" android:scaleY="-1">
-              <group android:pivotX="50" android:pivotY="50" android:rotation="45">
-                <path android:fillColor="#FFFFFFFF" android:fillAlpha="0.4" android:pathData="M22,42H36A4,4 0,0 1 40,46V54A4,4 0,0 1 36,58H22A4,4 0,0 1 18,54V46A4,4 0,0 1 22,42ZM64,42H78A4,4 0,0 1 82,46V54A4,4 0,0 1 78,58H64A4,4 0,0 1 60,54V46A4,4 0,0 1 64,42Z" />
-              </group>
-              <group android:pivotX="50" android:pivotY="50" android:rotation="-45">
-                <path android:fillColor="#FFFFFFFF" android:pathData="M22,42H68A4,4 0,0 1 72,46V54A4,4 0,0 1 68,58H22A4,4 0,0 1 18,54V46A4,4 0,0 1 22,42Z" />
-                <path android:fillColor="#FFFFFFFF" android:strokeColor="#FFFFFFFF" android:strokeWidth="5" android:strokeLineJoin="round" android:pathData="M66,31L92,50L66,69Z" />
-              </group>
-            </group>
-          </vector>
-          XML
-          man=apk/android/app/src/main/AndroidManifest.xml
           python3 - <<'PY'
           p = 'apk/android/app/src/main/AndroidManifest.xml'
           s = open(p).read()
@@ -249,9 +158,16 @@ jobs:
           s = s[:i] + meta + s[i:]
           if 'POST_NOTIFICATIONS' not in s:
               s = s.replace('</manifest>', '<uses-permission android:name="android.permission.POST_NOTIFICATIONS" /></manifest>')
+          # Plugin local-notifications si přináší „Budíky a připomenutí"
+          # (SCHEDULE_EXACT_ALARM) — PerpyX nic na čas neplánuje, notifikaci
+          # ukazuje hned, takže oprávnění pryč (uživatel 2026-10-18: Android
+          # se na něj při instalaci ptal).
+          if 'xmlns:tools=' not in s[:s.index('>', s.index('<manifest'))]:
+              s = s.replace('<manifest', '<manifest xmlns:tools="http://schemas.android.com/tools"', 1)
+          s = s.replace('</manifest>', '<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" tools:node="remove" /></manifest>')
           open(p, 'w').write(s)
           PY
-          grep -o 'default_notification_icon\|POST_NOTIFICATIONS' "$man" | sort -u
+          grep -o 'default_notification_icon\|POST_NOTIFICATIONS\|SCHEDULE_EXACT_ALARM" tools:node="remove' "$man" | sort -u
 
       # Ikona appky místo výchozí ikony Capacitoru. Adaptivní ikona
       # (mipmap-anydpi-v26) se maže, jinak by přebila naše PNG.
