@@ -41,6 +41,12 @@ const dom = {
   accMargin: el('accMargin'),
   accountNote: el('accountNote'),
   positionTools: el('positionTools'),
+  stat30: el('stat30'),
+  stat30Pnl: el('stat30Pnl'),
+  stat30Detail: el('stat30Detail'),
+  stat30Graf: el('stat30Graf'),
+  positionToolsBtn: el('positionToolsBtn'),
+  positionToolsDot: el('positionToolsDot'),
   sortGroup: el('sortGroup'),
   filterGroup: el('filterGroup'),
   ordersBlock: el('ordersBlock'),
@@ -440,6 +446,84 @@ function positionCard(p, hide, onSelect, liqThreshold = 10, volby = {}) {
   return card;
 }
 
+const PREHLED_UCTU_SKRYTY = true;
+
+/*
+ * Karta „Last 30 days" na Pozicích (v0.62.0, varianta C uživatele):
+ * součet uzavřených obchodů všech účtů, počet uzavření, úspěšnost,
+ * nejlepší, a křivka — schody průběžného součtu, tečka v místě každého
+ * zavření. Ukazuje se, když je co ukázat: statistika, nebo pozice (kvůli
+ * tlačítku řazení a filtru).
+ */
+let stat30Data = null;
+let stat30Pozice = false;
+
+function viditelnostStat30() {
+  skryj(dom.stat30, !(stat30Pozice || (stat30Data && stat30Data.body.length)));
+}
+
+export function renderStat30(data, hide) {
+  stat30Data = data;
+  viditelnostStat30();
+  if (!dom.stat30) return;
+  const body = data?.body || [];
+  if (!body.length) {
+    nastavText(dom.stat30Pnl, data ? '—' : '');
+    dom.stat30Pnl.className = 'stat30-pnl';
+    nastavText(dom.stat30Detail, data ? t('stats.none') : '');
+    dom.stat30Graf.replaceChildren();
+    return;
+  }
+  const soucet = body.reduce((s, b) => s + b.pnl, 0);
+  const vyhry = body.filter((b) => b.pnl > 0).length;
+  const nejlepsi = Math.max(...body.map((b) => b.pnl));
+  dom.stat30Pnl.textContent = hide ? MASK : formatSignedUsd(soucet);
+  dom.stat30Pnl.className = `stat30-pnl ${pnlClass(soucet)}`;
+  dom.stat30Detail.textContent = t('stats.detail', {
+    n: body.length,
+    win: Math.round((vyhry / body.length) * 100),
+    best: hide ? MASK : formatSignedUsd(nejlepsi),
+  });
+  kresliKrivku30(body, data.od, data.do);
+}
+
+/** Při změně šířky (přeložení Foldu) křivku překreslit. */
+export function prekresliStat30() {
+  if (stat30Data?.body?.length) kresliKrivku30(stat30Data.body, stat30Data.od, stat30Data.do);
+}
+
+function kresliKrivku30(body, od, doKdy) {
+  const svg = dom.stat30Graf;
+  const w = Math.max(120, Math.round(svg.getBoundingClientRect().width) || 312);
+  const h = 56;
+  const okraj = 5;
+  // Průběžný součet; osa od nuly, ať je vidět, jestli je měsíc v plusu.
+  let kum = 0;
+  const kroky = body.map((b) => ({ t: b.t, v: (kum += b.pnl) }));
+  const min = Math.min(0, ...kroky.map((k) => k.v));
+  const max = Math.max(0, ...kroky.map((k) => k.v));
+  const rozpeti = max - min || 1;
+  const x = (cas) => okraj + ((cas - od) / Math.max(1, doKdy - od)) * (w - 2 * okraj);
+  const y = (v) => okraj + (1 - (v - min) / rozpeti) * (h - 2 * okraj);
+  let d = `M${okraj} ${y(0).toFixed(1)}`;
+  kroky.forEach((k) => {
+    d += `H${x(k.t).toFixed(1)}V${y(k.v).toFixed(1)}`;
+  });
+  d += `H${w - okraj}`;
+  const SVG = 'http://www.w3.org/2000/svg';
+  const prvek = (tag, atributy) => {
+    const e = document.createElementNS(SVG, tag);
+    Object.entries(atributy).forEach(([k, v]) => e.setAttribute(k, v));
+    return e;
+  };
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  svg.replaceChildren(
+    prvek('line', { x1: 0, x2: w, y1: y(0), y2: y(0), class: 'stat30-nula' }),
+    prvek('path', { d, class: `stat30-cara ${kum >= 0 ? 'zisk' : 'ztrata'}` }),
+    ...kroky.map((k) => prvek('circle', { cx: x(k.t).toFixed(1), cy: y(k.v).toFixed(1), r: 2.4, class: 'stat30-bod' })),
+  );
+}
+
 /** Měna páru pro popisky: „BTCUSDC" → USDC, jinak USDT (v0.59.1). */
 const menaParu = (symbol) => (String(symbol || '').endsWith('USDC') ? 'USDC' : 'USDT');
 
@@ -479,6 +563,7 @@ export function showPlaceholder(text, buttonLabel = null) {
   skryj(dom.accountSummary, true);
   skryj(dom.accountNote, true);
   skryj(dom.positionTools, true);
+  skryj(dom.stat30, true);
   skryj(dom.ordersBlock, true);
   dom.placeholder.hidden = false;
   dom.placeholderText.textContent = text;
@@ -496,6 +581,14 @@ export function showPlaceholder(text, buttonLabel = null) {
  * a přehled se schová, žádná červená lišta.
  */
 export function renderAccount(ucet, chyba, hide) {
+  // Dáno bokem (v0.62.0, rozhodnutí uživatele): součet Equity / Free /
+  // Margin přes víc účtů nedával smysl a bral místo. Kód zůstává, možná
+  // se přehled hodí jinde (Nastavení → Burzy, u každého účtu).
+  if (PREHLED_UCTU_SKRYTY) {
+    skryj(dom.accountSummary, true);
+    skryj(dom.accountNote, true);
+    return;
+  }
   const mame = Boolean(ucet);
   skryj(dom.accountSummary, !mame);
   skryj(dom.accountNote, mame || !chyba);
@@ -584,7 +677,17 @@ export function renderOrders(orders, hide, onSelect, chyba = null) {
  * při změně jazyka bez sahání do markupu.
  */
 export function renderPositionTools(stav, onSort, onFilter) {
-  skryj(dom.positionTools, !stav.viditelne);
+  // Od v0.62.0 pod tlačítkem v kartě statistiky (`stav.otevreno`).
+  const vychozi = stav.sort === 'value' && stav.sestupne && stav.filter === 'all';
+  stat30Pozice = stav.viditelne;
+  viditelnostStat30();
+  skryj(dom.positionToolsBtn, !stav.viditelne);
+  if (dom.positionToolsBtn) {
+    dom.positionToolsBtn.classList.toggle('aktivni', !vychozi || Boolean(stav.otevreno));
+    dom.positionToolsBtn.setAttribute('aria-expanded', String(Boolean(stav.otevreno && stav.viditelne)));
+  }
+  skryj(dom.positionToolsDot, vychozi);
+  skryj(dom.positionTools, !(stav.viditelne && stav.otevreno));
   if (!stav.viditelne || !dom.sortGroup || !dom.filterGroup) return;
 
   const tlacitko = (popisek, aktivni, onClick, sufix = '') => {
@@ -750,19 +853,42 @@ export function renderHistory(skupiny, hide, onSelect, volby = {}) {
         [g.otevreno ? datum(g.otevreno) : '', g.zavreno ? datum(g.zavreno) : t('history.open')]
           .filter(Boolean).join('  →  '));
 
+      /*
+       * Výstupy O1, O2… v pořadí zavírání (jako popisky v prohlídce grafu),
+       * každý **před poplatky** — (výstup − vstup) × množství. Rozdíl proti
+       * součtu burzy je poslední ztlumený řádek „Fees" (u Bybitu „Fees &
+       * funding", jeho closedPnl je po obojím). Rozhodnutí uživatele
+       * 2026-10-18 (varianta C): Total zůstává číslo, které ukazuje burza.
+       */
       const vystupy = el2('div', 'trade-vystupy');
-      g.vystupy.forEach((z) => {
+      const smer = g.long ? 1 : -1;
+      let hrubeCelkem = 0;
+      let hrubeZnamo = true;
+      g.vystupy.forEach((z, i) => {
         const radek = el2('div', 'trade-vystup');
-        const smer = g.long ? 1 : -1;
         const pct = z.entry ? ((z.exit / z.entry - 1) * 100 * smer) : null;
+        const hrube = z.entry > 0 && Number.isFinite(z.exit) ? (z.exit - z.entry) * z.qty * smer : null;
+        if (hrube === null) hrubeZnamo = false;
+        else hrubeCelkem += hrube;
+        const castka = hrube ?? z.pnl;
         const velikost = hide ? MASK : `${formatSize(z.qty)} ${mena} (${formatSize(Math.round(z.qty * z.exit))} USD)`;
         radek.append(
+          el2('span', 'tv-o', `O${i + 1}`),
           el2('span', 'tv-text', `${velikost} → ${formatPrice(z.exit)}`
             + (pct !== null ? ` (${formatPercent(pct, 1)})` : '')),
-          el2('span', `tv-pnl ${pnlClass(z.pnl)}`, hide ? MASK : formatSignedUsd(z.pnl)),
+          el2('span', `tv-pnl ${pnlClass(castka)}`, hide ? MASK : formatSignedUsd(castka)),
         );
         vystupy.append(radek);
       });
+      const poplatky = g.pnl - hrubeCelkem;
+      if (hrubeZnamo && Math.abs(poplatky) >= 0.005) {
+        const radek = el2('div', 'trade-vystup trade-poplatky');
+        radek.append(
+          el2('span', 'tv-text', t(g.sFundingem ? 'history.feesFunding' : 'history.fees')),
+          el2('span', 'tv-pnl', hide ? MASK : formatSignedUsd(poplatky)),
+        );
+        vystupy.append(radek);
+      }
 
       const soucet = el2('div', 'trade-soucet');
       soucet.append(el2('span', '', t('history.total')),
@@ -1215,7 +1341,9 @@ export function renderChartInfo(position, hide, burza = '', obrat24h = null) {
    * zůstane řádek s burzou a objemem.
    */
   const vol = Number.isFinite(obrat24h) && obrat24h > 0 ? obrat24h : null;
-  dom.chartInfo.hidden = !position && !vol;
+  // S burzou vždy vidět (v0.62.0): řádek dřív naskočil až s objemem
+  // a celý graf poskočil dolů (video uživatele z prohlídky obchodu).
+  dom.chartInfo.hidden = !position && !vol && !burza;
   if (dom.chartInfo.hidden) return;
 
   const mena = String(position?.symbol || '').replace(/USDT$|USDC$/, '');

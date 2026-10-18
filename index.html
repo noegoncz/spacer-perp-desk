@@ -137,10 +137,36 @@
     </div>
     <p id="accountNote" class="account-note" hidden></p>
 
-    <!-- Řazení a filtr; ukazuje se až když je co řadit -->
-    <div class="list-tools" id="positionTools" hidden>
-      <div class="list-tools-group" id="sortGroup" role="group" data-i18n-aria="sort.label"></div>
-      <div class="list-tools-group" id="filterGroup" role="group"></div>
+    <!-- Uzavřené obchody za 30 dní (v0.62.0, varianta C uživatele): součet,
+         čísla a křivka výsledku; vpravo tlačítko, pod kterým je řazení
+         a filtr pozic (dřív stály na vlastních řádcích). -->
+    <div class="stat30" id="stat30" hidden>
+      <div class="stat30-hlava">
+        <div class="stat30-cisla">
+          <div class="stat30-radek">
+            <span class="summary-label" data-i18n="stats.last30">Last 30 days</span>
+            <span class="stat30-pnl" id="stat30Pnl">—</span>
+          </div>
+          <div class="stat30-detail" id="stat30Detail"></div>
+        </div>
+        <button type="button" id="positionToolsBtn" class="stat30-filtr" aria-expanded="false"
+                data-i18n-aria="stats.sortFilter" data-i18n-title="stats.sortFilter" hidden>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" aria-hidden="true">
+            <path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/>
+            <circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>
+          </svg>
+          <span class="stat30-tecka" id="positionToolsDot" hidden></span>
+        </button>
+      </div>
+      <svg class="stat30-graf" id="stat30Graf" aria-hidden="true"></svg>
+      <!-- Řazení a filtr; rozbalí tlačítko výš -->
+      <div class="list-tools" id="positionTools" hidden>
+        <span class="summary-label" data-i18n="sort.label">Sort</span>
+        <div class="list-tools-group" id="sortGroup" role="group" data-i18n-aria="sort.label"></div>
+        <span class="summary-label" data-i18n="filter.label">Show</span>
+        <div class="list-tools-group" id="filterGroup" role="group"></div>
+      </div>
     </div>
 
     <div id="positionList" class="positions"></div>

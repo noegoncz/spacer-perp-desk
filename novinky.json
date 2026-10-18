@@ -1,19 +1,27 @@
 {
-  "verze": "0.61.1",
+  "verze": "0.62.0",
   "novinky": [
     {
-      "en": "Binance trade results in History now include trading fees, so they match Position History on Binance.",
-      "cs": "Výsledky obchodů Binance v Historii teď zahrnují poplatky, takže sedí s Position History na Binance."
+      "en": "Positions show your last 30 days: total from closed trades, win rate and a curve with a dot for every close. Sort and filter now hide under one button.",
+      "cs": "Pozice ukazují posledních 30 dní: součet uzavřených obchodů, úspěšnost a křivku s tečkou za každé zavření. Řazení a filtr jsou schované pod jedním tlačítkem."
     },
     {
-      "en": "Shorter alert notifications: just the direction and your alert level.",
-      "cs": "Kratší notifikace alarmů: jen směr a hladina alarmu."
+      "en": "History numbers exits O1, O2… like the chart and shows trading fees on their own line above the total.",
+      "cs": "Historie čísluje výstupy O1, O2… jako v grafu a poplatky ukazuje na vlastním řádku nad součtem."
+    },
+    {
+      "en": "New alert icon in the notification bar: the PerpyX X with an arrow up or down (needs the new APK).",
+      "cs": "Nová ikonka alarmu v liště notifikací: X z loga PerpyX se šipkou nahoru nebo dolů (s novým APK)."
     }
   ],
   "opravy": [
     {
-      "en": "A brief connection drop no longer shows an error bar — the status at the top says it all.",
-      "cs": "Krátký výpadek spojení už neukáže lištu s chybou — stačí stav nahoře."
+      "en": "Opening a trade from History no longer flashes the previous chart.",
+      "cs": "Otevření obchodu z Historie už neprobliká předchozím grafem."
+    },
+    {
+      "en": "Equity, Free and Margin are gone from Positions for now.",
+      "cs": "Equity, Free a Margin z Pozic zatím zmizely."
     }
   ]
 }

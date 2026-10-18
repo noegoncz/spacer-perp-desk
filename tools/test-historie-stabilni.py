@@ -58,7 +58,7 @@ def over(podminka, popis):
 
 
 KARTY = """JSON.stringify([...document.querySelectorAll('#historyList .trade')].map((k) =>
-  k.querySelector('.trade-titul').textContent + ' ' + k.querySelectorAll('.trade-vystup').length))"""
+  k.querySelector('.trade-titul').textContent + ' ' + k.querySelectorAll('.trade-vystup:not(.trade-poplatky)').length))"""
 karty = lambda: json.loads(ev(KARTY) or '[]')
 
 ev("document.querySelector('.tab[data-tab=history]').click()")

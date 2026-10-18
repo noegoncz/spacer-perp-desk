@@ -48,7 +48,9 @@ const BEZ_ZALOHY = new Set([KEY_API, KEY_SECRET, KEY_BURZA, KEY_BURZA_VOLBY, KEY
   // a do zálohy nepatří (js/app.js, ulozSnimek).
   'perpdesk.startSnimek', 'perpdesk.denikOtevreni',
   // Poslední známé ceny a mini-grafy párů ve Watchlists (js/app.js).
-  'perpdesk.trhySnimek']);
+  'perpdesk.trhySnimek',
+  // Uzavřené obchody za 30 dní pro statistiku na Pozicích (js/app.js).
+  'perpdesk.stat30']);
 const posluchaci = new Set();
 
 export function naZmenuDat(fn) {

@@ -52,8 +52,9 @@ KARTY = """JSON.stringify([...document.querySelectorAll('#historyList .trade')].
   otevreny: k.classList.contains('otevreny'),
   hlava: k.querySelector('.trade-titul').textContent,
   kdy: k.querySelector('.trade-when').textContent,
-  vystupu: k.querySelectorAll('.trade-vystup').length,
-  radky: [...k.querySelectorAll('.trade-vystup')].map((r) => r.textContent),
+  vystupu: k.querySelectorAll('.trade-vystup:not(.trade-poplatky)').length,
+  radky: [...k.querySelectorAll('.trade-vystup:not(.trade-poplatky)')].map((r) => r.textContent),
+  poplatky: (k.querySelector('.trade-poplatky') || {}).textContent || '',
   soucet: k.querySelector('.trade-soucet').textContent })))"""
 
 ev("window.__dotazyClosedPnl = 0")
@@ -73,10 +74,15 @@ if otevreny:
     # v0.38.1: jen „d.m.rrrr → Open", bez doprovodného textu.
     over(re.fullmatch(r'\d{1,2}\.\d{1,2}\.\d{4}\s+→\s+Open', otevreny['kdy'].strip()) is not None,
          f"datum otevření → Open ({otevreny['kdy']})")
-    over(otevreny['vystupu'] == 1 and re.fullmatch(r'1,000 JUP \(310 USD\) → 0\.31000 \(\+2\.9 %\)\+2\.20',
+    over(otevreny['vystupu'] == 1 and # v0.62.0: štítek O1 a částka před poplatky (mock má jiný vstup než closedPnl).
+                                                    re.fullmatch(r'O11,000 JUP \(310 USD\) → 0\.31000 \(\+2\.9 %\)[+−][\d.,]+',
                                                     otevreny['radky'][0]) is not None,
          f"výstup na jednom řádku podle vzoru ({otevreny['radky'][0]})")
     over('Total' in otevreny['soucet'] and '+2.20' in otevreny['soucet'], f"podtržený součet ({otevreny['soucet']})")
+    # v0.62.0: rozdíl výstupů (před poplatky) a součtu Bybitu je řádek
+    # „Fees & funding" (closedPnl Bybitu je po obojím). Mock: 8.65 vs 2.20.
+    over(otevreny['poplatky'].startswith('Fees & funding') and '6.45' in otevreny['poplatky'],
+         f"řádek poplatků nad součtem ({otevreny['poplatky']})")
 uzavreny = next((k for k in karty if not k['otevreny']), None)
 if uzavreny:
     over(re.fullmatch(r'\d{1,2}\.\d{1,2}\.\d{4}\s+→\s+\d{1,2}\.\d{1,2}\.\d{4}', uzavreny['kdy'].strip()) is not None,

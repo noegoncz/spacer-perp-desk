@@ -127,18 +127,35 @@ jobs:
           XML
           # Šipky pro notifikaci alarmu podle směru průniku (v0.59.12):
           # hlídač posílá ikonu ic_stat_nahoru / ic_stat_dolu.
+          # v0.62.0 (volba uživatele, varianta 3): tkané X z loga, stoupající
+          # pruh končí hrotem (↗, u poklesu zrcadlově ↘), druhý pruh průhledný
+          # (Android bere u malé ikonky jen alfu, takže je vidět tlumeně).
           cat > apk/android/app/src/main/res/drawable/ic_stat_nahoru.xml <<'XML'
           <?xml version="1.0" encoding="utf-8"?>
           <vector xmlns:android="http://schemas.android.com/apk/res/android"
-              android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
-            <path android:fillColor="#FFFFFFFF" android:pathData="M12,3L21,13L15,13L15,21L9,21L9,13L3,13Z" />
+              android:width="24dp" android:height="24dp" android:viewportWidth="100" android:viewportHeight="100">
+            <group android:pivotX="50" android:pivotY="50" android:rotation="45">
+              <path android:fillColor="#FFFFFFFF" android:fillAlpha="0.4" android:pathData="M22,42H36A4,4 0,0 1 40,46V54A4,4 0,0 1 36,58H22A4,4 0,0 1 18,54V46A4,4 0,0 1 22,42ZM64,42H78A4,4 0,0 1 82,46V54A4,4 0,0 1 78,58H64A4,4 0,0 1 60,54V46A4,4 0,0 1 64,42Z" />
+            </group>
+            <group android:pivotX="50" android:pivotY="50" android:rotation="-45">
+              <path android:fillColor="#FFFFFFFF" android:pathData="M22,42H68A4,4 0,0 1 72,46V54A4,4 0,0 1 68,58H22A4,4 0,0 1 18,54V46A4,4 0,0 1 22,42Z" />
+              <path android:fillColor="#FFFFFFFF" android:strokeColor="#FFFFFFFF" android:strokeWidth="5" android:strokeLineJoin="round" android:pathData="M66,31L92,50L66,69Z" />
+            </group>
           </vector>
           XML
           cat > apk/android/app/src/main/res/drawable/ic_stat_dolu.xml <<'XML'
           <?xml version="1.0" encoding="utf-8"?>
           <vector xmlns:android="http://schemas.android.com/apk/res/android"
-              android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
-            <path android:fillColor="#FFFFFFFF" android:pathData="M12,21L3,11L9,11L9,3L15,3L15,11L21,11Z" />
+              android:width="24dp" android:height="24dp" android:viewportWidth="100" android:viewportHeight="100">
+            <group android:pivotY="50" android:scaleY="-1">
+              <group android:pivotX="50" android:pivotY="50" android:rotation="45">
+                <path android:fillColor="#FFFFFFFF" android:fillAlpha="0.4" android:pathData="M22,42H36A4,4 0,0 1 40,46V54A4,4 0,0 1 36,58H22A4,4 0,0 1 18,54V46A4,4 0,0 1 22,42ZM64,42H78A4,4 0,0 1 82,46V54A4,4 0,0 1 78,58H64A4,4 0,0 1 60,54V46A4,4 0,0 1 64,42Z" />
+              </group>
+              <group android:pivotX="50" android:pivotY="50" android:rotation="-45">
+                <path android:fillColor="#FFFFFFFF" android:pathData="M22,42H68A4,4 0,0 1 72,46V54A4,4 0,0 1 68,58H22A4,4 0,0 1 18,54V46A4,4 0,0 1 22,42Z" />
+                <path android:fillColor="#FFFFFFFF" android:strokeColor="#FFFFFFFF" android:strokeWidth="5" android:strokeLineJoin="round" android:pathData="M66,31L92,50L66,69Z" />
+              </group>
+            </group>
           </vector>
           XML
           man=apk/android/app/src/main/AndroidManifest.xml

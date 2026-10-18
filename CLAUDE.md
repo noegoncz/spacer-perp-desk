@@ -584,9 +584,38 @@ Zaškrtávací stránka (23 kroků, v0.61.0): 18 sedí. Opraveno:
   stačí; lišta jen pro chyby, se kterými má uživatel něco udělat.
 - **Text push alarmu:** jen „↑ prorazil 0.29028" — pár je v nadpisu,
   druhá cena (poslední obchod) zmizela (`texty` v server/hlidac.mjs).
-- Zbývá z ověření: přehled účtu (Equity/Free/Margin) — uživatel zvažuje
-  zrušit; problikávání v prohlídce obchodu (pošle video); ikonka šipky
-  v notifikaci ve stylu loga (nové APK).
+
+**v0.62.0 — volby uživatele z plátna návrhů**
+(https://claude.ai/artifact/JZ3MVZgEHjWA9H9zGFypHf, 2026-10-18):
+- **Historie, varianta C:** výstupy se štítkem O1, O2… (pořadí zavírání,
+  jako v prohlídce grafu), částka řádku **před poplatky**
+  ((výstup − vstup) × množství), poslední ztlumený řádek `.trade-poplatky`
+  = součet burzy − výstupy, nad čarou součtu. Bybit „Fees & funding"
+  (`poplatkySFundingem` v bybit.js — closedPnl je po poplatcích i fundingu
+  podle nápovědy Bybitu), ostatní „Fees". Řádek jen od 0.005.
+  Hyperliquid má výstup = closedPnl → bez řádku.
+- **Pozice, varianta C:** Equity / Free / Margin dané bokem
+  (`PREHLED_UCTU_SKRYTY` v ui.js, kód zůstal). Karta `#stat30` „Last 30
+  days": součet uzavřených obchodů všech účtů, počet uzavření, úspěšnost,
+  nejlepší; křivka = schody průběžného součtu, tečka za každé zavření
+  (`renderStat30`, překreslí se při změně šířky). Bod = zavírací příkaz
+  (částečné zavření je bod navíc — skládání do obchodů by chtělo plnění
+  všech párů všech účtů). Data `getClosedTrades` každého klienta za 30 dní,
+  v `perpdesk.stat30` (mimo zálohu), ze sítě nejvýš po 15 min, po ⟳
+  a 5 s po zavření pozice (`hlidejZavreniPozic`). ⚠ U Binance bez poplatků
+  otevření (ty odečítá jen Historie z plnění). Řazení a filtr pozic jsou
+  pod tlačítkem `#positionToolsBtn` v kartě; nevýchozí volba = svítí + tečka.
+  Test: `tools/test-statistika-30.py` (i snímky 344 / 673 px).
+- **Ikonka alarmu, varianta 3:** tkané X z loga, stoupající pruh s hrotem
+  (↗ / zrcadlově ↘), druhý pruh `fillAlpha 0.4` (malá ikonka bere jen alfu)
+  — vektory v apk.yml, **vyžaduje nové APK**.
+- **Problikávání v prohlídce obchodu (video uživatele):** (1) prohlídka
+  i návrat z ní na stejný pár: klíč grafu se nemění, takže graf neschoval
+  plátno a při stejném timeframu ani nenačetl data — teď `chart.zajistiNacteni()`
+  (schová do dat, a když knihovna data sama nechce, `resetData`);
+  (2) řádek „Binance · USDⓈ-M" je vidět hned (dřív naskočil s objemem
+  a graf poskočil); (3) v prohlídce se hned schová vestavěná značka poslední
+  ceny s odpočtem (`showTradeWindow`).
 
 ### `js/bybit.js` je izolovaný záměrně
 

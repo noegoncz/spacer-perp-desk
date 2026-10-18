@@ -86,8 +86,14 @@ volne = ev("document.getElementById('accAvailable').textContent")
 margin = ev("document.getElementById('accMargin').textContent")
 skryty = ev("document.getElementById('accountSummary').hidden")
 print('přehled účtu:', equity, '/', volne, '/', margin, ' (skrytý:', skryty, ')')
-if skryty or '1,250.50' not in (equity or '') or '9.6' not in (margin or ''):
-    chyby.append('přehled účtu se nezobrazil správně')
+# v0.62.0 (rozhodnutí uživatele): Equity / Free / Margin dané bokem —
+# přehled účtu se nezobrazuje, místo něj karta statistiky 30 dní.
+if not skryty:
+    chyby.append('přehled účtu má být schovaný (v0.62.0)')
+stat = ev("(() => { const s = document.getElementById('stat30'); return s && !s.hidden; })()")
+print('karta 30 dní vidět:', stat)
+if not stat:
+    chyby.append('karta „Last 30 days" s tlačítkem filtru se nezobrazila')
 
 # ---- funding na kartě ----
 def funding_karty(symbol):

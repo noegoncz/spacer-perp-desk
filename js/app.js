@@ -379,6 +379,9 @@ async function spustUcty() {
     ui.nastavNazevBurzy(client.burza.nazev);
   }
   await Promise.all(nove.map((k) => k.start()));
+  // Statistika 30 dní: hned z telefonu, ze sítě až po prvních pozicích.
+  vykresliStat30();
+  if (nove.length) setTimeout(() => obnovStat30(), 4000);
 }
 
 /** Zastaví a zapomene klienta jednoho připojení (jeho data zmizí ze seznamu). */
@@ -386,6 +389,8 @@ function zastavUcet(id) {
   klienti.get(id)?.stop();
   klienti.delete(id);
   stavUctu.delete(id);
+  delete stat30[id];
+  vykresliStat30();
   HANDLERY.onPositions(vsechnyPozice());
   HANDLERY.onOrders(vsechnyPrikazy(), null);
   HANDLERY.onAccount(...soucetUctu());
@@ -716,10 +721,12 @@ function vykresliPozice() {
       sort: razeni,
       sestupne: razeniSestupne,
       filter: filtrPozic,
+      otevreno: filtrOtevreny,
     },
     prepniRazeni,
     prepniFiltr,
   );
+  hlidejZavreniPozic();
   // Prázdný výsledek filtru není totéž co „žádné pozice" — musí být poznat,
   // že data jsou, jen je schoval filtr.
   if (lastPositions.length > 0 && seznam.length === 0) {
@@ -742,6 +749,78 @@ function prepniFiltr(klic) {
   filtrPozic = klic;
   store.savePositionFilter(klic);
   vykresliPozice();
+}
+
+/* ---------- statistika 30 dní na Pozicích (v0.62.0) ---------- */
+
+/*
+ * Karta „Last 30 days" (varianta C uživatele, 2026-10-18): uzavřené
+ * obchody všech připojených účtů za 30 dní — součet, počet uzavření,
+ * úspěšnost a křivka. Jeden bod = jeden zavírací příkaz (záznam burzy),
+ * částečné zavření je tedy bod navíc; skládat obchody by chtělo plnění
+ * všech párů všech účtů. Uložené v telefonu (`perpdesk.stat30`, mimo
+ * zálohu), ze sítě nejvýš po 15 min, po ⟳ a po zavření pozice.
+ * Řazení a filtr pozic jsou pod tlačítkem v téže kartě (`filtrOtevreny`).
+ */
+const STAT_OKNO = 30 * 864e5;
+const STAT_PLATI = 15 * 60e3;
+const KLIC_STAT = 'perpdesk.stat30';
+let filtrOtevreny = false;
+let stat30 = store.loadJson(KLIC_STAT, {}) || {};
+let stat30Bezi = false;
+let poziceMinule = null;
+
+function prepniNastrojePozic() {
+  filtrOtevreny = !filtrOtevreny;
+  vykresliPozice();
+}
+
+function vykresliStat30() {
+  const ted = Date.now();
+  const od = ted - STAT_OKNO;
+  const ucty = [...klienti.keys()].filter((id) => stat30[id]);
+  if (!ucty.length) {
+    ui.renderStat30(null, hideAmounts);
+    return;
+  }
+  const body = ucty.flatMap((id) => stat30[id].body || [])
+    .filter(([cas]) => cas >= od)
+    .map(([cas, pnl]) => ({ t: cas, pnl }))
+    .sort((a, b) => a.t - b.t);
+  ui.renderStat30({ body, od, do: ted }, hideAmounts);
+}
+
+async function obnovStat30(vynutit = false) {
+  if (stat30Bezi) return;
+  stat30Bezi = true;
+  try {
+    for (const [id, k] of klienti) {
+      const z = stat30[id];
+      if (!vynutit && z && Date.now() - z.cas < STAT_PLATI) continue;
+      try {
+        const ted = Date.now();
+        const zaznamy = await k.getClosedTrades(ted - STAT_OKNO, ted);
+        stat30[id] = {
+          cas: ted,
+          body: (zaznamy || []).map((o) => [o.closedAt, Math.round(o.pnl * 1e4) / 1e4]),
+        };
+      } catch { /* příště znovu; uložená data zůstávají */ }
+    }
+    // Odpojené účty pryč.
+    Object.keys(stat30).forEach((id) => { if (!klienti.has(id)) delete stat30[id]; });
+    store.saveJson(KLIC_STAT, stat30);
+  } finally {
+    stat30Bezi = false;
+  }
+  vykresliStat30();
+}
+
+/** Zavřená pozice = nový uzavřený obchod → statistiku za chvíli obnovit. */
+function hlidejZavreniPozic() {
+  const ted = new Set(lastPositions.map((p) => `${p.ucet}|${p.symbol}`));
+  const zmizela = poziceMinule && [...poziceMinule].some((k) => !ted.has(k));
+  poziceMinule = ted;
+  if (zmizela) setTimeout(() => obnovStat30(true), 5000);
 }
 
 /* ---------- upozornění při zásahu SL/TP (checkpoint 8) ---------- */
@@ -1263,17 +1342,22 @@ function wireEvents() {
       if (aktivniZalozka === 'watchlist') await obnovTrhy();
       else if (!klienti.size) openSettings();
       else if (aktivniZalozka === 'history') await obnovHistorii(true);
-      else await Promise.all([...klienti.values()].map(obnovUcetCely));
+      else await Promise.all([...klienti.values()].map(obnovUcetCely).concat(obnovStat30(true)));
     } finally {
       tl?.classList.remove('toci');
     }
   });
+
+  naUdalost('positionToolsBtn', 'click', prepniNastrojePozic);
+  // Přeložení Foldu mění šířku křivky statistiky.
+  window.addEventListener('resize', () => ui.prekresliStat30());
 
   naUdalost('hideBtn', 'click', () => {
     hideAmounts = !hideAmounts;
     store.saveHideAmounts(hideAmounts);
     el('hideBtn').classList.toggle('active', hideAmounts);
     vykresliPozice();
+    vykresliStat30();
     // Skrývání částek platí i pro přehled účtu, ne jen pro karty.
     ui.renderAccount(ucetStav.ucet, ucetStav.chyba, hideAmounts);
     if (skupinyObchodu.length) ui.renderHistory(skupinyObchodu, hideAmounts, otevriSkupinu, volbyHistorie());
@@ -1544,6 +1628,7 @@ function wireEvents() {
     if (visible) {
       for (const k of klienti.values()) k.ensureConnected();
       checkForUpdate();
+      obnovStat30(); // jen když jsou data starší než 15 min
     }
   });
 }
@@ -1565,6 +1650,7 @@ function postavVyberJazyka() {
     setLanguage(select.value);
     applyStaticTexts();
     vykresliPozice();
+    vykresliStat30();
     // Přehled účtu má vlastní popisky, překreslit ho taky.
     ui.renderAccount(ucetStav.ucet, ucetStav.chyba, hideAmounts);
     ui.renderStatus(souhrnStavu());
@@ -1904,6 +1990,8 @@ function nactiOtevreni(position) {
     .catch(() => { /* čára zůstane od levého okraje, nic se nerozbije */ });
 }
 
+let grafBylProhlidka = false;
+
 async function otevriGraf(symbol, position, trh) {
   /*
    * Jeden vzhled grafu, ať se otevře odkudkoli (v0.41.0, přání uživatele):
@@ -1987,6 +2075,10 @@ async function otevriGraf(symbol, position, trh) {
   chart.setSymbol(grafKlic(), priceDecimals(position?.entry ?? trh?.last ?? prohlizenyObchod?.entry ?? 0));
   if (prohlizenyObchod?.okno) chart.showTradeWindow(prohlizenyObchod.okno.od, prohlizenyObchod.okno.do);
   chart.setInterval(chartInterval); // knihovna si data vyžádá sama
+  // Prohlídka má svíčky z doby obchodu, živý graf nejnovější — mezi nimi
+  // (i na stejném páru a timeframu) se musí načíst znovu (v0.62.0).
+  if (prohlizenyObchod || grafBylProhlidka) chart.zajistiNacteni();
+  grafBylProhlidka = Boolean(prohlizenyObchod);
   /*
    * ⚠ Čáry nového grafu hned (v0.59.6, video uživatele): instance grafu se
    * recykluje a čáry předchozího grafu v ní zůstávaly, dokud nedorazily
@@ -3703,6 +3795,7 @@ async function prepocitejSkupiny(jenUlozene = false) {
   if (jenUlozene && !uplne) return false; // skupiny z neúplných plnění nepoužít
   skupinyObchodu = seskupObchody(zaznamy, plneni, lastPositions.filter((p) => p.ucet === k.pripojeniId),
     Boolean(k.poplatkyOtevreni));
+  skupinyObchodu.forEach((g) => { g.sFundingem = Boolean(k.poplatkySFundingem); });
   return uplne;
 }
 

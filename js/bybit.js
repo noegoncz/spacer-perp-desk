@@ -207,6 +207,10 @@ export class BybitClient {
   constructor(handlers = {}, options = {}) {
     this.handlers = handlers;
     this.httpGet = options.httpGet || defaultHttpGet;
+    // `closedPnl` Bybitu je po poplatcích i fundingu (nápověda Bybitu:
+    // Position P&L − fee to open − fee to close − funding). Historie proto
+    // rozdíl mezi výstupy a součtem jmenuje „Fees & funding" (v0.62.0).
+    this.poplatkySFundingem = true;
 
     this.apiKey = '';
     this.apiSecret = '';

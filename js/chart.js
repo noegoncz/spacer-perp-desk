@@ -1667,6 +1667,9 @@ export function createPriceChart(container, layer, handlers = {}) {
 
   let aktualniTicker = null;
   let pojistkaOdkryti = null;
+  // Knihovna si data vyžádá jen při změně páru nebo období; `zajistiNacteni`
+  // podle toho pozná, jestli načtení musí vynutit (v0.62.0).
+  let cekaNaLoader = false;
 
   /** Schová plátno do příchodu dat nového páru (viz `setSymbol`). */
   function schovejDoDat() {
@@ -2453,6 +2456,7 @@ export function createPriceChart(container, layer, handlers = {}) {
             callback([], false);
             return;
           }
+          cekaNaLoader = false;
           try {
             callback(await aktualniLoader(period), false);
           } catch {
@@ -2508,6 +2512,7 @@ export function createPriceChart(container, layer, handlers = {}) {
        */
       if (ticker !== aktualniTicker) {
         aktualniTicker = ticker;
+        cekaNaLoader = true;
         schovejDoDat();
       }
       chart.setSymbol({ ticker, pricePrecision, volumePrecision: 0 });
@@ -2531,6 +2536,7 @@ export function createPriceChart(container, layer, handlers = {}) {
         return;
       }
       posledniInterval = interval;
+      cekaNaLoader = true;
       /*
        * ⚠ Snímek kreseb se bere jen jednou, při prvním přepnutí. Při rychlém
        * proklikávání timeframů je graf už vyprázdněný předchozím přepnutím,
@@ -2682,8 +2688,27 @@ export function createPriceChart(container, layer, handlers = {}) {
      * mimo něj ztlumené (v0.45.0, přání uživatele — ať je obchod jasně
      * vidět). Volá se hned po `setSymbol`, ještě před daty.
      */
+    /*
+     * Prohlídka obchodu a návrat z ní na tentýž pár (v0.62.0, video
+     * uživatele): klíč grafu se nemění, takže `setSymbol` plátno neschoval
+     * a při stejném timeframu knihovna ani nesáhla pro data — půl vteřiny
+     * (nebo natrvalo) byly vidět svíčky předchozího grafu. Volá se po
+     * `setSymbol` a `setInterval`: schová plátno do příchodu dat a když
+     * knihovna data sama nechce, vynutí je (`resetData` → loader).
+     */
+    zajistiNacteni() {
+      schovejDoDat();
+      if (!cekaNaLoader) {
+        cekaNaLoader = true;
+        chart.resetData();
+      }
+    },
+
     showTradeWindow(od, doCasu) {
       oknoObchodu = { od, do: doCasu };
+      // Vestavěná značka poslední ceny s odpočtem patří živému grafu;
+      // v prohlídce ji nahradí „Current price" (dřív zeleně problikla).
+      chart.setStyles({ candle: { priceMark: { last: { show: false } } } });
       chart.removeOverlay({ groupId: 'okno' });
       chart.createOverlay({
         name: 'oknoObchodu', groupId: 'okno', lock: true, zLevel: -1,
