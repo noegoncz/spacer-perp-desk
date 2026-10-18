@@ -2456,12 +2456,26 @@ export function createPriceChart(container, layer, handlers = {}) {
             callback([], false);
             return;
           }
-          cekaNaLoader = false;
+          /*
+           * ⚠ `cekaNaLoader` se smí shodit až s daty, ne na začátku: knihovna
+           * volá `getBars` hned v `setSymbol` / `setPeriod`, takže následné
+           * `zajistiNacteni` vidělo „nic nečeká" a přes `resetData` poslalo
+           * **druhý** dotaz (v0.62.1, video uživatele). Na telefonu pak
+           * odpovědi dorazily každá jindy — graf se odkryl s oknem obchodu
+           * a druhá dávka dat ho na snímek hodila na dnešní svíčky.
+           */
+          let svice;
           try {
-            callback(await aktualniLoader(period), false);
+            svice = await aktualniLoader(period);
           } catch {
-            callback([], false);
+            svice = [];
           }
+          cekaNaLoader = false;
+          callback(svice, false);
+          // Knihovna po nových datech skočí na konec; prohlídka obchodu se
+          // posune na okno hned, ve stejné úloze — jinak by se před
+          // srovnáním za dva snímky mohl vykreslit dnešek.
+          if (oknoObchodu || cilPohledu) posunNaCil();
           /*
            * ⚠ Kresby a čáry se musí vrátit **ve stejném průchodu jako data**,
            * ne přes `setTimeout`. Odklad znamená snímek, ve kterém graf už

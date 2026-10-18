@@ -2169,8 +2169,8 @@ let sviceBezi = 0;
 const platnostSvic = (interval) => Math.min(SVICE_DOPREDU_PLATI, DELKA_INTERVALU[interval] || SVICE_DOPREDU_PLATI);
 
 /** Čerstvé předčtené svíčky (slib), nebo null. */
-function predctene(klient, burza, symbol, interval) {
-  const z = sviceDopredu.get(`${klicGrafu(burza, symbol)}|${interval}`);
+function predctene(klient, burza, symbol, interval, konec = null) {
+  const z = sviceDopredu.get(`${klicGrafu(burza, symbol)}|${interval}${konec ? `|${konec}` : ''}`);
   return z && z.klient === klient && Date.now() - z.cas < platnostSvic(interval) ? z.slib : null;
 }
 
@@ -2179,13 +2179,14 @@ function intervalParu(burza, symbol) {
   return store.loadChartView()[klicGrafu(burza, symbol)]?.interval || intervalUzivatele;
 }
 
-function predNactiSvice(klient, burza, symbol, interval = intervalParu(burza, symbol)) {
+function predNactiSvice(klient, burza, symbol, interval = intervalParu(burza, symbol), konec = null) {
   if (!klient || !symbol || !interval) return null;
-  const hotove = predctene(klient, burza, symbol, interval);
+  const hotove = predctene(klient, burza, symbol, interval, konec);
   if (hotove) return hotove;
-  const klic = `${klicGrafu(burza, symbol)}|${interval}`;
+  // `konec` = svíčky z doby obchodu (prohlídka z Historie), jinak nejnovější.
+  const klic = `${klicGrafu(burza, symbol)}|${interval}${konec ? `|${konec}` : ''}`;
   // `predem`: burza s přísným limitem (Hyperliquid) to pošle frontou na pozadí.
-  const slib = klient.getKlines(symbol, interval, 500, null, { predem: true });
+  const slib = klient.getKlines(symbol, interval, 500, konec, { predem: true });
   const zaznam = { klient, cas: Date.now(), slib };
   sviceDopredu.set(klic, zaznam);
   slib.catch(() => { if (sviceDopredu.get(klic) === zaznam) sviceDopredu.delete(klic); });
@@ -2245,7 +2246,7 @@ async function nactiSviceProInterval(interval) {
   // Bez něj přišlo nejnovějších 500 — na 1m pár hodin — a obchod ze
   // včerejška v datech vůbec nebyl: graf ukázal dnešek bez značek (v0.45.0).
   const konec = konecSvicProhlidky(interval);
-  const dopredu = konec === null ? predctene(grafKlient(), chartBurza || client.burza.id, chartSymbol, interval) : null;
+  const dopredu = predctene(grafKlient(), chartBurza || client.burza.id, chartSymbol, interval, konec);
   let bars = null;
   if (dopredu) bars = await dopredu.catch(() => null);
   if (!bars) bars = await grafKlient().getKlines(chartSymbol, interval, 500, konec);
@@ -2341,6 +2342,11 @@ async function obnovCenuTed() {
     return;
   }
   const symbol = chartSymbol;
+  // Hned cena, kterou aplikace už zná (trhy, pozice) — dřív linka
+  // naskočila až s tickerem z burzy, chvíli po svíčkách (v0.62.1).
+  const znama = trhy.find((r) => r.klic === grafKlic())?.last
+    ?? lastPositions.find((p) => p.symbol === symbol && (p.burza || 'bybit') === (chartBurza || 'bybit'))?.mark;
+  if (Number.isFinite(znama)) chart.setCurrentPrice(znama);
   try {
     const tk = await grafKlient().getTicker(symbol);
     if (prohlizenyObchod !== obchod || chartSymbol !== symbol) return;
@@ -3602,8 +3608,35 @@ function intervalProObchod(trvaniMs) {
 /** Konec svíček pro prohlídku: kus po zavření obchodu (okolí), nejvýš teď. */
 function konecSvicProhlidky(interval) {
   const okno = prohlizenyObchod?.okno;
-  if (!okno) return null;
-  return Math.min(Date.now(), okno.do + 150 * (DELKA_INTERVALU[interval] || 3600e3));
+  return okno ? konecSvicObchodu(okno.do, interval) : null;
+}
+
+/**
+ * Konec svíček okna obchodu; `null` = nejnovější svíčky (okolí sahá do
+ * dneška). Na nich je obchod taky celý (nejvýš 24 + 150 svíček z 500)
+ * a sdílejí se s předčtením živého grafu (v0.62.1).
+ */
+function konecSvicObchodu(zavreno, interval) {
+  const konec = zavreno + 150 * (DELKA_INTERVALU[interval] || 3600e3);
+  return konec >= Date.now() ? null : konec;
+}
+
+/*
+ * Svíčky obchodů v Historii předem (v0.62.1, video uživatele: po klepnutí
+ * na obchod byla půl vteřiny prázdná plocha, než přišly svíčky). Po
+ * vykreslení Historie se stáhnou svíčky prvních uzavřených obchodů na
+ * timeframu, který prohlídka zvolí — stejná fronta jako předčtení grafů.
+ */
+const PROHLIDEK_PREDEM = 6;
+function predNactiProhlidky() {
+  const k = client;
+  if (!k || !ucet.prihlasen()) return;
+  skupinyObchodu.filter((g) => !g.otevrena).slice(0, PROHLIDEK_PREDEM).forEach((g) => {
+    const posledni = g.vystupy[g.vystupy.length - 1];
+    const od = g.otevreno ?? posledni.openedAt ?? posledni.closedAt;
+    const interval = intervalProObchod(posledni.closedAt - od);
+    predNactiSvice(k, k.burza.id, g.symbol, interval, konecSvicObchodu(posledni.closedAt, interval));
+  });
 }
 
 /*
@@ -3851,6 +3884,7 @@ function vyberUcetHistorie(id) {
 function vykresliHistorii() {
   vykresliUctyHistorie();
   ui.renderHistory(skupinyObchodu, hideAmounts, otevriSkupinu, volbyHistorie());
+  predNactiProhlidky();
   const od = historieOd ? new Date(historieOd) : null;
   let text = '';
   if (historieCekaNaPlneni) text = t('history.loading');

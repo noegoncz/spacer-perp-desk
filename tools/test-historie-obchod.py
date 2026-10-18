@@ -106,9 +106,15 @@ okno = json.loads(ev("""JSON.stringify((() => { const g = window.__graf;
            vidim: [d[Math.max(0, r.from)].timestamp, d[Math.min(d.length - 1, r.to - 1)].timestamp] }; })())""") or 'null')
 print('okno obchodu:', okno)
 # ⚠ Svíčky z doby obchodu (`end`), ne nejnovější — jinak na 1m starý obchod
-# v datech vůbec není (ZRO na telefonu 2026-10-10). Mock `end` neřeší.
-if not all('end=' in u for u in (ev('window.__svice || []') or ['-'])):
-    chyby.append('prohlídka stahuje svíčky bez parametru end')
+# v datech vůbec není (ZRO na telefonu 2026-10-10). Mock `end` neřeší;
+# že je obchod v datech, hlídá kontrola výřezu níž. Od v0.62.1 okolí, které
+# sahá do dneška, bere nejnovější svíčky (bez `end`, předčtené z Historie).
+# A nejvýš **jeden** dotaz: dřív šly dva souběžně (`zajistiNacteni` přes
+# `resetData`) a druhá odpověď na telefonu hodila graf na snímek na dnešek.
+svice = ev('window.__svice || []') or []
+print('dotazy na svíčky při otevření obchodu:', len(svice))
+if len(svice) > 1:
+    chyby.append(f'prohlídka stahuje svíčky {len(svice)}× (má nejvýš jednou)')
 if not okno:
     chyby.append('prohlídka nemá ztlumené okolí (overlay oknoObchodu)')
 elif not (okno['vidim'][0] <= okno['od'] and okno['do'] <= okno['vidim'][1]):
