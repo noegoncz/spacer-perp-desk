@@ -107,19 +107,6 @@
         Data can be delayed and alarms can be missed, so always check on Bybit before acting.</p>
       <button type="button" id="disclaimerOkBtn" class="secondary-btn" data-i18n="about.gotIt">Got it</button>
     </div>
-    <!-- Jeden řádek, popisek vedle hodnoty. Dvě kartičky pod sebou braly
-         na výšku tolik místa, že na displej zbyly dvě pozice. -->
-    <div class="summary" id="summary" hidden>
-      <div class="summary-item">
-        <span class="summary-label" data-i18n="positions.unrealisedPnl">Unrealised PnL</span>
-        <span class="summary-value" id="totalPnl">—</span>
-      </div>
-      <div class="summary-item">
-        <span class="summary-label" data-i18n="positions.count">Positions</span>
-        <span class="summary-value" id="totalCount">0</span>
-      </div>
-    </div>
-
     <!-- Přehled účtu; skrytý, dokud klíč nemá oprávnění Wallet -->
     <div class="summary account-summary" id="accountSummary" hidden>
       <div class="summary-item">
@@ -137,30 +124,31 @@
     </div>
     <p id="accountNote" class="account-note" hidden></p>
 
-    <!-- Uzavřené obchody za 30 dní (v0.62.0, varianta C uživatele): součet,
-         čísla a křivka výsledku; vpravo tlačítko, pod kterým je řazení
-         a filtr pozic (dřív stály na vlastních řádcích). -->
-    <div class="stat30" id="stat30" hidden>
-      <div class="stat30-hlava">
-        <div class="stat30-cisla">
-          <div class="stat30-radek">
-            <span class="summary-label" data-i18n="stats.last30">Last 30 days</span>
-            <span class="stat30-pnl" id="stat30Pnl">—</span>
-          </div>
-          <div class="stat30-detail" id="stat30Detail"></div>
-        </div>
-        <button type="button" id="positionToolsBtn" class="stat30-filtr" aria-expanded="false"
-                data-i18n-aria="stats.sortFilter" data-i18n-title="stats.sortFilter" hidden>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-               stroke-linecap="round" aria-hidden="true">
-            <path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/>
-            <circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>
-          </svg>
-          <span class="stat30-tecka" id="positionToolsDot" hidden></span>
-        </button>
+    <!-- Souhrn nad pozicemi (v0.62.1, přání uživatele — dvě karty pod sebou
+         mátly): řádek otevřených pozic a řádek uzavřených obchodů za 30 dní
+         s malou křivkou; vpravo tlačítko řazení a filtru, pod ním rozbalené
+         volby. Blok se schová, když nemá ani jeden řádek (CSS :has). -->
+    <div class="prehled" id="prehled">
+      <div class="prehled-radek" id="summary" hidden>
+        <span class="summary-label" data-i18n="positions.unrealisedShort">Open</span>
+        <span class="summary-value" id="totalPnl">—</span>
+        <span class="prehled-pocet" id="totalCount"></span>
       </div>
-      <svg class="stat30-graf" id="stat30Graf" aria-hidden="true"></svg>
-      <!-- Řazení a filtr; rozbalí tlačítko výš -->
+      <div class="prehled-radek" id="stat30" hidden>
+        <span class="summary-label" data-i18n="stats.last30">30 days</span>
+        <span class="stat30-pnl" id="stat30Pnl">—</span>
+        <span class="stat30-detail" id="stat30Detail"></span>
+        <svg class="stat30-graf" id="stat30Graf" aria-hidden="true"></svg>
+      </div>
+      <button type="button" id="positionToolsBtn" class="stat30-filtr" aria-expanded="false"
+              data-i18n-aria="stats.sortFilter" data-i18n-title="stats.sortFilter" hidden>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" aria-hidden="true">
+          <path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/>
+          <circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>
+        </svg>
+      </button>
+      <!-- Řazení a filtr; rozbalí tlačítko vpravo -->
       <div class="list-tools" id="positionTools" hidden>
         <span class="summary-label" data-i18n="sort.label">Sort</span>
         <div class="list-tools-group" id="sortGroup" role="group" data-i18n-aria="sort.label"></div>

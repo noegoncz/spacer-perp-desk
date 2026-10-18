@@ -794,80 +794,91 @@ main {
   color: var(--text-dim);
 }
 
-/* ---------- statistika 30 dní (v0.62.0) ---------- */
+/* ---------- souhrn nad pozicemi (v0.62.1) ---------- */
 
-.stat30 {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+/* Otevřené pozice a 30 dní v jednom bloku, vpravo filtr přes oba řádky. */
+.prehled {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 3px;
   margin-bottom: 10px;
-  padding: 8px 10px 6px 12px;
+  padding: 6px 8px 6px 12px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
 }
-.stat30-hlava { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.stat30-cisla { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.stat30-radek { display: flex; align-items: baseline; gap: 8px; }
-.stat30-pnl { font-size: 1.02rem; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.prehled:not(:has(> .prehled-radek:not([hidden]))) { display: none; }
+.prehled-radek {
+  grid-column: 1;
+}
+.prehled-radek, #stat30 {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+  white-space: nowrap;
+}
+.prehled-pocet { font-size: 0.72rem; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.stat30-pnl { font-size: 0.92rem; font-weight: 650; font-variant-numeric: tabular-nums; }
 .stat30-detail {
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 0.72rem;
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Filtr jen u prvního řádku — řádek 30 dní potřebuje celou šířku
+   (na zavřeném Foldu by se jinak usekl uprostřed čísla). */
 .stat30-filtr {
-  position: relative;
-  flex: none;
-  width: 44px;
-  height: 44px;
+  grid-column: 2;
+  grid-row: 1;
+  width: 36px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--surface-2);
   color: var(--text-dim);
 }
-/* Svítí, když je filtr rozbalený nebo není výchozí — jinak by nebylo
-   vidět, že něco schovává. */
-.stat30-filtr.aktivni { border-color: var(--accent); color: var(--accent); }
-.stat30-filtr[aria-expanded="true"] { background: rgba(76, 154, 255, 0.12); }
-.stat30-tecka {
-  position: absolute;
-  top: 7px;
-  right: 7px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--accent);
-}
-.stat30-graf { display: block; width: 100%; height: 56px; }
-.stat30-graf:empty { display: none; }
-/* Křivka jako mini-graf dlaždice (v0.62.1): barva trendu, výplň do ztracena,
-   okraje se vytrácejí. */
+.stat30-filtr.aktivni { border-color: var(--accent); color: var(--accent); background: rgba(76, 154, 255, 0.12); }
+/* Malá křivka na konci řádku 30 dní — jen trend, čísla jsou v textu. */
 .stat30-graf {
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
-          mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  flex: none;
+  align-self: center;
+  width: 56px;
+  height: 22px;
+  margin-left: auto;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 15%);
+          mask-image: linear-gradient(90deg, transparent, #000 15%);
 }
-.stat30-cara { fill: none; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
+.stat30-graf:empty { display: none; }
+#stat30 { grid-column: 1 / -1; }
+/* „Best" až na rozevřeném Foldu, na zavřeném by se nevešlo. */
+.stat30-best { display: none; }
+@media (min-width: 560px) { .stat30-graf { width: 120px; } .stat30-best { display: inline; } }
+.stat30-cara { fill: none; stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
 .stat30-graf.up .stat30-cara { stroke: var(--long); }
 .stat30-graf.down .stat30-cara { stroke: var(--short); }
 .stat30-graf.up .spark-stop-horni { stop-color: var(--long); stop-opacity: 0.28; }
 .stat30-graf.down .spark-stop-horni { stop-color: var(--short); stop-opacity: 0.28; }
 .stat30-graf .spark-stop-dolni { stop-color: var(--surface); stop-opacity: 0; }
-.stat30 .list-tools {
-  margin: 4px 0 4px;
+.prehled .list-tools {
+  grid-column: 1 / -1;
+  margin: 6px 0 4px;
   padding-top: 10px;
   border-top: 1px solid var(--border);
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   gap: 8px 12px;
 }
-.stat30 .list-tools[hidden] { display: none; }
-.stat30 .list-tools-group { flex-wrap: wrap; }
+.prehled .list-tools[hidden] { display: none; }
+.prehled .list-tools-group { flex-wrap: wrap; }
 
 /* ---------- řazení a filtr seznamu ---------- */
 

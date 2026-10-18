@@ -785,7 +785,7 @@ function vykresliStat30() {
   }
   const body = ucty.flatMap((id) => stat30[id].body || [])
     .filter(([cas]) => cas >= od)
-    .map(([cas, pnl]) => ({ t: cas, pnl }))
+    .map(([cas, pnl, obchod], i) => ({ t: cas, pnl, obchod: obchod ?? `${cas}|${i}` }))
     .sort((a, b) => a.t - b.t);
   ui.renderStat30({ body, od, do: ted }, hideAmounts);
 }
@@ -796,13 +796,22 @@ async function obnovStat30(vynutit = false) {
   try {
     for (const [id, k] of klienti) {
       const z = stat30[id];
-      if (!vynutit && z && Date.now() - z.cas < STAT_PLATI) continue;
+      if (!vynutit && z?.verze === 2 && Date.now() - z.cas < STAT_PLATI) continue;
       try {
         const ted = Date.now();
         const zaznamy = await k.getClosedTrades(ted - STAT_OKNO, ted);
+        /*
+         * Bod = zavírací příkaz + obchod, ke kterému patří (v0.62.1): zavření
+         * téže pozice po částech mají stejný průměrný vstup (Bybit
+         * `avgEntryPrice`, Binance a Hyperliquid ho dopočítají ze zisku).
+         * Přikoupení vstup změní a obchod se rozdělí — kvůli počtu obchodů
+         * se nestahují plnění všech párů všech účtů.
+         */
+        const obchodZaznamu = (o) => `${id}|${o.symbol}|${o.long ? 'L' : 'S'}|${Number(o.entry).toPrecision(5)}`;
         stat30[id] = {
+          verze: 2,
           cas: ted,
-          body: (zaznamy || []).map((o) => [o.closedAt, Math.round(o.pnl * 1e4) / 1e4]),
+          body: (zaznamy || []).map((o) => [o.closedAt, Math.round(o.pnl * 1e4) / 1e4, obchodZaznamu(o)]),
         };
       } catch { /* příště znovu; uložená data zůstávají */ }
     }

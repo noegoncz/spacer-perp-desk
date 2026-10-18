@@ -46,7 +46,6 @@ const dom = {
   stat30Detail: el('stat30Detail'),
   stat30Graf: el('stat30Graf'),
   positionToolsBtn: el('positionToolsBtn'),
-  positionToolsDot: el('positionToolsDot'),
   sortGroup: el('sortGroup'),
   filterGroup: el('filterGroup'),
   ordersBlock: el('ordersBlock'),
@@ -456,10 +455,10 @@ const PREHLED_UCTU_SKRYTY = true;
  * tlačítku řazení a filtru).
  */
 let stat30Data = null;
-let stat30Pozice = false;
 
 function viditelnostStat30() {
-  skryj(dom.stat30, !(stat30Pozice || (stat30Data && stat30Data.body.length)));
+  // Řádek 30 dní, jakmile je statistika (i prázdná: „žádný obchod").
+  skryj(dom.stat30, !stat30Data);
 }
 
 export function renderStat30(data, hide) {
@@ -475,15 +474,22 @@ export function renderStat30(data, hide) {
     return;
   }
   const soucet = body.reduce((s, b) => s + b.pnl, 0);
-  const vyhry = body.filter((b) => b.pnl > 0).length;
-  const nejlepsi = Math.max(...body.map((b) => b.pnl));
+  // Celé obchody, ne jednotlivá zavření (v0.62.1, přání uživatele):
+  // částečná zavření téže pozice se sečtou (`obchod` z app.js).
+  const obchody = new Map();
+  body.forEach((b) => obchody.set(b.obchod, (obchody.get(b.obchod) || 0) + b.pnl));
+  const vysledky = [...obchody.values()];
+  const vyhry = vysledky.filter((v) => v > 0).length;
+  const nejlepsi = Math.max(...vysledky);
   dom.stat30Pnl.textContent = hide ? MASK : formatSignedUsd(soucet);
   dom.stat30Pnl.className = `stat30-pnl ${pnlClass(soucet)}`;
-  dom.stat30Detail.textContent = t('stats.detail', {
-    n: body.length,
-    win: Math.round((vyhry / body.length) * 100),
-    best: hide ? MASK : formatSignedUsd(nejlepsi),
-  });
+  const nejlepsiTxt = document.createElement('span');
+  nejlepsiTxt.className = 'stat30-best';
+  nejlepsiTxt.textContent = ` · ${t('stats.best', { best: hide ? MASK : formatSignedUsd(nejlepsi) })}`;
+  dom.stat30Detail.replaceChildren(t('stats.detail', {
+    n: vysledky.length,
+    win: Math.round((vyhry / vysledky.length) * 100),
+  }), nejlepsiTxt);
   kresliKrivku30(body, data.od, data.do);
 }
 
@@ -494,8 +500,8 @@ export function prekresliStat30() {
 
 function kresliKrivku30(body, od, doKdy) {
   const svg = dom.stat30Graf;
-  const w = Math.max(120, Math.round(svg.getBoundingClientRect().width) || 312);
-  const h = 56;
+  const w = Math.max(30, Math.round(svg.getBoundingClientRect().width) || 56);
+  const h = 22;
   /*
    * Plynulá křivka jako v dlaždici Watchlists (v0.62.1, přání uživatele —
    * schody s tečkou za každé zavření vypadaly špatně). Průběžný součet se
@@ -522,8 +528,8 @@ function kresliKrivku30(body, od, doKdy) {
   const min = Math.min(...vzorky);
   const max = Math.max(...vzorky);
   const rozpeti = max - min || 1;
-  const nahore = 4;
-  const dole = h * 0.62;
+  const nahore = 2;
+  const dole = h - 3;
   const ys = vzorky.map((v) => dole - ((v - min) / rozpeti) * (dole - nahore));
   const dx = w / (vzorky.length - 1);
   const krivka = hladkaKrivka(ys, dx);
@@ -560,7 +566,7 @@ export function renderPositions(list, hide, onSelect, liqThreshold = 10, volby =
   const total = list.reduce((sum, p) => sum + p.pnl, 0);
   dom.totalPnl.textContent = hide ? MASK : `${formatSignedUsd(total)} USDT`;
   dom.totalPnl.className = `summary-value ${pnlClass(total)}`;
-  dom.totalCount.textContent = String(list.length);
+  dom.totalCount.textContent = t('positions.countShort', { n: list.length });
 
   const hasPositions = list.length > 0;
   dom.summary.hidden = !hasPositions;
@@ -703,15 +709,13 @@ export function renderOrders(orders, hide, onSelect, chyba = null) {
  */
 export function renderPositionTools(stav, onSort, onFilter) {
   // Od v0.62.0 pod tlačítkem v kartě statistiky (`stav.otevreno`).
-  const vychozi = stav.sort === 'value' && stav.sestupne && stav.filter === 'all';
-  stat30Pozice = stav.viditelne;
-  viditelnostStat30();
+  // Tlačítko je prostě filtr (v0.62.1, uživatel): svítí jen rozbalené,
+  // tečka za nevýchozí volbu zmizela (svítila pořád).
   skryj(dom.positionToolsBtn, !stav.viditelne);
   if (dom.positionToolsBtn) {
-    dom.positionToolsBtn.classList.toggle('aktivni', !vychozi || Boolean(stav.otevreno));
+    dom.positionToolsBtn.classList.toggle('aktivni', Boolean(stav.otevreno && stav.viditelne));
     dom.positionToolsBtn.setAttribute('aria-expanded', String(Boolean(stav.otevreno && stav.viditelne)));
   }
-  skryj(dom.positionToolsDot, vychozi);
   skryj(dom.positionTools, !(stav.viditelne && stav.otevreno));
   if (!stav.viditelne || !dom.sortGroup || !dom.filterGroup) return;
 

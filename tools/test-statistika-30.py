@@ -66,7 +66,9 @@ STAV = """JSON.stringify((() => {
     barva: $('stat30Graf').classList.contains('up') || $('stat30Graf').classList.contains('down'),
     cara: /C/.test($('stat30Graf').querySelector('.stat30-cara')?.getAttribute('d') || ''),
     nastroje: !$('positionTools').hidden, tlacitko: !$('positionToolsBtn').hidden,
-    svitı: $('positionToolsBtn').classList.contains('aktivni'), tecka: !$('positionToolsDot').hidden,
+    svitı: $('positionToolsBtn').classList.contains('aktivni'), tecka: !!document.getElementById('positionToolsDot'),
+    jedenBlok: $('summary').parentElement === $('stat30').parentElement,
+    vyska: Math.round($('prehled').getBoundingClientRect().height),
   };
 })())"""
 
@@ -82,10 +84,12 @@ over(stav.get('karta'), 'karta „Last 30 days" je vidět')
 over(stav.get('body') == 1 and stav.get('cara'), 'plynulá křivka (jako v dlaždici)')
 over(stav.get('tecky') == 0, 'bez teček za jednotlivá zavření')
 over(stav.get('barva'), 'barva podle trendu (up / down)')
-over('closes' in (stav.get('detail') or ''), f"počet uzavření a úspěšnost ({stav.get('detail')})")
+over('trades' in (stav.get('detail') or ''), f"počet obchodů a úspěšnost ({stav.get('detail')})")
+over(stav.get('jedenBlok'), 'otevřené pozice a 30 dní v jednom bloku')
+over(0 < (stav.get('vyska') or 0) <= 80, f"blok je nízký, dva řádky ({stav.get('vyska')} px)")
 over(any(ch.isdigit() for ch in stav.get('pnl', '')), f"součet za 30 dní ({stav.get('pnl')})")
 over(not stav.get('nastroje') and stav.get('tlacitko'), 'řazení a filtr schované pod tlačítkem')
-over(not stav.get('tecka'), 'výchozí filtr: tlačítko bez tečky')
+over(not stav.get('tecka') and not stav.get('svitı'), 'tlačítko bez tečky a nesvítí')
 snimek('pozice-344.png')
 
 print('tlačítko')
@@ -97,13 +101,13 @@ snimek('pozice-344-filtr.png')
 ev("[...document.querySelectorAll('#filterGroup .list-btn')].find((b) => /Short/.test(b.textContent)).click()")
 time.sleep(0.4)
 stav = json.loads(ev(STAV) or '{}')
-over(stav.get('tecka') and stav.get('svitı'), 'nevýchozí filtr: tlačítko svítí a má tečku')
+over(stav.get('svitı') and not stav.get('tecka'), 'rozbalené svítí, tečka žádná ani u jiného filtru')
 ev("[...document.querySelectorAll('#filterGroup .list-btn')].find((b) => /All/.test(b.textContent)).click()")
 time.sleep(0.3)
 ev("document.getElementById('positionToolsBtn').click()")
 time.sleep(0.4)
 stav = json.loads(ev(STAV) or '{}')
-over(not stav.get('nastroje') and not stav.get('tecka'), 'druhé klepnutí sbalí, výchozí filtr bez tečky')
+over(not stav.get('nastroje') and not stav.get('svitı'), 'druhé klepnutí sbalí a tlačítko zhasne')
 
 ulozeno = json.loads(ev("localStorage.getItem('perpdesk.stat30') || '{}'") or '{}')
 over(any(v.get('body') for v in ulozeno.values()), 'statistika uložená v telefonu')
