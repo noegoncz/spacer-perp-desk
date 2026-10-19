@@ -656,7 +656,9 @@ Zaškrtávací stránka (23 kroků, v0.61.0): 18 sedí. Opraveno:
   překročila / propadla pod"), server i aplikace (`alarm.crossedAbove`…).
   **Širší ikonka v liště nejde:** malá ikonka notifikace má v Androidu
   čtvercové místo 24 dp, širší obrázek se zmenší (uživatel chtěl logo X
-  + šipku vedle sebe). Bod = zavírací příkaz
+  + šipku vedle sebe). **v0.62.5:** šipka zpátky do textu za slovo
+  „Price" („Price ↑ crossed above", „Cena ↓ propadla pod") — bez ní se
+  věta četla špatně; v nadpisu dál nic. Bod = zavírací příkaz
   (částečné zavření je bod navíc — skládání do obchodů by chtělo plnění
   všech párů všech účtů). Data `getClosedTrades` každého klienta za 30 dní,
   v `perpdesk.stat30` (mimo zálohu), ze sítě nejvýš po 15 min, po ⟳
