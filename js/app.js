@@ -4075,7 +4075,7 @@ const datumCas = (ms) => new Date(ms).toLocaleString(getLocale(), {
 /**
  * Odezva alarmu v telefonu (v0.62.1, přání uživatele): **vždy jen
  * standardní notifikace telefonu**, stejná jako push se zhasnutým
- * displejem — nadpis „PerpyX · pár", text „Price crossed above cena",
+ * displejem — nadpis „PerpyX · pár", text „Price ↑ crossed above cena",
  * směr ukazuje ikonka se šipkou,
  * zvuk a vibrace podle kanálu. Dřív v otevřené aplikaci houkala vlastní
  * houkačka z WebAudio a vyskočil pruh; push ze serveru Android v popředí
@@ -4097,7 +4097,7 @@ async function ozviSe(alarm, text, smer = null) {
 
 /**
  * Text notifikace bez páru (ten je v nadpisu): krátká věta s hladinou,
- * „Price crossed above 0.29028" (v0.62.4, přání uživatele; směr ukazuje
+ * „Price ↑ crossed above 0.29028" (v0.62.4, šipka v0.62.5; směr ukazuje
  * i ikonka). Vlastní zpráva uživatele zůstává, věta za ní.
  */
 function textAlarmu(a, smer = a?.smerPruniku, cena = null) {

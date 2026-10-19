@@ -174,8 +174,8 @@ function nazevParu(symbol) {
  * kanálu a nastavení telefonu.
  */
 const SMER = {
-  nahoru: { cs: 'Cena překročila', en: 'Price crossed above', ikona: 'ic_stat_nahoru', barva: '#3ee6a4' },
-  dolu: { cs: 'Cena propadla pod', en: 'Price dropped below', ikona: 'ic_stat_dolu', barva: '#ff6b78' },
+  nahoru: { cs: 'Cena ↑ překročila', en: 'Price ↑ crossed above', ikona: 'ic_stat_nahoru', barva: '#3ee6a4' },
+  dolu: { cs: 'Cena ↓ propadla pod', en: 'Price ↓ dropped below', ikona: 'ic_stat_dolu', barva: '#ff6b78' },
 };
 
 function texty(a, cena, smer = null) {
@@ -188,7 +188,7 @@ function texty(a, cena, smer = null) {
   if (a.typ === 'cas') {
     return { titulek, text: a.zprava || (cs ? 'Nastal čas alarmu.' : 'Your time alert is due.') };
   }
-  // Krátká věta s hladinou alarmu, „Price crossed above 0.29028" (v0.62.4).
+  // Krátká věta s hladinou alarmu, „Price ↑ crossed above 0.29028" (v0.62.4, šipka za Price v0.62.5).
   const hladina = formatCeny(uroven(a));
   const zakladni = `${s ? s[cs ? 'cs' : 'en'] : (cs ? 'Cena dosáhla' : 'Price reached')} ${hladina}`;
   return { titulek, text: a.zprava ? `${a.zprava} — ${zakladni}` : zakladni };

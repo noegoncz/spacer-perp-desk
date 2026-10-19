@@ -1,13 +1,13 @@
 {
-  "verze": "0.62.4",
+  "verze": "0.62.5",
   "novinky": [
     {
       "en": "Positions start with one compact summary: open PnL and the last 30 days (trades, win rate, small trend curve). Sort and filter sit in the same box.",
       "cs": "Pozice začínají jedním úsporným souhrnem: otevřené PnL a posledních 30 dní (obchody, úspěšnost, malá křivka trendu). Řazení a filtr jsou ve stejném bloku."
     },
     {
-      "en": "Alerts are always a regular phone notification, even with the app open — no more in-app beeping. The arrow icon shows the direction, the text says “Price crossed above …”.",
-      "cs": "Alarm je vždy běžná notifikace telefonu, i s otevřenou aplikací — žádné pípání v aplikaci. Směr ukazuje ikonka se šipkou, text říká „Cena překročila …“."
+      "en": "Alerts are always a regular phone notification, even with the app open — no more in-app beeping. The arrow icon shows the direction, the text says “Price ↑ crossed above …”.",
+      "cs": "Alarm je vždy běžná notifikace telefonu, i s otevřenou aplikací — žádné pípání v aplikaci. Směr ukazuje ikonka se šipkou, text říká „Cena ↑ překročila …“."
     },
     {
       "en": "New alert icon: an arrow cut out of the PerpyX tile (needs the new APK).",
