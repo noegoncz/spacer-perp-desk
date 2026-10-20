@@ -43,7 +43,10 @@ os.chdir(posun)
 socketserver.TCPServer.allow_reuse_address = True
 tichy = type('T', (http.server.SimpleHTTPRequestHandler,),
              {'log_message': lambda *a, **k: None})
-server = socketserver.TCPServer(('127.0.0.1', 8078), tichy)
+# Volný port od systému — na 8078 občas visí cizí http.server a požadavky
+# se pak náhodně dělily mezi dva servery (test „padal").
+server = socketserver.TCPServer(('127.0.0.1', 0), tichy)
+PORT = server.server_address[1]
 threading.Thread(target=server.serve_forever, daemon=True).start()
 
 p = Prohlizec()
@@ -64,7 +67,7 @@ if (navigator.serviceWorker) {
 }
 """
 p.prikaz('Page.addScriptToEvaluateOnNewDocument', source=mock)
-p.prikaz('Page.navigate', url='http://127.0.0.1:8078/index.html')
+p.prikaz('Page.navigate', url=f'http://127.0.0.1:{PORT}/index.html')
 time.sleep(6)
 
 
@@ -82,7 +85,7 @@ print()
 print('chyby při startu:      ', chyby or '(žádné)')
 print('chybová lišta skrytá:  ', lista)
 print('načtených pozic:       ', pozic, '(má být 1)')
-print('záložky sestavené:     ', zalozky, '(má být 3)')
+print('záložky sestavené:     ', zalozky, '(má být 4)')
 print('registrace SW spuštěna:', sw, 'x (má být aspoň 1x)')
 
 # klepnutí na zbylé tlačítko musí dál fungovat
@@ -100,5 +103,5 @@ print('zbylé ovládání funguje:', prepnuto)
 server.shutdown()
 shutil.rmtree(posun, ignore_errors=True)
 print()
-ok = (not chyby) and pozic == 1 and sw >= 1 and prepnuto and zalozky == 3
+ok = (not chyby) and pozic == 1 and sw >= 1 and prepnuto and zalozky == 4
 print('VÝSLEDEK:', 'START PŘEŽIL' if ok else '!!! START SE ROZPADL')

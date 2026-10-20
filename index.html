@@ -90,6 +90,9 @@
     <span class="tab-swipe" aria-hidden="true">‹ ›</span>
     <button type="button" class="tab" data-tab="history" role="tab"
             data-i18n="tabs.history">History</button>
+    <span class="tab-swipe" aria-hidden="true">‹ ›</span>
+    <button type="button" class="tab" data-tab="alerts" role="tab"
+            data-i18n="tabs.alerts">Alerts</button>
   </nav>
 
   <!-- ===== Pozice ===== -->
@@ -564,6 +567,16 @@
          Historie hned. -->
     <button type="button" id="historyMore" class="secondary-btn history-more" hidden
             data-i18n="history.more">Load 30 more days</button>
+  </section>
+
+  <!-- ===== Alarmy (v0.63.0, přání uživatele — jako záložka alertů
+       v TabTraderu): všechny alarmy napříč páry a burzami, aktivní
+       a neaktivní, hromadné smazání neaktivních. ===== -->
+  <section id="viewAlerts" hidden>
+    <div id="alertsTabs" class="watch-lists" role="tablist"></div>
+    <div id="alertsList" class="alerts-list"></div>
+    <p id="alertsEmpty" class="watch-note alerts-empty" hidden></p>
+    <button type="button" id="alertsClear" class="secondary-btn alerts-clear" hidden></button>
   </section>
 
   <!-- ===== Nastavení ===== -->

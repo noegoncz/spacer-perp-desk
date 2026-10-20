@@ -484,7 +484,7 @@ nabízí jen Bybit a Binance). Sonda z prohlížeče 2026-10-12:
 - Stav spojení u dotazování (`ws: 'poll'`) podle REST: Live / chyba.
 - CCXT `timeout: 20000`; diagnostika ukazuje třídu chyby a cestu dotazu
   (`technickyPopis`, bez parametrů — v nich je podpis).
-- ⚠ `test-odolny-start.py` poslouchá na 8078 — na Windows tam může viset
+- ⚠ (do v0.63.0) `test-odolny-start.py` poslouchal na 8078 — na Windows tam může viset
   jiný `http.server` (šablona videa) a požadavky se náhodně dělí; test
   pak „padá". Před během zkontroluj `netstat -ano | grep :8078`.
 
@@ -663,7 +663,35 @@ Zaškrtávací stránka (23 kroků, v0.61.0): 18 sedí. Opraveno:
   **v0.62.7:** prohlídka obchodu z Historie má **alarmy schované vrstvou**
   (`vrstvyProGraf` v app.js; oko svítí a jde je ukázat), vrstvy prohlídky
   se neukládají (`nastavVrstvy` bez `saveLayers`), běžný graf dostane
-  uložené. Test: `test-historie-obchod.py` (na v0.62.6 padá). Bod = zavírací příkaz
+  uložené. Test: `test-historie-obchod.py` (na v0.62.6 padá).
+
+**v0.63.0 — záložka Alarmy (přání uživatele 2026-10-20, jako alerty
+v TabTraderu; jednorázové alarmy se po zaznění hromadily a nešly uklidit):**
+- Čtvrtá hlavní záložka `alerts` (`#viewAlerts`, `ZALOZKY`), pod ní lišta
+  **Active / Inactive** s počty (`ui.renderListBar`, `misto: 'alertsTabs'`,
+  záložka šanonu `s-podzalozkami`). Přejíždění: nejdřív Active ↔ Inactive,
+  pak sousední záložka; z Historie vždy na Active.
+- Řádek (`ui.renderAlerts`, data `polozkaAlarmu` v app.js): pár, burza,
+  hladina (čára: dnešní úroveň, čas: „At …"), podmínka ↕/↑/↓, once /
+  every time, u aktivních vzdálenost od ceny v %, u neaktivních „Fired 2 h
+  ago" / „Switched off", zpráva. Aktivní podle vzdálenosti (časové za
+  cenovými), neaktivní od posledního zaznění.
+- Klepnutí otevře graf (`otevriGrafZNotifikace` — i s pozicí, správná
+  burza), přepínač zapne / vypne, koš na **dvě klepnutí** („Delete?"),
+  **„Delete all inactive (n)"** taky na dvě klepnutí (confirm() ne, přejetí
+  řádku by se bilo s přejížděním záložek).
+- Ceny: `cenaKlice` (živá svíčka, pozice, Watchlists), chybějící jedním
+  tickerem na pár (`doplnCenyAlarmu`, `cenyAlarmu`, platí 1 min).
+  Překreslí se při každé změně alarmů (`vykresliAlarmy` volá
+  `vykresliPrehledAlarmu`), po 5 s dokud je vidět, ⟳ = stav ze serveru
+  + ceny.
+- Na 344 px se čtyři záložky vejdou (menší písmo, šipky ‹ › `nowrap`).
+- Test: `tools/test-zalozka-alarmy.py` (skutečné dotyky, 344 / 673 px).
+  ⚠ V testech po přejetí klepat **skutečným dotykem** — syntetický
+  `.click()` sežere příznak „po přejetí potlač klepnutí" (na telefonu ho
+  maže další `touchstart`).
+- ⚠ `test-odolny-start.py` padá i na v0.62.7 (0 pozic, SW 0×) — starší
+  rozbití testu, nezkoumáno; teď bere volný port místo 8078. Bod = zavírací příkaz
   (částečné zavření je bod navíc — skládání do obchodů by chtělo plnění
   všech párů všech účtů). Data `getClosedTrades` každého klienta za 30 dní,
   v `perpdesk.stat30` (mimo zálohu), ze sítě nejvýš po 15 min, po ⟳

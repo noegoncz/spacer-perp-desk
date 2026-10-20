@@ -11,7 +11,7 @@ import {
   popisekPole, popisekSekce, omez,
 } from './indikatory.js';
 import { t, setLanguage, applyStaticTexts, JAZYKY, getLocale, getLanguage } from './i18n.js';
-import { priceDecimals, formatPrice, formatPercent, formatSize, formatUsd, liquidationDistance } from './format.js';
+import { priceDecimals, formatPrice, formatPercent, formatSize, formatUsd, formatTime, liquidationDistance } from './format.js';
 
 /** Skryté částky (oko) i v popiscích čar v grafu. */
 const MASK_CARY = '••••';
@@ -1338,6 +1338,7 @@ function wireEvents() {
     tl?.classList.add('toci');
     try {
       if (aktivniZalozka === 'watchlist') await obnovTrhy();
+      else if (aktivniZalozka === 'alerts') await obnovPrehledAlarmu();
       else if (!klienti.size) openSettings();
       else if (aktivniZalozka === 'history') await obnovHistorii(true);
       else await Promise.all([...klienti.values()].map(obnovUcetCely).concat(obnovStat30(true)));
@@ -3447,18 +3448,19 @@ function zavriNabidkyTrhu() {
   ['sheetPair', 'sheetList', 'sheetSort', 'sheetAddPair', 'tileMenu', 'watchBackdrop'].forEach((id) => ukazPrvek(id, false));
 }
 
-const ZALOZKY = ['positions', 'watchlist', 'history'];
+const ZALOZKY = ['positions', 'watchlist', 'history', 'alerts'];
 let aktivniZalozka = 'positions';
 
 function prepniZalozku(nazev) {
   aktivniZalozka = nazev;
   document.querySelector('.tabs')?.classList.toggle('s-podzalozkami',
-    nazev === 'watchlist' || (nazev === 'history' && historieSUcty()));
+    nazev === 'watchlist' || nazev === 'alerts' || (nazev === 'history' && historieSUcty()));
   document.body.classList.toggle('na-trzich', nazev === 'watchlist');
   ui.showView(nazev);
   dokresliSeznamJeLiZastaraly();
   if (nazev === 'watchlist') nactiTrhy();
   if (nazev === 'history') nactiHistorii();
+  if (nazev === 'alerts') otevriPrehledAlarmu();
 }
 
 /**
@@ -3556,8 +3558,19 @@ function zapojPrejeti() {
       }
     }
 
+    if (aktivniZalozka === 'alerts') {
+      const dalsi = REZIMY_ALARMU.indexOf(rezimAlarmu) + (dx < 0 ? 1 : -1);
+      if (dalsi >= 0 && dalsi < REZIMY_ALARMU.length) {
+        prejeto = true;
+        vyberRezimAlarmu(REZIMY_ALARMU[dalsi]);
+        return;
+      }
+    }
+
     const kam = ZALOZKY.indexOf(aktivniZalozka) + (dx < 0 ? 1 : -1);
     if (kam < 0 || kam >= ZALOZKY.length) return;
+    // Do Alarmů přejetím z Historie vždy na Aktivní.
+    if (ZALOZKY[kam] === 'alerts') rezimAlarmu = 'active';
 
     prejeto = true;
     /*
@@ -3594,6 +3607,165 @@ function zapojPrejeti() {
     e.stopPropagation();
     e.preventDefault();
   }, true);
+}
+
+/* ---------- přehled alarmů (v0.63.0) ---------- */
+
+/*
+ * Záložka Alarmy (přání uživatele 2026-10-20, jako alerty v TabTraderu):
+ * všechny alarmy napříč páry a burzami. Aktivní seřazené podle toho, jak
+ * blízko je cena (co zazní nejdřív, je nahoře), neaktivní od posledního
+ * zaznění. Jednorázový alarm po zaznění zešedne a dřív se nedal hromadně
+ * uklidit — „Smazat všechny neaktivní".
+ */
+const REZIMY_ALARMU = ['active', 'inactive'];
+let rezimAlarmu = 'active';
+/** Ceny párů s alarmem, které aplikace jinak nemá (pár mimo pozice a seznamy). */
+const cenyAlarmu = new Map();   // klíč grafu → { cena, cas }
+let casovacPrehleduAlarmu = null;
+
+function rozdelKlic(klic) {
+  const i = String(klic).indexOf(':');
+  return i < 0 ? { burza: 'bybit', symbol: klic } : { burza: klic.slice(0, i), symbol: klic.slice(i + 1) };
+}
+
+/** Nejčerstvější cena, kterou aplikace k páru alarmu zná. */
+function cenaKlice(klic) {
+  if (klic === grafKlic() && Number.isFinite(poslednicCena)) return poslednicCena;
+  const { burza, symbol } = rozdelKlic(klic);
+  const pozice = lastPositions.find((p) => p.symbol === symbol && (p.burza || 'bybit') === burza);
+  if (Number.isFinite(pozice?.mark)) return pozice.mark;
+  const trh = trhy.find((r) => r.symbol === symbol && (r.burza || 'bybit') === burza);
+  if (Number.isFinite(trh?.last)) return trh.last;
+  const ulozena = cenyAlarmu.get(klic);
+  return ulozena ? ulozena.cena : null;
+}
+
+/** Ceny aktivních alarmů, které aplikace nezná — jeden ticker na pár. */
+async function doplnCenyAlarmu(vynutit = false) {
+  const klice = [...new Set(alarmy.vsechny().filter((a) => a.aktivni && a.typ !== 'cas').map((a) => a.symbol))];
+  const chybi = klice.filter((k) => {
+    const c = cenyAlarmu.get(k);
+    if (c && !vynutit && Date.now() - c.cas < 60000) return false;
+    return vynutit || cenaKlice(k) == null || c;
+  });
+  if (!chybi.length) return;
+  await Promise.all(chybi.map(async (k) => {
+    const { burza, symbol } = rozdelKlic(k);
+    try {
+      const tk = await verejnyKlient(burza).getTicker(symbol);
+      if (Number.isFinite(tk?.last)) cenyAlarmu.set(k, { cena: tk.last, cas: Date.now() });
+    } catch {
+      // bez ceny se řádek obejde (jen bez vzdálenosti)
+    }
+  }));
+  if (aktivniZalozka === 'alerts') vykresliPrehledAlarmu();
+}
+
+function podminkaAlarmu(a) {
+  if (a.typ === 'cas') return '';
+  return t(a.smer === 'up' ? 'alarm.crossUp' : a.smer === 'down' ? 'alarm.crossDown' : 'alarm.crossAny');
+}
+
+function polozkaAlarmu(a) {
+  const { burza, symbol } = rozdelKlic(a.symbol);
+  const hladina = a.typ === 'cas' ? null : alarmy.uroven(a);
+  const cena = a.typ === 'cas' ? null : cenaKlice(a.symbol);
+  const vzdalenost = Number.isFinite(hladina) && cena > 0 ? ((hladina - cena) / cena) * 100 : null;
+  let text;
+  if (a.typ === 'cas') text = t('alerts.at', { time: formatTime(a.cas) });
+  else if (a.typ === 'cara') text = `${t('alerts.line')} ${Number.isFinite(hladina) ? formatPrice(hladina) : ''}`.trim();
+  else text = formatPrice(a.price);
+  return {
+    id: a.id,
+    typ: a.typ,
+    par: symbol,
+    burza: BURZY[burza]?.nazev || burza,
+    hladina: text,
+    podminka: podminkaAlarmu(a),
+    opakovat: Boolean(a.opakovat),
+    aktivni: Boolean(a.aktivni),
+    spusteno: a.spusteno || null,
+    vzdalenost,
+    zprava: a.zprava || '',
+    // Časové alarmy za cenovými, mezi sebou podle toho, který přijde dřív.
+    razeni: a.typ === 'cas' ? 1e9 + (a.cas || 0) / 6e4 : Math.abs(vzdalenost ?? 1e8),
+  };
+}
+
+function vykresliPrehledAlarmu() {
+  const vse = alarmy.vsechny();
+  const aktivni = vse.filter((a) => a.aktivni);
+  const neaktivni = vse.filter((a) => !a.aktivni);
+  ui.renderListBar({
+    misto: 'alertsTabs',
+    polozky: [
+      { id: 'active', nazev: t('alerts.active'), pocet: aktivni.length },
+      { id: 'inactive', nazev: t('alerts.inactive'), pocet: neaktivni.length },
+    ],
+    aktivni: rezimAlarmu,
+    onSelect: vyberRezimAlarmu,
+  });
+  const polozky = (rezimAlarmu === 'active' ? aktivni : neaktivni).map(polozkaAlarmu);
+  if (rezimAlarmu === 'active') polozky.sort((a, b) => a.razeni - b.razeni);
+  else polozky.sort((a, b) => (b.spusteno || 0) - (a.spusteno || 0));
+  ui.renderAlerts({
+    rezim: rezimAlarmu,
+    polozky,
+    onOpen: (id) => {
+      const a = alarmy.najdi(id);
+      if (a) otevriGrafZNotifikace(a.symbol);
+    },
+    onToggle: (id) => {
+      const a = alarmy.najdi(id);
+      if (!a) return;
+      alarmy.uloz({ ...a, aktivni: !a.aktivni });
+      vykresliAlarmy();
+    },
+    onDelete: (id) => {
+      alarmy.smaz(id);
+      vykresliAlarmy();
+    },
+    onClearAll: () => {
+      const pocet = neaktivni.length;
+      neaktivni.forEach((a) => alarmy.smaz(a.id));
+      vykresliAlarmy();
+      ui.showNotice(t('alerts.cleared', { n: pocet }));
+    },
+  });
+}
+
+function vyberRezimAlarmu(rezim) {
+  if (!REZIMY_ALARMU.includes(rezim) || rezim === rezimAlarmu) return;
+  const doprava = REZIMY_ALARMU.indexOf(rezim) > REZIMY_ALARMU.indexOf(rezimAlarmu);
+  rezimAlarmu = rezim;
+  vykresliPrehledAlarmu();
+  const seznam = el('alertsList');
+  if (seznam) {
+    seznam.classList.remove('prijezd-zprava', 'prijezd-zleva');
+    void seznam.offsetWidth;
+    seznam.classList.add(doprava ? 'prijezd-zprava' : 'prijezd-zleva');
+  }
+}
+
+function otevriPrehledAlarmu() {
+  vykresliPrehledAlarmu();
+  doplnCenyAlarmu();
+  // Vzdálenosti od ceny se hýbou s trhem — dokud je přehled vidět.
+  clearInterval(casovacPrehleduAlarmu);
+  casovacPrehleduAlarmu = setInterval(() => {
+    if (aktivniZalozka !== 'alerts' || document.hidden) {
+      clearInterval(casovacPrehleduAlarmu);
+      return;
+    }
+    if (el('viewChart')?.hidden) vykresliPrehledAlarmu();
+  }, 5000);
+}
+
+async function obnovPrehledAlarmu() {
+  await alarmyServer.stahniStav();
+  await doplnCenyAlarmu(true);
+  vykresliPrehledAlarmu();
 }
 
 /* ---------- historie obchodů ---------- */
@@ -4240,6 +4412,7 @@ function popisAlarmu(a) {
 }
 
 function vykresliAlarmy() {
+  if (aktivniZalozka === 'alerts') vykresliPrehledAlarmu();
   if (!chart) return;
   const seznam = chartSymbol ? alarmy.proPar(grafKlic()) : [];
   chart.setAlarmLines(

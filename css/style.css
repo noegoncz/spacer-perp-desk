@@ -266,7 +266,8 @@ main {
    graf má vlastní vodorovně posuvné lišty, které tím nesmí přijít o dotyk. */
 #viewPositions,
 #viewWatchlist,
-#viewHistory {
+#viewHistory,
+#viewAlerts {
   touch-action: pan-y;
 }
 
@@ -299,6 +300,7 @@ main {
 .tab-swipe {
   align-self: center;
   padding: 0 1px;
+  white-space: nowrap;
   font-size: 0.72rem;
   letter-spacing: -1px;
   color: var(--text-dim);
@@ -3008,3 +3010,53 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 .denik-souhrn .denik-review { border-color: #f0b90b; color: #f0b90b; }
 .denik-ikona { font-size: 0.9rem; }
 .denik-citace { font-size: 0.8rem; color: var(--text-dim); min-width: 0; overflow-wrap: anywhere; }
+
+/* ---------- záložka Alarmy (v0.63.0) ---------- */
+#viewAlerts { overflow-x: clip; }
+.alerts-list { display: flex; flex-direction: column; gap: 8px; }
+.alert-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--alarm);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.alert-row:active { background: var(--surface-2); }
+.alert-row.vypnuty { border-left-color: var(--border); }
+.alert-row.vypnuty .alert-hladina { color: var(--text-dim); }
+.alert-hlava { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; }
+.alert-par { font-weight: 700; white-space: nowrap; }
+.alert-burza { font-size: 0.75rem; color: var(--text-dim); white-space: nowrap; }
+.alert-hladina { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.alert-detail {
+  grid-column: 1 / -1;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px;
+  font-size: 0.78rem; color: var(--text-dim); font-variant-numeric: tabular-nums;
+}
+.alert-detail .nahoru { color: var(--long); }
+.alert-detail .dolu { color: var(--short); }
+.alert-zprava { grid-column: 1 / -1; font-size: 0.8rem; color: var(--text-dim); overflow-wrap: anywhere; }
+.alert-akce { display: flex; align-items: center; gap: 6px; }
+.alert-akce .nastaveni-prepinac { flex: none; }
+.alert-smazat {
+  min-width: 36px; height: 32px; padding: 0 8px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: transparent; color: var(--text-dim); font-size: 0.78rem; cursor: pointer;
+}
+.alert-smazat svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; vertical-align: middle; }
+.alert-smazat.potvrdit { border-color: var(--short); color: var(--short); font-weight: 600; }
+.alerts-empty { text-align: center; padding: 24px 12px; }
+.alerts-clear { width: 100%; margin-top: 12px; }
+.alerts-clear.potvrdit { border-color: var(--short); color: var(--short); }
+/* Čtyři záložky na zavřeném Foldu (v0.63.0): menší písmo a užší šipky,
+   ať se „‹ ›" nezalomí pod sebe a nic se neořízne. */
+@media (max-width: 420px) {
+  .tabs { gap: 2px; }
+  .tab { font-size: 0.8rem; padding: 0 2px; }
+  .tab-swipe { font-size: 0.62rem; padding: 0; }
+}

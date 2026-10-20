@@ -35,6 +35,7 @@ const dom = {
   viewChart: el('viewChart'),
   viewWatchlist: el('viewWatchlist'),
   viewHistory: el('viewHistory'),
+  viewAlerts: el('viewAlerts'),
   accountSummary: el('accountSummary'),
   accEquity: el('accEquity'),
   accAvailable: el('accAvailable'),
@@ -822,6 +823,7 @@ export function showView(name) {
   dom.viewPositions.hidden = name !== 'positions';
   dom.viewWatchlist.hidden = name !== 'watchlist';
   dom.viewHistory.hidden = name !== 'history';
+  if (dom.viewAlerts) dom.viewAlerts.hidden = name !== 'alerts';
   dom.viewSettings.hidden = name !== 'settings';
   // V nastavení záložky nedávají smysl, je to odbočka mimo hlavní obrazovku.
   dom.tabs.hidden = name === 'settings';
@@ -829,6 +831,148 @@ export function showView(name) {
     btn.classList.toggle('active', btn.dataset.tab === name);
   });
   window.scrollTo(0, 0);
+}
+
+/* ---------- přehled alarmů (v0.63.0) ---------- */
+
+/** „5 m", „3 h", „2 d" — jak dávno alarm zazněl. */
+function predChvili(ms) {
+  const minuty = Math.max(1, Math.round(ms / 60000));
+  if (minuty < 60) return `${minuty} m`;
+  if (minuty < 2880) return `${Math.round(minuty / 60)} h`;
+  return `${Math.round(minuty / 1440)} d`;
+}
+
+const IKONA_KOSE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>';
+
+/**
+ * Smazání na dvě klepnutí: první ukáže „Smazat?", druhé (do 3 s) smaže.
+ * confirm() ve WebView nechceme a přejetí řádku by se bilo s přejížděním
+ * mezi záložkami.
+ */
+function dvojKlepnuti(tlacitko, popisPotvrzeni, akce, obnovit) {
+  let casovac = null;
+  tlacitko.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (tlacitko.classList.contains('potvrdit')) {
+      clearTimeout(casovac);
+      akce();
+      return;
+    }
+    tlacitko.classList.add('potvrdit');
+    tlacitko.textContent = popisPotvrzeni;
+    casovac = setTimeout(() => {
+      tlacitko.classList.remove('potvrdit');
+      obnovit();
+    }, 3000);
+  });
+}
+
+/**
+ * Seznam alarmů. `polozky` připravuje app.js (pár, burza, hladina,
+ * vzdálenost od ceny…), tady se jen kreslí.
+ */
+export function renderAlerts({ rezim, polozky, onOpen, onToggle, onDelete, onClearAll }) {
+  const seznam = document.getElementById('alertsList');
+  const prazdno = document.getElementById('alertsEmpty');
+  const smazatVse = document.getElementById('alertsClear');
+  if (!seznam) return;
+  const ted = Date.now();
+  seznam.replaceChildren(...polozky.map((a) => {
+    const radek = document.createElement('div');
+    radek.className = `alert-row${a.aktivni ? '' : ' vypnuty'}`;
+    radek.dataset.id = a.id;
+    radek.setAttribute('role', 'button');
+
+    const hlava = document.createElement('div');
+    hlava.className = 'alert-hlava';
+    const par = document.createElement('span');
+    par.className = 'alert-par';
+    par.textContent = a.par;
+    const burza = document.createElement('span');
+    burza.className = 'alert-burza';
+    burza.textContent = a.burza;
+    const hladina = document.createElement('span');
+    hladina.className = 'alert-hladina';
+    hladina.textContent = a.hladina;
+    hlava.append(par, burza, hladina);
+
+    const akce = document.createElement('div');
+    akce.className = 'alert-akce';
+    const prepinac = document.createElement('button');
+    prepinac.type = 'button';
+    prepinac.className = `nastaveni-prepinac${a.aktivni ? ' on' : ''}`;
+    prepinac.setAttribute('aria-pressed', String(a.aktivni));
+    prepinac.setAttribute('aria-label', t('alerts.toggle'));
+    prepinac.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onToggle(a.id);
+    });
+    const kos = document.createElement('button');
+    kos.type = 'button';
+    kos.className = 'alert-smazat';
+    kos.setAttribute('aria-label', t('alerts.delete'));
+    const ikona = () => { kos.innerHTML = IKONA_KOSE; };
+    ikona();
+    dvojKlepnuti(kos, t('alerts.deleteConfirm'), () => onDelete(a.id), ikona);
+    akce.append(prepinac, kos);
+
+    const detail = document.createElement('div');
+    detail.className = 'alert-detail';
+    const kus = (text, trida = '') => {
+      const s = document.createElement('span');
+      if (trida) s.className = trida;
+      s.textContent = text;
+      detail.append(s);
+    };
+    if (a.podminka) kus(a.podminka);
+    if (a.typ !== 'cas') kus(a.opakovat ? t('alerts.repeat') : t('alerts.once'));
+    if (a.aktivni && Number.isFinite(a.vzdalenost)) {
+      kus(t('alerts.fromPrice', { pct: formatPercent(a.vzdalenost) }), a.vzdalenost >= 0 ? 'nahoru' : 'dolu');
+    }
+    if (!a.aktivni) {
+      kus(a.spusteno ? t('alerts.fired', { ago: t('alerts.ago', { kdy: predChvili(ted - a.spusteno) }) }) : t('alerts.off'));
+    }
+    radek.append(hlava, akce, detail);
+    if (a.zprava) {
+      const zprava = document.createElement('div');
+      zprava.className = 'alert-zprava';
+      zprava.textContent = `„${a.zprava}“`;
+      radek.append(zprava);
+    }
+    radek.addEventListener('click', () => onOpen(a.id));
+    return radek;
+  }));
+
+  if (prazdno) {
+    prazdno.hidden = polozky.length > 0;
+    prazdno.textContent = t(rezim === 'active' ? 'alerts.emptyActive' : 'alerts.emptyInactive');
+  }
+  if (smazatVse) {
+    smazatVse.hidden = rezim !== 'inactive' || !polozky.length;
+    smazatVse.classList.remove('potvrdit');
+    smazatVse.textContent = t('alerts.clearAll', { n: polozky.length });
+    // Posluchač jen jednou; počet a akce se berou z posledního vykreslení.
+    smazatVse.onAkce = onClearAll;
+    smazatVse.pocet = polozky.length;
+    if (!smazatVse.zapojeno) {
+      smazatVse.zapojeno = true;
+      let casovac = null;
+      smazatVse.addEventListener('click', () => {
+        if (smazatVse.classList.contains('potvrdit')) {
+          clearTimeout(casovac);
+          smazatVse.onAkce?.();
+          return;
+        }
+        smazatVse.classList.add('potvrdit');
+        smazatVse.textContent = t('alerts.clearConfirm', { n: smazatVse.pocet });
+        casovac = setTimeout(() => {
+          smazatVse.classList.remove('potvrdit');
+          smazatVse.textContent = t('alerts.clearAll', { n: smazatVse.pocet });
+        }, 4000);
+      });
+    }
+  }
 }
 
 /* ---------- historie obchodů ---------- */

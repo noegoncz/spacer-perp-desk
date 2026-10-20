@@ -1,31 +1,19 @@
 {
-  "verze": "0.62.7",
+  "verze": "0.63.0",
   "novinky": [
     {
-      "en": "Positions start with one compact summary: open PnL and the last 30 days (trades, win rate, small trend curve). Sort and filter sit in the same box.",
-      "cs": "Pozice začínají jedním úsporným souhrnem: otevřené PnL a posledních 30 dní (obchody, úspěšnost, malá křivka trendu). Řazení a filtr jsou ve stejném bloku."
+      "en": "New Alerts tab: every alert across pairs and exchanges in one place — active ones sorted by how close the price is, inactive ones with when they fired. Switch on/off, delete, or delete all inactive at once.",
+      "cs": "Nová záložka Alarmy: všechny alarmy napříč páry a burzami na jednom místě — aktivní seřazené podle toho, jak blízko je cena, neaktivní s časem zaznění. Zapnout / vypnout, smazat, nebo smazat všechny neaktivní naráz."
     },
     {
-      "en": "Alerts are always a regular phone notification, even with the app open — no more in-app beeping. The arrow icon shows the direction, the text says “Price crossed ↑ above …”.",
-      "cs": "Alarm je vždy běžná notifikace telefonu, i s otevřenou aplikací — žádné pípání v aplikaci. Směr ukazuje ikonka se šipkou, text říká „Cena překročila ↑ …“."
-    },
-    {
-      "en": "New alert icon: an arrow cut out of the PerpyX tile (needs the new APK).",
-      "cs": "Nová ikonka alarmu: šipka vyříznutá v dlaždici PerpyX (s novým APK)."
+      "en": "Alert notifications read better: “Price crossed ↑ above …”.",
+      "cs": "Text notifikace alarmu se čte líp: „Cena překročila ↑ …“."
     }
   ],
   "opravy": [
     {
       "en": "A trade opened from History hides today's alerts (the eye in the toolbar shows them again).",
       "cs": "Obchod otevřený z Historie schová dnešní alarmy (oko v liště je zase ukáže)."
-    },
-    {
-      "en": "Trades from History open instantly without flashing.",
-      "cs": "Obchody z Historie se otevírají hned a bez problikávání."
-    },
-    {
-      "en": "An alert no longer opens the Alarms & reminders settings; a quick alert lands exactly on the crosshair.",
-      "cs": "Alarm už neotevírá nastavení Budíky a připomenutí; rychlý alarm sedne přesně na kříž."
     }
   ]
 }
