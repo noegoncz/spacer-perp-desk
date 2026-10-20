@@ -1,5 +1,5 @@
 {
-  "verze": "0.62.6",
+  "verze": "0.62.7",
   "novinky": [
     {
       "en": "Positions start with one compact summary: open PnL and the last 30 days (trades, win rate, small trend curve). Sort and filter sit in the same box.",
@@ -15,6 +15,10 @@
     }
   ],
   "opravy": [
+    {
+      "en": "A trade opened from History hides today's alerts (the eye in the toolbar shows them again).",
+      "cs": "Obchod otevřený z Historie schová dnešní alarmy (oko v liště je zase ukáže)."
+    },
     {
       "en": "Trades from History open instantly without flashing.",
       "cs": "Obchody z Historie se otevírají hned a bez problikávání."

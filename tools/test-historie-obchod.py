@@ -62,8 +62,17 @@ ev("""(() => { window.__plneniDotazu = 0; const f = window.fetch;
   window.fetch = function (v, o) { if (String(v && v.url ? v.url : v).includes('/v5/execution/list')) window.__plneniDotazu += 1;
     if (String(v && v.url ? v.url : v).includes('/v5/market/kline')) (window.__svice = window.__svice || []).push(String(v && v.url ? v.url : v));
     return f(v, o); }; })()""")
+# v0.62.7: alarm na páru — v prohlídce schovaný přes vrstvu (ne smazaný).
+ev("import('./js/alarmy.js').then((m) => m.uloz({ ...m.novy('JUPUSDT', 0.29), aktivni: true }))")
+time.sleep(0.5)
 ev("[...document.querySelectorAll('.trade')].find((k) => !k.classList.contains('otevreny')).click()")
 time.sleep(6)
+alarm_prohlidka = json.loads(ev("""JSON.stringify({ n: window.__graf.getOverlays({ groupId: 'alarmy' }).length,
+  videt: window.__graf.getOverlays({ groupId: 'alarmy' }).some((o) => o.visible),
+  oko: document.getElementById('layersBtn').classList.contains('active') })""") or '{}')
+print('alarm v prohlídce:', alarm_prohlidka)
+if not alarm_prohlidka.get('n') or alarm_prohlidka.get('videt') or not alarm_prohlidka.get('oko'):
+    chyby.append(f'v prohlídce mají být alarmy schované vrstvou a oko svítit: {alarm_prohlidka}')
 print('dotazů na plnění při otevření:', ev("window.__plneniDotazu"))
 if (ev("window.__plneniDotazu") or 0) > 1:
     chyby.append('prohlídka stahuje plnění z burzy, i když jsou v telefonu')
@@ -152,6 +161,11 @@ po_historii = ev("document.querySelector('.interval-btn.active')?.dataset.interv
 po_ted = json.loads(ev("""JSON.stringify({ n: window.__graf.getOverlays().filter((x) => x.name === 'cenaTed').length,
   vestavena: window.__graf.getStyles().candle.priceMark.last.show })""") or '{}')
 print('běžný graf po prohlídce:', po_ted)
+alarm_bezny = json.loads(ev("""JSON.stringify({ videt: window.__graf.getOverlays({ groupId: 'alarmy' }).some((o) => o.visible),
+  ulozeno: localStorage.getItem('perpdesk.layers') })""") or '{}')
+print('alarm v běžném grafu:', alarm_bezny)
+if not alarm_bezny.get('videt') or '"alarmy":false' in (alarm_bezny.get('ulozeno') or ''):
+    chyby.append(f'po prohlídce mají být alarmy zase vidět a vrstvy neuložené: {alarm_bezny}')
 if po_ted.get('n') or not po_ted.get('vestavena'):
     chyby.append('linka dnešní ceny z prohlídky zůstala v běžném grafu')
 print('graf pozice otevřený po prohlídce z Historie, interval:', po_historii)

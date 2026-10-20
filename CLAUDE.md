@@ -659,7 +659,11 @@ Zaškrtávací stránka (23 kroků, v0.61.0): 18 sedí. Opraveno:
   + šipku vedle sebe). **v0.62.5:** šipka zpátky do textu za slovo
   „Price" („Price ↑ crossed above", „Cena ↓ propadla pod") — bez ní se
   věta četla špatně; v nadpisu dál nic. **v0.62.6:** šipka o slovo dál
-  — „Price crossed ↑ above", „Cena propadla ↓ pod". Bod = zavírací příkaz
+  — „Price crossed ↑ above", „Cena propadla ↓ pod".
+  **v0.62.7:** prohlídka obchodu z Historie má **alarmy schované vrstvou**
+  (`vrstvyProGraf` v app.js; oko svítí a jde je ukázat), vrstvy prohlídky
+  se neukládají (`nastavVrstvy` bez `saveLayers`), běžný graf dostane
+  uložené. Test: `test-historie-obchod.py` (na v0.62.6 padá). Bod = zavírací příkaz
   (částečné zavření je bod navíc — skládání do obchodů by chtělo plnění
   všech párů všech účtů). Data `getClosedTrades` každého klienta za 30 dní,
   v `perpdesk.stat30` (mimo zálohu), ze sítě nejvýš po 15 min, po ⟳

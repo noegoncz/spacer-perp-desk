@@ -2004,6 +2004,7 @@ async function otevriGraf(symbol, position, trh) {
   chartSymbol = symbol;
   chartPosition = position;
   chartOtevreno = null;
+  vrstvyProGraf();
   /*
    * Vzhled grafu po párech (v0.59.13, přání uživatele): timeframe a šířka
    * svíček, na kterých uživatel pár naposledy nechal. Prohlídka obchodu
@@ -2056,8 +2057,7 @@ async function otevriGraf(symbol, position, trh) {
     chart.setLoader(nactiSvice);
     chart.setMagnet(magnetZapnut);
     // Vrstvy před indikátory — skryté indikátory se do grafu vůbec nevloží.
-    chart.setLayers(store.loadLayers());
-    oznacVrstvy();
+    vrstvyProGraf();
     chart.restoreIndicators(store.loadIndicators(), maVlastniPanel);
     oznacAktivniIndikatory();
     postavNabidky();
@@ -2529,12 +2529,26 @@ function nastavVrstvy(zmena) {
   if (!chart) return;
   chart.setLayers(zmena);
   const vrstvy = chart.getLayers();
-  store.saveLayers(vrstvy);
+  // Vrstvy prohlídky obchodu se neukládají — platí jen do jejího zavření.
+  if (!prohlizenyObchod) store.saveLayers(vrstvy);
   // Skryté kresby nejde upravovat — rozdělaná úprava a paleta zmizí.
   if (!vrstvy.kresby) {
     vyberNastroj('');
     zobrazPaletu(null);
   }
+  oznacVrstvy();
+}
+
+/**
+ * Vrstvy pro otevíraný graf. Prohlídka obchodu z Historie má alarmy
+ * schované (v0.62.7, přání uživatele — dnešní alarmy ke starému obchodu
+ * nepatří): přes vrstvu, ne natvrdo, takže je oko v liště zase ukáže
+ * a svítí, že je něco skryté. Běžný graf dostane uložené vrstvy uživatele.
+ */
+function vrstvyProGraf() {
+  if (!chart) return;
+  const ulozene = { kresby: true, alarmy: true, indikatory: true, obchod: true, ...store.loadLayers() };
+  chart.setLayers(prohlizenyObchod ? { ...ulozene, alarmy: false } : ulozene);
   oznacVrstvy();
 }
 
