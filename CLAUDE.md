@@ -2836,7 +2836,11 @@ nové APK sestavené 2026-10-17 a uživatel potvrdil, že funguje).
   přečíst `ArtifactData list kroky` a projít, co „nesedí".** Kroky jsou
   podle `docs/kontrola-nove-burzy.md` část B.
 - **Hyperliquid hotový (v0.60.0, 2026-10-17)** — připojení adresou
-  peněženky, viz sekce Hyperliquid výš; čeká na ověření uživatelem (část B). U každé nové burzy projít `docs/kontrola-nove-burzy.md`
+  peněženky, viz sekce Hyperliquid výš; čeká na ověření uživatelem (část B).
+  **Ověřovací stránka (24 kroků, 2026-10-20):**
+  https://claude.ai/artifact/G4FrEBztvxCDBNwqNuN6Dc — databáze `kroky`,
+  dokumenty `k01`…`k24` (stejný tvar jako u Binance). Až uživatel napíše,
+  že je hotovo: `ArtifactData list kroky` a projít, co nesedí. U každé nové burzy projít `docs/kontrola-nove-burzy.md`
   (část A já naostro, část B dát uživateli jako zaškrtávací stránku).
 - **Drobnosti v0.59.13 (hotové 2026-10-17):**
   - **Prohlídka obchodu: dnešní cena** — overlay `cenaTed` (chart.js,
