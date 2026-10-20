@@ -2,7 +2,7 @@
 <html><head><meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@500;600&display=block" rel="stylesheet">
 <style>
-  html, body { margin: 0; width: 1080px; height: 1164px; overflow: hidden; background: #0b0f14; }
+  html, body { margin: 0; width: 1080px; height: 100vh; overflow: hidden; background: #0b0f14; }
   /* Pozadí ze záběru aplikace (?pozadi=obrázek, 2026-10-17): ztlumené
      a lehce rozmazané, ať logo vynikne a aplikace je pořád poznat. */
   .pozadi { position: absolute; inset: -20px; background-size: cover; background-position: center top;
@@ -14,7 +14,7 @@
   body { font-family: Inter, 'Segoe UI', sans-serif; color: #e6edf5; }
   .scena { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
   /* jemná záře za logem */
-  .zare { position: absolute; width: 900px; height: 900px; left: 90px; top: 80px; border-radius: 50%;
+  .zare { position: absolute; width: 900px; height: 900px; left: 90px; top: calc(50% - 502px); border-radius: 50%;
           background: radial-gradient(circle, rgba(124,92,255,0.20) 0%, rgba(34,211,238,0.10) 35%, rgba(11,15,20,0) 70%); }
   .dlazdice { width: 300px; height: 300px; border-radius: 66px; background: #0d1420;
               box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 30px 80px rgba(0,0,0,0.55); position: relative; }

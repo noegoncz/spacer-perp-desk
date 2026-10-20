@@ -23,3 +23,8 @@ Hotová videa ani snímky do repa nepatří.
 — snímek z nahrávky (`ffmpeg -ss 30 -i video.mp4 -frames:v 1 -vf crop=1080:1164:0:52 pozadi.png`)
 leží za logem ztlumený a lehce rozmazaný; závěr logo poskládá jako úvod.
 Nahrávka z rozevřeného Foldu 1080 × 1298: ořez `crop=1080:1164:0:52`.
+
+**Zavřený displej (2026-10-20):** nahrávka 1080 × 2768, ořez
+`crop=1080:2508:0:120` (stavová lišta / navigační lišta), šablona bere
+výšku z okna → `VYSKA=2508 python render.py "pozadi=pozadi.png&burzy=…"`.
+Stopu prstu na konci nahrávky odstřihnout (`trim`).
