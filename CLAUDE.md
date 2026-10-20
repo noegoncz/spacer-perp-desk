@@ -564,6 +564,14 @@ statistiky a shrnutí v lidské řeči — „co mi to o mně jako traderovi ř�
 - Push připomenutí zhodnocení zatím není (rozhodnutí: volba v nastavení,
   výchozí vypnuto) — přijde s nativními notifikacemi.
 - Test: `tools/test-denik.py`.
+- **Fáze 2 — návrh (2026-10-20, čeká na volby uživatele):** plátno
+  https://claude.ai/artifact/N1SiWyTgnoPuRmmmvGzkda — Historie s přepínačem
+  Trades / Table / Calendar, souhrn filtrovaného výběru (Net PnL, win rate,
+  avg R, PF), filtry v okně (období, účty, výsledek, setup, confluence,
+  plán, chyby, doba držení, zhodnocení), detail obchodu (MFE/MAE v R,
+  poznámky, zhodnocení), zhodnocení s chybami a emocemi. Inspirace:
+  TradeZella (kalendář, filtry, štítky), Edgewonk (chyby vstup / řízení
+  / výstup, Tiltmeter → fáze 3), Tradervue / TradesViz (sloupce, R, MFE/MAE).
 
 ### Ověření Binance uživatelem (2026-10-18) a opravy v0.61.1
 
