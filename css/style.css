@@ -3051,7 +3051,7 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 .alert-smazat svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; vertical-align: middle; }
 .alert-smazat.potvrdit { border-color: var(--short); color: var(--short); font-weight: 600; }
 .alerts-empty { text-align: center; padding: 24px 12px; }
-.alerts-clear { width: 100%; margin-top: 12px; }
+.alerts-clear { width: 100%; margin-bottom: 10px; }
 .alerts-clear.potvrdit { border-color: var(--short); color: var(--short); }
 /* Čtyři záložky na zavřeném Foldu (v0.63.0): menší písmo a užší šipky,
    ať se „‹ ›" nezalomí pod sebe a nic se neořízne. */

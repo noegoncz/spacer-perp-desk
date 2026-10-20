@@ -1,5 +1,5 @@
 {
-  "verze": "0.63.0",
+  "verze": "0.63.1",
   "novinky": [
     {
       "en": "New Alerts tab: every alert across pairs and exchanges in one place — active ones sorted by how close the price is, inactive ones with when they fired. Switch on/off, delete, or delete all inactive at once.",

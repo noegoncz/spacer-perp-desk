@@ -678,7 +678,7 @@ v TabTraderu; jednorázové alarmy se po zaznění hromadily a nešly uklidit):*
   cenovými), neaktivní od posledního zaznění.
 - Klepnutí otevře graf (`otevriGrafZNotifikace` — i s pozicí, správná
   burza), přepínač zapne / vypne, koš na **dvě klepnutí** („Delete?"),
-  **„Delete all inactive (n)"** taky na dvě klepnutí (confirm() ne, přejetí
+  **„Delete all inactive (n)"** nad seznamem (v0.63.1), taky na dvě klepnutí (confirm() ne, přejetí
   řádku by se bilo s přejížděním záložek).
 - Ceny: `cenaKlice` (živá svíčka, pozice, Watchlists), chybějící jedním
   tickerem na pár (`doplnCenyAlarmu`, `cenyAlarmu`, platí 1 min).
