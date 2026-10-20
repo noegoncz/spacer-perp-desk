@@ -109,7 +109,7 @@ cenove = [i for i in ids if i in ('nad', 'pod')]
 over(len(cenove) >= 1, f'cenový alarm zazněl při protnutí ({cenove})')
 over(all(ids.count(i) == 1 for i in set(ids)), f'každý jednorázový alarm zazněl jen jednou ({ids})')
 push = [r for r in vystup if 'ZKOUŠKA push' in r]
-over(any(('Cena ↑ překročila' in r or 'Cena ↓ propadla pod' in r) for r in push),
+over(any(('Cena překročila ↑' in r or 'Cena propadla ↓ pod' in r) for r in push),
      'text push: krátká věta s hladinou v češtině (v0.62.4)')
 over(not any('▲' in r or '▼' in r for r in push), 'v nadpisu push bez trojúhelníku (směr ukazuje ikonka)')
 over(any('Your time alert is due' in r for r in push), 'časový alarm s anglickým textem')
