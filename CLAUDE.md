@@ -572,6 +572,13 @@ statistiky a shrnutí v lidské řeči — „co mi to o mně jako traderovi ř�
   poznámky, zhodnocení), zhodnocení s chybami a emocemi. Inspirace:
   TradeZella (kalendář, filtry, štítky), Edgewonk (chyby vstup / řízení
   / výstup, Tiltmeter → fáze 3), Tradervue / TradesViz (sloupce, R, MFE/MAE).
+- **Historie → Journal (rozhodnutí uživatele 2026-10-20):** záložka
+  Historie se přejmenuje na **Journal / Deník** s podzáložkami **Edge**
+  (výchozí: souhrn, věty, čekající zhodnocení, poslední obchody) ·
+  **Trades** (karty / tabulka, filtry) · **Calendar**; účet = filtr
+  („All accounts“), ne lišta. ⚠ **Návrat zpět:** git značka
+  `pred-journal-v0.63.1` (stav před přestavbou, Historie po účtech) —
+  uživatel: „při nejhorším se vrátíme zpět“.
 
 ### Ověření Binance uživatelem (2026-10-18) a opravy v0.61.1
 
