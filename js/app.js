@@ -24,6 +24,7 @@ import * as pozvanky from './pozvanky.js';
 import * as denik from './denik.js';
 import * as denikUi from './denik-ui.js';
 import * as statistiky from './denik-statistiky.js';
+import * as likvidace from './likvidace.js';
 import * as alarmyServer from './alarmy-server.js';
 import * as push from './push.js';
 import * as hlaseni from './hlaseni.js';
@@ -2071,6 +2072,7 @@ async function otevriGraf(symbol, position, trh) {
   // jsou dva grafy. S holým párem graf změnu nepoznal, nesmazal svíčky
   // a do příchodu dat ukazoval svíčky jiné burzy (v0.59.2).
   chart.setBarWidth(vzhled?.sirka ?? null);
+  zastavMapu(); // mapa předchozího páru pryč hned, nová přijde po svíčkách
   chart.setSymbol(grafKlic(), priceDecimals(position?.entry ?? trh?.last ?? prohlizenyObchod?.entry ?? 0));
   if (prohlizenyObchod?.okno) chart.showTradeWindow(prohlizenyObchod.okno.od, prohlizenyObchod.okno.do);
   chart.setInterval(chartInterval); // knihovna si data vyžádá sama
@@ -2111,6 +2113,7 @@ async function otevriGraf(symbol, position, trh) {
 
 function closeChart() {
   skryjRychlyAlarm();
+  zastavMapu();
   chart?.clearTradeMarks();
   prohlizenyObchod = null;
   /*
@@ -2260,6 +2263,54 @@ async function nactiSviceProInterval(interval) {
 }
 
 /*
+ * Likvidační mapa Hyperliquidu (v0.65.0) — vrstva grafu, data ze serveru
+ * (js/likvidace.js). Okno = načtené svíčky; obnova jednou za minutu, dokud
+ * je graf otevřený. Na jiné burze než Hyperliquid se pruhy posunou o rozdíl
+ * cen (likvidace se spouští podle ceny HL) a popisek to přizná.
+ */
+let oknoMapy = null;
+let casovacMapy = null;
+let zadostMapy = 0;
+
+function zastavMapu() {
+  clearInterval(casovacMapy);
+  casovacMapy = null;
+  oknoMapy = null;
+  zadostMapy += 1;
+  chart?.setLiquidations(null);
+}
+
+async function nactiMapu() {
+  if (!chart || !chartSymbol || !oknoMapy) return;
+  if (!chart.getLayers().likvidace) return;
+  const zadost = ++zadostMapy;
+  const symbol = chartSymbol;
+  const burza = chartBurza || client?.burza?.id || 'bybit';
+  let vysledek = null;
+  try {
+    vysledek = await likvidace.pasy({
+      symbol, burza, od: oknoMapy.od, doKdy: Date.now(), delkaSvicky: DELKA_INTERVALU[chartInterval] || 3600e3,
+    });
+  } catch { /* síť — zkusí se při další obnově */ }
+  if (zadost !== zadostMapy || symbol !== chartSymbol || !chart) return;
+  if (!vysledek?.pasy?.length) {
+    chart.setLiquidations(null);
+  } else {
+    // Posun na cenu této burzy (BTCUSDT na Binance ≠ BTC na Hyperliquidu).
+    const cena = Number(poslednicCena) || Number(chartTrh?.last) || 0;
+    const pomer = burza !== 'hyperliquid' && cena > 0 && vysledek.mark > 0 ? cena / vysledek.mark : 1;
+    const pasy = pomer === 1 ? vysledek.pasy
+      : vysledek.pasy.map((p) => ({ ...p, cena: p.cena * pomer, vyska: p.vyska * pomer }));
+    const minut = Math.max(0, Math.round((Date.now() - vysledek.cas) / 60000));
+    chart.setLiquidations({
+      pasy,
+      popis: t(burza === 'hyperliquid' ? 'liq.label' : 'liq.labelOther', { min: minut }),
+    });
+  }
+  if (!casovacMapy) casovacMapy = setInterval(nactiMapu, 60000);
+}
+
+/*
  * Svíčky stažené dopředu pro interval, na který se právě přepíná. Platí na
  * jedno použití — loader si je vyzvedne a zahodí.
  */
@@ -2279,6 +2330,11 @@ async function nactiSvice() {
   // Značky plnění až k začátku načtených svíček (celá historie na páru).
   if (!prohlizenyObchod && bars.length) {
     setTimeout(() => znackyPlneni(chartPosition, bars[0].timestamp), 0);
+  }
+  // Likvidační mapa až po svíčkách — graf na ni nikdy nečeká.
+  if (bars.length) {
+    oknoMapy = { od: bars[0].timestamp, do: bars[bars.length - 1].timestamp };
+    setTimeout(nactiMapu, 50);
   }
   return bars;
 }
@@ -2524,12 +2580,14 @@ const VRSTVY = [
   { klic: 'alarmy', popisek: 'layers.alarms', poznamka: 'layers.alarmsNote' },
   { klic: 'indikatory', popisek: 'layers.indicators' },
   { klic: 'obchod', popisek: 'layers.trade', poznamka: 'layers.tradeNote' },
+  { klic: 'likvidace', popisek: 'layers.liq', poznamka: 'layers.liqNote' },
 ];
 
 function nastavVrstvy(zmena) {
   if (!chart) return;
   chart.setLayers(zmena);
   const vrstvy = chart.getLayers();
+  if (zmena?.likvidace) nactiMapu();
   // Vrstvy prohlídky obchodu se neukládají — platí jen do jejího zavření.
   if (!prohlizenyObchod) store.saveLayers(vrstvy);
   // Skryté kresby nejde upravovat — rozdělaná úprava a paleta zmizí.
@@ -2548,7 +2606,7 @@ function nastavVrstvy(zmena) {
  */
 function vrstvyProGraf() {
   if (!chart) return;
-  const ulozene = { kresby: true, alarmy: true, indikatory: true, obchod: true, ...store.loadLayers() };
+  const ulozene = { kresby: true, alarmy: true, indikatory: true, obchod: true, likvidace: true, ...store.loadLayers() };
   chart.setLayers(prohlizenyObchod ? { ...ulozene, alarmy: false } : ulozene);
   oznacVrstvy();
 }

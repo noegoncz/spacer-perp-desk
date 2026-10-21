@@ -1,0 +1,131 @@
+# -*- coding: utf-8 -*-
+"""
+Likvidační mapa Hyperliquidu v grafu (v0.65.0) — proti **skutečným**
+datům z perpyx.com (sbírá je server/likvidace.mjs od 2026-10-21) a
+skutečným svíčkám Hyperliquidu / Binance.
+
+  * graf BTC na Hyperliquidu (1m): svíčky se ukážou dřív, než se mapa
+    vůbec začne stahovat (graf na mapu nečeká),
+  * mapa je vrstva LIQMAP s pruhy a popiskem „Hyperliquid liquidations",
+  * vrstva Likvidace v nabídce oka mapu sundá a vrátí,
+  * graf BTC na Binance: stejná mapa, posunutá na cenu Binance (popisek),
+  * pár, který na Hyperliquidu není, mapu nemá (a nic nespadne).
+Ukládá snímky obrazovky do adresáře v proměnné SNIMKY (nepovinné).
+
+Spuštění: python tools/test-likvidace-graf.py http://localhost:8075/index.html
+"""
+import base64, json, os, sys, time
+sys.stdout.reconfigure(errors='replace')
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from dotyk import Prohlizec
+
+KOREN = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+KLICE = ['hyperliquid:BTCUSDC', 'binance:BTCUSDT', 'binance:SPCXUSDT']
+mock = open(os.path.join(KOREN, 'tools', 'mock-bybit.js'), encoding='utf-8').read()
+mock = "sessionStorage.setItem('__mapaNaostro', '1');" + mock + """
+localStorage.setItem('perpdesk.lists', JSON.stringify({ verze: 1, aktivni: 'a',
+  seznamy: [{ id: 'a', nazev: 'Main', polozky: %s }] }));
+localStorage.setItem('perpdesk.chartView', JSON.stringify({ 'hyperliquid:BTCUSDC': { interval: '1' }, 'binance:BTCUSDT': { interval: '15' } }));
+// Kdy dorazily svíčky a kdy se začala stahovat mapa.
+window.__casy = {};
+const __f = window.fetch;
+window.fetch = function (u, o) {
+  if (String(u).includes('/api/likvidace') && !window.__casy.mapa) window.__casy.mapa = performance.now();
+  return __f.apply(this, arguments);
+};
+""" % json.dumps(KLICE)
+
+p = Prohlizec()
+for c in ('Page.enable', 'Runtime.enable', 'Network.enable'):
+    p.prikaz(c)
+p.prikaz('Network.setCacheDisabled', cacheDisabled=True)
+p.prikaz('Emulation.setDeviceMetricsOverride', width=412, height=880, deviceScaleFactor=2, mobile=True)
+p.prikaz('Page.addScriptToEvaluateOnNewDocument', source=mock)
+p.prikaz('Page.navigate', url=sys.argv[1])
+time.sleep(6)
+SNIMKY = os.environ.get('SNIMKY')
+
+
+def ev(v):
+    r = p.prikaz('Runtime.evaluate', expression=v, returnByValue=True, awaitPromise=True)
+    if 'exceptionDetails' in r:
+        print('  !! výjimka:', r['exceptionDetails'].get('exception', {}).get('description', '')[:300])
+        return None
+    return r.get('result', {}).get('value')
+
+
+chyby = []
+
+
+def over(podminka, popis):
+    print(('  ok   ' if podminka else '  !!   ') + popis)
+    if not podminka:
+        chyby.append(popis)
+
+
+def snimek(nazev):
+    if SNIMKY:
+        img = p.prikaz('Page.captureScreenshot', format='png')['data']
+        open(os.path.join(SNIMKY, nazev), 'wb').write(base64.b64decode(img))
+
+
+mapa = lambda: ev("window.__graf.getIndicators({ name: 'LIQMAP' }).length") or 0
+
+print('1) BTC na Hyperliquidu (1m)')
+ev("document.querySelector('.tab[data-tab=watchlist]').click()")
+time.sleep(3)
+ev("window.__casy = {}; window.__casy.klik = performance.now()")
+ev("document.querySelector('#watchList .tile[data-klic=\"hyperliquid:BTCUSDC\"]').click()")
+for _ in range(40):
+    time.sleep(0.25)
+    if not ev("window.__casy.svice") and (ev("window.__graf.getDataList().length") or 0) > 0:
+        ev("window.__casy.svice = performance.now()")
+    if mapa():
+        break
+time.sleep(1)
+casy = ev("window.__casy") or {}
+print('   časy (ms od klepnutí):', {k: round(v - casy.get('klik', 0)) for k, v in casy.items()})
+over(casy.get('svice') and casy.get('mapa') and casy['mapa'] >= casy['svice'] - 300,
+     'mapa se začne stahovat až po svíčkách')
+over(mapa() == 1, 'vrstva LIQMAP v grafu')
+pocet = ev("(() => { const d = window.__graf.getIndicators({ name: 'LIQMAP' })[0]; return d ? 1 : 0; })()")
+time.sleep(1)
+snimek('liq-hl-1m.png')
+
+print('2) vrstva Likvidace')
+ev("document.getElementById('layersBtn').click()")
+time.sleep(0.5)
+radek = ev("[...document.querySelectorAll('.nabidka-radek')].map((r) => r.textContent).find((x) => /Liquidations/.test(x)) || ''")
+over(bool(radek), f'v nabídce oka je vrstva Likvidace ({radek[:40]})')
+ev("[...document.querySelectorAll('.nabidka-radek')].find((r) => /Liquidations/.test(r.textContent)).click()")
+time.sleep(0.5)
+over(mapa() == 0, 'vypnutím vrstvy mapa zmizí')
+ev("[...document.querySelectorAll('.nabidka-radek')].find((r) => /Liquidations/.test(r.textContent)).click()")
+time.sleep(3)
+over(mapa() == 1, 'zapnutím se vrátí')
+ev("history.back()")
+time.sleep(1.5)
+
+print('3) BTC na Binance (15m) — posun na cenu Binance')
+ev("document.querySelector('#watchList .tile[data-klic=\"binance:BTCUSDT\"]').click()")
+for _ in range(40):
+    time.sleep(0.25)
+    if mapa():
+        break
+over(mapa() == 1, 'mapa i na grafu Binance')
+time.sleep(1)
+snimek('liq-binance-15m.png')
+ev("history.back()")
+time.sleep(1.5)
+
+print('4) pár bez Hyperliquidu')
+ev("document.querySelector('#watchList .tile[data-klic=\"binance:SPCXUSDT\"]').click()")
+time.sleep(6)
+over(mapa() == 0, 'SPCX (na HL není) mapu nemá')
+ev("history.back()")
+
+konzole = ev('(window.__chyby||[]).join(" | ")') or ''
+over(not konzole, f'bez chyb v konzoli ({konzole[:200]})')
+print()
+print('VÝSLEDEK:', 'VŠE V POŘÁDKU' if not chyby else f'!!! {len(chyby)} chyb')
+sys.exit(1 if chyby else 0)

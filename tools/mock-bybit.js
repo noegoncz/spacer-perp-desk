@@ -62,6 +62,12 @@ window.fetch = function (vstup, volby) {
   const u = String(vstup && vstup.url ? vstup.url : vstup);
   // Poznámky k nové verzi jsou soubor aplikace, ne Bybit — jdou ze serveru.
   if (u.includes('novinky.json')) return __puvodniFetch(vstup, volby);
+  // Likvidační mapa (v0.65.0): naostro jen v testu mapy ('__mapaNaostro'),
+  // jinak prázdná — ostatní testy měří graf a cizí pruhy by jim překážely.
+  if (u.includes('/api/likvidace')) {
+    if (sessionStorage.getItem('__mapaNaostro')) return __puvodniFetch(vstup, volby);
+    return Promise.resolve(new Response('{"ok":true,"r":1,"hodiny":[]}', { headers: { 'Content-Type': 'application/json' } }));
+  }
   // Ostatní burzy (adaptéry přes CCXT) jdou na skutečnou burzu — mock
   // podstrkuje jen Bybit a perpyx.com (kontraktní test, v0.53.0).
   if (/binance|gateio|gate\.io|mexc|okx|bitget|hyperliquid/i.test(u)) return __puvodniFetch(vstup, volby);

@@ -939,6 +939,92 @@ function registrovatVolumeProfile() {
  */
 let pnlInfo = null;
 
+/*
+ * Likvidační mapa Hyperliquidu (v0.65.0): pruhy v čase, data skládá
+ * js/likvidace.js. Indikátor bez figur (do měřítka osy nemluví, jako VOL),
+ * kreslí se pod svíčky jen při překreslení grafu — žádná práce navíc při
+ * ticku ceny. Barva a průhlednost podle velikosti proti největšímu pruhu
+ * ve viditelném okně (jako heatmapy Coinglass / Coinee): málo = tlumeně
+ * tyrkysová, hodně = žlutá.
+ */
+let likvidace = null;   // { pasy: [{ od, do, cena, vyska, usd, long }], popis }
+
+function registrovatLikvidace() {
+  K().registerIndicator({
+    name: 'LIQMAP',
+    shortName: '',
+    series: 'normal',
+    calcParams: [],
+    figures: [],
+    createTooltipDataSource: () => ({ name: '', calcParamsText: '', legends: [] }),
+    calc: (data) => data.map(() => ({})),
+    draw: ({ ctx, chart, bounding }) => {
+      const pasy = likvidace?.pasy;
+      const data = chart.getDataList();
+      if (!pasy?.length || !data.length) return true;
+      const rozsah = chart.getVisibleRange();
+      const prvni = data[Math.max(0, rozsah.from)]?.timestamp ?? data[0].timestamp;
+      const posledni = data[Math.min(data.length - 1, Math.max(0, rozsah.to - 1))].timestamp;
+      const zacatekDat = data[0].timestamp;
+      const px = (ts, cena) => {
+        const b = chart.convertToPixel({ timestamp: Math.max(zacatekDat, ts), value: cena }, { paneId: HLAVNI_PANEL });
+        return Array.isArray(b) ? b[0] : b;
+      };
+      const viditelne = pasy.filter((p) => p.do >= prvni && p.od <= posledni + 86400e3);
+      let max = 0;
+      viditelne.forEach((p) => { if (p.usd > max) max = p.usd; });
+      if (!max) return true;
+      const pravy = bounding.width;
+      ctx.save();
+      for (const p of viditelne) {
+        const a = px(p.od, p.cena + p.vyska / 2);
+        const b = px(p.do, p.cena - p.vyska / 2);
+        if (!a || !b || !Number.isFinite(a.y) || !Number.isFinite(b.y)) continue;
+        // Pruh, který dál trvá, vede až k pravému okraji (budoucnost).
+        const x1 = Math.max(0, a.x);
+        const x2 = p.do >= Date.now() - 120000 ? pravy : Math.min(pravy, b.x);
+        if (x2 <= x1) continue;
+        const sila = Math.sqrt(p.usd / max);
+        // tyrkysová (22, 120, 160) → žlutá (240, 220, 60)
+        const rgb = [22 + 218 * sila, 120 + 100 * sila, 160 - 100 * sila].map(Math.round);
+        ctx.fillStyle = `rgba(${rgb.join(',')},${(0.18 + 0.62 * sila).toFixed(2)})`;
+        const y = Math.min(a.y, b.y);
+        ctx.fillRect(x1, y, x2 - x1, Math.max(2, Math.abs(b.y - a.y)));
+      }
+      ctx.font = '11px -apple-system, "Segoe UI", Roboto, sans-serif';
+      ctx.fillStyle = 'rgba(139,155,176,0.9)';
+      ctx.textBaseline = 'top';
+      if (likvidace.popis) ctx.fillText(likvidace.popis, 8, 6);
+      /*
+       * Nejbližší velký shluk **mimo obraz** nahoře a dole (šipka u okraje):
+       * skutečné likvidace velkých pozic bývají jednotky až desítky procent
+       * od ceny a na krátkém timeframu by mapa vypadala prázdná.
+       */
+      const ted = Date.now() - 120000;
+      const ziva = pasy.filter((p) => p.do >= ted);
+      const maxZiva = Math.max(0, ...ziva.map((p) => p.posledni || p.usd));
+      let nad = null;
+      let pod = null;
+      ziva.forEach((p) => {
+        const usd = p.posledni || p.usd;
+        if (usd < maxZiva * 0.15) return;
+        const b = px(posledni, p.cena);
+        if (!b || !Number.isFinite(b.y)) return;
+        if (b.y < 0 && (!nad || p.cena < nad.cena)) nad = { ...p, usd };
+        if (b.y > bounding.height && (!pod || p.cena > pod.cena)) pod = { ...p, usd };
+      });
+      const mil = (v) => (v >= 1e6 ? `${(v / 1e6).toFixed(v >= 1e8 ? 0 : 1)} M` : `${Math.round(v / 1e3)} k`);
+      const cenaText = (c) => (c >= 1000 ? Math.round(c).toLocaleString('en-US') : String(+c.toPrecision(5)));
+      ctx.fillStyle = 'rgba(240,220,60,0.95)';
+      if (nad) ctx.fillText(`▲ ${cenaText(nad.cena)} · ${mil(nad.usd)}`, 8, 22);
+      ctx.textBaseline = 'bottom';
+      if (pod) ctx.fillText(`▼ ${cenaText(pod.cena)} · ${mil(pod.usd)}`, 8, bounding.height - 6);
+      ctx.restore();
+      return true;
+    },
+  });
+}
+
 /**
  * Linka aktuální ceny se ziskem či ztrátou.
  *
@@ -1499,6 +1585,7 @@ export function createPriceChart(container, layer, handlers = {}) {
   registrovatVodorovneKresby();
   registrovatMereni();
   registrovatRsi();
+  registrovatLikvidace();
 
   const chart = K().init(container, { styles: styly() });
   chart.setTimezone('Europe/Prague');
@@ -1711,7 +1798,18 @@ export function createPriceChart(container, layer, handlers = {}) {
    * aby se sbalily i jejich panely; výběr uživatele (`aktivniIndikatory`)
    * zůstává a s odkrytím se vrátí.
    */
-  const vrstvy = { kresby: true, alarmy: true, indikatory: true, obchod: true };
+  const vrstvy = { kresby: true, alarmy: true, indikatory: true, obchod: true, likvidace: true };
+  let mapaZapnuta = false;
+  // Mapu přidat / sundat podle dat a vrstvy; překreslení vynutí nové vložení.
+  const obnovMapu = () => {
+    const ukazat = Boolean(likvidace?.pasy?.length) && vrstvy.likvidace;
+    if (mapaZapnuta) chart.removeIndicator({ name: 'LIQMAP' });
+    mapaZapnuta = false;
+    if (ukazat) {
+      chart.createIndicator({ name: 'LIQMAP', paneId: HLAVNI_PANEL }, true);
+      mapaZapnuta = true;
+    }
+  };
   const vlastniPanelIndikatoru = new Map();
   const vlozIndikator = (nazev) => {
     const id = vlastniPanelIndikatoru.get(nazev)
@@ -2953,6 +3051,12 @@ export function createPriceChart(container, layer, handlers = {}) {
       return { ...vrstvy };
     },
 
+    /** Likvidační mapa: `{ pasy, popis }`, null = žádná (jiný pár, bez dat). */
+    setLiquidations(data) {
+      likvidace = data;
+      obnovMapu();
+    },
+
     /** `zmena` = { kresby?, alarmy?, indikatory?, obchod? } — true je vidět. */
     setLayers(zmena) {
       const pred = { ...vrstvy };
@@ -2970,6 +3074,7 @@ export function createPriceChart(container, layer, handlers = {}) {
         chart.overrideOverlay({ groupId: SKUPINA_ZNACKY, visible: vrstvy.obchod });
         this.setPnlInfo(pnlInfo);
       }
+      if (pred.likvidace !== vrstvy.likvidace) obnovMapu();
       if (pred.indikatory !== vrstvy.indikatory) {
         aktivniIndikatory.forEach((nazev) => {
           if (vrstvy.indikatory) vlozIndikator(nazev);

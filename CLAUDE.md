@@ -3292,6 +3292,23 @@ HL žebříček + stream trades (adresy) ─▶ server/likvidace.mjs (Hetzner)
   BTC 687 M USD likvidací v ±25 %.
 - Test: `tools/test-likvidace.py <node>` (naostro, ZKOUSKA=1, zkrácená
   hodina; složení K + D = spočítaný snímek).
+- **V aplikaci (v0.65.0, přání uživatele — ukázat hned, historie se
+  doplňuje postupně):** `js/likvidace.js` stáhne snímky pro okno načtených
+  svíček (≤ 2 dny minutové, déle po 15 min — u timeframu ≥ 1 h jen první
+  snímek každé svíčky — + minutové za poslední 2 h), hotové hodiny drží
+  v paměti, a složí **pruhy** (pásmo od objevení do zmizení / mezery ve
+  sběru / teď). Název coinu na HL zkouší `BTC`, `kPEPE`; coin bez dat se
+  zapamatuje do konce běhu. Graf: indikátor `LIQMAP` bez figur (chart.js,
+  `setLiquidations`), barva tyrkysová → žlutá podle velikosti proti
+  největšímu viditelnému pruhu, živý pruh vede k pravému okraji; popisek
+  s čerstvostí; **šipky ▲ / ▼ u okraje = nejbližší velký shluk mimo
+  obraz** (skutečné likvidace bývají jednotky až desítky % od ceny —
+  na 1m by mapa vypadala prázdná). Vrstva **Likvidace** v nabídce oka
+  (výchozí zapnutá). Jiná burza než HL: posun pruhů o poměr cen (cena
+  grafu / mark HL) a popisek „shifted". Stahuje se až po svíčkách
+  (`nactiSvice` → `nactiMapu`), obnova po minutě, zavření grafu / jiný
+  pár mapu hned sundá (`zastavMapu`). ⚠ `mock-bybit.js` vrací mapu
+  prázdnou, naostro jen s `__mapaNaostro`. Test: `tools/test-likvidace-graf.py`.
 
 ## Audit 2026-09-28: soukromí, disclaimer, klíče
 

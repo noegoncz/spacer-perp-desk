@@ -707,4 +707,8 @@ export const cs = {
   'journal.edge.planCostR': 'Porušení plánu tě stálo {r} (obchodů: {n}).',
   'journal.edge.planCost': 'Porušení plánu tě stálo {pnl} USD (obchodů: {n}).',
   'journal.edge.net1': 'Čistý PnL · 1 obchod',
+  'layers.liq': 'Likvidace (Hyperliquid)',
+  'layers.liqNote': 'Skutečné pozice na Hyperliquidu, sbírané od 21. 10. 2026 — historie se postupně doplňuje.',
+  'liq.label': 'Likvidace Hyperliquid · před {min} min',
+  'liq.labelOther': 'Likvidace Hyperliquid (posunuté na tuto cenu) · před {min} min',
 };
