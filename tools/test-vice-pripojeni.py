@@ -79,12 +79,21 @@ over(len(karty) == 2 and len(set(karty)) == 2 and all('Bybit ••' in k for k 
      'pozice obou účtů v jednom seznamu, každá se štítkem účtu')
 ev("document.querySelector('.tab[data-tab=history]').click()")
 time.sleep(1.5)
-ucty = ev("[...document.querySelectorAll('#historyAccounts .list-tab')].map((b) => b.textContent + (b.classList.contains('active') ? '*' : ''))") or []
-print('   Historie:', ucty)
-over(len(ucty) == 2 and sum(u.endswith('*') for u in ucty) == 1, 'Historie nabízí volbu účtu')
-ev("document.querySelectorAll('#historyAccounts .list-tab')[1].click()")
+# Deník (v0.64.0): účet je filtr, výchozí „All accounts" — obchody obou
+# účtů v jednom seznamu, každý se štítkem účtu.
+ucty = ev("[...document.querySelectorAll('#journalAccount option')].map((o) => o.value + '=' + o.textContent)") or []
+print('   filtr účtu:', ucty, 'vybráno', ev("document.getElementById('journalAccount').value"))
+over(len(ucty) == 3 and ucty[0].startswith('all=') and not ev("document.getElementById('journalAccountBox').hidden"),
+     'deník nabízí filtr účtu (všechny + oba účty)')
+over(ev("document.getElementById('journalAccount').value") == 'all', 'výchozí jsou všechny účty')
+stitky = ev("[...document.querySelectorAll('#historyList .trade .pos-burza')].map((x) => x.textContent)") or []
+print('   štítky obchodů:', sorted(set(stitky)))
+over(len(set(stitky)) == 2, 'obchody obou účtů v jednom seznamu se štítkem účtu')
+ev("const v = document.getElementById('journalAccount'); v.value = 'druhy'; v.dispatchEvent(new Event('change'))")
 time.sleep(1.5)
-over(ev("document.querySelectorAll('#historyAccounts .list-tab')[1].classList.contains('active')"), 'volba účtu v Historii funguje')
+stitky2 = ev("[...document.querySelectorAll('#historyList .trade .pos-burza')].map((x) => x.textContent)") or []
+print('   po filtru:', sorted(set(stitky2)))
+over(len(set(stitky2)) == 1 and len(stitky2) > 0, 'filtr na jeden účet ukáže jen jeho obchody')
 over(ev("document.querySelectorAll('.position').length") == 2, 'pozice obou účtů běží dál')
 ev("document.querySelector('.tab[data-tab=positions]').click()")
 time.sleep(0.5)

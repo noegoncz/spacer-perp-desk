@@ -174,7 +174,10 @@ time.sleep(1.5)
 print('4) Historie účtu Hyperliquid')
 ev("document.querySelector('[data-tab=history]').click()")
 time.sleep(2)
-ev("""[...document.querySelectorAll('#historyAccounts [data-id], #historyAccounts button')].find((b) => b.textContent.includes('Hyperliquid'))?.click()""")
+# Deník (v0.64.0): účet je filtr — vybrat Hyperliquid (je-li víc účtů).
+ev("""(() => { const v = document.getElementById('journalAccount');
+  const o = [...v.options].find((x) => x.textContent.includes('Hyperliquid'));
+  if (o) { v.value = o.value; v.dispatchEvent(new Event('change')); } })()""")
 time.sleep(10)
 obchody = json.loads(ev("JSON.stringify([...document.querySelectorAll('.trade')].map((k) => k.textContent.slice(0, 80)))") or '[]')
 print('   obchodů:', len(obchody), obchody[:2])

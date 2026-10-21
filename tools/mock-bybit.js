@@ -23,6 +23,14 @@ if (!sessionStorage.getItem('__bezKlice') && !sessionStorage.getItem('__mockKlic
   localStorage.setItem('perpdesk.apiSecret','FAKESECRET1234567890abcdef');
   sessionStorage.setItem('__mockKlic', '1');
 }
+// Deník (v0.64.0) se otevírá na Edge a dotáhne 30 dní. Starší testy
+// Historie počítají s dřívějším chováním (seznam obchodů, napoprvé 7 dní),
+// proto pohled Trades — jen jednou za test; test deníku ho vypne
+// ('__denikVychozi').
+if (!sessionStorage.getItem('__denikVychozi') && !sessionStorage.getItem('__mockDenik')) {
+  localStorage.setItem('perpdesk.journalView', JSON.stringify('trades'));
+  sessionStorage.setItem('__mockDenik', '1');
+}
 // Bybit dostane falešné spojení (nikdy se neotevře, data jdou dotazem).
 // Ostatní burzy (živý proud Binance, v0.59.10) jdou na skutečnou burzu
 // stejně jako jejich `fetch` níž.

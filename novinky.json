@@ -1,19 +1,14 @@
 {
-  "verze": "0.63.1",
+  "verze": "0.64.0",
   "novinky": [
     {
-      "en": "New Alerts tab: every alert across pairs and exchanges in one place — active ones sorted by how close the price is, inactive ones with when they fired. Switch on/off, delete, or delete all inactive at once.",
-      "cs": "Nová záložka Alarmy: všechny alarmy napříč páry a burzami na jednom místě — aktivní seřazené podle toho, jak blízko je cena, neaktivní s časem zaznění. Zapnout / vypnout, smazat, nebo smazat všechny neaktivní naráz."
+      "en": "History is now the Journal. New Edge view: net PnL, win rate, profit factor, average R and how often you followed your plan for the last 7, 30 or 90 days, with what works for you and what costs you.",
+      "cs": "Z Historie je Deník. Nový pohled Edge: čistý zisk, úspěšnost, profit factor, průměrné R a jak často dodržuješ plán za posledních 7, 30 nebo 90 dní, a k tomu, co ti funguje a co tě stojí peníze."
     },
     {
-      "en": "Alert notifications read better: “Price crossed ↑ above …”.",
-      "cs": "Text notifikace alarmu se čte líp: „Cena překročila ↑ …“."
+      "en": "All your accounts in one journal — trades from every exchange together, or filtered to one account.",
+      "cs": "Všechny účty v jednom deníku — obchody ze všech burz dohromady, nebo filtr na jeden účet."
     }
   ],
-  "opravy": [
-    {
-      "en": "A trade opened from History hides today's alerts (the eye in the toolbar shows them again).",
-      "cs": "Obchod otevřený z Historie schová dnešní alarmy (oko v liště je zase ukáže)."
-    }
-  ]
+  "opravy": []
 }

@@ -23,6 +23,7 @@ import * as zamek from './zamek.js';
 import * as pozvanky from './pozvanky.js';
 import * as denik from './denik.js';
 import * as denikUi from './denik-ui.js';
+import * as statistiky from './denik-statistiky.js';
 import * as alarmyServer from './alarmy-server.js';
 import * as push from './push.js';
 import * as hlaseni from './hlaseni.js';
@@ -632,7 +633,7 @@ function volbyHistorie() {
 }
 
 function poznamkaSkupiny(g) {
-  const burza = client.burza.id;
+  const burza = klientSkupiny(g).burza.id;
   const side = g.long ? 'Buy' : 'Sell';
   return { burza, side, poznamka: denik.najdi(burza, g.symbol, g.otevreno, side, g.zavreno) };
 }
@@ -649,13 +650,14 @@ function denikSkupiny(g) {
 
 function prekresliHistorii() {
   if (skupinyObchodu.length) ui.renderHistory(skupinyObchodu, hideAmounts, otevriSkupinu, volbyHistorie());
+  vykresliEdge();
 }
 
 function otevriPoznamkuSkupiny(g) {
   const { burza, side, poznamka } = poznamkaSkupiny(g);
   const klic = poznamka?.klic || denik.klic(burza, g.symbol, g.otevreno, side);
   const mena = /USDC$/.test(g.symbol) ? 'USDC' : 'USDT';
-  const poz = g.otevrena ? lastPositions.find((x) => x.symbol === g.symbol && x.ucet === client.pripojeniId) : null;
+  const poz = g.otevrena ? lastPositions.find((x) => x.symbol === g.symbol && x.ucet === g.ucet) : null;
   const vstup = () => denikUi.otevriVstup({
     klic,
     nazev: nazevObchodu(g.symbol, g.long),
@@ -1359,7 +1361,7 @@ function wireEvents() {
     vykresliStat30();
     // Skrývání částek platí i pro přehled účtu, ne jen pro karty.
     ui.renderAccount(ucetStav.ucet, ucetStav.chyba, hideAmounts);
-    if (skupinyObchodu.length) ui.renderHistory(skupinyObchodu, hideAmounts, otevriSkupinu, volbyHistorie());
+    prekresliHistorii();
     if (chartSymbol) {
       ui.renderChartHeader(chartSymbol, chartPosition, hideAmounts, chartTrh);
       ui.renderChartInfo(chartPosition, hideAmounts, popisBurzy(), chartObrat);
@@ -1407,7 +1409,9 @@ function wireEvents() {
     if (Date.now() - menuOtevrenoV > 450) zavriNabidkyTrhu();
   });
   naUdalost('addPairBtn', 'click', otevriPridani);
-  naUdalost('historyMore', 'click', nactiStarsiHistorii);
+  naUdalost('historyMore', 'click', () => nactiStarsiHistorii());
+  naUdalost('journalAccount', 'change', (e) => zmenFiltrUctu(e.target.value));
+  naUdalost('journalPeriod', 'change', (e) => zmenObdobiDeniku(Number(e.target.value)));
   naUdalost('addPairClose', 'click', zavriNabidkyTrhu);
   naUdalost('addPairSearch', 'input', vykresliPridani);
   naUdalost('layoutBtn', 'click', () => {
@@ -1891,7 +1895,6 @@ async function prepniNaPripojeni(id) {
   if (!k) return;
   client = k;
   ui.nastavNazevBurzy(client.burza.nazev);
-  zapomenHistorii();
   mezipamet.nastavVlastnika(client.apiKey);
   vykresliBurzy();
   if (aktivniZalozka === 'history') nactiHistorii();
@@ -1905,6 +1908,7 @@ async function odeberPripojeni(id) {
   mezipamet.smazUcet(store.loadPripojeni().find((x) => x.id === id)?.apiKey);
   store.odeberPripojeni(id);
   zastavUcet(id);
+  historieUctu.delete(id);
   if (!aktivni) {
     vykresliBurzy();
     return;
@@ -1928,13 +1932,9 @@ async function odeberPripojeni(id) {
 
 /** Data předchozího účtu z paměti pryč (odpojení / výměna klíče). */
 function zapomenHistorii() {
-  obchody = [];
+  // Dobíhající načítání zahodí `platnyStav` (stav už v mapě není).
+  historieUctu.clear();
   skupinyObchodu = [];
-  historieOd = 0;
-  historieAktualizovano = 0;
-  historieZTelefonu = false;
-  historieNacita = false; // načítání předchozího účtu doběhne naprázdno
-  historieCekaNaPlneni = false;
   plneniPary.clear();
   fundingyUlozene = {};
   client.ulozeneOtevreni.clear();
@@ -2867,7 +2867,6 @@ function sledujGrafy(radky) {
   radky.forEach((r) => sledovac.observe(r));
 }
 
-let obchody = [];
 let prohlizenyObchod = null;  // když se graf otevřel z historie
 /** Kdy se otevřela pozice v grafu — odsud začíná čára vstupu. */
 let chartOtevreno = null;
@@ -3454,7 +3453,7 @@ let aktivniZalozka = 'positions';
 function prepniZalozku(nazev) {
   aktivniZalozka = nazev;
   document.querySelector('.tabs')?.classList.toggle('s-podzalozkami',
-    nazev === 'watchlist' || nazev === 'alerts' || (nazev === 'history' && historieSUcty()));
+    nazev === 'watchlist' || nazev === 'alerts' || nazev === 'history');
   document.body.classList.toggle('na-trzich', nazev === 'watchlist');
   ui.showView(nazev);
   dokresliSeznamJeLiZastaraly();
@@ -3547,13 +3546,12 @@ function zapojPrejeti() {
         return;
       }
     }
-    // V Historii stejně: nejdřív účty, pak sousední záložka (v0.59.7).
-    if (aktivniZalozka === 'history' && historieSUcty()) {
-      const poradi = [...klienti.keys()];
-      const dalsi = poradi.indexOf(client.pripojeniId) + (dx < 0 ? 1 : -1);
-      if (dalsi >= 0 && dalsi < poradi.length) {
+    // V deníku stejně: nejdřív podzáložky (Edge, Trades…), pak sousední záložka.
+    if (aktivniZalozka === 'history') {
+      const dalsi = POHLEDY_DENIKU.indexOf(pohledDeniku) + (dx < 0 ? 1 : -1);
+      if (dalsi >= 0 && dalsi < POHLEDY_DENIKU.length) {
         prejeto = true;
-        vyberUcetHistorie(poradi[dalsi]);
+        vyberPohledDeniku(POHLEDY_DENIKU[dalsi]);
         return;
       }
     }
@@ -3587,13 +3585,11 @@ function zapojPrejeti() {
       if (pole) pole.value = '';
       ukazPrvek('watchClearBtn', false);
     }
-    // Do Historie (zleva, z Watchlists) → první účet, jako u seznamů.
-    if (ZALOZKY[kam] === 'history' && historieSUcty()) {
-      const prvni = [...klienti.keys()][0];
-      if (prvni !== client.pripojeniId) {
-        prepniNaPripojeni(prvni).then(() => prepniZalozku('history'));
-        return;
-      }
+    // Do deníku zleva (z Watchlists) → první podzáložka, zprava (z Alarmů)
+    // → poslední, jako u seznamů.
+    if (ZALOZKY[kam] === 'history') {
+      pohledDeniku = dx < 0 ? POHLEDY_DENIKU[0] : POHLEDY_DENIKU[POHLEDY_DENIKU.length - 1];
+      store.saveJson('perpdesk.journalView', pohledDeniku);
     }
     prepniZalozku(ZALOZKY[kam]);
   }, { passive: true });
@@ -3813,9 +3809,9 @@ function konecSvicObchodu(zavreno, interval) {
  */
 const PROHLIDEK_PREDEM = 6;
 function predNactiProhlidky() {
-  const k = client;
-  if (!k || !ucet.prihlasen()) return;
+  if (!ucet.prihlasen()) return;
   skupinyObchodu.filter((g) => !g.otevrena).slice(0, PROHLIDEK_PREDEM).forEach((g) => {
+    const k = klientSkupiny(g);
     const posledni = g.vystupy[g.vystupy.length - 1];
     const od = g.otevreno ?? posledni.openedAt ?? posledni.closedAt;
     const interval = intervalProObchod(posledni.closedAt - od);
@@ -3837,36 +3833,61 @@ function predNactiProhlidky() {
 const HISTORIE_START = 7 * 86400e3;
 const HISTORIE_BLOK = 30 * 86400e3;
 const HISTORIE_MAX = 730 * 86400e3;
-let historieOd = 0;          // nejstarší načtený okamžik (0 = nic načteno)
-let historieAktualizovano = 0;  // kdy se naposledy stahovalo až do „teď"
-let historieNacita = false;
-let historieCekaNaPlneni = false; // z telefonu chybí plnění — čeká se na složené obchody (v0.59.11)
-let historieZTelefonu = false;  // zkusilo se už načíst z mezipaměti?
-let skupinyObchodu = [];
+
+/*
+ * Deník (v0.64.0, fáze 2): Historie **všech účtů najednou**. Každé
+ * připojení má vlastní stav (záznamy, načtené období, skupiny obchodů)
+ * a zobrazení je slité podle filtru účtu (`filtrUctu`, výchozí „All
+ * accounts"). Dřív byla Historie po účtech a přepínala `client`.
+ *
+ * ⚠ Stav patří jednomu klientovi: po každém čekání na síť / telefon se
+ * ověří, že ještě platí (`platnyStav`) — účet mohl být mezitím odebraný
+ * nebo spuštěný znovu (v0.59.11: data jednoho účtu skončila u druhého).
+ */
+const historieUctu = new Map();   // id připojení → stav Historie toho účtu
+let filtrUctu = 'all';            // 'all' nebo id připojení
+let skupinyObchodu = [];          // slité, zobrazené skupiny
+
+function stavHistorie(k) {
+  let s = historieUctu.get(k.pripojeniId);
+  if (!s || s.k !== k) {
+    s = { k, obchody: [], od: 0, aktualizovano: 0, nacita: false, cekaNaPlneni: false,
+      zTelefonu: false, skupiny: [], chyba: null };
+    historieUctu.set(k.pripojeniId, s);
+  }
+  return s;
+}
+
+const platnyStav = (s) => historieUctu.get(s.k.pripojeniId) === s && klienti.get(s.k.pripojeniId) === s.k;
+
+/** Účty, které deník ukazuje (podle filtru). */
+function uctyHistorie() {
+  const vse = [...klienti.values()].filter((k) => k.hasCredentials());
+  if (filtrUctu === 'all') return vse;
+  const k = klienti.get(filtrUctu);
+  return k?.hasCredentials() ? [k] : vse;
+}
+
+/** Klient, kterému skupina obchodů patří. */
+const klientSkupiny = (g) => klienti.get(g.ucet) || client;
 
 /*
  * Uzavřené obchody v telefonu (v0.39.0): co se jednou stáhlo, příště se
  * ukáže hned a z burzy se dotáhne jen to, co přibylo (`obnovHistorii`).
  * Načtené období se rozšiřuje jen tlačítkem — nic se nestahuje dopředu.
  */
-function ulozHistorii() {
-  mezipamet.uloz('historie', { od: historieOd, aktualizovano: historieAktualizovano, zaznamy: obchody }, client.apiKey);
+function ulozHistorii(s) {
+  mezipamet.uloz('historie', { od: s.od, aktualizovano: s.aktualizovano, zaznamy: s.obchody }, s.k.apiKey);
 }
 
-/*
- * ⚠ Historie patří účtu, který byl vybraný, když se začala načítat
- * (v0.59.11). Po každém čekání na síť / telefon se ověří, že je pořád on —
- * jinak by dobíhající výsledek po přepnutí účtu skončil v Historii jiného.
- */
-async function nactiHistoriiZTelefonu() {
-  historieZTelefonu = true;
-  const k = client;
-  const h = await mezipamet.nacti('historie', k.apiKey);
-  if (client !== k) return;
+async function nactiHistoriiZTelefonu(s) {
+  s.zTelefonu = true;
+  const h = await mezipamet.nacti('historie', s.k.apiKey);
+  if (!platnyStav(s)) return;
   if (!h?.od || !Array.isArray(h.zaznamy)) return;
-  obchody = h.zaznamy;
-  historieOd = h.od;
-  historieAktualizovano = h.aktualizovano || h.od;
+  s.obchody = h.zaznamy;
+  s.od = h.od;
+  s.aktualizovano = h.aktualizovano || h.od;
 }
 
 /**
@@ -3874,50 +3895,62 @@ async function nactiHistoriiZTelefonu() {
  * (tlačítko ⟳ v Historii) stáhne znovu celé načtené období i plnění —
  * pojistka pro vzácnou zpětnou opravu na straně burzy.
  */
-async function obnovHistorii(plna = false) {
-  if (!client.hasCredentials() || !historieOd || historieNacita) return;
-  const k = client;
-  historieNacita = plna;
+async function obnovHistorieUctu(s, plna = false) {
+  const k = s.k;
+  if (!k.hasCredentials() || !s.od || s.nacita) return;
+  s.nacita = plna;
   if (plna) vykresliHistorii();
   const ted = Date.now();
-  const od = plna ? historieOd : Math.max(historieOd, historieAktualizovano - PREKRYV);
+  const od = plna ? s.od : Math.max(s.od, s.aktualizovano - PREKRYV);
   try {
     const nove = await k.getClosedTrades(od, ted);
-    if (client !== k) return; // mezitím jiný účet — výsledek nepatří sem
+    if (!platnyStav(s)) return; // účet mezitím pryč — výsledek nepatří nikam
     if (plna) {
-      obchody = [];
-      const pary = new Set(nove.map((o) => o.symbol));
-      pary.forEach((s) => {
-        plneniPary.delete(klicPlneniPary(k, s));
-        mezipamet.smaz(`plneni:${s}`, k.apiKey);
+      s.obchody = [];
+      new Set(nove.map((o) => o.symbol)).forEach((sym) => {
+        plneniPary.delete(klicPlneniPary(k, sym));
+        mezipamet.smaz(`plneni:${sym}`, k.apiKey);
       });
     }
-    slucObchody(nove);
-    historieAktualizovano = ted;
-    ulozHistorii();
-    await prepocitejSkupiny();
-    if (client !== k) return;
+    slucObchody(s, nove);
+    s.aktualizovano = ted;
+    ulozHistorii(s);
+    await prepocitejSkupiny(s);
+    if (!platnyStav(s)) return;
   } catch {
-    if (client !== k) return;
+    if (!platnyStav(s)) return;
     /* uložený seznam zůstává, nová data přijdou příště */
   }
-  historieNacita = false;
-  historieCekaNaPlneni = false;
+  s.nacita = false;
+  s.cekaNaPlneni = false;
   if (aktivniZalozka === 'history') vykresliHistorii();
 }
+
+const obnovHistorii = (plna = false) =>
+  Promise.all(uctyHistorie().map((k) => obnovHistorieUctu(stavHistorie(k), plna)));
 
 function klicObchodu(o) {
   return `${o.id}|${o.closedAt}`;
 }
 
-function slucObchody(nove) {
-  const mapa = new Map(obchody.map((o) => [klicObchodu(o), o]));
+function slucObchody(s, nove) {
+  const mapa = new Map(s.obchody.map((o) => [klicObchodu(o), o]));
   nove.forEach((o) => mapa.set(klicObchodu(o), o));
-  obchody = [...mapa.values()].sort((a, b) => b.closedAt - a.closedAt);
+  s.obchody = [...mapa.values()].sort((a, b) => b.closedAt - a.closedAt);
 }
 
-function historieNaKonci() {
-  return historieOd && Date.now() - historieOd >= HISTORIE_MAX;
+function historieNaKonci(s) {
+  return s.od && Date.now() - s.od >= HISTORIE_MAX;
+}
+
+/*
+ * Společně načtené období zobrazených účtů = to nejkratší (nejmladší
+ * `od`). Starší obchody účtu, který má historii hlouběji, se schovají,
+ * ať „Trades closed since…" a souhrny platí pro všechny účty stejně.
+ */
+function spolecneOd() {
+  const ody = uctyHistorie().map((k) => stavHistorie(k).od).filter(Boolean);
+  return ody.length ? Math.max(...ody) : 0;
 }
 
 /** Záznamy zavíracích příkazů → obchody (skupiny výstupů). */
@@ -3993,156 +4026,325 @@ function seskupObchody(zaznamy, plneniPodleParu, pozice, poplatkyOtevreni = fals
  * všechny páry — u `jenUlozene` (z telefonu) to bez nich nejde: obchody
  * by se ukázaly nesložené a po stažení plnění přeskládaly (v0.59.11).
  */
-async function prepocitejSkupiny(jenUlozene = false) {
-  const k = client;
-  const zaznamy = obchody;
+async function prepocitejSkupiny(s, jenUlozene = false) {
+  const k = s.k;
+  const zaznamy = s.obchody;
   const pary = [...new Set(zaznamy.map((o) => o.symbol))];
-  const od = historieOd || Date.now() - HISTORIE_START;
+  const od = s.od || Date.now() - HISTORIE_START;
   // Plnění pro všechny páry souběžně; bez práva na plnění zůstane každý
   // záznam samostatně (jako dřív).
   const plneni = new Map();
   let uplne = true;
-  await Promise.all(pary.map(async (s) => {
+  await Promise.all(pary.map(async (sym) => {
     try {
-      if (jenUlozene && !(await nactiPlneniZTelefonu(s, k)).aktualizovano) uplne = false;
-      plneni.set(s, await dotahniPlneni(s, od, jenUlozene, k));
+      if (jenUlozene && !(await nactiPlneniZTelefonu(sym, k)).aktualizovano) uplne = false;
+      plneni.set(sym, await dotahniPlneni(sym, od, jenUlozene, k));
     } catch { /* bez plnění se nesekupuje */ }
   }));
-  if (client !== k) return false; // mezitím jiný účet
+  if (!platnyStav(s)) return false;
   if (jenUlozene && !uplne) return false; // skupiny z neúplných plnění nepoužít
-  skupinyObchodu = seskupObchody(zaznamy, plneni, lastPositions.filter((p) => p.ucet === k.pripojeniId),
+  s.skupiny = seskupObchody(zaznamy, plneni, lastPositions.filter((p) => p.ucet === k.pripojeniId),
     Boolean(k.poplatkyOtevreni));
-  skupinyObchodu.forEach((g) => { g.sFundingem = Boolean(k.poplatkySFundingem); });
+  s.skupiny.forEach((g) => {
+    g.sFundingem = Boolean(k.poplatkySFundingem);
+    g.ucet = k.pripojeniId;
+  });
   return uplne;
 }
 
 function otevriSkupinu(skupina) {
   // Otevřený obchod → graf živé pozice; uzavřený → prohlídka od otevření
   // po poslední zavírací příkaz (zahrne i všechny částečné výstupy).
+  const k = klientSkupiny(skupina);
   if (skupina.otevrena) {
-    const poz = lastPositions.find((p) => p.symbol === skupina.symbol && p.ucet === client.pripojeniId);
+    const poz = lastPositions.find((p) => p.symbol === skupina.symbol && p.ucet === skupina.ucet);
     if (poz) openChart(poz);
-    else openChartSymbol({ symbol: skupina.symbol, burza: client.burza.id });
+    else openChartSymbol({ symbol: skupina.symbol, burza: k.burza.id });
   }
-  else otevriProhlidku(skupina.vystupy[skupina.vystupy.length - 1]);
+  else otevriProhlidku(skupina.vystupy[skupina.vystupy.length - 1], k);
 }
 
-/** Má Historie volbu účtu (víc připojení)? Pak vypadá jako podmenu. */
+/** Víc účtů → filtr účtu v deníku (dřív lišta účtů, v0.59.7). */
 const historieSUcty = () => klienti.size > 1;
 
 /*
- * Víc účtů: nad Historií volba účtu (Historie je zatím po účtech). Od
- * v0.59.7 (přání uživatele) stejná lišta jako seznamy ve Watchlists:
- * podmenu napojené na záložku, ukazatel pod vybraným, přejíždění prstem.
+ * Filtr účtu: nativní výběr vzhledu čipu (na Androidu systémový seznam
+ * — nic vlastního k ladění). Jen s víc účty.
  */
-function vykresliUctyHistorie(aktivni = client.pripojeniId) {
-  const misto = el('historyAccounts');
-  if (!misto) return;
-  misto.hidden = !historieSUcty();
-  document.querySelector('.tabs')?.classList.toggle('s-podzalozkami',
-    aktivniZalozka === 'watchlist' || (aktivniZalozka === 'history' && historieSUcty()));
-  if (misto.hidden) return;
-  ui.renderListBar({
-    misto: 'historyAccounts',
-    polozky: [...klienti.keys()].map((id) => ({ id, nazev: nazevUctu(id) })),
-    aktivni,
-    onSelect: vyberUcetHistorie,
-  });
+function vykresliFiltrUctu() {
+  const vyber = el('journalAccount');
+  if (!vyber) return;
+  const ucty = [...klienti.values()].filter((k) => k.hasCredentials());
+  ukazPrvek('journalAccountBox', ucty.length > 1);
+  if (filtrUctu !== 'all' && !klienti.has(filtrUctu)) filtrUctu = 'all';
+  const moznosti = [['all', t('journal.allAccounts')], ...ucty.map((k) => [k.pripojeniId, nazevUctu(k.pripojeniId)])];
+  const otisk = moznosti.map((m) => m.join('=')).join('|');
+  if (vyber.dataset.otisk !== otisk) {
+    vyber.replaceChildren(...moznosti.map(([id, nazev]) => {
+      const o = document.createElement('option');
+      o.value = id;
+      o.textContent = nazev;
+      return o;
+    }));
+    vyber.dataset.otisk = otisk;
+  }
+  vyber.value = filtrUctu;
+  vyber.closest('.chip-vyber')?.classList.toggle('on', filtrUctu !== 'all');
 }
 
-/** Přepnutí účtu v Historii; obsah přijede ze strany jako ve Watchlists. */
-function vyberUcetHistorie(id) {
-  const poradi = [...klienti.keys()];
-  const smer = poradi.indexOf(id) - poradi.indexOf(client.pripojeniId);
-  if (!smer) return;
-  prepniNaPripojeni(id);
-  vykresliUctyHistorie(id); // ukazatel hned, přepnutí účtu doběhne samo
-  const obsah = el('historyList');
-  if (obsah) {
-    obsah.classList.remove('prijezd-zprava', 'prijezd-zleva');
-    void obsah.offsetWidth; // restart animace i při rychlém přejíždění
-    obsah.classList.add(smer > 0 ? 'prijezd-zprava' : 'prijezd-zleva');
-  }
+function zmenFiltrUctu(id) {
+  filtrUctu = id || 'all';
+  nactiHistorii();
+}
+
+/** Slije skupiny zobrazených účtů (štítek účtu jen při víc účtech). */
+function slitSkupiny() {
+  const vic = historieSUcty();
+  const od = spolecneOd();
+  skupinyObchodu = uctyHistorie()
+    .flatMap((k) => historieUctu.get(k.pripojeniId)?.skupiny || [])
+    .filter((g) => g.otevrena || !od || g.posledni >= od)
+    .map((g) => {
+      g.stitek = vic ? nazevUctu(g.ucet) : '';
+      return g;
+    })
+    // Otevřené obchody vždy nahoře (v0.38.2), pak od nejnovějšího výstupu.
+    .sort((a, b) => (b.otevrena - a.otevrena) || (b.posledni - a.posledni));
 }
 
 function vykresliHistorii() {
-  vykresliUctyHistorie();
+  vykresliFiltrUctu();
+  vykresliListuDeniku();
+  slitSkupiny();
+  vykresliEdge();
   ui.renderHistory(skupinyObchodu, hideAmounts, otevriSkupinu, volbyHistorie());
   predNactiProhlidky();
-  const od = historieOd ? new Date(historieOd) : null;
+  const stavy = uctyHistorie().map(stavHistorie);
+  const od = spolecneOd();
+  const nacita = stavy.some((s) => s.nacita);
+  const chyba = stavy.find((s) => s.chyba)?.chyba;
   let text = '';
-  if (historieCekaNaPlneni) text = t('history.loading');
-  else if (historieNacita) text = t(obchody.length ? 'history.loadingMore' : 'history.loading');
-  else if (od) text = t(skupinyObchodu.length ? 'history.since' : 'history.noneSince', {
-    // Stejný formát jako na kartách obchodů: den.měsíc.rok.
-    date: `${od.getDate()}.${od.getMonth() + 1}.${od.getFullYear()}`,
-  });
+  if (stavy.some((s) => s.cekaNaPlneni)) text = t('history.loading');
+  else if (nacita) text = t(skupinyObchodu.length ? 'history.loadingMore' : 'history.loading');
+  else if (chyba) text = chyba;
+  else if (od) {
+    const d = new Date(od);
+    text = t(skupinyObchodu.length ? 'history.since' : 'history.noneSince', {
+      // Stejný formát jako na kartách obchodů: den.měsíc.rok.
+      date: `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`,
+    });
+  }
   ui.showHistoryNote(text);
-  ukazPrvek('historyMore', Boolean(historieOd) && !historieNacita && !historieNaKonci());
+  ukazPrvek('historyMore', Boolean(od) && !nacita && stavy.some((s) => !historieNaKonci(s)));
 }
 
-/** Načte další blok do minulosti (napoprvé 7 dní, pak po 30 dnech). */
-async function nactiStarsiHistorii() {
-  if (historieNacita || historieNaKonci() || !client.hasCredentials()) return;
-  historieNacita = true;
+/*
+ * Starší obchody: všechny zobrazené účty dotáhnou do stejného okamžiku
+ * (`cil`) — napoprvé 7 dní (`cil` null: 7 dní od teď, jedno okno burzy),
+ * pak společné období o 30 dní dál.
+ */
+async function nactiStarsiUctu(s, cil) {
+  const k = s.k;
+  if (s.nacita || historieNaKonci(s) || !k.hasCredentials()) return;
+  if (s.od && cil !== null && s.od <= cil) return;
+  s.nacita = true;
+  s.chyba = null;
   vykresliHistorii();
-  const doKdy = historieOd || Date.now();
-  const od = Math.max(doKdy - (historieOd ? HISTORIE_BLOK : HISTORIE_START), Date.now() - HISTORIE_MAX);
-  const k = client;
+  const doKdy = s.od || Date.now();
+  const od = Math.max(cil ?? doKdy - HISTORIE_START, Date.now() - HISTORIE_MAX);
   try {
     const ted = Date.now();
     const nove = await k.getClosedTrades(od, doKdy);
-    if (client !== k) return; // mezitím jiný účet — jeho načítání běží samo
-    slucObchody(nove);
-    if (!historieOd) historieAktualizovano = ted;
-    historieOd = od;
-    ulozHistorii();
-    await prepocitejSkupiny();
-    if (client !== k) return;
+    if (!platnyStav(s)) return;
+    slucObchody(s, nove);
+    if (!s.od) s.aktualizovano = ted;
+    s.od = od;
+    ulozHistorii(s);
+    await prepocitejSkupiny(s);
+    if (!platnyStav(s)) return;
   } catch (err) {
-    if (client !== k) return;
-    historieNacita = false;
+    if (!platnyStav(s)) return;
+    s.nacita = false;
+    s.chyba = err.message || t('history.failed');
     vykresliHistorii();
-    ui.showHistoryNote(err.message || t('history.failed'));
     return;
   }
-  historieNacita = false;
+  s.nacita = false;
   vykresliHistorii();
 }
 
+function nactiStarsiHistorii(cil = null) {
+  const od = spolecneOd();
+  if (cil === null && od) cil = od - HISTORIE_BLOK;
+  return Promise.all(uctyHistorie().map((k) => nactiStarsiUctu(stavHistorie(k), cil)));
+}
+
+/* ---------- deník: podzáložky a Edge (v0.64.0) ---------- */
+
+// Podzáložka a období se pamatují (jako vybraný seznam ve Watchlists).
+const POHLEDY_DENIKU = ['edge', 'trades'];
+let pohledDeniku = POHLEDY_DENIKU.includes(store.loadJson('perpdesk.journalView', 'edge'))
+  ? store.loadJson('perpdesk.journalView', 'edge') : 'edge';
+const OBDOBI_DENIKU = [7, 30, 90, 0];   // dní; 0 = vše načtené
+let obdobiDeniku = OBDOBI_DENIKU.includes(store.loadJson('perpdesk.journalPeriod', 30))
+  ? store.loadJson('perpdesk.journalPeriod', 30) : 30;
+
+function vykresliListuDeniku() {
+  ui.renderListBar({
+    misto: 'journalTabs',
+    polozky: POHLEDY_DENIKU.map((id) => ({ id, nazev: t(`journal.tab.${id}`) })),
+    aktivni: pohledDeniku,
+    onSelect: vyberPohledDeniku,
+  });
+  ukazPrvek('journalEdge', pohledDeniku === 'edge');
+  ukazPrvek('journalTrades', pohledDeniku === 'trades');
+  ukazPrvek('journalPeriodBox', pohledDeniku === 'edge');
+  const vyber = el('journalPeriod');
+  if (vyber && vyber.options.length !== OBDOBI_DENIKU.length) {
+    vyber.replaceChildren(...OBDOBI_DENIKU.map((d) => {
+      const o = document.createElement('option');
+      o.value = String(d);
+      o.textContent = d ? t('journal.lastDays', { n: d }) : t('journal.allLoaded');
+      return o;
+    }));
+  }
+  if (vyber) vyber.value = String(obdobiDeniku);
+}
+
+function vyberPohledDeniku(pohled) {
+  if (!POHLEDY_DENIKU.includes(pohled) || pohled === pohledDeniku) return;
+  const doprava = POHLEDY_DENIKU.indexOf(pohled) > POHLEDY_DENIKU.indexOf(pohledDeniku);
+  pohledDeniku = pohled;
+  store.saveJson('perpdesk.journalView', pohled);
+  vykresliHistorii();
+  const obsah = el(pohled === 'edge' ? 'journalEdge' : 'journalTrades');
+  if (obsah) {
+    obsah.classList.remove('prijezd-zprava', 'prijezd-zleva');
+    void obsah.offsetWidth; // restart animace i při rychlém přejíždění
+    obsah.classList.add(doprava ? 'prijezd-zprava' : 'prijezd-zleva');
+  }
+  zajistiObdobiDeniku();
+}
+
+function zmenObdobiDeniku(dni) {
+  obdobiDeniku = OBDOBI_DENIKU.includes(dni) ? dni : 30;
+  store.saveJson('perpdesk.journalPeriod', obdobiDeniku);
+  vykresliHistorii();
+  zajistiObdobiDeniku();
+}
+
+/** Edge za 30 dní potřebuje 30 dní načtených — dotáhne, co chybí. */
+function zajistiObdobiDeniku() {
+  if (pohledDeniku !== 'edge' || !obdobiDeniku) return;
+  const cil = Date.now() - obdobiDeniku * 86400e3;
+  const ucty = uctyHistorie().map(stavHistorie);
+  if (!ucty.length || ucty.some((s) => s.nacita || !s.od)) return;
+  if (ucty.some((s) => s.od > cil + 3600e3)) nactiStarsiHistorii(cil);
+}
+
+/** Věta s jednou zvýrazněnou částí: text klíče rozdělený na úseky. */
+function vetaEdge(klic, data, zvyraznit, ton) {
+  const znacky = Object.fromEntries(Object.entries(data).map(([k, v]) => [k, k === zvyraznit ? `\u0001${v}\u0002` : v]));
+  const casti = t(`journal.edge.${klic}`, znacky).split(/[\u0001\u0002]/);
+  return { ton, casti: casti.map((text, i) => ({ text, b: i % 2 === 1 })) };
+}
+
+const formatR = (r) => `${r > 0 ? '+' : r < 0 ? '−' : ''}${Math.abs(r).toFixed(2)} R`;
+
+function poznamkaObchodu(g) {
+  return poznamkaSkupiny(g).poznamka;
+}
+
+function vykresliEdge() {
+  const od = obdobiDeniku ? Date.now() - obdobiDeniku * 86400e3 : 0;
+  const zavrene = skupinyObchodu.filter((g) => !g.otevrena && g.zavreno >= od);
+  const obchody = zavrene.map((g) => ({ g, pnl: g.pnl, zavreno: g.zavreno, poznamka: poznamkaObchodu(g) }));
+  const s = statistiky.souhrn(obchody);
+  const castka = (v) => (hideAmounts ? '••••' : `${v >= 0 ? '+' : '−'}${formatUsd(Math.abs(v))}`);
+  const vety = statistiky.vety(s).map(({ klic, data }) => {
+    const pct = (x) => Math.round(x * 100);
+    if (klic === 'bestSetupR' || klic === 'worstSetupR') {
+      return vetaEdge(klic, { name: data.nazev, win: pct(data.uspesnost), r: formatR(data.prumerR), n: data.pocet },
+        'name', klic.startsWith('best') ? 'dobre' : 'spatne');
+    }
+    if (klic === 'bestSetup' || klic === 'worstSetup') {
+      return vetaEdge(klic, { name: data.nazev, win: pct(data.uspesnost), pnl: castka(data.pnl), n: data.pocet },
+        'name', klic.startsWith('best') ? 'dobre' : 'spatne');
+    }
+    return vetaEdge(klic, { r: formatR(data.r), pnl: castka(data.pnl), n: data.pocet },
+      klic === 'planCostR' ? 'r' : 'pnl', 'spatne');
+  });
+  const ucty = uctyHistorie().map(stavHistorie);
+  const nacita = ucty.some((x) => x.nacita || x.cekaNaPlneni);
+  const nacteneOd = spolecneOd();
+  ui.renderEdge({
+    souhrn: s,
+    vety,
+    nadpis: t(s.pocet === 1 ? 'journal.edge.net1' : 'journal.edge.net', { n: s.pocet }),
+    hide: hideAmounts,
+    poznamka: nacita ? t('history.loading')
+      : !ucty.length ? t('history.needKeys')
+        : obdobiDeniku && nacteneOd > od + 3600e3 ? t('history.since', { date: datumDen(nacteneOd) }) : '',
+    review: denik.nastaveni().stitekReview !== false ? s.bezZhodnoceni : 0,
+    posledni: zavrene.slice(0, 3).map((g) => {
+      const p = poznamkaObchodu(g);
+      const r = statistiky.souhrn([{ pnl: g.pnl, zavreno: g.zavreno, poznamka: p }]).prumerR;
+      return {
+        symbol: g.symbol,
+        long: g.long,
+        pnl: g.pnl,
+        info: [g.stitek, datumDen(g.zavreno), p?.vstup?.setup].filter(Boolean).join(' · '),
+        r: r !== null ? formatR(r) : '',
+        onOpen: () => otevriSkupinu(g),
+      };
+    }),
+    onReview: () => vyberPohledDeniku('trades'),
+    onAll: () => vyberPohledDeniku('trades'),
+  });
+}
+
+const datumDen = (ms) => {
+  const d = new Date(ms);
+  return `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`;
+};
+
 async function nactiHistorii() {
-  if (!client.hasCredentials()) {
+  const ucty = uctyHistorie();
+  if (!ucty.length) {
+    vykresliFiltrUctu();
+    skupinyObchodu = [];
     ui.renderHistory([], hideAmounts, () => {});
     ui.showHistoryNote(t('history.needKeys'));
     ukazPrvek('historyMore', false);
     return;
   }
-  if (!historieOd && !historieZTelefonu) {
-    // Uložené obchody hned, bez čekání na burzu.
-    await nactiHistoriiZTelefonu();
-    if (historieOd) {
-      if (await prepocitejSkupiny(true)) {
-        vykresliHistorii();
-      } else {
-        // Plnění v telefonu chybí (vyčištěná mezipaměť): raději „Načítám…"
-        // než nesložené obchody, které se za chvíli přeskládají.
-        vykresliUctyHistorie();
-        ui.renderHistory([], hideAmounts, () => {});
-        ui.showHistoryNote(t('history.loading'));
-        ukazPrvek('historyMore', false);
-        historieCekaNaPlneni = true;
-        obnovHistorii(false);
-        return;
-      }
-    }
-  }
-  if (!historieOd) {
-    await nactiStarsiHistorii();
-    return;
-  }
+  // Uložené obchody hned, bez čekání na burzu.
+  await Promise.all(ucty.map(async (k) => {
+    const s = stavHistorie(k);
+    if (s.od || s.zTelefonu) return;
+    await nactiHistoriiZTelefonu(s);
+    // Plnění v telefonu chybí (vyčištěná mezipaměť): raději „Načítám…"
+    // než nesložené obchody, které se za chvíli přeskládají.
+    if (s.od && !(await prepocitejSkupiny(s, true)) && platnyStav(s)) s.cekaNaPlneni = true;
+  }));
   vykresliHistorii();
-  // Na pozadí jen to, co přibylo od posledního stažení.
-  obnovHistorii(false);
+  // Účet bez uložené historie: dotáhnout do společného období ostatních
+  // (nejvýš 90 dní naráz), napoprvé 7 dní.
+  const od = spolecneOd();
+  const cil = od ? Math.max(od, Date.now() - 90 * 86400e3) : null;
+  const cerstve = new Set();
+  await Promise.all(ucty.map((k) => {
+    const s = stavHistorie(k);
+    if (s.od) return null;
+    cerstve.add(s);
+    return nactiStarsiUctu(s, cil);
+  }));
+  // Na pozadí jen to, co přibylo od posledního stažení (právě stažené ne).
+  ucty.forEach((k) => {
+    const s = stavHistorie(k);
+    if (s.od && !s.nacita && !cerstve.has(s)) obnovHistorieUctu(s, false);
+  });
+  zajistiObdobiDeniku();
 }
 
 /**
@@ -4156,8 +4358,8 @@ async function nactiHistorii() {
  * postup jako `client.plneniObchodu` (od zavíracího příkazu dozadu, dokud
  * pozice není nulová). `null`, když uložená plnění na celý obchod nestačí.
  */
-async function plneniObchoduZTelefonu(obchod) {
-  const vse = await dotahniPlneni(obchod.symbol, 0, true);
+async function plneniObchoduZTelefonu(obchod, k = client) {
+  const vse = await dotahniPlneni(obchod.symbol, 0, true, k);
   if (!vse.length) return null;
   const konec = obchod.closedAt + 60000;
   const podleId = Boolean(obchod.id) && vse.some((f) => f.orderId === obchod.id);
@@ -4180,10 +4382,10 @@ async function plneniObchoduZTelefonu(obchod) {
   return null;
 }
 
-async function otevriProhlidku(obchod) {
+async function otevriProhlidku(obchod, k = client) {
   prohlizenyObchod = obchod;
-  chartBurza = client.burza.id;
-  chartUcet = client.pripojeniId || null;
+  chartBurza = k.burza.id;
+  chartUcet = k.pripojeniId || null;
 
   /*
    * Nejdřív plnění **jen tohoto obchodu** — od otevření pozice po zavírací
@@ -4199,8 +4401,8 @@ async function otevriProhlidku(obchod) {
   try {
     // Nejdřív z plnění v telefonu (v0.43.0) — dřív se vždy stahovalo po
     // týdnech z burzy („Loading the trade…" i dvě vteřiny).
-    const mistni = await plneniObchoduZTelefonu(obchod);
-    ({ plneni, otevreno } = mistni || await client.plneniObchodu(obchod));
+    const mistni = await plneniObchoduZTelefonu(obchod, k);
+    ({ plneni, otevreno } = mistni || await k.plneniObchodu(obchod));
   } catch (err) {
     chyba = err;
   }

@@ -1019,6 +1019,8 @@ export function renderHistory(skupiny, hide, onSelect, volby = {}) {
         t(g.long ? 'position.long' : 'position.short') + (g.leverage ? ` ${formatSize(g.leverage)}×` : ''));
       vlevo.append(el2('span', 'trade-symbol', g.symbol), odznak);
       if (g.otevrena) vlevo.append(el2('span', 'badge trade-otevreny', t('history.open')));
+      // Víc účtů v deníku (v0.64.0): štítek účtu jako na kartě pozice.
+      if (g.stitek) vlevo.append(el2('span', 'pos-burza', g.stitek));
       hlava.append(vlevo);
 
       const mena = g.symbol.replace(/USDT$|USDC$/, '');
@@ -1863,4 +1865,126 @@ export function renderSort({ klic, sestupne, volby, onSelect }) {
     b.addEventListener('click', () => onSelect(k));
     return b;
   }));
+}
+
+/* ---------- deník: Edge (v0.64.0) ---------- */
+
+/*
+ * Souhrn obchodů za období: Net PnL a průměrné R, křivka průběžného
+ * součtu, úspěšnost / profit factor / dodržení plánu, věty „Your edge",
+ * čekající zhodnocení a poslední obchody. Data počítá denik-statistiky.js.
+ */
+export function renderEdge({ souhrn: s, vety, nadpis, hide, poznamka, review, posledni, onReview, onAll }) {
+  const misto = document.getElementById('journalEdge');
+  if (!misto) return;
+  const e = (tag, trida, text = '') => {
+    const x = document.createElement(tag);
+    if (trida) x.className = trida;
+    if (text) x.textContent = text;
+    return x;
+  };
+  const castka = (v) => (hide ? MASK : `${formatSignedUsd(v)} USD`);
+  const casti = [];
+  if (poznamka) casti.push(e('p', 'watch-note history-note', poznamka));
+
+  if (!s.pocet) {
+    casti.push(e('p', 'watch-note edge-prazdne', t('journal.edge.none')));
+    misto.replaceChildren(...casti);
+    return;
+  }
+
+  const karta = e('section', 'edge-karta');
+  const hlava = e('div', 'edge-hlava');
+  const vlevo = e('div', 'edge-sloupec');
+  vlevo.append(e('span', 'edge-popis', nadpis),
+    e('b', `edge-pnl ${pnlClass(s.pnl)}`, castka(s.pnl)));
+  const vpravo = e('div', 'edge-sloupec vpravo');
+  vpravo.append(e('span', 'edge-popis', t('journal.edge.avgR')),
+    e('b', `edge-r ${s.prumerR === null ? '' : pnlClass(s.prumerR)}`,
+      s.prumerR === null ? '—' : `${s.prumerR > 0 ? '+' : s.prumerR < 0 ? '−' : ''}${Math.abs(s.prumerR).toFixed(2)} R`));
+  hlava.append(vlevo, vpravo);
+  karta.append(hlava);
+  if (s.krivka.length >= 2) karta.append(krivkaEdge(s.krivka, s.pnl));
+  const mrizka = e('div', 'edge-mrizka');
+  const bunka = (popis, hodnota) => {
+    const b = e('div', 'edge-sloupec');
+    b.append(e('span', 'edge-popis', popis), e('b', 'edge-cislo', hodnota));
+    return b;
+  };
+  const pct = (x) => (x === null ? '—' : `${Math.round(x * 100)} %`);
+  const pf = s.profitFactor === null ? '—' : s.profitFactor === Infinity ? '∞' : s.profitFactor.toFixed(2);
+  mrizka.append(bunka(t('journal.edge.winRate'), pct(s.uspesnost)),
+    bunka(t('journal.edge.profitFactor'), pf),
+    bunka(t('journal.edge.plan'), pct(s.planDodrzen)));
+  karta.append(mrizka);
+  casti.push(karta);
+
+  if (vety.length) {
+    const blok = e('section', 'edge-karta edge-vety');
+    blok.append(e('h3', 'edge-nadpis', t('journal.edge.title')));
+    vety.forEach((v) => {
+      const p = e('p', 'edge-veta');
+      v.casti.forEach((c) => p.append(c.b ? e('b', v.ton === 'dobre' ? 'up' : 'down', c.text) : c.text));
+      blok.append(p);
+    });
+    casti.push(blok);
+  }
+
+  if (review > 0) {
+    const b = e('button', 'edge-review');
+    b.type = 'button';
+    b.append(e('span', '', t('journal.edge.waiting', { n: review })), e('span', '', `${t('journal.review')} →`));
+    b.addEventListener('click', onReview);
+    casti.push(b);
+  }
+
+  if (posledni.length) {
+    const radek = e('div', 'edge-posledni-hlava');
+    const vse = e('button', 'edge-odkaz', `${t('journal.edge.allTrades')} →`);
+    vse.type = 'button';
+    vse.addEventListener('click', onAll);
+    radek.append(e('span', '', t('journal.edge.recent')), vse);
+    casti.push(radek);
+    posledni.forEach((o) => {
+      const b = e('button', 'edge-obchod');
+      b.type = 'button';
+      const nazev = e('span', 'edge-obchod-par', o.symbol);
+      nazev.append(e('span', `edge-smer ${o.long ? 'long' : 'short'}`, t(o.long ? 'position.long' : 'position.short')));
+      b.append(nazev, e('b', pnlClass(o.pnl), hide ? MASK : formatSignedUsd(o.pnl)),
+        e('span', 'edge-obchod-info', o.info), e('span', 'edge-obchod-info vpravo', o.r));
+      b.addEventListener('click', o.onOpen);
+      casti.push(b);
+    });
+  }
+  misto.replaceChildren(...casti);
+}
+
+/** Křivka průběžného součtu (stejný vzhled jako mini-graf dlaždice). */
+function krivkaEdge(body, soucet) {
+  const w = 360;
+  const h = 64;
+  const vzorky = [0, ...body.map((b) => b.v)];
+  const min = Math.min(...vzorky);
+  const max = Math.max(...vzorky);
+  const rozpeti = max - min || 1;
+  const ys = vzorky.map((v) => h - 4 - ((v - min) / rozpeti) * (h - 8));
+  const krivka = hladkaKrivka(ys, w / (ys.length - 1));
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  const prvek = (tag, atributy) => {
+    const x = document.createElementNS(SVG_NS, tag);
+    Object.entries(atributy).forEach(([k, v]) => x.setAttribute(k, v));
+    return x;
+  };
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  svg.setAttribute('preserveAspectRatio', 'none');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('class', `edge-krivka ${soucet >= 0 ? 'up' : 'down'}`);
+  const prechod = prvek('linearGradient', { id: 'edge-prechod', x1: 0, y1: 0, x2: 0, y2: 1 });
+  prechod.append(prvek('stop', { offset: 0, class: 'spark-stop-horni' }), prvek('stop', { offset: 1, class: 'spark-stop-dolni' }));
+  const defs = prvek('defs', {});
+  defs.append(prechod);
+  svg.append(defs,
+    prvek('path', { d: `${krivka} L${w},${h} L0,${h} Z`, class: 'spark-plocha', fill: 'url(#edge-prechod)' }),
+    prvek('path', { d: krivka, class: 'spark-cara edge-cara' }));
+  return svg;
 }

@@ -89,7 +89,7 @@
             data-i18n="tabs.watchlist">Watchlists</button>
     <span class="tab-swipe" aria-hidden="true">‹ ›</span>
     <button type="button" class="tab" data-tab="history" role="tab"
-            data-i18n="tabs.history">History</button>
+            data-i18n="tabs.history">Journal</button>
     <span class="tab-swipe" aria-hidden="true">‹ ›</span>
     <button type="button" class="tab" data-tab="alerts" role="tab"
             data-i18n="tabs.alerts">Alerts</button>
@@ -556,17 +556,29 @@
     </div>
   </section>
 
-  <!-- ===== Historie ===== -->
+  <!-- ===== Deník (Journal, v0.64.0 — dřív Historie) =====
+       Podzáložky Edge / Trades jako lišta pod záložkou (stejná jako seznamy
+       ve Watchlists, přejíždění prstem). Účet je filtr („All accounts"),
+       ne lišta. Návrh: https://claude.ai/artifact/N1SiWyTgnoPuRmmmvGzkda -->
   <section id="viewHistory" hidden>
-    <!-- Víc účtů (v0.59.0): Historie je zatím po účtech. Od v0.59.7 stejná
-         lišta jako seznamy ve Watchlists (podmenu, přejíždění prstem). -->
-    <div id="historyAccounts" class="watch-lists" role="tablist" hidden></div>
-    <p id="historyNote" class="watch-note history-note"></p>
-    <div id="historyList" class="history-list"></div>
-    <!-- Starší obchody po 30 dnech (v0.38.0) — napoprvé jen 7 dní, ať je
-         Historie hned. -->
-    <button type="button" id="historyMore" class="secondary-btn history-more" hidden
-            data-i18n="history.more">Load 30 more days</button>
+    <div id="journalTabs" class="watch-lists" role="tablist"></div>
+    <div class="journal-filtry chip-row">
+      <label id="journalPeriodBox" class="chip-vyber">
+        <select id="journalPeriod" data-i18n-aria="journal.period"></select>
+      </label>
+      <label id="journalAccountBox" class="chip-vyber" hidden>
+        <select id="journalAccount" data-i18n-aria="journal.account"></select>
+      </label>
+    </div>
+    <div id="journalEdge" class="journal-edge"></div>
+    <div id="journalTrades" hidden>
+      <p id="historyNote" class="watch-note history-note"></p>
+      <div id="historyList" class="history-list"></div>
+      <!-- Starší obchody po 30 dnech (v0.38.0) — napoprvé jen 7 dní, ať je
+           Historie hned. -->
+      <button type="button" id="historyMore" class="secondary-btn history-more" hidden
+              data-i18n="history.more">Load 30 more days</button>
+    </div>
   </section>
 
   <!-- ===== Alarmy (v0.63.0, přání uživatele — jako záložka alertů

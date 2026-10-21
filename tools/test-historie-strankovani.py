@@ -39,11 +39,14 @@ def ev(v):
 
 
 chyby = []
+# Statistika 30 dní nad pozicemi (v0.62.0) stahuje closed-pnl taky —
+# počítají se jen dotazy od otevření Historie.
+zaklad = ev("window.__dotazyClosedPnl || 0")
 ev("document.querySelector('[data-tab=history]').click()")
 time.sleep(3)
 
 prvni = ev("document.querySelectorAll('.trade').length") or 0
-dotazy = ev("window.__dotazyClosedPnl || 0")
+dotazy = (ev("window.__dotazyClosedPnl || 0") or 0) - zaklad
 print('po otevření:', prvni, 'obchodů,', dotazy, 'dotazů na closed-pnl')
 # v0.38.0: napoprvé 7 dní — c3 (otevřený obchod), b3 a m1..m3 = 5.
 if prvni != 5:

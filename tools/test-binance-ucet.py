@@ -134,16 +134,25 @@ time.sleep(3)
 ev("history.back()")
 time.sleep(1)
 
-print('3) Historie: přepnutí účtu')
+print('3) Deník: filtr účtu (v0.64.0, dřív lišta účtů)')
+
+
+def vyber_ucet(binance):
+    # Filtr účtu v deníku je výběr (select) — vybrat účet Binance / Bybit.
+    ev(f"""(() => {{ const v = document.getElementById('journalAccount');
+      const o = [...v.options].find((x) => x.value !== 'all' && /binance/i.test(x.textContent) === {'true' if binance else 'false'});
+      v.value = o.value; v.dispatchEvent(new Event('change')); }})()""")
+
+
 ev("document.querySelector('.tab[data-tab=history]').click()")
 time.sleep(4)
-ucty = ev("[...document.querySelectorAll('#historyAccounts .list-tab')].map((b) => b.textContent)") or []
+ucty = ev("[...document.querySelectorAll('#journalAccount option')].map((o) => o.textContent)") or []
 print('   účty:', ucty)
 ulozeno_pred = ev("""new Promise((ok) => { const r = indexedDB.open('perpyx-mezipamet'); r.onsuccess = () => {
   const q = r.result.transaction('data').objectStore('data').getAllKeys(); q.onsuccess = () => ok(q.result.map(String)); }; })""") or []
 print('   mezipaměť před:', ulozeno_pred)
 ev("window.__dlouhe = []")
-ev("[...document.querySelectorAll('#historyAccounts .list-tab')].find((b) => /binance/i.test(b.textContent)).click()")
+vyber_ucet(True)
 t0 = time.time()
 pozn = ''
 for _ in range(60):
@@ -154,7 +163,7 @@ for _ in range(60):
 print(f'   Binance: „{pozn}“ za {time.time() - t0:.1f} s, dlouhé úlohy: {ev("window.__dlouhe")}')
 over(pozn and 'Loading' not in pozn, 'Historie Binance se načetla')
 over(max(ev("window.__dlouhe") or [0]) < 300, 'hlavní vlákno nezamrzlo (žádná úloha nad 300 ms)')
-ev("[...document.querySelectorAll('#historyAccounts .list-tab')].find((b) => !/binance/i.test(b.textContent)).click()")
+vyber_ucet(False)
 time.sleep(4)
 ulozeno_po = ev("""new Promise((ok) => { const r = indexedDB.open('perpyx-mezipamet'); r.onsuccess = () => {
   const q = r.result.transaction('data').objectStore('data').getAllKeys(); q.onsuccess = () => ok(q.result.map(String)); }; })""") or []
@@ -167,11 +176,11 @@ print('3b) obchod z Binance ukazuje jen svá plnění, i po přepnutí za běhu 
 ev("""(() => { const f = window.fetch; window.fetch = function (v, o) { const u = String(v && v.url ? v.url : v);
   if (/execution\/list/.test(u) && window.__pomalyBybit) return new Promise((ok) => setTimeout(ok, 3000)).then(() => f.call(this, v, o));
   return f.call(this, v, o); }; })()""")
-ev("[...document.querySelectorAll('#historyAccounts .list-tab')].find((b) => !/binance/i.test(b.textContent)).click()")
+vyber_ucet(False)
 time.sleep(0.3)
 ev("window.__pomalyBybit = true; document.querySelector('#historyMore') && document.getElementById('refreshBtn').click()")
 time.sleep(0.5)
-ev("[...document.querySelectorAll('#historyAccounts .list-tab')].find((b) => /binance/i.test(b.textContent)).click()")
+vyber_ucet(True)
 time.sleep(5)
 ev("window.__pomalyBybit = false")
 # Smíchaná data se projeví při čtení z telefonu → přenačíst a otevřít Historii Binance.
@@ -179,7 +188,7 @@ p.prikaz('Page.reload')
 time.sleep(8)
 ev("document.querySelector('.tab[data-tab=history]').click()")
 time.sleep(2)
-ev("[...document.querySelectorAll('#historyAccounts .list-tab')].find((b) => /binance/i.test(b.textContent))?.click()")
+vyber_ucet(True)
 time.sleep(6)
 karta = ev("[...document.querySelectorAll('#historyList .trade')].map((k) => k.textContent.replace(/\s+/g, ' ')).join(' || ')") or ''
 print('   Historie Binance:', karta[:220])
@@ -219,7 +228,7 @@ over(all('endTime=' in x for x in (ev('window.__binanceIncome') or ['x'])), 'den
 ev("document.querySelector('.tab[data-tab=history]').click()")
 time.sleep(2)
 
-print('4) účty v Historii jako seznamy ve Watchlists (v0.59.7)')
+print('4) podzáložky deníku jako seznamy ve Watchlists (v0.64.0)')
 
 
 def prejed(x1, x2, y):
@@ -232,22 +241,22 @@ def prejed(x1, x2, y):
     time.sleep(1.5)
 
 
-aktivni_ucet = lambda: ev("(document.querySelector('#historyAccounts .list-tab.active') || {}).textContent")
+pohled = lambda: ev("(document.querySelector('#journalTabs .list-tab.active') || {}).dataset?.id")
 zalozka = lambda: ev("document.querySelector('.tab.active')?.dataset.tab")
-over(ev("document.querySelector('.tabs').classList.contains('s-podzalozkami')"), 'Historie s účty: záložka napojená na podmenu')
-over(ev("!!document.querySelector('#historyAccounts .watch-lists-pas .list-ukazatel')"), 'lišta účtů má ukazatel jako seznamy')
-print('   aktivní účet:', aktivni_ucet())
+over(ev("document.querySelector('.tabs').classList.contains('s-podzalozkami')"), 'deník: záložka napojená na podmenu')
+over(ev("!!document.querySelector('#journalTabs .watch-lists-pas .list-ukazatel')"), 'lišta podzáložek má ukazatel jako seznamy')
+print('   podzáložka:', pohled())
+prejed(80, 330, 600)
+print('   po přejetí doprava:', pohled(), zalozka())
+over(zalozka() == 'history' and pohled() == 'edge', 'přejetí doprava z Trades → Edge')
+over(not ev("document.getElementById('journalEdge').hidden") and ev("document.getElementById('journalTrades').hidden"),
+     'Edge je vidět, seznam obchodů ne')
 prejed(330, 80, 600)
-print('   po přejetí doleva:', aktivni_ucet(), zalozka())
-over(zalozka() == 'history' and 'Binance' in (aktivni_ucet() or ''), 'přejetí doleva přepne na další účet (Binance)')
+over(zalozka() == 'history' and pohled() == 'trades', 'přejetí doleva z Edge → Trades')
 prejed(80, 330, 600)
-print('   po přejetí doprava:', aktivni_ucet(), zalozka())
-over(zalozka() == 'history' and 'Bybit' in (aktivni_ucet() or ''), 'přejetí doprava vrátí předchozí účet (Bybit)')
 prejed(80, 330, 600)
-print('   za prvním účtem:', zalozka())
-over(zalozka() == 'watchlist', 'za prvním účtem pokračuje přejetí na Watchlists')
-over(not ev("document.querySelector('.tabs').classList.contains('s-podzalozkami')") or zalozka() == 'watchlist',
-     'podmenu patří k aktivní záložce')
+print('   za první podzáložkou:', zalozka())
+over(zalozka() == 'watchlist', 'za Edge pokračuje přejetí na Watchlists')
 
 konzole = ev('(window.__chyby||[]).join(" | ")') or ''
 over(not konzole, f'bez chyb v konzoli ({konzole[:200]})')

@@ -580,6 +580,34 @@ statistiky a shrnutí v lidské řeči — „co mi to o mně jako traderovi ř�
   („All accounts“), ne lišta. ⚠ **Návrat zpět:** git značka
   `pred-journal-v0.63.1` (stav před přestavbou, Historie po účtech) —
   uživatel: „při nejhorším se vrátíme zpět“.
+- **v0.64.0 — Journal, část 1 (přejmenování, všechny účty, Edge):**
+  - **Historie všech účtů najednou:** stav po připojení v
+    `historieUctu` (`stavHistorie(k)`: záznamy, `od`, `aktualizovano`,
+    skupiny), slité podle filtru `filtrUctu` (`slitSkupiny`, skupina nese
+    `ucet` a `stitek`). `client` se už Historií nepřepíná; prohlídka obchodu
+    dostává klienta skupiny (`otevriProhlidku(obchod, k)`). ⚠ Po čekání
+    vždy `platnyStav(s)` (dřív `client !== k`). Ukazuje se společné
+    období = nejkratší `od` zobrazených účtů (`spolecneOd`); „Load 30
+    more" dotáhne všechny účty do stejného okamžiku. Účet bez uložené
+    historie napoprvé 7 dní (jedno okno burzy — `cil` null), s ostatními
+    nanejvýš 90 dní.
+  - **Filtr účtu** = nativní `<select>` jako čip (`#journalAccount`, jen
+    s víc účty), lišta účtů zmizela. **Podzáložky** Edge / Trades
+    (`#journalTabs`, `renderListBar`), přejíždění nejdřív podzáložky.
+    Calendar přijde později. Podzáložka a období se pamatují
+    (`perpdesk.journalView`, `perpdesk.journalPeriod`).
+  - **Edge** (`js/denik-statistiky.js` bez DOM, `ui.renderEdge`):
+    období 7 / 30 / 90 dní / vše načtené (výchozí 30 → Edge si chybějící
+    dny dotáhne sám, `zajistiObdobiDeniku`), Net PnL, průměrné R (jen
+    obchody se SL ve vstupní poznámce), křivka, úspěšnost, profit factor,
+    dodržení plánu; věty „Your edge" (nejlepší / ztrátový setup od 3
+    obchodů, cena porušeného plánu), pruh čekajících zhodnocení → Trades,
+    3 poslední obchody.
+  - ⚠ `mock-bybit.js` nastaví starším testům pohled Trades (jednou za test);
+    test deníku ho vypne `__denikVychozi`. Test: `tools/test-denik-edge.py`
+    (Node na výpočty + aplikace se skutečnými dotyky).
+  - **Zbývá (fáze 2):** filtry a tabulka v Trades, kalendář, detail obchodu
+    s MFE/MAE (uživatel: ano), chyby a emoce ve zhodnocení (uživatel: ano).
 
 ### Ověření Binance uživatelem (2026-10-18) a opravy v0.61.1
 

@@ -3060,3 +3060,68 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
   .tab { font-size: 0.8rem; padding: 0 2px; }
   .tab-swipe { font-size: 0.62rem; padding: 0; }
 }
+
+/* ---------- deník: filtry a Edge (v0.64.0) ---------- */
+
+/* Filtry jako čipy: nativní výběr (na Androidu systémový seznam). */
+.journal-filtry { margin: 2px 0 10px; }
+.journal-filtry:not(:has(.chip-vyber:not([hidden]))) { display: none; }
+.chip-vyber {
+  position: relative; flex: 0 0 auto; display: inline-flex; align-items: center;
+  border: 1px solid var(--border); border-radius: 999px; background: var(--surface);
+}
+.chip-vyber.on, #journalPeriodBox { border-color: var(--accent); background: rgba(76, 154, 255, 0.14); }
+.chip-vyber select {
+  appearance: none; -webkit-appearance: none; border: none; background: transparent; color: var(--text);
+  font: inherit; font-size: 0.82rem; padding: 6px 26px 6px 12px; min-height: 32px; max-width: 60vw;
+}
+.chip-vyber::after {
+  content: '▾'; position: absolute; right: 10px; pointer-events: none; color: var(--text-dim); font-size: 0.75rem;
+}
+.chip-vyber option { background: var(--surface); color: var(--text); }
+
+.journal-edge { display: flex; flex-direction: column; gap: 10px; }
+.edge-karta {
+  display: flex; flex-direction: column; gap: 8px; background: var(--surface); border-radius: var(--radius);
+  padding: 12px 14px;
+}
+.edge-hlava { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; }
+.edge-sloupec { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.edge-sloupec.vpravo { align-items: flex-end; }
+.edge-popis { font-size: 0.7rem; color: var(--text-dim); }
+.edge-pnl { font-size: 1.55rem; font-variant-numeric: tabular-nums; }
+.edge-r { font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.edge-cislo { font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+.edge-mrizka { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.edge-krivka { display: block; width: 100%; height: 64px; }
+.edge-cara { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.edge-krivka.up .edge-cara { stroke: var(--long); }
+.edge-krivka.down .edge-cara { stroke: var(--short); }
+.edge-krivka.up .spark-stop-horni { stop-color: var(--long); stop-opacity: 0.3; }
+.edge-krivka.down .spark-stop-horni { stop-color: var(--short); stop-opacity: 0.3; }
+.edge-krivka .spark-stop-dolni { stop-color: var(--surface); stop-opacity: 0; }
+.edge-nadpis {
+  margin: 0; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--text-dim);
+}
+.edge-veta { margin: 0; font-size: 0.88rem; line-height: 1.45; }
+.edge-review {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: var(--tap);
+  padding: 0 14px; border: 1px solid var(--warn); border-radius: 12px; background: rgba(240, 185, 11, 0.1);
+  color: #f7d36a; font: inherit; font-size: 0.88rem; font-weight: 600; text-align: left;
+}
+.edge-posledni-hlava {
+  display: flex; justify-content: space-between; align-items: baseline; font-size: 0.75rem; color: var(--text-dim);
+}
+.edge-odkaz { border: none; background: none; color: var(--accent); font: inherit; padding: 6px 0; min-height: 32px; }
+.edge-obchod {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; width: 100%; text-align: left;
+  border: none; border-radius: 10px; background: var(--surface); color: var(--text); font: inherit; padding: 8px 10px;
+}
+.edge-obchod-par { font-weight: 700; font-size: 0.88rem; }
+.edge-smer { margin-left: 6px; font-size: 0.68rem; font-weight: 700; }
+.edge-smer.long { color: var(--long); }
+.edge-smer.short { color: var(--short); }
+.edge-obchod-info { font-size: 0.75rem; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.edge-obchod-info.vpravo { text-align: right; }
+.edge-prazdne { margin-top: 24px; }
