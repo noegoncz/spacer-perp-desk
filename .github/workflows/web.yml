@@ -28,6 +28,7 @@ concurrency:
 env:
   PROJEKT: perpyx
   DATABAZE: perpyx-web
+  DATABAZE_LIQ: perpyx-likvidace
   DOMENA: perpyx.com
   CF_API: https://api.cloudflare.com/client/v4
 
@@ -74,6 +75,14 @@ jobs:
           fi
           test -n "$id"
           echo "Databáze $DATABAZE: $id"
+          # Likvidační mapa Hyperliquidu (server/likvidace.mjs) má vlastní
+          # databázi — jiný objem dat i mazání, účtům nesmí ubírat místo.
+          liq=$(npx -y wrangler@4 d1 list --json | jq -r --arg n "$DATABAZE_LIQ" '.[] | select(.name == $n) | .uuid')
+          if [ -z "$liq" ]; then
+            npx -y wrangler@4 d1 create "$DATABAZE_LIQ" --location weur
+            liq=$(npx -y wrangler@4 d1 list --json | jq -r --arg n "$DATABAZE_LIQ" '.[] | select(.name == $n) | .uuid')
+          fi
+          test -n "$liq"
           cat > web/wrangler.toml <<EOF
           name = "$PROJEKT"
           pages_build_output_dir = "./public"
@@ -84,12 +93,19 @@ jobs:
           database_name = "$DATABAZE"
           database_id = "$id"
           migrations_dir = "migrations"
+
+          [[d1_databases]]
+          binding = "LIQ"
+          database_name = "$DATABAZE_LIQ"
+          database_id = "$liq"
+          migrations_dir = "migrations-likvidace"
           EOF
           cat web/wrangler.toml
           cd web
           # Změny tabulek jdou přes migrace (web/migrations/): wrangler si
           # pamatuje, které už proběhly, a pustí jen nové.
           npx -y wrangler@4 d1 migrations apply "$DATABAZE" --remote
+          npx -y wrangler@4 d1 migrations apply "$DATABAZE_LIQ" --remote
           npx -y wrangler@4 d1 execute "$DATABAZE" --remote --file uklid.sql
 
       - name: Projekt Pages

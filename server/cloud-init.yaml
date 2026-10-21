@@ -1,9 +1,14 @@
 #cloud-config
-# Server hlídače alarmů PerpyX (Hetzner). Šablona — .github/workflows/server.yml
+# Server PerpyX (Hetzner): hlídač alarmů a sběr likvidační mapy Hyperliquidu. Šablona — .github/workflows/server.yml
 # do ní dosadí tajemství (__WATCHER_TOKEN__, __FCM_B64__) a pošle ji při
 # založení serveru. Na server se nikdo nepřihlašuje: zvenku nemá otevřený
 # žádný port (firewall bez příchozích pravidel), kód si sám stahuje
 # z GitHubu a hlídač běží jako služba systemd pod neprivilegovaným uživatelem.
+#
+# Likvidační mapa (server/likvidace.mjs) je ODDĚLENÁ služba: vlastní
+# uživatel (nevidí klíč Firebase), vlastní env soubor, strop paměti
+# a CPU a nižší priorita — pád nebo zahlcení nesmí ohrozit alarmy.
+# Aktualizace restartuje jen tu službu, jejíž soubory se změnily.
 
 package_update: true
 package_upgrade: true
@@ -20,6 +25,34 @@ write_files:
     permissions: '0640'
     encoding: b64
     content: __FCM_B64__
+  - path: /etc/perpyx/likvidace.env
+    permissions: '0640'
+    content: |
+      WATCHER_TOKEN=__WATCHER_TOKEN__
+      API=https://perpyx.com
+  - path: /etc/systemd/system/perpyx-likvidace.service
+    content: |
+      [Unit]
+      Description=PerpyX - likvidacni mapa Hyperliquidu
+      After=network-online.target
+      Wants=network-online.target
+      [Service]
+      User=perpyx-liq
+      Group=perpyx-liq
+      EnvironmentFile=/etc/perpyx/likvidace.env
+      ExecStart=/opt/node/bin/node --max-old-space-size=700 /opt/perpyx/server/likvidace.mjs
+      StateDirectory=perpyx-likvidace
+      Restart=always
+      RestartSec=10
+      MemoryMax=900M
+      CPUQuota=60%
+      Nice=10
+      NoNewPrivileges=yes
+      ProtectSystem=strict
+      ProtectHome=yes
+      PrivateTmp=yes
+      [Install]
+      WantedBy=multi-user.target
   - path: /etc/systemd/system/perpyx-hlidac.service
     content: |
       [Unit]
@@ -39,8 +72,8 @@ write_files:
       PrivateTmp=yes
       [Install]
       WantedBy=multi-user.target
-  # Aktualizace: každé 3 minuty stáhnout repozitář; když se změnil hlídač
-  # nebo sdílená logika alarmů, restartovat službu.
+  # Aktualizace: každé 3 minuty stáhnout repozitář a restartovat jen
+  # službu, jejíž soubory se změnily (změna mapy alarmy nerestartuje).
   - path: /usr/local/bin/perpyx-aktualizace
     permissions: '0755'
     content: |
@@ -48,9 +81,11 @@ write_files:
       set -e
       cd /opt/perpyx
       runuser -u perpyx -- git fetch -q origin main
-      ZMENA=$(runuser -u perpyx -- git diff --name-only HEAD origin/main -- server js/alarmy-logika.js | wc -l)
+      HLIDAC=$(runuser -u perpyx -- git diff --name-only HEAD origin/main -- server/hlidac.mjs js/alarmy-logika.js | wc -l)
+      MAPA=$(runuser -u perpyx -- git diff --name-only HEAD origin/main -- server/likvidace.mjs js/likvidace-format.js | wc -l)
       runuser -u perpyx -- git reset -q --hard origin/main
-      if [ "$ZMENA" -gt 0 ]; then systemctl restart perpyx-hlidac; fi
+      if [ "$HLIDAC" -gt 0 ]; then systemctl restart perpyx-hlidac; fi
+      if [ "$MAPA" -gt 0 ]; then systemctl restart perpyx-likvidace; fi
   - path: /etc/systemd/system/perpyx-aktualizace.service
     content: |
       [Unit]
@@ -70,7 +105,9 @@ write_files:
 
 runcmd:
   - useradd --system --home /opt/perpyx --shell /usr/sbin/nologin perpyx || true
+  - useradd --system --no-create-home --shell /usr/sbin/nologin perpyx-liq || true
   - chown root:perpyx /etc/perpyx/hlidac.env /etc/perpyx/fcm.json
+  - chown root:perpyx-liq /etc/perpyx/likvidace.env
   # Node 22 přímo z nodejs.org, s kontrolou otisku (Ubuntu má starší verzi
   # bez vestavěného WebSocketu).
   - |
@@ -85,3 +122,4 @@ runcmd:
   - chown -R perpyx:perpyx /opt/perpyx
   - systemctl daemon-reload
   - systemctl enable --now perpyx-hlidac.service perpyx-aktualizace.timer
+  - systemctl enable --now perpyx-likvidace.service

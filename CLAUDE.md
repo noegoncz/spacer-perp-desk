@@ -137,6 +137,7 @@ js/ucet.js              # účet PerpyX: přihlášení kódem, cloudová záloh
 js/zamek.js             # volitelný zámek aplikace: PIN + otisk prstu
 js/denik.js             # deník obchodů: poznámky k obchodům, model + úložiště (bez DOM)
 js/denik-ui.js          # deník obchodů: okna (vstup, během, zhodnocení), souhrn na kartách
+js/likvidace-format.js  # likvidační mapa HL: formát snímků (sdílený se server/likvidace.mjs)
 js/app.js               # orchestrace, lifecycle, update service workeru
 vendor/                 # KLineChart + licence, stažené v repu (ne CDN)
 tools/                  # testy přes DevTools Protocol, bez API klíčů (viz tools/README.md)
@@ -3206,6 +3207,63 @@ telefon (účet, alarmy) ──PUT /api/account/alarms──▶ perpyx.com (D1)
 - Test celého řetězce **naostro**: `tools/test-alarmy-server.py`
   (aplikace → perpyx.com → hlídač na Hetzneru → Firebase; alarm těsně
   u ceny BTC, vymyšlený token musí Firebase odmítnout a hlídač smazat).
+
+## Likvidační mapa Hyperliquidu — sběr na serveru (2026-10-21)
+
+Rozhodnutí uživatele: **přesnost, ne odhad** (Coinglass / Coinee počítají
+likvidace z open interestu a předpokládané páky). Hyperliquid je
+blockchain → pozice všech účtů i s likvidační cenou jsou veřejné. Vzhled
+jako heatmapa Coinee: pruhy přes celý graf v čase, pruh končí, kde ho cena
+„vybrala“. I na stejných coinech jiných burz, se štítkem „Hyperliquid“
+a posunem o rozdíl cen (část v aplikaci zatím **není** — až s nasbíranou
+historií). ⚠ **Nesmí zpomalit aplikaci** (uživatel): graf na mapu nikdy
+nečeká, stahuje se jen viditelné okno, mezipaměť, vrstva ve Vrstvách.
+
+```
+HL žebříček + stream trades (adresy) ─▶ server/likvidace.mjs (Hetzner)
+   clearinghouseState (pozice)        ─▶   │ každou minutu POST /api/watcher/liq
+                                            ▼
+                              D1 perpyx-likvidace ◀── GET /api/likvidace (aplikace)
+```
+
+- **Oddělená služba** `perpyx-likvidace` (přání uživatele: oddělit od
+  alarmů): vlastní uživatel `perpyx-liq` (nečte klíč Firebase), vlastní
+  `likvidace.env`, `MemoryMax=900M`, `CPUQuota=60%`, `Nice=10`,
+  `StateDirectory` (seznam adres přežije restart). Aktualizace restartuje
+  jen službu, jejíž soubory se změnily (hlídač: `hlidac.mjs` +
+  `alarmy-logika.js`; mapa: `likvidace.mjs` + `likvidace-format.js`).
+  Nová jednotka systemd = změna `cloud-init.yaml` → server se zakládá
+  znovu (`server.yml`, „znovu“; hlídač pár minut nepojede).
+- **Adresy:** veřejný žebříček `stats-data.hyperliquid.xyz/Mainnet/leaderboard`
+  (~48 000 účtů, bere se ≥ 1 000 USD, po 6 h) + adresy z obchodů
+  (`trades` nese `users`). Obchodující účet přeskočí frontu (nejvýš 1× za
+  2 min). Bez pozice se ptá jednou denně (obchod ho probudí).
+- **Priority** (`dalsiDotaz`): ≤ 2 % od likvidace a ≥ 50 k nebo ≥ 5 M →
+  1 min; ≤ 5 % nebo ≥ 500 k → 3 min; ≤ 15 % nebo ≥ 50 k → 10 min; jinak
+  30 min. Tempo 1 000 vah/min (`clearinghouseState` váží 2), po 429 na
+  10 min 60 %. Stav fronty (`zpozdeni`) jde do hlášení.
+- ⚠ **Stream HL umí zůstat otevřený a mlčet** (sonda) → minuta bez obchodu
+  = nové spojení.
+- **Formát** `js/likvidace-format.js` (sdílený se serverem jako
+  alarmy-logika.js): pásma `round(likv. cena / krok)`, krok 1/2/5 × 10^n
+  ≈ 0,1 % ceny, ±25 %, hodnota = velikost × likvidační cena, tři platné
+  číslice, pásma < 500 USD pryč; pozice, kterou cena už přešla, se
+  nepočítá. Řádek `[t, mark, krok, 'K'|'D', sledováno, [[i, long, short]]]`,
+  každá hodina coinu začíná `K`, pak rozdíly `D`. `rozbal()` složí snímky.
+- **Kolik se posílá:** 25 coinů s největšími likvidacemi každou minutu,
+  do 60. po 5 min, ostatní po 15 min (limit D1 100 000 zápisů/den na
+  bezplatném tarifu). Hotová hodina → kompaktní řádek (`rozliseni 15`,
+  4× K). Mazání: minutové po 3 dnech, čtvrthodinové po 90 dnech (`uklid`
+  jednou za hodinu).
+- **D1** `perpyx-likvidace` (binding `LIQ`, `web/migrations-likvidace/`),
+  řádek = coin × hodina × rozlišení, minutové se připojují `data || nové`
+  (bez čtení). Stav sběru: `GET /api/watcher/liq` s WATCHER_TOKEN (info
+  ze serveru + velikost dat). Pro aplikaci veřejně `GET /api/likvidace?c=BTC&od&do&r=1|15&krok`.
+- Ven jdou jen součty po pásmech, **žádné adresy**.
+- Sonda (2026-10-21): 4 000 účtů za 231 s; snímek všech coinů 2 kB gzip,
+  BTC 687 M USD likvidací v ±25 %.
+- Test: `tools/test-likvidace.py <node>` (naostro, ZKOUSKA=1, zkrácená
+  hodina; složení K + D = spočítaný snímek).
 
 ## Audit 2026-09-28: soukromí, disclaimer, klíče
 
