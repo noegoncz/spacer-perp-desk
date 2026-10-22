@@ -97,6 +97,41 @@ else:
     over(d['b']['pocet'] == 3 and abs(d['b']['prumerR'] + 0.5) < 1e-9, 'bez setupu: 3 obchody, průměr −0.5 R')
     over('confN' in d['v'] and 'noSetupR' in d['v'], f'věty confluence a bez setupu ({d["v"]})')
 
+print('A3) MFE / MAE, nejdražší chyba, filtry chyb a emocí (v0.69.0)')
+skript = r"""
+import { mfeMae, intervalProMfe, souhrn, vety, filtruj } from './js/denik-statistiky.js';
+const H = 3600e3;
+// Long od 100 v čase 2h do 6h; svíčky po hodině.
+const sv = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => ({ time: i * H, high: 100 + i, low: 100 - (i === 4 ? 5 : 1), close: 100 }));
+const m = mfeMae(sv, { long: true, entry: 100, otevreno: 2 * H + 1, zavreno: 6 * H - 1, delka: H });
+const s = mfeMae(sv, { long: false, entry: 100, otevreno: 2 * H + 1, zavreno: 6 * H - 1, delka: H });
+const p = (chyby, emoce, riziko) => ({ vstup: { riziko }, zhodnoceni: { chyby, emoce } });
+const o = [
+  { pnl: -20, zavreno: 1, poznamka: p(['fomo'], 'greedy', 10) },
+  { pnl: -10, zavreno: 2, poznamka: p(['fomo', 'exitLate'], 'revenge', 10) },
+  { pnl: 15, zavreno: 3, poznamka: p([], 'calm', 10) },
+  { pnl: -5, zavreno: 4, poznamka: p(['exitLate'], 'calm', null) },
+];
+const st = souhrn(o);
+const g = (i) => ({ id: i, g: { pnl: o[i].pnl, zavreno: 1, posledni: 1 }, poznamka: o[i].poznamka });
+const f = (x) => filtruj([0, 1, 2, 3].map(g), x).map((y) => y.id).join('');
+console.log(JSON.stringify({ m, s, interval: intervalProMfe(10 * H, { 1: 60e3, 5: 300e3, 15: 900e3 }), chyba: st.chyba, vety: vety(st).map((x) => x.klic),
+  fFomo: f({ chyby: ['fomo'] }), fNone: f({ chyby: ['none'] }), fCalm: f({ emoce: ['calm'] }) }));
+"""
+r = subprocess.run([NODE, '--input-type=module', '-e', skript], cwd=KOREN, capture_output=True, text=True, encoding='utf-8')
+if r.returncode:
+    print(r.stderr[:500])
+    over(False, 'Node spustil MFE / chyby')
+else:
+    d = json.loads(r.stdout)
+    print('   ', d)
+    over(d['m']['mfe'] == 5 and d['m']['mae'] == 5, 'long: MFE +5 (high 105), MAE 5 (low 95) jen ze svíček obchodu')
+    over(d['s']['mfe'] == 5 and d['s']['mae'] == 5, 'short: MFE z minima, MAE z maxima')
+    over(d['interval'] == '5', f'interval pro MFE: 10 h → 5m (do 300 svíček) ({d["interval"]})')
+    over(d['chyba'] and d['chyba']['chyba'] == 'fomo' and d['chyba']['pnl'] == -30 and d['chyba']['pocet'] == 2, 'nejdražší chyba FOMO: −30 ve 2 obchodech')
+    over('mistakeCostR' in d['vety'], 'věta o nejdražší chybě')
+    over(d['fFomo'] == '01' and d['fNone'] == '2' and d['fCalm'] == '23', 'filtry chyb (i „bez chyb“) a emocí')
+
 print('B) aplikace')
 mock = open(os.path.join(KOREN, 'tools', 'mock-bybit.js'), encoding='utf-8').read()
 p = Prohlizec()

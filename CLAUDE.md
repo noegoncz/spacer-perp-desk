@@ -652,8 +652,15 @@ statistiky a shrnutí v lidské řeči — „co mi to o mně jako traderovi ř�
   avg R, PF jen z uzavřených). Filtr a rozložení se pamatují
   (`perpdesk.journalFilter`, `perpdesk.journalLayout`).
   Test: `tools/test-denik-trades.py` (Node + aplikace).
-  - **Další krok:** detail obchodu s MFE/MAE + chyby a emoce ve
-    zhodnocení, pak Calendar.
+- **v0.69.0 — MFE / MAE, chyby a emoce.** Review ukazuje MFE / MAE
+  (`statistiky.mfeMae` ze svíček mezi otevřením a zavřením, interval do
+  300 svíček `intervalProMfe`; v R podle SL plánu, jinak v %). Spočítá se
+  při prvním otevření Review a uloží k obchodu (`poznamka.metriky`, burzy
+  se pak neptá). Chyby ve třech skupinách (`CHYBY`: vstup / řízení /
+  výstup) a emoce (`EMOCE`) → `zhodnoceni.chyby`, `.emoce`; filtry
+  v Trades (i „bez chyb“) a věta Edge `mistakeCost(R)` = nejdražší chyba
+  od 2 obchodů. Testy: `test-denik.py`, `test-denik-edge.py` (A3).
+  - **Další krok:** Calendar.
 
 ### Ověření Binance uživatelem (2026-10-18) a opravy v0.61.1
 

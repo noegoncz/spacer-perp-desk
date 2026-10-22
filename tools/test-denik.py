@@ -155,22 +155,36 @@ zavreny = "[...document.querySelectorAll('.trade')].find((k) => !k.classList.con
 klepni(f"{zavreny}.querySelector('.denik-btn-review')")
 time.sleep(0.6)
 over(okno() and ev("document.querySelector('.denik-zalozka.on').dataset.c") == 'review', 'Review otevře okno na části Review')
-over('How' not in (ev("document.querySelector('.denik-sheet').textContent") or '') and ev("!!document.querySelector('.denik-vysledek')"), 'v Review je výsledek obchodu')
+over(ev("!!document.querySelector('.denik-vysledek')"), 'v Review je výsledek obchodu')
 ev("[...document.querySelectorAll('.denik-sheet .chip')].find((b) => b.textContent.trim() === 'Take-profit').click()")
 ev("[...document.querySelectorAll('.denik-sheet .chip')].find((b) => b.textContent.trim() === 'Yes').click()")
 ev("[...document.querySelectorAll('.denik-cislo')][4].click()")
+for _ in range(20):
+    if ev("!!document.querySelector('.denik-metrika')"):
+        break
+    time.sleep(0.25)
+mfe = ev("document.querySelector('.denik-metriky')?.textContent || ''") or ''
+print('   MFE/MAE:', mfe)
+over('MFE' in mfe and 'MAE' in mfe and ('R' in mfe or '%' in mfe), 'v Review je MFE / MAE ze svíček')
+ev("[...document.querySelectorAll('.denik-sheet .chip')].find((b) => b.textContent.trim() === 'Chased (FOMO)').click()")
+ev("[...document.querySelectorAll('.denik-sheet .chip')].find((b) => b.textContent.trim() === 'Closed too early').click()")
+ev("[...document.querySelectorAll('.denik-sheet .chip')].find((b) => b.textContent.trim() === 'Nervous').click()")
 klepni("document.querySelector('.denik-zalozka[data-c=plan]')")
 over(ev("!!document.querySelector('.denik-setupy')"), 'přepnutí na Plan')
 klepni(tile('setupy', 'range'))
 klepni(tile('signaly', 'sr'))
 klepni("document.querySelector('.denik-zalozka[data-c=review]')")
-over(ev("[...document.querySelectorAll('.denik-sheet .chip.on')].map((b) => b.textContent).join()") == 'Take-profit,Yes', 'po přepnutí zpět zůstalo rozepsané Review')
+zap = ev("[...document.querySelectorAll('.denik-sheet .chip.on')].map((b) => b.textContent).join()")
+over(zap == 'Take-profit,Yes,Chased (FOMO),Closed too early,Nervous', f'po přepnutí zpět zůstalo rozepsané Review ({zap})')
 uloz()
 time.sleep(0.8)
 karta = ev(f"{zavreny}.querySelector('.denik-radek').textContent") or ''
 print('   po uložení:', karta)
 over('✓ Review' in karta and '✓ Plan' in karta and '★ 5' in karta and 'Plan ✓' in karta, 'na kartě ✓ Plan, ✓ Review, „Plan ✓", ★ 5')
 over('edited after close' in karta, 'plán doplněný po zavření má štítek „edited after close"')
+zz = [x.get('zhodnoceni') for x in denik().get('poznamky', {}).values() if x.get('zhodnoceni')]
+over(zz and zz[0].get('chyby') == ['fomo', 'exitEarly'] and zz[0].get('emoce') == 'nervous', f'chyby a emoce v úložišti ({zz and zz[0]})')
+over(any(x.get('metriky') for x in denik().get('poznamky', {}).values()), 'MFE / MAE uložené k obchodu')
 over(not ev(f"{zavreny}.querySelector('.denik-btn-review').classList.contains('ceka')"), 'Review už nečeká')
 klepni(f"{zavreny}.querySelector('.denik-btn-plan')")
 time.sleep(0.5)

@@ -11,6 +11,7 @@ import * as denik from './denik.js';
 import { t, getLocale } from './i18n.js';
 import { formatPrice, formatSize, formatUsd, formatSignedUsd } from './format.js';
 import { SKUPINY, SKUPINY_SIGNALU, svg } from './denik-katalog.js';
+import { CHYBY, EMOCE } from './denik-statistiky.js';
 
 let pozadi = null;
 let okno = null;
@@ -371,6 +372,8 @@ export function otevriDenik(o) {
     duvod: new Set(z.duvod ? [z.duvod] : []),
     plan: new Set(z.plan ? [z.plan] : []),
     hodnoceni: z.hodnoceni || null,
+    chyby: new Set(z.chyby || []),
+    emoce: new Set(z.emoce ? [z.emoce] : []),
     lekce: textPole(z.lekce, t('journal.lessonPh')),
     zmena: false,
   };
@@ -421,13 +424,15 @@ export function otevriDenik(o) {
     vp.append(el('div', `denik-pnl ${o.pnl >= 0 ? 'up' : 'down'}`, `${formatSignedUsd(o.pnl)} ${o.mena || 'USDT'}`),
       el('div', 'hint', o.otevreno && o.zavreno ? t('journal.held', { d: drzeno(o.zavreno - o.otevreno) }) : ''));
     vysledek.append(vl, vp);
-    const volby = (klice, predpona, vyber) => {
+    const metriky = el('div', 'denik-metriky');
+    vyplnMetriky(metriky, o);
+    const volby = (klice, predpona, vyber, vice = false) => {
       const radek = el('div', 'denik-chips');
       klice.forEach((k) => {
         const b = tlacitko(t(`${predpona}.${k}`), `chip${vyber.has(k) ? ' on' : ''}`, () => {
           const uz = vyber.has(k);
-          vyber.clear();
-          if (!uz) vyber.add(k);
+          if (!vice) vyber.clear();
+          if (uz) vyber.delete(k); else vyber.add(k);
           review.zmena = true;
           radek.querySelectorAll('.chip').forEach((x) => x.classList.toggle('on', vyber.has(x.dataset.k)));
         });
@@ -436,9 +441,18 @@ export function otevriDenik(o) {
       });
       return radek;
     };
-    const obsah = [vysledek,
+    const chyby = el('div', 'denik-skupina');
+    chyby.append(el('div', 'denik-label', t('journal.mistakes')));
+    Object.entries(CHYBY).forEach(([skup, ids]) => {
+      const r = el('div', 'denik-chyby-radek');
+      r.append(el('span', 'denik-chyby-skupina', t(`journal.mistakeGroup.${skup}`)), volby(ids, 'journal.mistake', review.chyby, true));
+      chyby.append(r);
+    });
+    const obsah = [vysledek, metriky,
       skupina(t('journal.exitReason'), volby(['tp', 'sl', 'manualPlan', 'manualEmotion', 'liq'], 'journal.exit', review.duvod)),
       skupina(t('journal.plan'), volby(['yes', 'partly', 'no'], 'journal.planAns', review.plan)),
+      chyby,
+      skupina(t('journal.emotion'), volby(EMOCE, 'journal.emo', review.emoce)),
       skupina(t('journal.rating'), cisla(review.hodnoceni, () => review.hodnoceni, (x) => { review.hodnoceni = x; review.zmena = true; })),
       skupina(t('journal.lesson'), review.lekce)];
     return obsah;
@@ -492,6 +506,8 @@ export function otevriDenik(o) {
         duvod: [...review.duvod][0] || null,
         plan: [...review.plan][0] || null,
         hodnoceni: review.hodnoceni,
+        chyby: [...review.chyby],
+        emoce: [...review.emoce][0] || null,
         lekce: review.lekce.value.trim(),
       });
     }
@@ -502,6 +518,35 @@ export function otevriDenik(o) {
   otevri([hlavicka(o.nazev, t('journal.tradePlan')), prepinac, el('div', 'denik-telo'), ulozit]);
   telo = okno.querySelector('.denik-telo');
   vykresliTelo();
+}
+
+/**
+ * MFE / MAE: nejlepší a nejhorší cena během obchodu (v R, když plán má
+ * SL, jinak v %). `o.metriky()` vrátí slib s { mfe, mae, mfePct, maePct }
+ * nebo null — počítá se ze svíček, poprvé chvíli trvá.
+ */
+function vyplnMetriky(box, o) {
+  if (!o.metriky) { box.hidden = true; return; }
+  box.replaceChildren(el('span', 'hint', t('journal.mfeLoading')));
+  const riziko = Math.abs((o.poznamka?.vstup?.auto?.entry || 0) - (o.poznamka?.vstup?.auto?.sl || 0));
+  o.metriky().then((m) => {
+    if (!box.isConnected) return;
+    if (!m) { box.hidden = true; return; }
+    const hodnota = (cena, pct, znamenko) => {
+      const text = riziko > 0 ? (cena / riziko).toFixed(1) : pct.toFixed(2);
+      return `${Number(text) ? znamenko : ''}${text} ${riziko > 0 ? 'R' : '%'}`;
+    };
+    const bunka = (popis, text, trida) => {
+      const d = el('div', 'denik-metrika');
+      d.append(el('span', '', popis), el('b', trida, text));
+      return d;
+    };
+    box.replaceChildren(
+      bunka(t('journal.mfe'), hodnota(m.mfe, m.mfePct, '+'), 'up'),
+      bunka(t('journal.mae'), hodnota(m.mae, m.maePct, '−'), 'down'),
+      el('p', 'hint denik-metriky-pozn', t('journal.mfeHint')),
+    );
+  }).catch(() => { box.hidden = true; });
 }
 
 /** Poznámky během obchodu (jen u obchodu, který běží nebo je už má). */
@@ -632,6 +677,8 @@ export function otevriFiltry(o) {
     skupina(t('journal.f.conf'), volby('conf', [['0', '0'], ['1', '1'], ['2', '2'], ['3', '3+']], true)),
     skupina(t('journal.plan'), volby('plan', [['yes', t('journal.planAns.yes')], ['partly', t('journal.planAns.partly')], ['no', t('journal.planAns.no')], ['none', t('journal.f.planNone')]], true)),
     skupina(t('journal.reviewTab'), volby('review', [['done', t('journal.f.reviewDone')], ['missing', t('journal.f.reviewMissing')]], false)),
+    skupina(t('journal.mistakes'), volby('chyby', [['none', t('journal.f.noMistakes')], ...Object.values(CHYBY).flat().map((c) => [c, t(`journal.mistake.${c}`)])], true)),
+    skupina(t('journal.emotion'), volby('emoce', EMOCE.map((e) => [e, t(`journal.emo.${e}`)]), true)),
     skupina(t('journal.f.held'), volby('drzeni', [['h', '< 1 h'], ['d', '1 h – 1 d'], ['w', '1–7 d'], ['m', '> 7 d']], true)),
   ];
   const radek = el('div', 'denik-tlacitka');

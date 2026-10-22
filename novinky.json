@@ -1,21 +1,17 @@
 {
-  "verze": "0.68.0",
+  "verze": "0.69.0",
   "novinky": [
     {
-      "en": "Trade journal: one Plan window with setup, signals and confluence. Every setup and signal has a sketch and a short explanation — tap ⓘ or hold the tile.",
-      "cs": "Deník: jedno okno Plán se setupem, signály a confluence. Každý setup a signál má kresbu a krátké vysvětlení — klepni na ⓘ nebo dlaždici podrž."
+      "en": "Review shows MFE and MAE: how far price went for you and against you while the trade was open (in R when your plan has a stop-loss).",
+      "cs": "Review ukáže MFE a MAE: jak daleko šla cena v tvůj prospěch a proti tobě, dokud byl obchod otevřený (v R, když má plán stop-loss)."
     },
     {
-      "en": "Plan and Review sit side by side on every trade, with a tick when filled in. Add your own setups and signals; the ones you use most come first.",
-      "cs": "Plán a Review jsou u každého obchodu vedle sebe, s fajfkou po vyplnění. Můžeš přidat vlastní setupy a signály; nejpoužívanější jsou napřed."
+      "en": "Mark your mistakes (entry, managing, exit) and how you felt. Edge tells you which mistake costs you the most, and Trades can filter by both.",
+      "cs": "Označ si chyby (vstup, řízení, výstup) a jak ses cítil. Edge řekne, která chyba tě stojí nejvíc, a Trades podle nich umí filtrovat."
     },
     {
-      "en": "Trades: filter by setup, signals, confluence, result, plan and holding time, and switch between cards and a table. A summary shows PnL, win rate and average R of what you filtered.",
-      "cs": "Trades: filtry podle setupu, signálů, confluence, výsledku, plánu a doby držení a přepínání karty / tabulka. Souhrn ukáže PnL, úspěšnost a průměrné R vybraných obchodů."
-    },
-    {
-      "en": "Edge compares trades with 3+ signals against the rest, and shows how trades without a setup do.",
-      "cs": "Edge porovná obchody se 3+ signály s ostatními a ukáže, jak dopadají obchody bez setupu."
+      "en": "Trades: filters, a table view and a summary of what you filtered. Plan window with setups, signals, confluence and built-in guides.",
+      "cs": "Trades: filtry, tabulka a souhrn vybraných obchodů. Okno Plán se setupy, signály, confluence a nápovědou."
     }
   ],
   "opravy": []

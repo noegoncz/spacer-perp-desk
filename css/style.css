@@ -3236,3 +3236,14 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 .tt-smer.short { background: rgba(246, 70, 93, 0.16); color: #f6465d; }
 .tt-r.up { color: #3ee6a4; } .tt-r.down { color: #f6465d; }
 .tt-plan.plan-yes { color: #3ee6a4; } .tt-plan.plan-no { color: #f6465d; } .tt-plan.plan-partly { color: #f0b90b; } .tt-plan.plan-none { color: var(--text-dim); }
+
+/* ---------- zhodnocení: MFE / MAE, chyby (v0.69.0) ---------- */
+.denik-metriky { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; padding: 10px 14px; border-radius: 12px; background: var(--bg); }
+.denik-metriky:has(> .hint:only-child) { display: block; }
+.denik-metrika { display: flex; flex-direction: column; gap: 2px; }
+.denik-metrika span { font-size: 0.72rem; color: var(--text-dim); }
+.denik-metrika b { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.denik-metrika b.up { color: #3ee6a4; } .denik-metrika b.down { color: #f6465d; }
+.denik-metriky-pozn { grid-column: 1 / -1; margin: 0; }
+.denik-chyby-radek { display: flex; flex-direction: column; gap: 5px; }
+.denik-chyby-skupina { font-size: 0.74rem; color: var(--text-dim); }

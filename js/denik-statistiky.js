@@ -103,6 +103,7 @@ export function souhrn(obchody) {
     setupy: statSetupu,
     confluence: { vysoka: vystup(confVysoka), nizka: vystup(confNizka) },
     bezSetupu: vystup(bezSetupu),
+    chyba: nejdrazsiChyba(serazene),
     porusenyPlan: porusenych ? { pocet: porusenych, pnl: porusenyPlanPnl, r: porusenyPlanR } : null,
   };
 }
@@ -136,6 +137,7 @@ export function vety(s) {
   if (s.bezSetupu?.pocet >= MIN_OBCHODU_SETUPU) {
     vysledek.push({ klic: s.bezSetupu.prumerR !== null ? 'noSetupR' : 'noSetup', data: s.bezSetupu });
   }
+  if (s.chyba) vysledek.push({ klic: s.chyba.sR ? 'mistakeCostR' : 'mistakeCost', data: s.chyba });
   if (s.porusenyPlan && s.porusenyPlan.pnl < 0) {
     vysledek.push({ klic: s.porusenyPlan.r < 0 ? 'planCostR' : 'planCost', data: s.porusenyPlan });
   }
@@ -156,7 +158,7 @@ export function skupinaDrzeni(ms) {
 /** Kolik filtrů je zapnutých (číslo na tlačítku). */
 export function pocetFiltru(f = {}) {
   return ['vysledek', 'stav', 'review'].filter((k) => f[k]).length
-    + ['setupy', 'signaly', 'conf', 'plan', 'drzeni'].filter((k) => f[k]?.length).length
+    + ['setupy', 'signaly', 'conf', 'plan', 'drzeni', 'chyby', 'emoce'].filter((k) => f[k]?.length).length
     + (f.obdobi ? 1 : 0);
 }
 
@@ -179,6 +181,11 @@ export function filtruj(obchody, f = {}, ted = Date.now()) {
     if (f.signaly?.length && !f.signaly.some((s) => v?.signaly?.includes(s))) return false;
     if (f.conf?.length && !f.conf.includes(String(Math.min(v?.signaly?.length || 0, 3)))) return false;
     if (f.plan?.length && !f.plan.includes(z?.plan || 'none')) return false;
+    if (f.chyby?.length) {
+      const ch = z?.chyby || [];
+      if (!f.chyby.some((c) => (c === 'none' ? z && !ch.length : ch.includes(c)))) return false;
+    }
+    if (f.emoce?.length && !f.emoce.includes(z?.emoce)) return false;
     if (f.review === 'done' && !z) return false;
     if (f.review === 'missing' && (z || g.otevrena)) return false;
     if (f.drzeni?.length) {
@@ -187,4 +194,62 @@ export function filtruj(obchody, f = {}, ted = Date.now()) {
     }
     return true;
   });
+}
+
+/* ---------- MFE / MAE a chyby (v0.69.0) ---------- */
+
+/** Chyby ve zhodnocení po skupinách (vstup / řízení / výstup) a emoce. */
+export const CHYBY = {
+  entry: ['fomo', 'early', 'noSl', 'size', 'offPlan'],
+  manage: ['movedSl', 'addedLoser', 'beEarly'],
+  exit: ['exitEarly', 'exitLate'],
+};
+export const EMOCE = ['calm', 'confident', 'nervous', 'greedy', 'revenge'];
+
+/**
+ * Nejlepší a nejhorší cena během obchodu ze svíček (MFE = maximum
+ * v můj prospěch, MAE = maximum proti mně), v ceně od vstupu (vždy ≥ 0).
+ * Bere svíčky, které se s obchodem překrývají; okrajové svíčky můžou
+ * zasahovat kousek před vstup / za výstup — proto se volí interval
+ * s co nejvíc svíčkami (`intervalProMfe`).
+ */
+export function mfeMae(svicky, { long, entry, otevreno, zavreno, delka }) {
+  let max = -Infinity;
+  let min = Infinity;
+  svicky.forEach((s) => {
+    if (s.time + delka <= otevreno || s.time >= zavreno) return;
+    if (s.high > max) max = s.high;
+    if (s.low < min) min = s.low;
+  });
+  if (!Number.isFinite(max) || !(entry > 0)) return null;
+  const pro = Math.max(0, long ? max - entry : entry - min);
+  const proti = Math.max(0, long ? entry - min : max - entry);
+  return { mfe: pro, mae: proti, mfePct: (pro / entry) * 100, maePct: (proti / entry) * 100 };
+}
+
+/** Nejkratší interval, na kterém se obchod vejde do 300 svíček. */
+export function intervalProMfe(trvaniMs, delky) {
+  for (const [interval, ms] of Object.entries(delky)) {
+    if (trvaniMs / ms <= 300) return interval;
+  }
+  return 'W';
+}
+
+/** Nejdražší chyba: součet PnL obchodů s chybou, od 2 obchodů. */
+export function nejdrazsiChyba(obchody) {
+  const mapa = new Map();
+  obchody.forEach((o) => {
+    const z = o.poznamka?.zhodnoceni;
+    const v = o.poznamka?.vstup;
+    const r = v?.riziko > 0 ? o.pnl / v.riziko : null;
+    (z?.chyby || []).forEach((c) => {
+      const s = mapa.get(c) || { chyba: c, pocet: 0, pnl: 0, r: 0, sR: 0 };
+      s.pocet += 1;
+      s.pnl += Number(o.pnl) || 0;
+      if (r !== null) { s.r += r; s.sR += 1; }
+      mapa.set(c, s);
+    });
+  });
+  const kandidati = [...mapa.values()].filter((s) => s.pocet >= 2 && s.pnl < 0);
+  return kandidati.reduce((a, b) => (!a || b.pnl < a.pnl ? b : a), null);
 }

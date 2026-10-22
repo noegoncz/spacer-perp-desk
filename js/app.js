@@ -672,8 +672,29 @@ function otevriPoznamkuSkupiny(g, cast = 'plan') {
     otevreno: g.otevreno,
     zavreno: g.zavreno,
     cast,
+    metriky: g.otevrena ? null : () => metrikyObchodu(g),
     onUlozeno: prekresliHistorii,
   });
+}
+
+/*
+ * MFE / MAE obchodu (v0.69.0): ze svíček mezi otevřením a zavřením
+ * (interval s nejvýš 300 svíčkami). Hodnota se nemění — uloží se do
+ * deníku k obchodu (`metriky`) a příště se neptá burzy.
+ */
+async function metrikyObchodu(g) {
+  const { burza, side, poznamka } = poznamkaSkupiny(g);
+  if (poznamka?.metriky) return poznamka.metriky;
+  const entry = g.vystupy[0]?.entry;
+  if (!g.otevreno || !g.zavreno || !(entry > 0)) return null;
+  const interval = statistiky.intervalProMfe(g.zavreno - g.otevreno, DELKA_INTERVALU);
+  const delka = DELKA_INTERVALU[interval] || 3600e3;
+  const svicky = await klientSkupiny(g).getKlines(g.symbol, interval, 500, g.zavreno + delka);
+  const m = statistiky.mfeMae(svicky || [], { long: g.long, entry, otevreno: g.otevreno, zavreno: g.zavreno, delka });
+  if (!m) return null;
+  const vysledek = { ...m, entry, interval };
+  denik.zapis(poznamka?.klic || denik.klic(burza, g.symbol, g.otevreno, side), 'metriky', vysledek);
+  return vysledek;
 }
 
 /** Přepínač štítku „Review" v nastavení. */
@@ -4458,6 +4479,10 @@ function vykresliEdge() {
   const castka = (v) => (hideAmounts ? '••••' : `${v >= 0 ? '+' : '−'}${formatUsd(Math.abs(v))}`);
   const vety = statistiky.vety(s).map(({ klic, data }) => {
     const pct = (x) => Math.round(x * 100);
+    if (klic === 'mistakeCost' || klic === 'mistakeCostR') {
+      return vetaEdge(klic, { name: t(`journal.mistake.${data.chyba}`), n: data.pocet, pnl: castka(data.pnl), r: data.sR ? formatR(data.r / data.sR) : '' },
+        'name', 'spatne');
+    }
     if (klic === 'confN') {
       const lepsi = data.vysoka.uspesnost >= data.nizka.uspesnost;
       return vetaEdge(klic, { n: data.n, win: pct(data.vysoka.uspesnost), k: data.vysoka.pocet, win2: pct(data.nizka.uspesnost), k2: data.nizka.pocet },
