@@ -1,6 +1,6 @@
 // Zdi v knize příkazů pro aplikaci (veřejná data, bez přihlášení), v0.72.0.
 //
-// GET /api/zdi?k=binance:BTCUSDT&od=<ms>&do=<ms>
+// GET /api/zdi?k=binance:BTCUSDT&od=<ms>&do=<ms>   (?stav=1 = souhrn provozu)
 // Odpověď: { ok, sleduje, t, mid, krok, zdi, hist }
 //   zdi  — živé: [strana, cena, usd, od, min, max] (strana 0 = nákup)
 //   hist — hotové v okně [od, do]: [strana, cena, od, do, min, max]
@@ -17,6 +17,13 @@ export const onRequestOptions = ({ request }) => new Response(null, { status: 20
 
 export async function onRequestGet({ request, env, waitUntil }) {
   const u = new URL(request.url);
+  // Souhrn provozu bez tajností (kontrola zátěže serveru): ?stav=1
+  if (u.searchParams.get('stav')) {
+    const r = await env.LIQ.prepare('SELECT t, info FROM zdi_stav WHERE id = 1').first();
+    const i = r ? JSON.parse(r.info) : {};
+    return Response.json({ ok: true, t: r?.t || null, trhu: i.trhu, synchro: i.synchro, zdi: i.zdi, cpu: i.cpu, pamet: i.pamet, resync: i.binanceResync },
+      { headers: { 'Cache-Control': 'public, max-age=30', ...corsHlavicky(request) } });
+  }
   const k = (u.searchParams.get('k') || '').slice(0, 60);
   const hlavicky = {
     'Content-Type': 'application/json; charset=utf-8',
