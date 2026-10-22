@@ -131,9 +131,10 @@ export async function pasy({ symbol, burza, od, doKdy, delkaSvicky }) {
         if (p) {
           p.do = dalsi;
           p.usd = Math.max(p.usd, usd);
+          p.min = Math.min(p.min, usd);
           p.posledni = usd;
         } else {
-          otevrene.set(k, { od: snimek.t, do: dalsi, cena, vyska: snimek.krok, usd, posledni: usd, long });
+          otevrene.set(k, { od: snimek.t, do: dalsi, cena, vyska: snimek.krok, usd, min: usd, posledni: usd, long });
         }
       }
     }

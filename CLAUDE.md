@@ -3437,9 +3437,19 @@ kvůli CPU serveru, cíl ~250) + trhy, jejichž graf někdo otevřel
   zapíše žádost a vrátí `sleduje: false`).
 - Měřeno lokálně: 233 trhů = ~24 % jádra, 185 MB, 0 ztrát synchronizace.
 - Test: `tools/test-zdi-server.py <node>` (výpočet + naostro, ZKOUSKA).
-- **Zbývá:** vrstva v grafu s plynulým náběhem a detailem klepnutím (od
-  kdy, teď / min / max), stejný detail u likvidačních pruhů; přepínač
-  „všechny burzy“ (přepočet poměrem cen); zvednout strop podle `cpu`.
+- **V aplikaci (v0.72.0):** vrstva **Zdi v knize** v nabídce oka
+  (`zdi`, výchozí zapnutá), indikátor `ZDIMAP` (chart.js, `setWalls`):
+  nákupní zeleně, prodejní červeně, sytost podle velikosti, živé k pravému
+  okraji, plynulý náběh. Data `js/zdi.js` (po svíčkách, obnova po minutě,
+  jen burza grafu; nesledovaný trh = kniha burzy přes adaptér
+  `getOrderBook` → zdi „od teď“). **Klepnutí na zeď nebo likvidační pruh**
+  (`mapaPodPrstem` v chart.js → `onMapTapped` → `ukazDetailMapy` v app.js,
+  karta `#mapDetail`): cena, teď, min / max, od kdy (a do kdy). Likvidační
+  pruhy nesou `min`. Mock vrací zdi prázdné, naostro s `__zdiNaostro`.
+  Test: `tools/test-zdi-graf.py` (naostro).
+- **Zbývá:** přepínač „všechny burzy“ (přepočet poměrem cen, štítky
+  burz); zvednout strop trhů podle `cpu` ze serveru; čas vzniku zdí
+  na Hyperliquidu z otevřených příkazů známých účtů.
 
 ## Audit 2026-09-28: soukromí, disclaimer, klíče
 

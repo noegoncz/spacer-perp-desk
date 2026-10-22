@@ -92,7 +92,7 @@ ev("document.getElementById('layersBtn').click()")
 time.sleep(0.4)
 over(ev("!document.getElementById('sheetLayers').hidden"), 'nabídka vrstev se otevře')
 # v0.65.0 přibyla pátá: likvidační mapa Hyperliquidu.
-over(ev("document.querySelectorAll('#layersBody [data-vrstva]').length") == 5, 'pět vrstev (i Likvidace)')
+over(ev("document.querySelectorAll('#layersBody [data-vrstva]').length") == 6, 'šest vrstev (i Likvidace a Zdi)')
 over(ev("!!document.getElementById('layersEraseRow') && !!document.querySelector('#layersBody .nabidka-volba')"),
      'v nabídce oka je coin/USDT a smazání kreseb')
 
@@ -112,7 +112,7 @@ over(not ({'EMA', 'RSI'} & set(s['ind'])) and s['svicky'] > s0['svicky'] + 30,
      f'indikátory pryč, panel RSI sbalený (svíčky {s0["svicky"]} → {s["svicky"]} px)')
 over(json.loads(ev("localStorage.getItem('perpdesk.indicators')")) == ['EMA', 'RSI'], 'výběr indikátorů zůstal uložený')
 ulozene = json.loads(ev("localStorage.getItem('perpdesk.layers')") or '{}')
-over(ulozene == {'kresby': False, 'alarmy': False, 'indikatory': False, 'obchod': False, 'likvidace': True}, f'uloženo ({ulozene})')
+over(ulozene == {'kresby': False, 'alarmy': False, 'indikatory': False, 'obchod': False, 'likvidace': True, 'zdi': True}, f'uloženo ({ulozene})')
 
 print('2) po restartu')
 ev("document.querySelector('[data-close=sheetLayers]').click()")

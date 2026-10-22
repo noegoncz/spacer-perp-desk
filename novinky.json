@@ -1,17 +1,17 @@
 {
-  "verze": "0.71.0",
+  "verze": "0.72.0",
   "novinky": [
     {
-      "en": "Liquidation map: a slider in the layers menu (eye) hides small liquidations so the big clusters stand out.",
-      "cs": "Likvidační mapa: posuvník v nabídce vrstev (oko) schová malé likvidace, ať vyniknou velké shluky."
+      "en": "Order book walls in the chart (Binance, Bybit, Hyperliquid): big buy walls in green, sell walls in red, drawn over time like the liquidation map.",
+      "cs": "Zdi v knize příkazů v grafu (Binance, Bybit, Hyperliquid): velké nákupní zdi zeleně, prodejní červeně, v čase jako likvidační mapa."
     },
     {
-      "en": "Journal → Calendar: every day of the month in green or red by your PnL. Tap a day to see its trades.",
-      "cs": "Deník → Kalendář: každý den v měsíci zeleně nebo červeně podle PnL. Klepni na den a uvidíš jeho obchody."
+      "en": "Tap a wall or a liquidation bar to see its price, size now, min / max and how long it has been there.",
+      "cs": "Klepni na zeď nebo likvidační pruh a uvidíš cenu, velikost teď, min / max a jak dlouho tam stojí."
     },
     {
-      "en": "Review shows MFE and MAE, and lets you mark mistakes and how you felt. Edge tells you which mistake costs you the most.",
-      "cs": "Review ukáže MFE a MAE a umožní označit chyby a jak ses cítil. Edge řekne, která chyba tě stojí nejvíc."
+      "en": "Liquidation map: a slider in the layers menu hides small liquidations.",
+      "cs": "Likvidační mapa: posuvník v nabídce vrstev schová malé likvidace."
     }
   ],
   "opravy": []

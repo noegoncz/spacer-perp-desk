@@ -68,6 +68,11 @@ window.fetch = function (vstup, volby) {
     if (sessionStorage.getItem('__mapaNaostro')) return __puvodniFetch(vstup, volby);
     return Promise.resolve(new Response('{"ok":true,"r":1,"hodiny":[]}', { headers: { 'Content-Type': 'application/json' } }));
   }
+  // Zdi v knize (v0.72.0): naostro jen v testu zdí ('__zdiNaostro').
+  if (u.includes('/api/zdi')) {
+    if (sessionStorage.getItem('__zdiNaostro')) return __puvodniFetch(vstup, volby);
+    return Promise.resolve(new Response('{"ok":true,"sleduje":true,"zdi":[],"hist":[]}', { headers: { 'Content-Type': 'application/json' } }));
+  }
   // Ostatní burzy (adaptéry přes CCXT) jdou na skutečnou burzu — mock
   // podstrkuje jen Bybit a perpyx.com (kontraktní test, v0.53.0).
   if (/binance|gateio|gate\.io|mexc|okx|bitget|hyperliquid/i.test(u)) return __puvodniFetch(vstup, volby);

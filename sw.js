@@ -35,6 +35,8 @@ const SHELL = [
   './js/denik-ui.js',
   './js/denik-statistiky.js',
   './js/denik-katalog.js',
+  './js/zdi.js',
+  './js/zdi-format.js',
   './js/likvidace.js',
   './js/likvidace-format.js',
   './js/format.js',

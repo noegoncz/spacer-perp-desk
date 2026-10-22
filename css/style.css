@@ -3279,3 +3279,18 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 /* filtr šumu likvidační mapy v nabídce vrstev (v0.71.0) */
 .nabidka-posuvnik { flex-direction: column; align-items: stretch; gap: 6px; cursor: default; }
 .nabidka-posuvnik input[type=range] { width: 100%; accent-color: #f0b90b; min-height: 28px; }
+
+/* ---------- detail zdi / likvidace v grafu (v0.72.0) ---------- */
+.map-detail {
+  position: fixed; z-index: 35; min-width: 200px; max-width: min(280px, calc(100vw - 16px));
+  padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--surface) 94%, transparent);
+  border: 1px solid var(--border); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); pointer-events: none;
+  display: flex; flex-direction: column; gap: 6px; font-size: 0.82rem;
+}
+.map-detail-titul { font-weight: 700; }
+.map-detail-titul.nakup { color: #3ee6a4; } .map-detail-titul.prodej { color: #f6465d; } .map-detail-titul.likv { color: #f0b90b; }
+.map-detail-radky { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; }
+.map-detail-radky span { color: var(--text-dim); }
+.map-detail-radky b { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.map-detail-pozn { font-size: 0.7rem; color: var(--text-dim); }
+.map-detail-pozn:empty { display: none; }

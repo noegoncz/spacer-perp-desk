@@ -686,6 +686,12 @@ export class BybitClient {
    * Veřejné, nepotřebuje klíče — seznam jde ukázat i před přihlášením.
    */
   /** Ticker jednoho páru — pro objem za 24 h v řádku nad grafem. */
+  /** Kniha příkazů, 500 nejbližších úrovní (zdi u nesledovaného trhu). */
+  async getOrderBook(symbol, limit = 500) {
+    const r = await this.publicGet('/v5/market/orderbook', { category: 'linear', symbol, limit: String(Math.min(limit, 500)) });
+    return { bids: (r?.b ?? []).map(([p, q]) => [num(p), num(q)]), asks: (r?.a ?? []).map(([p, q]) => [num(p), num(q)]) };
+  }
+
   async getTicker(symbol) {
     const result = await this.publicGet('/v5/market/tickers', { category: 'linear', symbol });
     const t = result?.list?.[0];

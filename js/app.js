@@ -25,6 +25,7 @@ import * as denik from './denik.js';
 import * as denikUi from './denik-ui.js';
 import * as statistiky from './denik-statistiky.js';
 import * as likvidace from './likvidace.js';
+import * as zdiKnihy from './zdi.js';
 import * as alarmyServer from './alarmy-server.js';
 import * as push from './push.js';
 import * as hlaseni from './hlaseni.js';
@@ -2083,6 +2084,7 @@ async function otevriGraf(symbol, position, trh) {
       onSelectionChanged: zobrazPaletu,
       onNoteEdit: otevriPoznamku,
       onAlarmTapped: (id) => otevriAlarm(alarmy.najdi(id)),
+      onMapTapped: (m, bod) => ukazDetailMapy(m, bod),
       onStyleChanged: (styl) => store.saveDrawStyle(styl),
       // Šířka svíček po zoomu dvěma prsty — pamatuje se k páru.
       onZoomChanged: (sirka) => { if (!prohlizenyObchod) store.saveChartView(grafKlic(), { sirka }); },
@@ -2312,6 +2314,108 @@ function zastavMapu() {
   zadostMapy += 1;
   chart?.setLiquidations(null);
   zastavOi();
+  zastavZdi();
+}
+
+/*
+ * Zdi v knize příkazů (v0.72.0) — vrstva grafu, data ze serveru
+ * (js/zdi.js, /api/zdi). Jen burza grafu (Binance, Bybit, Hyperliquid);
+ * stahuje se po svíčkách, obnova po minutě. Trh, který server ještě
+ * nesleduje, ukáže zdi z aktuální knihy burzy („od teď“) a server ho do
+ * 5 min začne sledovat.
+ */
+let casovacZdi = null;
+let zadostZdi = 0;
+
+function zastavZdi() {
+  clearInterval(casovacZdi);
+  casovacZdi = null;
+  zadostZdi += 1;
+  chart?.setWalls(null);
+}
+
+async function nactiZdi() {
+  if (!chart || !chartSymbol || !oknoMapy || prohlizenyObchod) return;
+  if (!chart.getLayers().zdi) return;
+  const zadost = ++zadostZdi;
+  const symbol = chartSymbol;
+  const burza = chartBurza || client?.burza?.id || 'bybit';
+  const klient = grafKlient();
+  let v = null;
+  try {
+    v = await zdiKnihy.zdi({
+      burza, symbol, od: oknoMapy.od, doKdy: Date.now(),
+      kniha: klient?.getOrderBook ? () => klient.getOrderBook(symbol) : null,
+    });
+  } catch { /* síť — zkusí se při další obnově */ }
+  if (zadost !== zadostZdi || symbol !== chartSymbol || !chart) return;
+  if (!v || (!v.zive.length && !v.hist.length)) {
+    chart.setWalls(null);
+  } else {
+    const minut = v.t ? Math.max(0, Math.round((Date.now() - v.t) / 60000)) : 0;
+    chart.setWalls({
+      ...v,
+      popis: v.sleduje ? t('walls.label', { burza: client?.burza?.id === burza ? client.burza.nazev : nazevBurzy(burza), min: minut })
+        : t('walls.labelNew'),
+    });
+  }
+  if (!casovacZdi) casovacZdi = setInterval(nactiZdi, 60000);
+}
+
+const nazevBurzy = (id) => ({ binance: 'Binance', bybit: 'Bybit', hyperliquid: 'Hyperliquid' }[id] || id);
+
+/*
+ * Detail zdi / likvidačního pruhu po klepnutí (v0.72.0, přání uživatele:
+ * „od kdy, teď / min / max“). Malá karta u prstu, zavře ji další klepnutí
+ * kamkoli nebo 8 s.
+ */
+let casovacDetailuMapy = null;
+
+function ukazDetailMapy(m, bod) {
+  const box = el('mapDetail');
+  if (!box) return;
+  clearTimeout(casovacDetailuMapy);
+  if (!m) { box.hidden = true; return; }
+  const usd = (v) => (v == null ? '—' : v >= 1e6 ? `${(v / 1e6).toFixed(v >= 1e8 ? 0 : 1)} M` : `${Math.round(v / 1e3)} k`);
+  const cas = (ms) => new Date(ms).toLocaleTimeString(getLocale(), { hour: '2-digit', minute: '2-digit' });
+  const datumCas = (ms) => (Date.now() - ms > 20 * 3600e3
+    ? `${new Date(ms).getDate()}.${new Date(ms).getMonth() + 1}. ${cas(ms)}` : cas(ms));
+  const nadpis = m.druh === 'zed'
+    ? t(m.nakup ? 'walls.buy' : 'walls.sell')
+    : t(m.long ? 'liq.longs' : 'liq.shorts');
+  const trvani = denikUi.drzeno((m.do || Date.now()) - m.od) || '< 1 m';
+  const radky = [
+    [t('walls.price'), formatPrice(m.cena)],
+    [t('walls.now'), m.ted == null ? t('walls.gone') : `${usd(m.ted)} USD`],
+    [t('walls.minMax'), `${usd(m.min)} / ${usd(m.max)}`],
+    [t('walls.since'), `${datumCas(m.od)} · ${trvani}`],
+  ];
+  if (m.do) radky.push([t('walls.until'), datumCas(m.do)]);
+  const titul = document.createElement('div');
+  titul.className = `map-detail-titul ${m.druh === 'zed' ? (m.nakup ? 'nakup' : 'prodej') : 'likv'}`;
+  titul.textContent = nadpis;
+  const telo = document.createElement('div');
+  telo.className = 'map-detail-radky';
+  radky.forEach(([a, b]) => {
+    const x = document.createElement('span');
+    x.textContent = a;
+    const y = document.createElement('b');
+    y.textContent = b;
+    telo.append(x, y);
+  });
+  const pozn = document.createElement('div');
+  pozn.className = 'map-detail-pozn';
+  pozn.textContent = m.popis || '';
+  box.replaceChildren(titul, telo, pozn);
+  box.hidden = false;
+  // U prstu, ale celé v obrazovce.
+  const w = box.offsetWidth;
+  const h = box.offsetHeight;
+  const x = Math.min(Math.max(8, bod.x - w / 2), innerWidth - w - 8);
+  const y = bod.y - h - 18 > 60 ? bod.y - h - 18 : Math.min(bod.y + 18, innerHeight - h - 8);
+  box.style.left = `${x}px`;
+  box.style.top = `${y}px`;
+  casovacDetailuMapy = setTimeout(() => { box.hidden = true; }, 8000);
 }
 
 /*
@@ -2405,6 +2509,7 @@ async function nactiSvice() {
   if (bars.length) {
     oknoMapy = { od: bars[0].timestamp, do: bars[bars.length - 1].timestamp };
     setTimeout(nactiMapu, 50);
+    setTimeout(nactiZdi, 65);
     // OI jiného timeframu je jiná řada — načíst znovu.
     zadostOi += 1;
     oiNacteno = false;
@@ -2656,6 +2761,7 @@ const VRSTVY = [
   { klic: 'indikatory', popisek: 'layers.indicators' },
   { klic: 'obchod', popisek: 'layers.trade', poznamka: 'layers.tradeNote' },
   { klic: 'likvidace', popisek: 'layers.liq', poznamka: 'layers.liqNote' },
+  { klic: 'zdi', popisek: 'layers.walls', poznamka: 'layers.wallsNote' },
 ];
 
 function nastavVrstvy(zmena) {
@@ -2663,6 +2769,7 @@ function nastavVrstvy(zmena) {
   chart.setLayers(zmena);
   const vrstvy = chart.getLayers();
   if (zmena?.likvidace) nactiMapu();
+  if (zmena?.zdi) nactiZdi();
   // Vrstvy prohlídky obchodu se neukládají — platí jen do jejího zavření.
   if (!prohlizenyObchod) store.saveLayers(vrstvy);
   // Skryté kresby nejde upravovat — rozdělaná úprava a paleta zmizí.
@@ -2681,7 +2788,7 @@ function nastavVrstvy(zmena) {
  */
 function vrstvyProGraf() {
   if (!chart) return;
-  const ulozene = { kresby: true, alarmy: true, indikatory: true, obchod: true, likvidace: true, ...store.loadLayers() };
+  const ulozene = { kresby: true, alarmy: true, indikatory: true, obchod: true, likvidace: true, zdi: true, ...store.loadLayers() };
   chart.setLayers(prohlizenyObchod ? { ...ulozene, alarmy: false } : ulozene);
   chart.setLiquidationFilter(filtrMapy());
   oznacVrstvy();

@@ -724,6 +724,13 @@ export class CcxtAdapter {
    * Open interest (v0.66.0) vzestupně: [{ time, oi }] v coinu, přes
    * `fetchOpenInterestHistory` CCXT (veřejná fronta). Nejjemněji 5 min.
    */
+  /** Kniha příkazů (zdi u trhu, který server ještě nesleduje, v0.72.0). */
+  async getOrderBook(symbol, limit = 1000) {
+    const ex = await this.burzaVerejna();
+    const k = await ex.fetchOrderBook(await this.symbolCcxt(symbol, true), limit);
+    return { bids: (k.bids || []).map(([p, q]) => [cislo(p), cislo(q)]), asks: (k.asks || []).map(([p, q]) => [cislo(p), cislo(q)]) };
+  }
+
   async getOpenInterest(symbol, interval) {
     if (!this.burza?.schopnosti?.openInterest) return [];
     const ex = await this.burzaVerejna();
