@@ -132,6 +132,8 @@ export const INDIKATORY = [
   { id: 'SAR', vlastniPanel: false },
   // Profil se kreslí do hlavního panelu, přes svíčky.
   { id: 'VPROFILE', vlastniPanel: false },
+  // Open interest z burzy grafu (v0.66.0), data dodává app.js.
+  { id: 'OI', vlastniPanel: true },
 ];
 
 export const nazevIndikatoru = (id) => t(`indicator.${id}`);
@@ -148,6 +150,7 @@ export const IKONY_INDIKATORU = {
   BOLL: '<path d="M3 13c4-5 8 1 12-4s2-1 6-2"/><path d="M3 7c4-5 8 1 12-4" opacity=".45"/><path d="M3 19c4-5 8 1 12-4" opacity=".45"/>',
   SAR: '<path d="M3 16c4-6 8 2 12-5"/><circle cx="6" cy="19" r="1.3"/><circle cx="11" cy="17" r="1.3"/><circle cx="16" cy="8" r="1.3"/><circle cx="21" cy="6" r="1.3"/>',
   VPROFILE: '<path d="M3 5h11M3 9h6M3 13h14M3 17h8M3 21h4"/>',
+  OI: '<path d="M3 18c3-1 5-5 8-5s4 3 7 0 2-6 3-8"/><path d="M3 21h18" opacity=".4"/>',
 };
 
 const HLAVNI_PANEL = 'candle_pane';
@@ -1330,6 +1333,51 @@ function registrovatMereni() {
   });
 }
 
+/*
+ * Open interest (v0.66.0): součet otevřených pozic na perpu, z burzy grafu.
+ * Data nese `openInterest` ({ body: [{ time, oi }] v coinu, popis }), app.js
+ * je stahuje po svíčkách. Kreslí se v USD (oi × close svíčky), aby šlo
+ * srovnávat páry; ke svíčce patří poslední bod OI před jejím začátkem
+ * (OI má nejjemněji 5 min — na 1m grafu jde po schodech).
+ */
+let openInterest = null;
+let verzeOi = 0;
+
+function registrovatOi() {
+  K().registerIndicator({
+    name: 'OI',
+    shortName: 'OI',
+    series: 'normal',
+    precision: 0,
+    shouldFormatBigNumber: true,
+    calcParams: [0],
+    figures: [{ key: 'oi', title: '', type: 'line' }],
+    createTooltipDataSource: () => ({ calcParamsText: openInterest?.popis ? ` ${openInterest.popis}` : '' }),
+    calc: (data) => {
+      const body = openInterest?.body || [];
+      let j = 0;
+      let posledni = null;
+      return data.map((d, i) => {
+        while (j < body.length && body[j].time <= d.timestamp) posledni = body[j++].oi;
+        // Živá svíčka dostane nejnovější bod, i když ho burza dala o chvíli později.
+        const oi = i === data.length - 1 && body.length ? body[body.length - 1].oi : posledni;
+        return oi ? { oi: oi * d.close } : {};
+      });
+    },
+    draw: ({ ctx, bounding }) => {
+      if (openInterest?.body?.length) return false;
+      ctx.save();
+      ctx.font = '11px -apple-system, "Segoe UI", Roboto, sans-serif';
+      ctx.fillStyle = 'rgba(139,155,176,0.9)';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(openInterest ? t('oi.none') : t('oi.loading'), bounding.width / 2, bounding.height / 2);
+      ctx.restore();
+      return false;
+    },
+  });
+}
+
 /**
  * RSI po vzoru TradingView: jedna křivka, volitelný klouzavý průměr a
  * pásma překoupenosti s výplní. Vestavěné RSI kreslí tři křivky bez pásem
@@ -1630,6 +1678,7 @@ export function createPriceChart(container, layer, handlers = {}) {
   registrovatPoznamku();
   registrovatMereni();
   registrovatRsi();
+  registrovatOi();
   registrovatLikvidace();
 
   const chart = K().init(container, { styles: styly() });
@@ -2362,6 +2411,10 @@ export function createPriceChart(container, layer, handlers = {}) {
           { color: n.zobrazitMa ? n.barvaMa : 'transparent', size: 1 },
         ],
       };
+    }
+
+    if (nazev === 'OI') {
+      zmena.styles = { lines: [{ color: nactiNastaveni('OI').barvaOi, size: 1.5 }] };
     }
 
     try {
@@ -3120,6 +3173,14 @@ export function createPriceChart(container, layer, handlers = {}) {
 
     getLayers() {
       return { ...vrstvy };
+    },
+
+    /** Open interest: `{ body: [{ time, oi }], popis }`, null = načítá se. */
+    setOpenInterest(data) {
+      openInterest = data;
+      verzeOi += 1;
+      // Jiné calcParams = knihovna indikátor přepočítá.
+      try { chart.overrideIndicator({ name: 'OI', calcParams: [verzeOi] }); } catch { /* není v grafu */ }
     },
 
     /** Likvidační mapa: `{ pasy, popis }`, null = žádná (jiný pár, bez dat). */

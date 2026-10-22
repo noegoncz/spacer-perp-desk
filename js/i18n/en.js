@@ -464,6 +464,8 @@ export const en = {
   'funding.dayShort': 'Day',
   'funding.totalShort': 'Total',
   'funding.label': 'Funding',
+  'funding.longsPay': 'longs pay',
+  'funding.shortsPay': 'shorts pay',
 
   'orders.title': 'Orders without a position',
   'orders.none': 'No open orders.',
@@ -501,6 +503,12 @@ export const en = {
 
   'indicator.VPROFILE': 'Volume profile',
   'indicatorDesc.VPROFILE': 'Where the volume traded, by price',
+  'indicator.OI': 'Open interest',
+  'indicatorDesc.OI': 'Open positions on this perp — rising OI = new money in',
+  'indSet.barvaOi': 'OI colour',
+  'oi.loading': 'Loading open interest…',
+  'oi.none': 'This exchange does not provide open interest history',
+  'oi.label': '{burza} · USD',
   'indSet.radku': 'Rows',
   'indSet.sirka': 'Width',
   'indSet.barvaProfil': 'Bar colour',

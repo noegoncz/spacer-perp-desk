@@ -2281,6 +2281,43 @@ function zastavMapu() {
   oknoMapy = null;
   zadostMapy += 1;
   chart?.setLiquidations(null);
+  zastavOi();
+}
+
+/*
+ * Open interest (v0.66.0) — panel indikátoru OI, data z burzy grafu. Jen
+ * když je indikátor zapnutý; stahuje se po svíčkách (graf na OI nečeká)
+ * a obnovuje po 2 min (burzy ho počítají po 5 min).
+ */
+let casovacOi = null;
+let zadostOi = 0;
+let oiNacteno = false;
+
+function zastavOi() {
+  clearInterval(casovacOi);
+  casovacOi = null;
+  zadostOi += 1;
+  oiNacteno = false;
+  chart?.setOpenInterest(null);
+}
+
+async function nactiOi() {
+  if (!chart || !chartSymbol || !chart.activeIndicators().includes('OI')) return;
+  const k = grafKlient();
+  const zadost = ++zadostOi;
+  const symbol = chartSymbol;
+  let data = { body: [], popis: '' };
+  if (k?.burza?.schopnosti?.openInterest && k.getOpenInterest) {
+    try {
+      data = { body: await k.getOpenInterest(symbol, chartInterval), popis: t('oi.label', { burza: k.burza.nazev }) };
+    } catch {
+      if (oiNacteno) return; // síť — nechat poslední data, zkusí se při další obnově
+    }
+  }
+  if (zadost !== zadostOi || symbol !== chartSymbol || !chart) return;
+  oiNacteno = true;
+  chart.setOpenInterest(data);
+  if (!casovacOi && data.body.length) casovacOi = setInterval(nactiOi, 120000);
 }
 
 async function nactiMapu() {
@@ -2338,6 +2375,10 @@ async function nactiSvice() {
   if (bars.length) {
     oknoMapy = { od: bars[0].timestamp, do: bars[bars.length - 1].timestamp };
     setTimeout(nactiMapu, 50);
+    // OI jiného timeframu je jiná řada — načíst znovu.
+    zadostOi += 1;
+    oiNacteno = false;
+    setTimeout(nactiOi, 80);
   }
   return bars;
 }
@@ -2446,6 +2487,7 @@ function ulozIndikatory() {
   if (!chart) return;
   store.saveIndicators(chart.activeIndicators());
   oznacAktivniIndikatory();
+  if (chart.activeIndicators().includes('OI') && !oiNacteno) nactiOi();
 }
 
 const maVlastniPanel = (nazev) =>

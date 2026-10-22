@@ -1829,6 +1829,19 @@ Před opravou chyběla ve 37 ze 130 snímků, po ní v nule.
 
 #### Indikátory a jejich nastavení
 
+**Open interest (v0.66.0, přání uživatele):** indikátor `OI` ve vlastním
+panelu (`registrovatOi` v chart.js, bez figur výpočtu — data nese
+`setOpenInterest({ body: [{ time, oi }], popis })`, nová verze dat =
+nové `calcParams`, tím knihovna přepočítá). Kreslí OI × close (USD),
+ke svíčce poslední bod OI před jejím začátkem. Data z burzy grafu
+(`getOpenInterest(pár, interval)`, schopnost `openInterest`): Bybit
+`/v5/market/open-interest` (3 stránky po 200), Binance CCXT
+`fetchOpenInterestHistory` — ⚠ **Binance drží jen 30 dní** (na 1D ~30
+svíček). Hyperliquid historii nedává → panel s textem. OI má nejjemněji
+5 min (1m graf jde po schodech). app.js `nactiOi` po svíčkách, jen se
+zapnutým indikátorem, obnova po 2 min. Karta pozice: u sazby fundingu
+„longs pay / shorts pay“ (`.fp-kdo`). Test: `tools/test-open-interest.py`.
+
 Schémata nastavení jsou v **`js/indikatory.js`**. Obrazovka nastavení se z nich
 generuje sama, takže přidat volbu (nebo celý indikátor) znamená sáhnout jen do
 toho souboru. Pole s `param: n` jde do `calcParams[n]`, tedy do výpočtu;

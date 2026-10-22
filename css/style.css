@@ -2860,6 +2860,8 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 /* Funding na kartě: krátké popisky a čísla (v0.40.0). */
 .pos-funding .fp { display: inline-flex; gap: 4px; white-space: nowrap; }
 .pos-funding .fp-popis { color: var(--text-dim); }
+/* Kdo funding platí (v0.66.0). */
+.pos-funding .fp-kdo { color: var(--text-dim); font-size: 0.92em; opacity: 0.8; }
 
 /* Přepínač coin / USDT u čar v grafu (v0.42.0). */
 .tool-btn.tool-jednotka { width: auto; min-width: 38px; padding: 0 5px; }

@@ -459,6 +459,8 @@ export const cs = {
   'funding.dayShort': 'Den',
   'funding.totalShort': 'Celkem',
   'funding.label': 'Funding',
+  'funding.longsPay': 'platí longy',
+  'funding.shortsPay': 'platí shorty',
 
   'orders.title': 'Příkazy bez pozice',
   'orders.none': 'Žádné otevřené příkazy.',
@@ -496,6 +498,12 @@ export const cs = {
 
   'indicator.VPROFILE': 'Volume profile',
   'indicatorDesc.VPROFILE': 'Kde se obchodoval objem, podle ceny',
+  'indicator.OI': 'Open interest',
+  'indicatorDesc.OI': 'Otevřené pozice na perpu — rostoucí OI = nové peníze v trhu',
+  'indSet.barvaOi': 'Barva OI',
+  'oi.loading': 'Načítám open interest…',
+  'oi.none': 'Tahle burza historii open interestu nedává',
+  'oi.label': '{burza} · USD',
   'indSet.radku': 'Počet pásem',
   'indSet.sirka': 'Šířka',
   'indSet.barvaProfil': 'Barva sloupců',

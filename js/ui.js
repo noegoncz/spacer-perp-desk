@@ -173,8 +173,16 @@ function patickaRow(p, hide) {
     return s;
   };
 
-  radek.append(polozka(t('funding.label'),
-    `${formatPercent(f.rate * 100, 4)}/${intervalPopis(f.minut)}`));
+  const sazba = polozka(t('funding.label'),
+    `${formatPercent(f.rate * 100, 4)}/${intervalPopis(f.minut)}`);
+  // Kdo platí (v0.66.0, uživatel: „plus = longy platí“ se špatně pamatuje).
+  if (f.rate) {
+    const kdo = document.createElement('span');
+    kdo.className = 'fp-kdo';
+    kdo.textContent = t(f.rate > 0 ? 'funding.longsPay' : 'funding.shortsPay');
+    sazba.append(kdo);
+  }
+  radek.append(sazba);
 
   const zbyva = f.nextAt ? f.nextAt - Date.now() : 0;
   radek.append(polozka(t('funding.nextShort'),

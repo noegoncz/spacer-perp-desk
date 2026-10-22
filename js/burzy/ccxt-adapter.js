@@ -720,6 +720,21 @@ export class CcxtAdapter {
     }));
   }
 
+  /**
+   * Open interest (v0.66.0) vzestupně: [{ time, oi }] v coinu, přes
+   * `fetchOpenInterestHistory` CCXT (veřejná fronta). Nejjemněji 5 min.
+   */
+  async getOpenInterest(symbol, interval) {
+    if (!this.burza?.schopnosti?.openInterest) return [];
+    const ex = await this.burzaVerejna();
+    const obdobi = { 1: '5m', 3: '5m', 5: '5m', 15: '15m', 30: '30m', 60: '1h', 120: '1h', 240: '4h' }[interval] || '1d';
+    const radky = await ex.fetchOpenInterestHistory(await this.symbolCcxt(symbol, true), obdobi, undefined, 500);
+    return radky
+      .map((r) => ({ time: Number(r.timestamp), oi: cislo(r.openInterestAmount) }))
+      .filter((b) => b.oi > 0 && Number.isFinite(b.time))
+      .sort((a, b) => a.time - b.time);
+  }
+
   async getSparkline(symbol) {
     const ex = await this.burzaPredem();
     const radky = await ex.fetchOHLCV(await this.symbolCcxt(symbol, true), '1h', undefined, 24);

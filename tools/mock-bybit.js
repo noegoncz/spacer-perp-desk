@@ -98,6 +98,14 @@ window.fetch = function (vstup, volby) {
     const odpoved = ok({retCode:0, result:{list:l}});
     return iv === '60' ? new Promise((r) => setTimeout(() => r(odpoved), 700)) : odpoved;
   }
+  // Open interest (v0.66.0): od nejnovějšího, jako Bybit; 5min body.
+  if (u.includes('/v5/market/open-interest')) {
+    (window.__oiDotazy = window.__oiDotazy || []).push(u);
+    const krok = { '5min':300e3,'15min':900e3,'30min':1800e3,'1h':3600e3,'4h':14400e3,'1d':86400e3 }[/intervalTime=([^&]+)/.exec(u)?.[1]] || 300e3;
+    const t0 = Math.floor(Date.now() / krok) * krok;
+    const l = []; for (let i=0;i<200;i++) l.push({ openInterest: String(5e6 + i*1e4), timestamp: String(t0 - i*krok) });
+    return ok({retCode:0, result:{list:l, nextPageCursor:''}});
+  }
   // Prehled uctu (checkpoint 7). window.__bezPenezenky simuluje klic bez
   // opravneni Wallet — Bybit na nej odpovida chybou, ne prazdnym seznamem.
   if (u.includes('/v5/account/wallet-balance')) {

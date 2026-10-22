@@ -34,6 +34,7 @@ export const BURZY = {
       funding: true,           // sazba a příští stržení
       fundingHistorie: true,   // zaplacený funding za dobu držení
       kontrolaJenCteni: true,  // umí ověřit, že klíč je jen pro čtení
+      openInterest: true,      // historie OI pro panel v grafu (v0.66.0)
     },
     regiony: {
       global: { nazev: 'Global', api: 'https://api.bybit.com' },
@@ -58,6 +59,7 @@ export const BURZY = {
       funding: true,             // sazba, interval a příští stržení (v0.59.8)
       fundingHistorie: true,     // zaplacený funding z deníku příjmů (FUNDING_FEE)
       kontrolaJenCteni: true,
+      openInterest: true,        // openInterestHist, jen 30 dní zpátky
     },
     regiony: {
       global: { nazev: 'Global', api: 'https://fapi.binance.com' },
@@ -93,6 +95,7 @@ export const BURZY = {
       funding: true,           // každou hodinu
       fundingHistorie: true,   // zaplacené od otevření dává burza sama
       kontrolaJenCteni: true,  // adresa nic nepodepisuje
+      openInterest: false,     // burza historii OI nedává (jen aktuální hodnotu)
     },
     regiony: {
       global: { nazev: 'Global', api: 'https://api.hyperliquid.xyz' },
@@ -110,6 +113,7 @@ function verejna(id, nazev, vytvor, api) {
     schopnosti: {
       zivePozice: false, zivaCena: false, zivaSvicka: false, prehledUctu: false, plneni: false,
       historieObchodu: false, funding: false, fundingHistorie: false, kontrolaJenCteni: false,
+      openInterest: false,
     },
     regiony: { global: { nazev: 'Global', api } },
   };

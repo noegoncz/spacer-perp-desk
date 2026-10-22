@@ -661,6 +661,27 @@ export class BybitClient {
   }
 
   /**
+   * Open interest (v0.66.0) vzestupně: [{ time, oi }] v coinu. Bybit dává
+   * nejvýš 200 bodů na stránku, jdou se nejvýš tři stránky. `interval` je
+   * kód grafu; OI má nejjemněji 5 min.
+   */
+  async getOpenInterest(symbol, interval) {
+    const obdobi = { 1: '5min', 3: '5min', 5: '5min', 15: '15min', 30: '30min', 60: '1h', 120: '1h', 240: '4h' }[interval] || '1d';
+    const body = [];
+    let kurzor = '';
+    for (let strana = 0; strana < 3; strana += 1) {
+      const result = await this.publicGet('/v5/market/open-interest', {
+        category: 'linear', symbol, intervalTime: obdobi, limit: '200', ...(kurzor ? { cursor: kurzor } : {}),
+      });
+      const list = result?.list ?? [];
+      list.forEach((r) => body.push({ time: Number(r.timestamp), oi: num(r.openInterest) }));
+      kurzor = result?.nextPageCursor;
+      if (!kurzor || list.length < 200) break;
+    }
+    return body.filter((b) => b.oi > 0).sort((a, b) => a.time - b.time);
+  }
+
+  /**
    * Všechny linear USDT páry se základními čísly, seřazené podle obratu.
    * Veřejné, nepotřebuje klíče — seznam jde ukázat i před přihlášením.
    */

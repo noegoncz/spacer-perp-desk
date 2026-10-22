@@ -197,6 +197,13 @@ export const SCHEMATA = {
     prepinac('zobrazitPoc', true),
     podle(barva('barvaPoc', '#f0b90b'), 'zobrazitPoc'),
   ],
+
+  /* Open interest — data z burzy, žádný vstup výpočtu (chart.js registrovatOi). */
+  OI: [
+    { sekce: 'style' },
+    vyskaPanelu(),
+    barva('barvaOi', '#f0b90b'),
+  ],
 };
 
 /** Jen skutečná pole, bez oddělovačů sekcí. */

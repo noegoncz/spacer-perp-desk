@@ -1,9 +1,13 @@
 {
-  "verze": "0.65.2",
+  "verze": "0.66.0",
   "novinky": [
     {
-      "en": "The liquidation map now fades in smoothly when it loads.",
-      "cs": "Likvidační mapa se po načtení plynule objeví."
+      "en": "Open interest in the chart: add the OI indicator to see open positions on the perp over time (Bybit, Binance).",
+      "cs": "Open interest v grafu: indikátor OI ukáže, jak se mění otevřené pozice na perpu (Bybit, Binance)."
+    },
+    {
+      "en": "Funding on the position card now says who pays: longs or shorts.",
+      "cs": "Funding na kartě pozice říká, kdo platí: longy, nebo shorty."
     }
   ],
   "opravy": []
