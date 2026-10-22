@@ -26,9 +26,9 @@ import { najdiZdi, Sledovani, NASOBEK, NASOBEK_HL } from '../js/zdi-format.js';
 
 const MIN = 60000, HOD = 3600000;
 const MIN_OBRAT = +process.env.ZDI_MIN_OBRAT || 20e6;
-// Začínáme na 150 (server ARM, služba má strop CPU 60 % a dělí se s mapou
-// likvidací); lokálně 233 trhů = ~24 % jádra, 185 MB. Zvednout podle `cpu`.
-const MAX_TRHU = +process.env.ZDI_MAX || 150;
+// Server 2026-10-22: 150 trhů = 27 % CPU celé služby (strop 60 %), 280 MB
+// (strop 900 MB) → 250. Kontrola: GET /api/zdi?stav=1.
+const MAX_TRHU = +process.env.ZDI_MAX || 250;
 const MAX_ZADOSTI = 100;
 const NEDAVNE = 90 * MIN;          // hotové zdi v řádku „teď“ (do dávky historie)
 const OREZ = 0.15;                 // úrovně dál než ±15 % od středu se zahodí

@@ -3409,8 +3409,8 @@ HL žebříček + stream trades (adresy) ─▶ server/likvidace.mjs (Hetzner)
 
 Přání uživatele (snímek nástroje z Discordu: „velká nákupní zeď“, jak
 dlouho stojí, teď / min / max). Rozhodnutí: Binance + Bybit + Hyperliquid,
-**trhy s obratem ≥ 20 M USD / 24 h** (strop `ZDI_MAX`, začátek **150**
-kvůli CPU serveru, cíl ~250) + trhy, jejichž graf někdo otevřel
+**trhy s obratem ≥ 20 M USD / 24 h** (strop `ZDI_MAX` **250**; server se
+150 trhy: 27 % CPU, 280 MB — `GET /api/zdi?stav=1`) + trhy, jejichž graf někdo otevřel
 (7 dní od posledního otevření, `zdi_zadosti`).
 
 - `server/zdi.mjs` běží **uvnitř služby likvidační mapy** (likvidace.mjs
