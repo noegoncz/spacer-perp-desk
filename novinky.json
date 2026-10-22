@@ -1,17 +1,17 @@
 {
-  "verze": "0.70.0",
+  "verze": "0.71.0",
   "novinky": [
     {
-      "en": "Journal → Calendar: every day of the month in green or red by your PnL, with the number of trades. Tap a day to see its trades.",
-      "cs": "Deník → Kalendář: každý den v měsíci zeleně nebo červeně podle PnL, s počtem obchodů. Klepni na den a uvidíš jeho obchody."
+      "en": "Liquidation map: a slider in the layers menu (eye) hides small liquidations so the big clusters stand out.",
+      "cs": "Likvidační mapa: posuvník v nabídce vrstev (oko) schová malé likvidace, ať vyniknou velké shluky."
+    },
+    {
+      "en": "Journal → Calendar: every day of the month in green or red by your PnL. Tap a day to see its trades.",
+      "cs": "Deník → Kalendář: každý den v měsíci zeleně nebo červeně podle PnL. Klepni na den a uvidíš jeho obchody."
     },
     {
       "en": "Review shows MFE and MAE, and lets you mark mistakes and how you felt. Edge tells you which mistake costs you the most.",
       "cs": "Review ukáže MFE a MAE a umožní označit chyby a jak ses cítil. Edge řekne, která chyba tě stojí nejvíc."
-    },
-    {
-      "en": "Trades: filters, a table view and a summary of what you filtered. Plan window with setups, signals, confluence and built-in guides.",
-      "cs": "Trades: filtry, tabulka a souhrn vybraných obchodů. Okno Plán se setupy, signály, confluence a nápovědou."
     }
   ],
   "opravy": []

@@ -2683,6 +2683,7 @@ function vrstvyProGraf() {
   if (!chart) return;
   const ulozene = { kresby: true, alarmy: true, indikatory: true, obchod: true, likvidace: true, ...store.loadLayers() };
   chart.setLayers(prohlizenyObchod ? { ...ulozene, alarmy: false } : ulozene);
+  chart.setLiquidationFilter(filtrMapy());
   oznacVrstvy();
 }
 
@@ -2724,6 +2725,7 @@ function otevriVrstvy() {
       const nove = !chart.getLayers()[klic];
       nastavVrstvy({ [klic]: nove });
       radek.setAttribute('aria-pressed', String(nove));
+      if (klic === 'likvidace') { const r = el('liqFilterRow'); if (r) r.hidden = !nove; }
       popisVsechVrstev();
     });
     return radek;
@@ -2761,10 +2763,56 @@ function otevriVrstvy() {
     if (smazKresby()) zavriNabidky();
   });
 
-  el('layersBody').replaceChildren(...radky, jednotka, smazat);
+  el('layersBody').replaceChildren(...radky, posuvnikMapy(), jednotka, smazat);
   popisVsechVrstev();
   otevriNabidku('sheetLayers');
 }
+
+/*
+ * Filtr šumu likvidační mapy (v0.71.0, přání uživatele): posuvník 0–50 %
+ * největšího viditelného pruhu; menší pruhy se nekreslí. Relativně, ne
+ * v USD — BTC má pruhy po stovkách milionů, malý coin po desítkách tisíc.
+ * Platí pro všechny grafy (`perpdesk.liqFilter`), popisek ukáže práh v USD
+ * na otevřeném grafu.
+ */
+function posuvnikMapy() {
+  const radek = document.createElement('div');
+  radek.className = 'nabidka-radek nabidka-posuvnik';
+  radek.id = 'liqFilterRow';
+  const text = document.createElement('span');
+  const vstup = document.createElement('input');
+  vstup.type = 'range';
+  vstup.id = 'liqFilter';
+  // Stupně jemnější na začátku: už 10 % schová většinu drobných pruhů.
+  const STUPNE = [0, 2, 5, 10, 15, 20, 30, 50];
+  vstup.min = '0';
+  vstup.max = String(STUPNE.length - 1);
+  vstup.step = '1';
+  const ted = Math.round(filtrMapy() * 100);
+  vstup.value = String(Math.max(0, STUPNE.findIndex((x) => x >= ted)));
+  vstup.setAttribute('aria-label', t('layers.liqFilter'));
+  const popis = () => {
+    const pct = STUPNE[Number(vstup.value)] || 0;
+    const prah = chart?.getLiquidationThreshold?.() || 0;
+    const usd = prah >= 1e6 ? `${(prah / 1e6).toFixed(1)} M` : `${Math.round(prah / 1e3)} k`;
+    text.replaceChildren(document.createTextNode(t('layers.liqFilter')));
+    const maly = document.createElement('small');
+    maly.textContent = pct ? t('layers.liqFilterOn', { pct, usd }) : t('layers.liqFilterOff');
+    text.append(maly);
+  };
+  vstup.addEventListener('input', () => {
+    const podil = (STUPNE[Number(vstup.value)] || 0) / 100;
+    store.saveJson('perpdesk.liqFilter', podil);
+    chart?.setLiquidationFilter(podil);
+    requestAnimationFrame(popis);
+  });
+  popis();
+  radek.append(text, vstup);
+  radek.hidden = !chart?.getLayers().likvidace;
+  return radek;
+}
+
+const filtrMapy = () => Math.max(0, Math.min(0.5, Number(store.loadJson('perpdesk.liqFilter', 0)) || 0));
 
 function popisVsechVrstev() {
   const vse = Object.values(chart?.getLayers() || {}).every(Boolean);

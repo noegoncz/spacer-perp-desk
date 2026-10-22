@@ -954,6 +954,11 @@ let likvidace = null;   // { pasy: [{ od, do, cena, vyska, usd, long }], popis }
 // Plynulý náběh mapy při prvním objevení na grafu (přání uživatele — dřív
 // po načtení „blikla“). Obnova po minutě náběh nespouští.
 const NABEH_MAPY = 450;
+// Filtr šumu (v0.71.0, přání uživatele): pruhy menší než tento podíl
+// největšího viditelného se nekreslí. `prahMapyUsd` = poslední práh v USD
+// (pro popisek u posuvníku).
+let filtrMapy = 0;
+let prahMapyUsd = 0;
 let nabehMapyOd = 0;
 const pruhlednostNabehu = () => {
   const t = (performance.now() - nabehMapyOd) / NABEH_MAPY;
@@ -985,11 +990,14 @@ function registrovatLikvidace() {
       let max = 0;
       viditelne.forEach((p) => { if (p.usd > max) max = p.usd; });
       if (!max) return true;
+      prahMapyUsd = max * filtrMapy;
       const pravy = bounding.width;
       ctx.save();
       ctx.globalAlpha = pruhlednostNabehu();
       globalThis.__nabehMapy?.push(ctx.globalAlpha);   // pro test
+      let nakresleno = 0;
       for (const p of viditelne) {
+        if (p.usd < prahMapyUsd) continue;
         const a = px(p.od, p.cena + p.vyska / 2);
         const b = px(p.do, p.cena - p.vyska / 2);
         if (!a || !b || !Number.isFinite(a.y) || !Number.isFinite(b.y)) continue;
@@ -1003,7 +1011,9 @@ function registrovatLikvidace() {
         ctx.fillStyle = `rgba(${rgb.join(',')},${(0.18 + 0.62 * sila).toFixed(2)})`;
         const y = Math.min(a.y, b.y);
         ctx.fillRect(x1, y, x2 - x1, Math.max(2, Math.abs(b.y - a.y)));
+        nakresleno += 1;
       }
+      globalThis.__pruhyMapy = nakresleno;   // pro test
       ctx.font = '11px -apple-system, "Segoe UI", Roboto, sans-serif';
       ctx.fillStyle = 'rgba(139,155,176,0.9)';
       ctx.textBaseline = 'top';
@@ -1020,7 +1030,7 @@ function registrovatLikvidace() {
       let pod = null;
       ziva.forEach((p) => {
         const usd = p.posledni || p.usd;
-        if (usd < maxZiva * 0.15) return;
+        if (usd < maxZiva * Math.max(0.15, filtrMapy)) return;
         const b = px(posledni, p.cena);
         if (!b || !Number.isFinite(b.y)) return;
         if (b.y < 0 && (!nad || p.cena < nad.cena)) nad = { ...p, usd };
@@ -3182,6 +3192,15 @@ export function createPriceChart(container, layer, handlers = {}) {
       // Jiné calcParams = knihovna indikátor přepočítá.
       try { chart.overrideIndicator({ name: 'OI', calcParams: [verzeOi] }); } catch { /* není v grafu */ }
     },
+
+    /** Filtr šumu mapy: 0–1 = podíl největšího pruhu, menší se skryjí. */
+    setLiquidationFilter(podil) {
+      filtrMapy = Math.max(0, Math.min(0.9, Number(podil) || 0));
+      try { chart.overrideIndicator({ name: 'LIQMAP', extendData: performance.now() }); } catch { /* mapa není v grafu */ }
+    },
+
+    /** Práh filtru v USD při posledním vykreslení (0 = bez filtru / bez mapy). */
+    getLiquidationThreshold: () => prahMapyUsd,
 
     /** Likvidační mapa: `{ pasy, popis }`, null = žádná (jiný pár, bez dat). */
     setLiquidations(data) {

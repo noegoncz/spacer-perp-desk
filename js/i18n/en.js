@@ -889,6 +889,9 @@ export const en = {
   'journal.edge.net1': 'Net PnL · 1 trade',
   'layers.liq': 'Liquidations (Hyperliquid)',
   'layers.liqNote': 'Real positions on Hyperliquid, collected since 21 Oct 2026 — history fills in over time.',
+  "layers.liqFilter": "Hide small liquidations",
+  "layers.liqFilterOff": "Off — showing everything",
+  "layers.liqFilterOn": "Below {pct} % of the largest (< {usd} on this chart)",
   'liq.label': 'Hyperliquid liquidations · {min} min ago',
   'liq.labelOther': 'Hyperliquid liquidations (shifted to this price) · {min} min ago',
 };

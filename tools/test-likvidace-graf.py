@@ -107,6 +107,19 @@ over(mapa() == 0, 'vypnutím vrstvy mapa zmizí')
 ev("[...document.querySelectorAll('.nabidka-radek')].find((r) => /Liquidations/.test(r.textContent)).click()")
 time.sleep(3)
 over(mapa() == 1, 'zapnutím se vrátí')
+print('2b) filtr šumu (posuvník)')
+pred = ev("window.__pruhyMapy") or 0
+ev("(() => { const i = document.getElementById('liqFilter'); i.value = '6'; i.dispatchEvent(new Event('input')); })()")
+time.sleep(0.8)
+po = ev("window.__pruhyMapy") or 0
+print(f'   pruhů: {pred} → {po}')
+over(pred > 0 and po < pred, f'posuvník na 30 % (6. stupeň) schová malé pruhy ({pred} → {po})')
+popis = ev("document.getElementById('liqFilterRow').textContent") or ''
+over('30 %' in popis and '<' in popis, f'popisek s prahem ({popis})')
+over(ev("localStorage.getItem('perpdesk.liqFilter')") == '0.3', 'filtr se uložil')
+ev("(() => { const i = document.getElementById('liqFilter'); i.value = '0'; i.dispatchEvent(new Event('input')); })()")
+time.sleep(0.8)
+over((ev("window.__pruhyMapy") or 0) == pred, 'na 0 % zase všechny pruhy')
 ev("history.back()")
 time.sleep(1.5)
 

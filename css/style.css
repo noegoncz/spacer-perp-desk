@@ -3275,3 +3275,7 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 .kal-obchody { font-size: 0.6rem; color: var(--text-dim); line-height: 1; }
 @media (min-width: 560px) { .kal-castka { font-size: 0.82rem; } .kal-cislo { font-size: 0.75rem; } .kal-bunka { aspect-ratio: 1.35 / 1; } }
 .kal-pozn { margin: 0; }
+
+/* filtr šumu likvidační mapy v nabídce vrstev (v0.71.0) */
+.nabidka-posuvnik { flex-direction: column; align-items: stretch; gap: 6px; cursor: default; }
+.nabidka-posuvnik input[type=range] { width: 100%; accent-color: #f0b90b; min-height: 28px; }

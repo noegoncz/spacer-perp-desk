@@ -884,6 +884,9 @@ export const cs = {
   'journal.edge.net1': 'Čistý PnL · 1 obchod',
   'layers.liq': 'Likvidace (Hyperliquid)',
   'layers.liqNote': 'Skutečné pozice na Hyperliquidu, sbírané od 21. 10. 2026 — historie se postupně doplňuje.',
+  "layers.liqFilter": "Skrýt malé likvidace",
+  "layers.liqFilterOff": "Vypnuto — vidíš všechno",
+  "layers.liqFilterOn": "Pod {pct} % největší (< {usd} na tomto grafu)",
   'liq.label': 'Likvidace Hyperliquid · před {min} min',
   'liq.labelOther': 'Likvidace Hyperliquid (posunuté na tuto cenu) · před {min} min',
 };

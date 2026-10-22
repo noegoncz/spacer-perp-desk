@@ -3397,6 +3397,13 @@ HL žebříček + stream trades (adresy) ─▶ server/likvidace.mjs (Hetzner)
   **v0.65.2:** mapa při prvním objevení na grafu plynule naběhne (450 ms,
   `pruhlednostNabehu`, překreslení přes `overrideIndicator`); obnova po
   minutě náběh nespouští.
+  **v0.71.0 — filtr šumu (přání uživatele):** posuvník v nabídce oka pod
+  vrstvou Likvidace (`posuvnikMapy`, stupně 0/2/5/10/15/20/30/50 % největšího
+  viditelného pruhu; relativně, ne v USD — BTC a malé coiny se liší o řády).
+  Menší pruhy se nekreslí (`setLiquidationFilter`), popisek ukáže práh v USD
+  na otevřeném grafu (`getLiquidationThreshold`). `perpdesk.liqFilter`,
+  platí pro všechny grafy. Test: bod 2b `test-likvidace-graf.py`
+  (`__pruhyMapy`; BTC naostro 778 → 15 pruhů na 30 %).
 
 ## Audit 2026-09-28: soukromí, disclaimer, klíče
 
