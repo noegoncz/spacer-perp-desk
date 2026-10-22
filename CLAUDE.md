@@ -3405,6 +3405,42 @@ HL žebříček + stream trades (adresy) ─▶ server/likvidace.mjs (Hetzner)
   platí pro všechny grafy. Test: bod 2b `test-likvidace-graf.py`
   (`__pruhyMapy`; BTC naostro 778 → 15 pruhů na 30 %).
 
+## Zdi v knize příkazů — sběr na serveru (2026-10-22, v0.72.0)
+
+Přání uživatele (snímek nástroje z Discordu: „velká nákupní zeď“, jak
+dlouho stojí, teď / min / max). Rozhodnutí: Binance + Bybit + Hyperliquid,
+**trhy s obratem ≥ 20 M USD / 24 h** (strop `ZDI_MAX`, začátek **150**
+kvůli CPU serveru, cíl ~250) + trhy, jejichž graf někdo otevřel
+(7 dní od posledního otevření, `zdi_zadosti`).
+
+- `server/zdi.mjs` běží **uvnitř služby likvidační mapy** (likvidace.mjs
+  ho spouští; nová služba = nový server). ⚠ Aktualizace restartuje službu
+  jen při změně likvidace.mjs / likvidace-format.js → **při změně zdi.mjs
+  nebo js/zdi-format.js zvedni `VERZE_ZDI` v likvidace.mjs**
+  (cloud-init už má oba soubory v seznamu, ale platí až pro nový server).
+- Knihy: Binance snímek `/fapi/v1/depth` 1000 úrovní (váha 20, jeden za
+  1,5 s) + proud `@depth@500ms` na ⚠ **`wss://fstream.binance.com/public/ws`**
+  (kniha je „public“, ceny „market“; synchronizace přes `U/u/pu`);
+  Bybit `orderbook.1000`; Hyperliquid `l2Book` nSigFigs 3 (20 úrovní).
+  Úrovně dál než ±15 % se zahazují.
+- `js/zdi-format.js` (sdílený): zeď = pásmo ~0,1 % (krok jako likvidace,
+  drží hodinu) ≥ 5× medián neprázdných pásem strany (Hyperliquid 2,5×)
+  a ≥ 25 k USD, do ±10 %, nejvýš 8 na stranu. `Sledovani`: od kdy, min,
+  max; výpadek do 2 min zeď neuzavře; ukládá se zeď stojící ≥ 2 min.
+- **Stáří zdi jde znát jen od začátku sledování** (burzy čas příkazů
+  nedávají; Hyperliquid ano u známých účtů — zatím nevyužito).
+- D1 (`LIQ`, migrace `0002_zdi.sql`): `zdi_stav` 1 řádek / min (živé +
+  hotové za 90 min, ~140 kB), `zdi_dny` trh × den, dávka jednou za hodinu,
+  30 dní; ~2 zápisy / min. API: `POST/GET /api/watcher/zdi` (token; GET
+  vrací žádosti a stav vč. `cpu`, `pamet`), veřejně
+  `GET /api/zdi?k=binance:BTCUSDT&od&do` (cache 30 s; nesledovaný trh
+  zapíše žádost a vrátí `sleduje: false`).
+- Měřeno lokálně: 233 trhů = ~24 % jádra, 185 MB, 0 ztrát synchronizace.
+- Test: `tools/test-zdi-server.py <node>` (výpočet + naostro, ZKOUSKA).
+- **Zbývá:** vrstva v grafu s plynulým náběhem a detailem klepnutím (od
+  kdy, teď / min / max), stejný detail u likvidačních pruhů; přepínač
+  „všechny burzy“ (přepočet poměrem cen); zvednout strop podle `cpu`.
+
 ## Audit 2026-09-28: soukromí, disclaimer, klíče
 
 Uživatel nechal projít zásady, disclaimer, podmínky, práci s klíči

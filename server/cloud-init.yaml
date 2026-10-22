@@ -82,7 +82,7 @@ write_files:
       cd /opt/perpyx
       runuser -u perpyx -- git fetch -q origin main
       HLIDAC=$(runuser -u perpyx -- git diff --name-only HEAD origin/main -- server/hlidac.mjs js/alarmy-logika.js | wc -l)
-      MAPA=$(runuser -u perpyx -- git diff --name-only HEAD origin/main -- server/likvidace.mjs js/likvidace-format.js | wc -l)
+      MAPA=$(runuser -u perpyx -- git diff --name-only HEAD origin/main -- server/likvidace.mjs js/likvidace-format.js server/zdi.mjs js/zdi-format.js | wc -l)
       runuser -u perpyx -- git reset -q --hard origin/main
       if [ "$HLIDAC" -gt 0 ]; then systemctl restart perpyx-hlidac; fi
       if [ "$MAPA" -gt 0 ]; then systemctl restart perpyx-likvidace; fi

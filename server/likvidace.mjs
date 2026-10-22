@@ -26,6 +26,12 @@
 import { readFileSync, writeFileSync, mkdirSync, renameSync, appendFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { krokCeny, snimek, rozdil, radek } from '../js/likvidace-format.js';
+import { spustZdi } from './zdi.mjs';
+
+// Zdi v knize příkazů běží v této službě (server/zdi.mjs). Aktualizace
+// restartuje službu jen při změně tohoto souboru → při změně zdi.mjs nebo
+// js/zdi-format.js zvedni tuto verzi.
+const VERZE_ZDI = 1;
 
 const API = (process.env.API || 'https://perpyx.com').replace(/\/$/, '');
 const TOKEN = process.env.WATCHER_TOKEN || '';
@@ -411,6 +417,10 @@ setInterval(obnovTrhy, 30000);
 setInterval(naplnFrontu, 2000);
 setInterval(ulozAdresy, 10 * MIN);
 for (let i = 0; i < SOUBEH; i += 1) pracovnik();
+if (process.env.ZDI !== '0') {
+  log(`zdi: start (verze ${VERZE_ZDI})`);
+  spustZdi({ log, API, TOKEN, ZKOUSKA, STAV, limitTrhu: +process.env.ZDI_LIMIT || Infinity });
+}
 
 // Snímek 5 s po celé minutě (mark ceny jsou nejvýš 30 s staré).
 (function planuj() {
