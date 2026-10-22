@@ -74,7 +74,7 @@ mapa = lambda: ev("window.__graf.getIndicators({ name: 'LIQMAP' }).length") or 0
 print('1) BTC na Hyperliquidu (1m)')
 ev("document.querySelector('.tab[data-tab=watchlist]').click()")
 time.sleep(3)
-ev("window.__casy = {}; window.__casy.klik = performance.now()")
+ev("window.__casy = {}; window.__casy.klik = performance.now(); window.__nabehMapy = []")
 ev("document.querySelector('#watchList .tile[data-klic=\"hyperliquid:BTCUSDC\"]').click()")
 for _ in range(40):
     time.sleep(0.25)
@@ -88,6 +88,10 @@ print('   časy (ms od klepnutí):', {k: round(v - casy.get('klik', 0)) for k, v
 over(casy.get('svice') and casy.get('mapa') and casy['mapa'] >= casy['svice'] - 300,
      'mapa se začne stahovat až po svíčkách')
 over(mapa() == 1, 'vrstva LIQMAP v grafu')
+time.sleep(0.8)
+nabeh = ev("window.__nabehMapy") or []
+over(len(nabeh) >= 5 and nabeh[0] < 0.6 and nabeh[-1] == 1 and nabeh == sorted(nabeh),
+     f'mapa naběhne plynule ({len(nabeh)} snímků, {[round(x, 2) for x in nabeh[:4]]}… {nabeh[-1:] })')
 pocet = ev("(() => { const d = window.__graf.getIndicators({ name: 'LIQMAP' })[0]; return d ? 1 : 0; })()")
 time.sleep(1)
 snimek('liq-hl-1m.png')

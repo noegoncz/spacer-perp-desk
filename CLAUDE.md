@@ -3318,6 +3318,9 @@ HL žebříček + stream trades (adresy) ─▶ server/likvidace.mjs (Hetzner)
   (`nactiSvice` → `nactiMapu`), obnova po minutě, zavření grafu / jiný
   pár mapu hned sundá (`zastavMapu`). ⚠ `mock-bybit.js` vrací mapu
   prázdnou, naostro jen s `__mapaNaostro`. Test: `tools/test-likvidace-graf.py`.
+  **v0.65.2:** mapa při prvním objevení na grafu plynule naběhne (450 ms,
+  `pruhlednostNabehu`, překreslení přes `overrideIndicator`); obnova po
+  minutě náběh nespouští.
 
 ## Audit 2026-09-28: soukromí, disclaimer, klíče
 

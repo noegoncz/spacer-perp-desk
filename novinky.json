@@ -1,9 +1,9 @@
 {
-  "verze": "0.65.1",
+  "verze": "0.65.2",
   "novinky": [
     {
-      "en": "Notes in the chart work: place a note and type your text right away; tap a note and the pencil to edit it.",
-      "cs": "Poznámky v grafu fungují: polož poznámku a rovnou napiš text; klepnutím na poznámku a na tužku ho upravíš."
+      "en": "The liquidation map now fades in smoothly when it loads.",
+      "cs": "Likvidační mapa se po načtení plynule objeví."
     }
   ],
   "opravy": []

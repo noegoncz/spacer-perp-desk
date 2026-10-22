@@ -948,6 +948,14 @@ let pnlInfo = null;
  * tyrkysová, hodně = žlutá.
  */
 let likvidace = null;   // { pasy: [{ od, do, cena, vyska, usd, long }], popis }
+// Plynulý náběh mapy při prvním objevení na grafu (přání uživatele — dřív
+// po načtení „blikla“). Obnova po minutě náběh nespouští.
+const NABEH_MAPY = 450;
+let nabehMapyOd = 0;
+const pruhlednostNabehu = () => {
+  const t = (performance.now() - nabehMapyOd) / NABEH_MAPY;
+  return t >= 1 ? 1 : 1 - (1 - t) ** 3;
+};
 
 function registrovatLikvidace() {
   K().registerIndicator({
@@ -976,6 +984,8 @@ function registrovatLikvidace() {
       if (!max) return true;
       const pravy = bounding.width;
       ctx.save();
+      ctx.globalAlpha = pruhlednostNabehu();
+      globalThis.__nabehMapy?.push(ctx.globalAlpha);   // pro test
       for (const p of viditelne) {
         const a = px(p.od, p.cena + p.vyska / 2);
         const b = px(p.do, p.cena - p.vyska / 2);
@@ -3114,8 +3124,19 @@ export function createPriceChart(container, layer, handlers = {}) {
 
     /** Likvidační mapa: `{ pasy, popis }`, null = žádná (jiný pár, bez dat). */
     setLiquidations(data) {
+      const nova = !likvidace?.pasy?.length && data?.pasy?.length;
       likvidace = data;
       obnovMapu();
+      if (nova && mapaZapnuta) {
+        nabehMapyOd = performance.now();
+        const snimek = () => {
+          if (!mapaZapnuta) return;
+          // Překreslí jen indikátor (calc je prázdný, levné).
+          chart.overrideIndicator({ name: 'LIQMAP', extendData: performance.now() });
+          if (pruhlednostNabehu() < 1) requestAnimationFrame(snimek);
+        };
+        requestAnimationFrame(snimek);
+      }
     },
 
     /** `zmena` = { kresby?, alarmy?, indikatory?, obchod? } — true je vidět. */
