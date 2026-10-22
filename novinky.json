@@ -1,13 +1,17 @@
 {
-  "verze": "0.66.0",
+  "verze": "0.67.0",
   "novinky": [
     {
-      "en": "Open interest in the chart: add the OI indicator to see open positions on the perp over time (Bybit, Binance).",
-      "cs": "Open interest v grafu: indikátor OI ukáže, jak se mění otevřené pozice na perpu (Bybit, Binance)."
+      "en": "Trade journal: one Plan window with setup, signals and confluence. Every setup and signal has a sketch and a short explanation — tap ⓘ or hold the tile.",
+      "cs": "Deník: jedno okno Plán se setupem, signály a confluence. Každý setup a signál má kresbu a krátké vysvětlení — klepni na ⓘ nebo dlaždici podrž."
     },
     {
-      "en": "Funding on the position card now says who pays: longs or shorts.",
-      "cs": "Funding na kartě pozice říká, kdo platí: longy, nebo shorty."
+      "en": "Plan and Review sit side by side on every trade, with a tick when filled in. Add your own setups and signals; the ones you use most come first.",
+      "cs": "Plán a Review jsou u každého obchodu vedle sebe, s fajfkou po vyplnění. Můžeš přidat vlastní setupy a signály; nejpoužívanější jsou napřed."
+    },
+    {
+      "en": "Edge now compares trades with 3+ signals against the rest, and shows how trades without a setup do.",
+      "cs": "Edge porovná obchody se 3+ signály s ostatními a ukáže, jak dopadají obchody bez setupu."
     }
   ],
   "opravy": []

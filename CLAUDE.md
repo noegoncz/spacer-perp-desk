@@ -608,6 +608,41 @@ statistiky a shrnutí v lidské řeči — „co mi to o mně jako traderovi ř�
     (Node na výpočty + aplikace se skutečnými dotyky).
   - **Zbývá (fáze 2):** filtry a tabulka v Trades, kalendář, detail obchodu
     s MFE/MAE (uživatel: ano), chyby a emoce ve zhodnocení (uživatel: ano).
+- **v0.67.0 — Plan / Review, setupy a signály s nápovědou** (náhled
+  schválený uživatelem: https://claude.ai/artifact/NNshdXrvA59diaWEU45cFa):
+  - **Pojmy (debata s uživatelem, ověřeno na zdrojích — Bellafiore,
+    Al Brooks):** **setup** = jaký obchod to je (jeden, **nepovinný**,
+    „No setup"), **signály** = nezávislé důvody (kolik chceš),
+    **confluence** = jen číslo = počet signálů. Setupy: breakout, retest,
+    range, pullback, reversal, sweep (liquidity sweep). Signály ve skupinách
+    s barvou (`SKUPINY` v `js/denik-katalog.js`): úrovně (sr, trendline,
+    fib), trend (htf, ma), momentum (candle, volume, rsiDiv), trh (funding,
+    orderBlock), událost (news). Kresby (SVG) v katalogu, texty
+    `journal.setup|sig.<id>`, `…Short`, `…Desc`, `…When` v i18n.
+  - **Model verze 2** (`denik.js`): položky s id, vlastní `u…` s názvem,
+    skupinou a větou nápovědy; smazaná vlastní zůstává se `smazano`
+    (staré poznámky mají název), smazaná výchozí jde vrátit v Edit.
+    Poznámka nese `vstup.setup` (id) a `vstup.signaly` ([id]).
+    Převod z verze 1 (přeložené názvy, setup Divergence/News → signál)
+    `prevedVerzi1`. Řazení dlaždic podle použití za 90 dní, jen při
+    otevření okna (pod prstem nic neuskočí).
+  - **Jedno okno** `denikUi.otevriDenik` s přepínačem **Plan | Review**
+    (Review jen u zavřeného obchodu), rozepsané se při přepínání drží,
+    Uložit zapíše změněné části. Dlaždice: 3 v řadě, od 560 px 6;
+    klepnutí = vybrat, **ⓘ nebo podržení 0,5 s = detail** (vrstva
+    `.denik-vrstva` v body), „+ Own" = okno vlastní položky.
+  - **Plán napsaný / změněný po zavření** dostane `poZavreni` → štítek
+    „edited after close" (rozhodnutí uživatele — hindsight bias).
+  - Karty: `denikUi.tlacitka` — „＋ Plan" / „✓ Plan", v Journalu i Review
+    (zašedlé u běžícího obchodu, žluté = čeká; dřív štítek „Review").
+  - Nastavení: minimum signálů (`nastaveni.minSignalu`, výchozí vyp.) →
+    v okně „Below your rule". Edge: věty `confN` (3+ signály vs. méně,
+    od 3 obchodů v obou) a `noSetup(R)`.
+  - Testy: `test-denik.py` (přepsaný, skutečné dotyky, převod verze 1),
+    `test-denik-edge.py` (A2: confluence, bez setupu).
+  - **Další krok:** tabulka a filtry v Trades (setup, signál, confluence
+    1/2/3+, výsledek, plán…), pak detail s MFE/MAE + chyby a emoce, pak
+    Calendar.
 
 ### Ověření Binance uživatelem (2026-10-18) a opravy v0.61.1
 

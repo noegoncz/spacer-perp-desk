@@ -70,6 +70,33 @@ else:
     over(plan and abs(plan['data']['pnl'] + 25) < 1e-9 and abs(plan['data']['r'] + 1) < 1e-9,
          'porušený plán: −25 USD, −1 R (R jen z obchodu se SL)')
 
+print('A2) confluence a obchody bez setupu (v0.67.0)')
+skript = r"""
+import { souhrn, vety } from './js/denik-statistiky.js';
+const p = (setup, signaly, riziko) => ({ vstup: { setup, signaly, riziko } });
+const o = [
+  { pnl: 20, zavreno: 1, poznamka: p('retest', ['sr', 'htf', 'fib'], 10) },
+  { pnl: 10, zavreno: 2, poznamka: p('retest', ['sr', 'htf', 'fib', 'volume'], 10) },
+  { pnl: -5, zavreno: 3, poznamka: p('range', ['sr', 'htf', 'fib'], 10) },
+  { pnl: -10, zavreno: 4, poznamka: p(null, ['sr'], 10) },
+  { pnl: -10, zavreno: 5, poznamka: p(null, [], 10) },
+  { pnl: 5, zavreno: 6, poznamka: p(null, ['news'], 10) },
+];
+const s = souhrn(o);
+console.log(JSON.stringify({ c: s.confluence, b: s.bezSetupu, v: vety(s).map((x) => x.klic) }));
+"""
+r = subprocess.run([NODE, '--input-type=module', '-e', skript], cwd=KOREN, capture_output=True, text=True, encoding='utf-8')
+if r.returncode:
+    print(r.stderr[:500])
+    over(False, 'Node spustil výpočty confluence')
+else:
+    d = json.loads(r.stdout)
+    print('   ', d)
+    over(d['c']['vysoka']['pocet'] == 3 and abs(d['c']['vysoka']['uspesnost'] - 2 / 3) < 1e-9, '3+ signály: 3 obchody, úspěšnost 67 %')
+    over(d['c']['nizka']['pocet'] == 3 and abs(d['c']['nizka']['uspesnost'] - 1 / 3) < 1e-9, 'méně signálů: 3 obchody, 33 %')
+    over(d['b']['pocet'] == 3 and abs(d['b']['prumerR'] + 0.5) < 1e-9, 'bez setupu: 3 obchody, průměr −0.5 R')
+    over('confN' in d['v'] and 'noSetupR' in d['v'], f'věty confluence a bez setupu ({d["v"]})')
+
 print('B) aplikace')
 mock = open(os.path.join(KOREN, 'tools', 'mock-bybit.js'), encoding='utf-8').read()
 p = Prohlizec()

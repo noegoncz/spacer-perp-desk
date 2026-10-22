@@ -10,6 +10,19 @@
 
 /** Kolik obchodů musí setup mít, aby o něm padla věta. */
 export const MIN_OBCHODU_SETUPU = 3;
+/** Od kolika signálů je obchod „s vysokou confluence". */
+export const VYSOKA_CONFLUENCE = 3;
+
+const skupinaStat = () => ({ pocet: 0, vyhranych: 0, pnl: 0, soucetR: 0, sR: 0 });
+function pridej(sk, pnl, r) {
+  sk.pocet += 1;
+  if (pnl > 0) sk.vyhranych += 1;
+  sk.pnl += pnl;
+  if (r !== null) { sk.soucetR += r; sk.sR += 1; }
+}
+const vystup = (sk) => (sk.pocet ? {
+  pocet: sk.pocet, uspesnost: sk.vyhranych / sk.pocet, pnl: sk.pnl, prumerR: sk.sR ? sk.soucetR / sk.sR : null,
+} : null);
 
 /**
  * obchody: [{ pnl, zavreno, poznamka }] — jen uzavřené, v období.
@@ -29,6 +42,9 @@ export function souhrn(obchody) {
   let porusenyPlanR = 0;
   let porusenych = 0;
   const setupy = new Map();
+  const confVysoka = skupinaStat();
+  const confNizka = skupinaStat();
+  const bezSetupu = skupinaStat();
   const krivka = [];
   let prubezne = 0;
 
@@ -51,6 +67,11 @@ export function souhrn(obchody) {
         porusenyPlanPnl += pnl;
         if (r !== null) porusenyPlanR += r;
       }
+    }
+    if (v) {
+      const n = v.signaly?.length || 0;
+      pridej(n >= VYSOKA_CONFLUENCE ? confVysoka : confNizka, pnl, r);
+      if (!v.setup) pridej(bezSetupu, pnl, r);
     }
     if (v?.setup) {
       const s = setupy.get(v.setup) || { nazev: v.setup, pocet: 0, vyhranych: 0, pnl: 0, soucetR: 0, sR: 0 };
@@ -80,6 +101,8 @@ export function souhrn(obchody) {
     bezZhodnoceni,
     krivka,
     setupy: statSetupu,
+    confluence: { vysoka: vystup(confVysoka), nizka: vystup(confNizka) },
+    bezSetupu: vystup(bezSetupu),
     porusenyPlan: porusenych ? { pocet: porusenych, pnl: porusenyPlanPnl, r: porusenyPlanR } : null,
   };
 }
@@ -104,6 +127,14 @@ export function vety(s) {
     .reduce((a, b) => (!a || (b.prumerR ?? b.pnl) < (a.prumerR ?? a.pnl) ? b : a), null);
   if (nejhorsi && nejhorsi !== nejlepsi && (nejhorsi.prumerR ?? nejhorsi.pnl) < 0) {
     vysledek.push({ klic: nejhorsi.prumerR !== null ? 'worstSetupR' : 'worstSetup', data: nejhorsi });
+  }
+  // Confluence: obchody s 3+ signály proti ostatním s plánem.
+  const { vysoka, nizka } = s.confluence || {};
+  if (vysoka?.pocet >= MIN_OBCHODU_SETUPU && nizka?.pocet >= MIN_OBCHODU_SETUPU) {
+    vysledek.push({ klic: 'confN', data: { n: VYSOKA_CONFLUENCE, vysoka, nizka } });
+  }
+  if (s.bezSetupu?.pocet >= MIN_OBCHODU_SETUPU) {
+    vysledek.push({ klic: s.bezSetupu.prumerR !== null ? 'noSetupR' : 'noSetup', data: s.bezSetupu });
   }
   if (s.porusenyPlan && s.porusenyPlan.pnl < 0) {
     vysledek.push({ klic: s.porusenyPlan.r < 0 ? 'planCostR' : 'planCost', data: s.porusenyPlan });

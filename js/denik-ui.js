@@ -1,7 +1,8 @@
 /*
- * Okna deníku obchodů (v0.61.0): poznámka při vstupu, poznámky během
- * obchodu, zhodnocení po zavření a krátký souhrn na kartách pozic
- * a v Historii. Model a úložiště jsou v denik.js.
+ * Okna deníku obchodů: jedno okno s částmi Plan (setup, signály,
+ * jistota, poznámky během obchodu) a Review (zhodnocení po zavření),
+ * tlačítka Plan / Review na kartách (v0.67.0). Model v denik.js,
+ * katalog setupů a signálů s kresbami v denik-katalog.js.
  *
  * Okno se staví při každém otevření znovu (jeden `.sheet` v body).
  * ⚠ Klepnutí v souhrnu na kartě nesmí probublat — karta by otevřela graf.
@@ -9,6 +10,7 @@
 import * as denik from './denik.js';
 import { t, getLocale } from './i18n.js';
 import { formatPrice, formatSize, formatUsd, formatSignedUsd } from './format.js';
+import { SKUPINY, SKUPINY_SIGNALU, svg } from './denik-katalog.js';
 
 let pozadi = null;
 let okno = null;
@@ -44,6 +46,7 @@ function pripravOkno() {
 }
 
 export function zavri() {
+  document.querySelectorAll('.denik-vrstva').forEach((x) => x.remove());
   if (!okno) return;
   okno.hidden = true;
   pozadi.hidden = true;
@@ -74,66 +77,6 @@ function skupina(nadpis, ...obsah) {
   const s = el('div', 'denik-skupina');
   s.append(el('div', 'denik-label', nadpis), ...obsah);
   return s;
-}
-
-/** Řada štítků. `vyber`: Set vybraných; `jeden` = jen jeden vybraný. */
-function stitky(polozky, vyber, jeden, seznam = null, prekresli = null) {
-  const radek = el('div', 'denik-chips');
-  const upravuji = Boolean(seznam && radek.dataset);
-  polozky.forEach((p) => {
-    const b = tlacitko(p, `chip${vyber.has(p) ? ' on' : ''}`, () => {
-      if (vyber.has(p)) vyber.delete(p);
-      else {
-        if (jeden) vyber.clear();
-        vyber.add(p);
-      }
-      radek.querySelectorAll('.chip[data-p]').forEach((x) => x.classList.toggle('on', vyber.has(x.dataset.p)));
-    });
-    b.dataset.p = p;
-    radek.append(b);
-  });
-  if (upravuji) {
-    // Úprava seznamu: ✕ u položek a pole pro novou.
-    const uprava = tlacitko(t('journal.edit'), 'chip pridat', () => {
-      const edit = !radek.classList.contains('uprava');
-      radek.classList.toggle('uprava', edit);
-      uprava.textContent = t(edit ? 'journal.done' : 'journal.edit');
-      radek.querySelectorAll('.chip[data-p]').forEach((x) => {
-        x.querySelector('.denik-smazat')?.remove();
-        if (edit) {
-          const sm = el('span', 'denik-smazat', '✕');
-          sm.addEventListener('click', (e) => {
-            e.stopPropagation();
-            denik.upravSeznam(seznam, x.dataset.p, false);
-            vyber.delete(x.dataset.p);
-            x.remove();
-          });
-          x.append(sm);
-        }
-      });
-      novy.hidden = !edit;
-    });
-    const novy = el('div', 'denik-novy');
-    novy.hidden = true;
-    const vstup = el('input', 'denik-pole');
-    vstup.type = 'text';
-    vstup.maxLength = 40;
-    vstup.placeholder = t('journal.newItemPh');
-    const pridat = tlacitko(t('journal.addItem'), 'secondary-btn', () => {
-      const text = vstup.value.trim();
-      if (!text) return;
-      denik.upravSeznam(seznam, text, true);
-      vyber.add(text);
-      prekresli?.();
-    });
-    vstup.addEventListener('keydown', (e) => { if (e.key === 'Enter') pridat.click(); });
-    novy.append(vstup, pridat);
-    radek.append(uprava);
-    const obal = el('div');
-    obal.append(radek, novy);
-    return obal;
-  }
-  return radek;
 }
 
 function cisla(hodnota, vybrana, nastav) {
@@ -193,183 +136,440 @@ export function drzeno(ms) {
 
 export const textR = (r) => (r === null || !Number.isFinite(r) ? '' : `${r >= 0 ? '+' : '−'}${Math.abs(r).toFixed(1)} R`);
 
-/* ---------- poznámka při vstupu (a během obchodu) ---------- */
+/* ---------- dlaždice setupů a signálů (v0.67.0) ---------- */
 
 /**
- * @param {object} o { klic, nazev, poznamka, automaticky, mena, obchodBezi, onUlozeno }
+ * Detail položky přes okno: velká kresba, popis, kdy platí, použití.
+ * Druhá vrstva nad oknem deníku (`.denik-vrstva`), klepnutí kamkoli zavře.
  */
-export function otevriVstup(o) {
-  const v = o.poznamka?.vstup || {};
-  const setup = new Set(v.setup ? [v.setup] : []);
-  const conf = new Set(v.confluence || []);
-  let jistota = v.jistota || null;
-  const text = textPole(v.text, t('journal.whyNowPh'));
-  const a = { ...(o.automaticky || {}), ...(v.auto || {}) };
-
-  const prekresli = () => otevriVstup({ ...o, poznamka: { ...o.poznamka, vstup: { ...v, setup: [...setup][0] || null, confluence: [...conf], jistota, text: text.value } } });
-
-  const obsah = [
-    hlavicka(t('journal.whyTitle'), o.nazev),
-    skupina(t('journal.setup'), stitky(denik.setupy(), setup, true, 'setupy', prekresli)),
-    skupina(t('journal.confluence'), stitky(denik.confluence(), conf, false, 'confluence', prekresli)),
-    skupina(t('journal.confidence'), cisla(jistota, () => jistota, (x) => { jistota = x; })),
-    skupina(t('journal.whyNow'), text),
-  ];
-  const autoBlok = auto(a, o.mena || 'USDT');
-  obsah.push(skupina(t('journal.auto'), autoBlok));
-  if (!a.sl) obsah.push(el('p', 'hint', t('journal.noSl')));
-
-  // Poznámky během obchodu (jen u obchodu, který ještě běží nebo už má vstup).
-  const behem = o.poznamka?.behem || [];
-  if (o.obchodBezi || behem.length) {
-    const seznam = el('div', 'denik-behem');
-    behem.forEach((b) => {
-      const r = el('div', 'denik-behem-radek');
-      r.append(el('b', '', cas(b.cas)), el('span', '', b.text),
-        tlacitko('✕', 'text-btn denik-x', () => {
-          denik.smazPoznamkuBehem(o.klic, b.cas);
-          r.remove();
-        }));
-      seznam.append(r);
-    });
-    if (o.obchodBezi) {
-      const nova = el('div', 'denik-novy');
-      const vstup = el('input', 'denik-pole');
-      vstup.type = 'text';
-      vstup.maxLength = 300;
-      vstup.placeholder = t('journal.duringPh');
-      const pridat = tlacitko(t('journal.addNote'), 'secondary-btn', () => {
-        if (!vstup.value.trim()) return;
-        denik.zapis(o.klic, 'behem', { text: vstup.value });
-        const r = el('div', 'denik-behem-radek');
-        r.append(el('b', '', cas(Date.now())), el('span', '', vstup.value.trim()));
-        seznam.append(r);
-        vstup.value = '';
-        o.onUlozeno?.();
-      });
-      vstup.addEventListener('keydown', (e) => { if (e.key === 'Enter') pridat.click(); });
-      nova.append(vstup, pridat);
-      obsah.push(skupina(t('journal.during'), seznam, nova));
-    } else {
-      obsah.push(skupina(t('journal.during'), seznam));
-    }
-  }
-
-  const ulozit = tlacitko(t('journal.save'), 'primary-btn denik-ulozit', () => {
-    denik.zapis(o.klic, 'vstup', {
-      setup: [...setup][0] || null,
-      confluence: [...conf],
-      jistota,
-      text: text.value.trim(),
-      auto: a,
-      riziko: a.riziko || null,
-    });
-    zavri();
-    o.onUlozeno?.();
+function ukazVrstvu(obsah, zavritKlepnutim = true) {
+  const vrstva = el('div', 'denik-vrstva');
+  const karta = el('div', 'denik-vrstva-karta');
+  karta.append(...obsah);
+  vrstva.append(karta);
+  const otevrenaV = Date.now();
+  vrstva.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (Date.now() - otevrenaV < 350) return;
+    if (zavritKlepnutim || e.target === vrstva) vrstva.remove();
   });
-  obsah.push(ulozit);
-  otevri(obsah);
+  document.body.append(vrstva);
+  return vrstva;
 }
 
-/* ---------- zhodnocení po zavření ---------- */
+const barvaSkupiny = (s) => SKUPINY[s] || SKUPINY.uroven;
 
-/**
- * @param {object} o { klic, nazev, poznamka, pnl, mena, otevreno, zavreno, onUlozeno, onVstup }
- */
-export function otevriZhodnoceni(o) {
-  const z = o.poznamka?.zhodnoceni || {};
-  const duvod = new Set(z.duvod ? [z.duvod] : []);
-  const plan = new Set(z.plan ? [z.plan] : []);
-  let hodnoceni = z.hodnoceni || null;
-  const lekce = textPole(z.lekce, t('journal.lessonPh'));
+function kresbaPolozky(p, trida) {
+  const obal = el('div', trida);
+  if (p.kresba) obal.innerHTML = svg(p.kresba);
+  else obal.append(el('span', 'denik-pismeno', (p.nazev || '?').slice(0, 1).toUpperCase()));
+  return obal;
+}
 
-  const vysledek = el('div', 'denik-vysledek');
-  const r = denik.vysledekR(o.poznamka, o.pnl);
-  const vl = el('div');
-  vl.append(el('div', 'hint', t('journal.result')), r === null ? el('div', 'hint', t('journal.noR')) : el('div', `denik-r ${o.pnl >= 0 ? 'up' : 'down'}`, textR(r)));
-  const vp = el('div', 'denik-vysledek-vpravo');
-  vp.append(el('div', `denik-pnl ${o.pnl >= 0 ? 'up' : 'down'}`, `${formatSignedUsd(o.pnl)} ${o.mena || 'USDT'}`),
-    el('div', 'hint', o.otevreno && o.zavreno ? t('journal.held', { d: drzeno(o.zavreno - o.otevreno) }) : ''));
-  vysledek.append(vl, vp);
+export function ukazDetail(typ, p) {
+  const titul = el('div', 'denik-detail-titul');
+  const skup = el('span', 'denik-detail-skupina', t(`journal.group.${p.skupina}`));
+  skup.style.setProperty('--c', barvaSkupiny(p.skupina));
+  titul.append(el('b', '', p.nazev), skup);
+  const obsah = [titul, kresbaPolozky(p, 'denik-detail-kresba')];
+  obsah.push(el('p', 'denik-detail-popis', p.popis || t('journal.ownNoHint')));
+  if (p.kdy) {
+    const kdy = el('p', 'denik-detail-kdy');
+    kdy.append(el('span', '', `${t('journal.whenLabel')}: `), document.createTextNode(p.kdy));
+    obsah.push(kdy);
+  }
+  if (p.pocet) obsah.push(el('p', 'hint', t('journal.usedN', { n: p.pocet })));
+  ukazVrstvu(obsah);
+}
 
-  const DUVODY = ['tp', 'sl', 'manualPlan', 'manualEmotion', 'liq'];
-  const PLANY = ['yes', 'partly', 'no'];
-  const volby = (klice, predpona, vyber) => {
-    const radek = el('div', 'denik-chips');
-    klice.forEach((k) => {
-      const b = tlacitko(t(`${predpona}.${k}`), `chip${vyber.has(k) ? ' on' : ''}`, () => {
-        const uz = vyber.has(k);
-        vyber.clear();
-        if (!uz) vyber.add(k);
-        radek.querySelectorAll('.chip').forEach((x) => x.classList.toggle('on', vyber.has(x.dataset.k)));
+/** Okno vlastní položky: nová (`p` null) nebo úprava existující. */
+function oknoVlastni(typ, p, hotovo) {
+  const signal = typ === 'signaly';
+  const nazevPole = el('input', 'denik-pole');
+  nazevPole.type = 'text';
+  nazevPole.maxLength = 40;
+  nazevPole.value = p?.nazev || '';
+  nazevPole.placeholder = t('journal.ownName');
+  const napoveda = textPole(p?.napoveda || '', t('journal.ownHint'));
+  napoveda.maxLength = 200;
+  napoveda.rows = 2;
+  let skupina = p?.skupina && p.skupina !== 'setup' ? p.skupina : 'uroven';
+  const obsah = [el('b', 'denik-vrstva-nadpis', t(signal ? 'journal.ownTitleSignal' : 'journal.ownTitleSetup')),
+    skupinaPole(t('journal.ownName'), nazevPole)];
+  if (signal) {
+    const radek = el('div', 'denik-skupiny');
+    SKUPINY_SIGNALU.forEach((s) => {
+      const b = tlacitko(t(`journal.group.${s}`), `denik-skupina-btn${s === skupina ? ' on' : ''}`, () => {
+        skupina = s;
+        radek.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x.dataset.s === s));
       });
-      b.dataset.k = k;
+      b.dataset.s = s;
+      b.style.setProperty('--c', barvaSkupiny(s));
       radek.append(b);
     });
-    return radek;
-  };
-
-  const obsah = [
-    hlavicka(t('journal.reviewTitle'), o.nazev),
-    vysledek,
-  ];
-  if (o.poznamka?.vstup) obsah.push(souhrn(o.poznamka, { kompaktni: false }));
-  obsah.push(
-    skupina(t('journal.exitReason'), volby(DUVODY, 'journal.exit', duvod)),
-    skupina(t('journal.plan'), volby(PLANY, 'journal.planAns', plan)),
-    skupina(t('journal.rating'), cisla(hodnoceni, () => hodnoceni, (x) => { hodnoceni = x; })),
-    skupina(t('journal.lesson'), lekce),
-  );
-  const radek = el('div', 'denik-tlacitka');
-  radek.append(
-    tlacitko(t(o.poznamka?.vstup ? 'journal.editEntry' : 'journal.addEntry'), 'secondary-btn', () => o.onVstup?.()),
-    tlacitko(t('journal.saveReview'), 'primary-btn denik-ulozit', () => {
-      denik.zapis(o.klic, 'zhodnoceni', {
-        duvod: [...duvod][0] || null,
-        plan: [...plan][0] || null,
-        hodnoceni,
-        lekce: lekce.value.trim(),
-      });
-      zavri();
-      o.onUlozeno?.();
-    }),
-  );
-  obsah.push(radek);
-  otevri(obsah);
+    obsah.push(skupinaPole(t('journal.ownGroup'), radek));
+  }
+  obsah.push(napoveda);
+  const tlac = el('div', 'denik-tlacitka');
+  if (p) {
+    tlac.append(tlacitko(t('journal.ownDelete'), 'secondary-btn denik-odebrat', () => {
+      denik.smazPolozku(typ, p.id);
+      vrstva.remove();
+      hotovo(null, p.id);
+    }));
+  }
+  tlac.append(tlacitko(t('journal.ownSave'), 'primary-btn', () => {
+    if (!nazevPole.value.trim()) { nazevPole.focus(); return; }
+    let id = p?.id;
+    if (p) denik.upravPolozku(typ, p.id, { nazev: nazevPole.value, skupina, napoveda: napoveda.value });
+    else id = denik.pridejPolozku(typ, { nazev: nazevPole.value, skupina, napoveda: napoveda.value });
+    vrstva.remove();
+    hotovo(id);
+  }));
+  obsah.push(tlac);
+  const vrstva = ukazVrstvu(obsah, false);
+  vrstva.classList.add('denik-vrstva-formular');
+  setTimeout(() => { if (!p) nazevPole.focus(); }, 60);
 }
 
-/* ---------- souhrn na kartě ---------- */
+function skupinaPole(nadpis, ...obsah) {
+  const s = el('label', 'denik-skupina');
+  s.append(el('span', 'denik-label', nadpis), ...obsah);
+  return s;
+}
 
 /**
- * Krátký souhrn poznámky pro kartu: setup, počet confluence, jistota,
- * plán a hodnocení, začátek textu. `review` = štítek „Review" (zavřený
- * obchod bez zhodnocení). Bez poznámky tlačítko „Why?".
+ * Mřížka dlaždic. `vyber` = Set id; `jeden` = setup (jen jeden, nebo
+ * „No setup"). Pořadí podle použití se určí jednou (při otevření okna) —
+ * pod prstem nic neuskočí. Klepnutí = vybrat, ⓘ nebo podržení = detail.
  */
-export function souhrn(poznamka, { review = false, onClick = null, kompaktni = true, pridat = null } = {}) {
-  const radek = el('div', 'denik-souhrn');
-  const chip = (text, trida = '') => radek.append(el('span', `chip mini ${trida}`.trim(), text));
+function dlazdice(typ, poradi, vyber, jeden, poZmene) {
+  const obal = el('div', 'denik-mrizka-obal');
+  let uprava = false;
+  const mrizka = el('div', `denik-mrizka denik-${typ}`);
+
+  const vykresli = () => {
+    mrizka.replaceChildren();
+    mrizka.classList.toggle('uprava', uprava);
+    if (jeden && !uprava) {
+      const nic = tlacitko(t('journal.noSetup'), `denik-tile denik-nic${vyber.size ? '' : ' on'}`, () => {
+        vyber.clear();
+        vykresli();
+        poZmene();
+      });
+      mrizka.append(nic);
+    }
+    poradi.forEach((p) => {
+      const tile = el('button', `denik-tile${vyber.has(p.id) ? ' on' : ''}`);
+      tile.type = 'button';
+      tile.dataset.id = p.id;
+      tile.style.setProperty('--c', barvaSkupiny(p.skupina));
+      tile.append(kresbaPolozky(p, 'denik-tile-kresba'), el('span', 'denik-tile-nazev', p.kratky || p.nazev));
+      const info = el('span', 'denik-tile-info', uprava ? '✕' : 'i');
+      info.setAttribute('role', 'button');
+      info.setAttribute('aria-label', uprava ? t('journal.ownDelete') : p.nazev);
+      tile.append(info);
+      let drzeni = null;
+      let detailUkazan = false;
+      tile.addEventListener('touchstart', () => {
+        detailUkazan = false;
+        drzeni = setTimeout(() => { detailUkazan = true; ukazDetail(typ, p); }, 500);
+      }, { passive: true });
+      const zrus = () => clearTimeout(drzeni);
+      tile.addEventListener('touchmove', zrus, { passive: true });
+      tile.addEventListener('touchend', zrus);
+      tile.addEventListener('touchcancel', zrus);
+      tile.addEventListener('contextmenu', (e) => e.preventDefault());
+      tile.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (detailUkazan) { detailUkazan = false; return; }
+        if (e.target === info) {
+          if (!uprava) { ukazDetail(typ, p); return; }
+          denik.smazPolozku(typ, p.id);
+          vyber.delete(p.id);
+          poradi.splice(poradi.indexOf(p), 1);
+          vykresli();
+          poZmene();
+          return;
+        }
+        if (uprava) {
+          if (!p.vychozi) {
+            oknoVlastni(typ, { ...p, napoveda: p.popis }, (id, smazano) => {
+              if (smazano) { vyber.delete(smazano); poradi.splice(poradi.indexOf(p), 1); }
+              else Object.assign(p, denik.polozka(typ, id));
+              vykresli();
+              poZmene();
+            });
+          }
+          return;
+        }
+        if (vyber.has(p.id)) vyber.delete(p.id);
+        else {
+          if (jeden) vyber.clear();
+          vyber.add(p.id);
+        }
+        vykresli();
+        poZmene();
+      });
+      mrizka.append(tile);
+    });
+    const vlastni = tlacitko(`+ ${t('journal.own')}`, 'denik-tile denik-vlastni', () => {
+      oknoVlastni(typ, null, (id) => {
+        if (!id) return;
+        if (!poradi.some((x) => x.id === id)) poradi.push({ ...denik.polozka(typ, id), pocet: 0 });
+        if (jeden) vyber.clear();
+        vyber.add(id);
+        vykresli();
+        poZmene();
+      });
+    });
+    mrizka.append(vlastni);
+    if (uprava) {
+      const odebrane = denik.odebraneVychozi(typ);
+      if (odebrane.length) {
+        const r = el('div', 'denik-odebrane');
+        r.append(el('span', 'hint', `${t('journal.removed')}:`));
+        odebrane.forEach((p) => r.append(tlacitko(`+ ${p.kratky || p.nazev}`, 'text-btn', () => {
+          denik.vratVychozi(typ, p.id);
+          poradi.push({ ...p, pocet: 0 });
+          vykresli();
+        })));
+        mrizka.append(r);
+      }
+    }
+  };
+
+  const upravit = tlacitko(t('journal.edit'), 'text-btn denik-upravit', () => {
+    uprava = !uprava;
+    upravit.textContent = t(uprava ? 'journal.done' : 'journal.edit');
+    vykresli();
+  });
+  vykresli();
+  obal.append(mrizka, upravit);
+  return obal;
+}
+
+/* ---------- okno deníku: Plan | Review ---------- */
+
+/**
+ * Jedno okno se dvěma částmi a přepínačem nahoře. Rozepsané změny drží
+ * při přepínání; Uložit zapíše, co se změnilo.
+ * @param {object} o { klic, nazev, poznamka, automaticky, mena, obchodBezi,
+ *   uzavreny, pnl, otevreno, zavreno, cast: 'plan'|'review', onUlozeno }
+ */
+export function otevriDenik(o) {
+  const v = o.poznamka?.vstup || {};
+  const z = o.poznamka?.zhodnoceni || {};
+  const plan = {
+    setup: new Set(v.setup ? [v.setup] : []),
+    signaly: new Set(v.signaly || []),
+    jistota: v.jistota || null,
+    text: textPole(v.text, t('journal.whyNowPh')),
+    zmena: false,
+  };
+  const review = {
+    duvod: new Set(z.duvod ? [z.duvod] : []),
+    plan: new Set(z.plan ? [z.plan] : []),
+    hodnoceni: z.hodnoceni || null,
+    lekce: textPole(z.lekce, t('journal.lessonPh')),
+    zmena: false,
+  };
+  plan.text.addEventListener('input', () => { plan.zmena = true; });
+  review.lekce.addEventListener('input', () => { review.zmena = true; });
+  // Pořadí dlaždic jednou za otevření okna.
+  const poradiSetupu = denik.polozky('setupy');
+  const poradiSignalu = denik.polozky('signaly');
+  const a = { ...(o.automaticky || {}), ...(v.auto || {}) };
+  const minSignalu = Number(denik.nastaveni().minSignalu) || 0;
+  let cast = o.uzavreny && o.cast === 'review' ? 'review' : 'plan';
+  let telo = null;
+
+  const castPlan = () => {
+    const obsah = [];
+    if (v.poZavreni) obsah.push(el('p', 'denik-pozdeji', `⚠ ${t('journal.editedAfterCloseHint')}`));
+    const conf = el('span', 'denik-conf');
+    const pravidlo = el('div', 'denik-pravidlo');
+    const obnovConf = () => {
+      const n = plan.signaly.size;
+      conf.textContent = t('journal.confluenceN', { n });
+      conf.classList.toggle('nula', !n);
+      pravidlo.hidden = !(minSignalu && n < minSignalu);
+      pravidlo.textContent = t('journal.belowRule', { n: minSignalu });
+    };
+    obnovConf();
+    obsah.push(skupina(t('journal.setupOptional'), dlazdice('setupy', poradiSetupu, plan.setup, true, () => { plan.zmena = true; })));
+    const hlava = el('div', 'denik-label-radek');
+    hlava.append(el('div', 'denik-label', t('journal.signals')), conf);
+    const sig = el('div', 'denik-skupina');
+    sig.append(hlava, dlazdice('signaly', poradiSignalu, plan.signaly, false, () => { plan.zmena = true; obnovConf(); }), pravidlo);
+    obsah.push(sig,
+      skupina(t('journal.confidence'), cisla(plan.jistota, () => plan.jistota, (x) => { plan.jistota = x; plan.zmena = true; })),
+      skupina(t('journal.whyNow'), plan.text),
+      skupina(t('journal.auto'), auto(a, o.mena || 'USDT')));
+    if (!a.sl) obsah.push(el('p', 'hint', t('journal.noSl')));
+    const behem = poznamkyBehem(o);
+    if (behem) obsah.push(behem);
+    return obsah;
+  };
+
+  const castReview = () => {
+    const vysledek = el('div', 'denik-vysledek');
+    const r = denik.vysledekR(o.poznamka, o.pnl);
+    const vl = el('div');
+    vl.append(el('div', 'hint', t('journal.result')), r === null ? el('div', 'hint', t('journal.noR')) : el('div', `denik-r ${o.pnl >= 0 ? 'up' : 'down'}`, textR(r)));
+    const vp = el('div', 'denik-vysledek-vpravo');
+    vp.append(el('div', `denik-pnl ${o.pnl >= 0 ? 'up' : 'down'}`, `${formatSignedUsd(o.pnl)} ${o.mena || 'USDT'}`),
+      el('div', 'hint', o.otevreno && o.zavreno ? t('journal.held', { d: drzeno(o.zavreno - o.otevreno) }) : ''));
+    vysledek.append(vl, vp);
+    const volby = (klice, predpona, vyber) => {
+      const radek = el('div', 'denik-chips');
+      klice.forEach((k) => {
+        const b = tlacitko(t(`${predpona}.${k}`), `chip${vyber.has(k) ? ' on' : ''}`, () => {
+          const uz = vyber.has(k);
+          vyber.clear();
+          if (!uz) vyber.add(k);
+          review.zmena = true;
+          radek.querySelectorAll('.chip').forEach((x) => x.classList.toggle('on', vyber.has(x.dataset.k)));
+        });
+        b.dataset.k = k;
+        radek.append(b);
+      });
+      return radek;
+    };
+    const obsah = [vysledek,
+      skupina(t('journal.exitReason'), volby(['tp', 'sl', 'manualPlan', 'manualEmotion', 'liq'], 'journal.exit', review.duvod)),
+      skupina(t('journal.plan'), volby(['yes', 'partly', 'no'], 'journal.planAns', review.plan)),
+      skupina(t('journal.rating'), cisla(review.hodnoceni, () => review.hodnoceni, (x) => { review.hodnoceni = x; review.zmena = true; })),
+      skupina(t('journal.lesson'), review.lekce)];
+    return obsah;
+  };
+
+  const hotovaPlan = () => Boolean(o.poznamka?.vstup);
+  const hotovaReview = () => Boolean(o.poznamka?.zhodnoceni);
+  const prepinac = el('div', 'denik-prepinac');
+  const zalozka = (id, text, hotova, povolena) => {
+    const b = tlacitko(`${hotova ? '✓ ' : ''}${text}`, `denik-zalozka${cast === id ? ' on' : ''}${hotova ? ' hotova' : ''}`, () => {
+      if (!povolena) {
+        b.classList.add('zatrest');
+        setTimeout(() => b.classList.remove('zatrest'), 400);
+        return;
+      }
+      cast = id;
+      prepinac.querySelectorAll('.denik-zalozka').forEach((x) => x.classList.toggle('on', x.dataset.c === id));
+      vykresliTelo();
+    });
+    b.dataset.c = id;
+    b.disabled = !povolena;
+    if (!povolena) b.title = t('journal.reviewClosedOnly');
+    return b;
+  };
+  prepinac.append(zalozka('plan', t('journal.planTab'), hotovaPlan(), true),
+    zalozka('review', t('journal.reviewTab'), hotovaReview(), Boolean(o.uzavreny)));
+
+  const vykresliTelo = () => {
+    const nove = el('div', 'denik-telo');
+    nove.append(...(cast === 'plan' ? castPlan() : castReview()));
+    if (telo) telo.replaceWith(nove);
+    telo = nove;
+    okno.scrollTop = 0;
+  };
+
+  const ulozit = tlacitko(t('journal.save2'), 'primary-btn denik-ulozit', () => {
+    if (plan.zmena) {
+      denik.zapis(o.klic, 'vstup', {
+        setup: [...plan.setup][0] || null,
+        signaly: [...plan.signaly],
+        jistota: plan.jistota,
+        text: plan.text.value.trim(),
+        auto: a,
+        riziko: a.riziko || null,
+        // Plán psaný se znalostí výsledku: zůstává, ale označený.
+        poZavreni: Boolean(v.poZavreni || (o.uzavreny && o.zavreno)),
+      });
+    }
+    if (review.zmena && o.uzavreny) {
+      denik.zapis(o.klic, 'zhodnoceni', {
+        duvod: [...review.duvod][0] || null,
+        plan: [...review.plan][0] || null,
+        hodnoceni: review.hodnoceni,
+        lekce: review.lekce.value.trim(),
+      });
+    }
+    zavri();
+    if (plan.zmena || review.zmena) o.onUlozeno?.();
+  });
+
+  otevri([hlavicka(o.nazev, t('journal.tradePlan')), prepinac, el('div', 'denik-telo'), ulozit]);
+  telo = okno.querySelector('.denik-telo');
+  vykresliTelo();
+}
+
+/** Poznámky během obchodu (jen u obchodu, který běží nebo je už má). */
+function poznamkyBehem(o) {
+  const behem = o.poznamka?.behem || [];
+  if (!o.obchodBezi && !behem.length) return null;
+  const seznam = el('div', 'denik-behem');
+  behem.forEach((b) => {
+    const r = el('div', 'denik-behem-radek');
+    r.append(el('b', '', cas(b.cas)), el('span', '', b.text),
+      tlacitko('✕', 'text-btn denik-x', () => {
+        denik.smazPoznamkuBehem(o.klic, b.cas);
+        r.remove();
+      }));
+    seznam.append(r);
+  });
+  if (!o.obchodBezi) return skupina(t('journal.during'), seznam);
+  const nova = el('div', 'denik-novy');
+  const vstup = el('input', 'denik-pole');
+  vstup.type = 'text';
+  vstup.maxLength = 300;
+  vstup.placeholder = t('journal.duringPh');
+  const pridat = tlacitko(t('journal.addNote'), 'secondary-btn', () => {
+    if (!vstup.value.trim()) return;
+    denik.zapis(o.klic, 'behem', { text: vstup.value });
+    const r = el('div', 'denik-behem-radek');
+    r.append(el('b', '', cas(Date.now())), el('span', '', vstup.value.trim()));
+    seznam.append(r);
+    vstup.value = '';
+    o.onUlozeno?.();
+  });
+  vstup.addEventListener('keydown', (e) => { if (e.key === 'Enter') pridat.click(); });
+  nova.append(vstup, pridat);
+  return skupina(t('journal.during'), seznam, nova);
+}
+
+/* ---------- tlačítka Plan / Review na kartách ---------- */
+
+/**
+ * Řádek na kartě pozice / obchodu: tlačítko Plan (✓ vyplněný), u obchodu
+ * v Journalu i Review (zašedlé, dokud obchod běží; tečka = čeká na
+ * zhodnocení) a krátký souhrn plánu („Retest · 3 signals").
+ * ⚠ Klepnutí nesmí probublat — karta by otevřela graf.
+ */
+export function tlacitka(poznamka, { review = false, uzavreny = false, cekaReview = false, onPlan, onReview } = {}) {
+  const radek = el('div', 'denik-radek');
   const v = poznamka?.vstup;
   const z = poznamka?.zhodnoceni;
-  if (review) chip(`● ${t('journal.review')}`, 'denik-review');
-  if (!v && !z) {
-    if (pridat) radek.append(el('span', 'chip mini pridat', pridat));
-  } else {
-    radek.append(el('span', 'denik-ikona', '📝'));
-    if (v?.setup) chip(v.setup, 'on');
-    if (v?.confluence?.length) chip(t('journal.nConf', { n: v.confluence.length }));
-    if (v?.jistota) chip(t('journal.confShort', { n: v.jistota }));
-    if (z?.plan) chip(t(`journal.planShort.${z.plan}`));
-    if (z?.hodnoceni) chip(`★ ${z.hodnoceni}`);
-    const text = z?.lekce || v?.text;
-    if (text) radek.append(el('span', 'denik-citace', kompaktni ? `„${text.length > 70 ? `${text.slice(0, 70)}…` : text}“` : `„${text}“`));
+  const btn = (text, hotovo, akce, trida = '') => {
+    const b = tlacitko(`${hotovo ? '✓' : '＋'} ${text}`, `denik-btn${hotovo ? ' hotovo' : ''} ${trida}`.trim(), akce);
+    return b;
+  };
+  radek.append(btn(t('journal.planBtn'), Boolean(v), () => onPlan?.(), 'denik-btn-plan'));
+  if (review) {
+    const b = btn(t('journal.reviewBtn'), Boolean(z), () => { if (uzavreny) onReview?.(); }, `denik-btn-review${uzavreny ? '' : ' zasedle'}${cekaReview && uzavreny && !z ? ' ceka' : ''}`);
+    if (!uzavreny) b.setAttribute('aria-disabled', 'true');
+    radek.append(b);
   }
-  if (onClick) {
-    radek.setAttribute('role', 'button');
-    radek.tabIndex = 0;
-    radek.addEventListener('click', (e) => {
-      e.stopPropagation();
-      onClick();
-    });
+  if (v) {
+    const casti = [];
+    if (v.setup) casti.push(denik.nazev('setupy', v.setup));
+    const n = v.signaly?.length || 0;
+    if (n) casti.push(n === 1 ? t('journal.oneSignal') : t('journal.nSignals', { n }));
+    if (z?.plan) casti.push(t(`journal.planShort.${z.plan}`));
+    if (z?.hodnoceni) casti.push(`★ ${z.hodnoceni}`);
+    const s = el('span', 'denik-shrnuti', casti.join(' · '));
+    if (v.poZavreni) s.append(el('span', 'denik-pozde', t('journal.editedAfterClose')));
+    radek.append(s);
   }
   return radek;
 }

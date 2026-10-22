@@ -600,10 +600,10 @@ function poznamkaPozice(p) {
   return { otevreno, poznamka: denik.najdi(burzaPozice(p), p.symbol, otevreno, p.side) };
 }
 
-/** Souhrn poznámky na kartě pozice. */
+/** Tlačítko Plan a souhrn plánu na kartě pozice. */
 function denikPozice(p) {
   const { poznamka } = poznamkaPozice(p);
-  return denikUi.souhrn(poznamka, { pridat: `＋ ${t('journal.why')}`, onClick: () => otevriPoznamkuPozice(p) });
+  return denikUi.tlacitka(poznamka, { onPlan: () => otevriPoznamkuPozice(p) });
 }
 
 async function otevriPoznamkuPozice(p) {
@@ -617,18 +617,20 @@ async function otevriPoznamkuPozice(p) {
   }
   const burza = burzaPozice(p);
   const poznamka = denik.najdi(burza, p.symbol, otevreno, p.side);
-  denikUi.otevriVstup({
+  denikUi.otevriDenik({
     klic: poznamka?.klic || denik.klic(burza, p.symbol, otevreno, p.side),
     nazev: nazevObchodu(p.symbol, p.side !== 'Sell'),
     poznamka,
     automaticky: denik.automatickyVstup(p, intervalParu(burza, p.symbol)),
     mena: /USDC$/.test(p.symbol) ? 'USDC' : 'USDT',
     obchodBezi: true,
+    uzavreny: false,
+    cast: 'plan',
     onUlozeno: () => vykresliPozice(),
   });
 }
 
-/** Volby Historie: souhrn poznámky a zhodnocení u každého obchodu. */
+/** Volby Historie: tlačítka Plan / Review u každého obchodu. */
 function volbyHistorie() {
   return { denik: denikSkupiny };
 }
@@ -641,11 +643,12 @@ function poznamkaSkupiny(g) {
 
 function denikSkupiny(g) {
   const { poznamka } = poznamkaSkupiny(g);
-  const review = !g.otevrena && denik.nastaveni().stitekReview && !poznamka?.zhodnoceni;
-  return denikUi.souhrn(poznamka, {
-    review,
-    pridat: `＋ ${t(g.otevrena ? 'journal.why' : 'journal.reviewAdd')}`,
-    onClick: () => otevriPoznamkuSkupiny(g),
+  return denikUi.tlacitka(poznamka, {
+    review: true,
+    uzavreny: !g.otevrena,
+    cekaReview: denik.nastaveni().stitekReview !== false,
+    onPlan: () => otevriPoznamkuSkupiny(g, 'plan'),
+    onReview: () => otevriPoznamkuSkupiny(g, 'review'),
   });
 }
 
@@ -654,34 +657,22 @@ function prekresliHistorii() {
   vykresliEdge();
 }
 
-function otevriPoznamkuSkupiny(g) {
+function otevriPoznamkuSkupiny(g, cast = 'plan') {
   const { burza, side, poznamka } = poznamkaSkupiny(g);
-  const klic = poznamka?.klic || denik.klic(burza, g.symbol, g.otevreno, side);
-  const mena = /USDC$/.test(g.symbol) ? 'USDC' : 'USDT';
   const poz = g.otevrena ? lastPositions.find((x) => x.symbol === g.symbol && x.ucet === g.ucet) : null;
-  const vstup = () => denikUi.otevriVstup({
-    klic,
-    nazev: nazevObchodu(g.symbol, g.long),
-    poznamka: denik.najdi(burza, g.symbol, g.otevreno, side, g.zavreno),
-    automaticky: poz ? denik.automatickyVstup(poz, intervalParu(burza, g.symbol)) : { entry: g.vystupy[0]?.entry ?? null },
-    mena,
-    obchodBezi: Boolean(g.otevrena),
-    onUlozeno: prekresliHistorii,
-  });
-  if (g.otevrena) {
-    vstup();
-    return;
-  }
-  denikUi.otevriZhodnoceni({
-    klic,
+  denikUi.otevriDenik({
+    klic: poznamka?.klic || denik.klic(burza, g.symbol, g.otevreno, side),
     nazev: nazevObchodu(g.symbol, g.long),
     poznamka,
+    automaticky: poz ? denik.automatickyVstup(poz, intervalParu(burza, g.symbol)) : { entry: g.vystupy[0]?.entry ?? null },
+    mena: /USDC$/.test(g.symbol) ? 'USDC' : 'USDT',
+    obchodBezi: Boolean(g.otevrena),
+    uzavreny: !g.otevrena,
     pnl: g.pnl,
-    mena,
     otevreno: g.otevreno,
     zavreno: g.zavreno,
+    cast,
     onUlozeno: prekresliHistorii,
-    onVstup: vstup,
   });
 }
 
@@ -692,6 +683,16 @@ function vykresliPrepinacDeniku() {
   const on = denik.nastaveni().stitekReview !== false;
   btn.classList.toggle('on', on);
   btn.setAttribute('aria-pressed', String(on));
+  const min = el('journalMinSignals');
+  if (min) {
+    min.replaceChildren(...[0, 1, 2, 3, 4, 5].map((n) => {
+      const o = document.createElement('option');
+      o.value = String(n);
+      o.textContent = n ? String(n) : t('journal.minOff');
+      return o;
+    }));
+    min.value = String(Number(denik.nastaveni().minSignalu) || 0);
+  }
 }
 
 /** Překreslí seznam pozic i lištu nad ním podle aktuálního řazení a filtru. */
@@ -1614,6 +1615,9 @@ function wireEvents() {
     vykresliPozice();
   });
 
+  naUdalost('journalMinSignals', 'change', (e) => {
+    denik.nastav({ minSignalu: Number(e.target.value) || 0 });
+  });
   naUdalost('journalReviewBtn', 'click', () => {
     denik.nastav({ stitekReview: denik.nastaveni().stitekReview === false });
     vykresliPrepinacDeniku();
@@ -4366,12 +4370,21 @@ function vykresliEdge() {
   const castka = (v) => (hideAmounts ? '••••' : `${v >= 0 ? '+' : '−'}${formatUsd(Math.abs(v))}`);
   const vety = statistiky.vety(s).map(({ klic, data }) => {
     const pct = (x) => Math.round(x * 100);
+    if (klic === 'confN') {
+      const lepsi = data.vysoka.uspesnost >= data.nizka.uspesnost;
+      return vetaEdge(klic, { n: data.n, win: pct(data.vysoka.uspesnost), k: data.vysoka.pocet, win2: pct(data.nizka.uspesnost), k2: data.nizka.pocet },
+        'win', lepsi ? 'dobre' : 'spatne');
+    }
+    if (klic === 'noSetup' || klic === 'noSetupR') {
+      return vetaEdge(klic, { n: data.pocet, win: pct(data.uspesnost), pnl: castka(data.pnl), r: data.prumerR !== null ? formatR(data.prumerR) : '' },
+        klic === 'noSetupR' ? 'r' : 'pnl', (data.prumerR ?? data.pnl) >= 0 ? 'dobre' : 'spatne');
+    }
     if (klic === 'bestSetupR' || klic === 'worstSetupR') {
-      return vetaEdge(klic, { name: data.nazev, win: pct(data.uspesnost), r: formatR(data.prumerR), n: data.pocet },
+      return vetaEdge(klic, { name: denik.nazev('setupy', data.nazev), win: pct(data.uspesnost), r: formatR(data.prumerR), n: data.pocet },
         'name', klic.startsWith('best') ? 'dobre' : 'spatne');
     }
     if (klic === 'bestSetup' || klic === 'worstSetup') {
-      return vetaEdge(klic, { name: data.nazev, win: pct(data.uspesnost), pnl: castka(data.pnl), n: data.pocet },
+      return vetaEdge(klic, { name: denik.nazev('setupy', data.nazev), win: pct(data.uspesnost), pnl: castka(data.pnl), n: data.pocet },
         'name', klic.startsWith('best') ? 'dobre' : 'spatne');
     }
     return vetaEdge(klic, { r: formatR(data.r), pnl: castka(data.pnl), n: data.pocet },
@@ -4396,7 +4409,7 @@ function vykresliEdge() {
         symbol: g.symbol,
         long: g.long,
         pnl: g.pnl,
-        info: [g.stitek, datumDen(g.zavreno), p?.vstup?.setup].filter(Boolean).join(' · '),
+        info: [g.stitek, datumDen(g.zavreno), p?.vstup?.setup && denik.nazev('setupy', p.vstup.setup)].filter(Boolean).join(' · '),
         r: r !== null ? formatR(r) : '',
         onOpen: () => otevriSkupinu(g),
       };

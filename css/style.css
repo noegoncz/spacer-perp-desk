@@ -2970,7 +2970,7 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 .denik-chips { display: flex; flex-wrap: wrap; gap: 7px; }
 .denik-sheet .chip, .denik-souhrn .chip {
   display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 6px 12px;
-  border: 1px solid var(--border); border-radius: 999px; background: transparent; color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--text);
   font: inherit; font-size: 0.86rem; cursor: pointer;
 }
 .denik-sheet .chip.on, .denik-souhrn .chip.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); }
@@ -3009,16 +3009,89 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 .denik-r { font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; }
 .denik-pnl { font-weight: 700; font-variant-numeric: tabular-nums; }
 
-/* souhrn na kartě pozice / obchodu */
-.denik-souhrn {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px;
-  padding: 6px 8px; border-radius: 10px; background: var(--surface-2); cursor: pointer;
+/* tlačítka Plan / Review na kartě (v0.67.0) */
+.denik-radek { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 8px; }
+.denik-btn {
+  display: inline-flex; align-items: center; gap: 5px; min-height: 30px; padding: 3px 11px;
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--border)); border-radius: 6px;
+  background: transparent; color: var(--accent); font: inherit; font-size: 0.8rem; font-weight: 600; cursor: pointer;
 }
-.denik-souhrn:has(> .chip.pridat:only-child) { background: transparent; padding: 0; }
-.denik-souhrn .chip.mini { min-height: 26px; padding: 2px 9px; font-size: 0.76rem; }
-.denik-souhrn .denik-review { border-color: #f0b90b; color: #f0b90b; }
-.denik-ikona { font-size: 0.9rem; }
-.denik-citace { font-size: 0.8rem; color: var(--text-dim); min-width: 0; overflow-wrap: anywhere; }
+.denik-btn.hotovo { border-color: transparent; background: color-mix(in srgb, #3ee6a4 16%, transparent); color: #3ee6a4; }
+.denik-btn.zasedle { opacity: 0.38; cursor: default; }
+.denik-btn.ceka { border-color: #f0b90b; color: #f0b90b; }
+.denik-shrnuti { font-size: 0.78rem; color: var(--text-dim); min-width: 0; }
+.denik-pozde { margin-left: 6px; padding: 0 5px; border-radius: 4px; font-size: 0.68rem; color: #f0b90b; background: rgba(240, 185, 11, 0.12); }
+
+/* okno: přepínač Plan | Review */
+.denik-prepinac { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; flex-shrink: 0; }
+.denik-zalozka { min-height: 38px; border: 0; background: transparent; color: var(--text-dim); font: inherit; font-weight: 600; cursor: pointer; }
+.denik-zalozka.on { background: color-mix(in srgb, var(--accent) 20%, var(--surface-2)); color: var(--text); }
+.denik-zalozka.hotova:not(.on) { color: #3ee6a4; }
+.denik-zalozka:disabled { opacity: 0.4; cursor: default; }
+.denik-telo { display: flex; flex-direction: column; gap: 14px; }
+.denik-label-radek { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.denik-conf { font-size: 0.78rem; font-weight: 700; padding: 1px 8px; border-radius: 5px; background: #3ee6a4; color: #061224; font-variant-numeric: tabular-nums; }
+.denik-conf.nula { background: var(--surface-2); color: var(--text-dim); }
+.denik-pravidlo { font-size: 0.78rem; color: #f0b90b; }
+.denik-pozdeji { font-size: 0.8rem; color: #f0b90b; background: rgba(240, 185, 11, 0.1); border-radius: 8px; padding: 7px 10px; margin: 0; }
+
+/* dlaždice setupů a signálů: 3 vedle sebe, na rozevřeném Foldu 6 */
+.denik-mrizka-obal { display: flex; flex-direction: column; gap: 4px; }
+.denik-mrizka { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+@media (min-width: 560px) { .denik-mrizka { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+.denik-tile {
+  --c: #f0b90b;
+  position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 3px;
+  min-height: 62px; padding: 5px 5px 6px; border: 1px solid var(--border); border-top: 3px solid color-mix(in srgb, var(--c) 55%, transparent);
+  border-radius: 6px; background: var(--surface-2); color: var(--text); font: inherit; text-align: left; cursor: pointer;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+}
+.denik-tile.on { border-color: var(--c); border-top-color: var(--c); background: color-mix(in srgb, var(--c) 17%, var(--surface-2)); }
+.denik-tile-kresba { height: 30px; border-radius: 3px; background: color-mix(in srgb, var(--bg) 70%, transparent); display: grid; place-items: center; overflow: hidden; opacity: 0.8; }
+.denik-tile.on .denik-tile-kresba { opacity: 1; }
+.denik-tile-kresba svg { width: 100%; height: 100%; }
+.denik-pismeno { font-size: 1.05rem; font-weight: 800; color: var(--c); }
+.denik-tile-nazev { font-size: 0.74rem; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 14px; }
+.denik-tile-info {
+  position: absolute; right: 2px; bottom: 2px; width: 20px; height: 20px; display: grid; place-items: center;
+  border-radius: 50%; font-size: 0.66rem; font-weight: 700; font-style: italic; color: var(--text-dim);
+}
+.denik-mrizka.uprava .denik-tile-info { font-style: normal; color: var(--short, #ea3943); }
+.denik-nic, .denik-vlastni { justify-content: center; align-items: center; text-align: center; font-size: 0.78rem; color: var(--text-dim); border-top-width: 1px; }
+.denik-nic { --c: var(--text-dim); border-style: dashed; }
+.denik-nic.on { color: var(--text); }
+.denik-vlastni { border-style: dashed; color: var(--accent); }
+.denik-odebrane { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; }
+.denik-upravit { align-self: flex-end; font-size: 0.78rem; }
+
+/* vrstva nad oknem: detail položky / vlastní položka */
+.denik-vrstva {
+  position: fixed; inset: 0; z-index: 60; display: grid; place-items: center;
+  padding: calc(16px + var(--okraj-nahore)) 16px calc(16px + var(--okraj-dole));
+  background: rgba(3, 7, 14, 0.66);
+}
+.denik-vrstva-karta {
+  width: min(420px, 100%); max-height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
+  padding: 16px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border);
+}
+.denik-vrstva-nadpis { font-size: 1rem; }
+.denik-detail-titul { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.denik-detail-titul b { font-size: 1.08rem; }
+.denik-detail-skupina { --c: #f0b90b; font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--c); border: 1px solid var(--c); border-radius: 4px; padding: 1px 6px; }
+.denik-detail-kresba { border-radius: 8px; background: #0b111b; display: grid; place-items: center; min-height: 90px; }
+.denik-detail-kresba svg { width: 100%; height: auto; display: block; }
+.denik-detail-kresba .denik-pismeno { font-size: 2.4rem; color: var(--accent); }
+.denik-detail-popis { margin: 0; font-size: 0.92rem; line-height: 1.45; }
+.denik-detail-kdy { margin: 0; font-size: 0.85rem; color: var(--text-dim); border-top: 1px solid var(--border); padding-top: 8px; }
+.denik-detail-kdy span { color: #3ee6a4; }
+.denik-skupiny { display: flex; flex-wrap: wrap; gap: 6px; }
+.denik-skupina-btn {
+  --c: #f0b90b; min-height: 32px; padding: 3px 10px; border-radius: 5px; border: 1px solid var(--border);
+  border-left: 4px solid var(--c); background: transparent; color: var(--text); font: inherit; font-size: 0.8rem; cursor: pointer;
+}
+.denik-skupina-btn.on { border-color: var(--c); background: color-mix(in srgb, var(--c) 18%, transparent); }
+.denik-odebrat { color: var(--short, #ea3943); }
+.select-maly { width: auto; min-width: 84px; margin-bottom: 0; }
 
 /* ---------- záložka Alarmy (v0.63.0) ---------- */
 #viewAlerts { overflow-x: clip; }
