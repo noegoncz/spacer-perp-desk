@@ -1310,6 +1310,15 @@ se počítá z šířky v pixelech a šířky svíčky (body nesou jen čas a ce
 Test: `tools/test-mereni-a-cenovky.py` (skutečné dotyky), na starém kódu
 padá všech sedm kontrol.
 
+**Poznámka (Note, v0.65.1, hlášeno uživatelem):** vestavěná
+`simpleAnnotation` brala text z celého `extendData`, kde máme vzhled
+kresby — text byl prázdný a nešel zadat. Přeregistrovaná v chart.js
+(`registrovatPoznamku`, text v `extendData.text`, rámeček barvy kresby).
+Po položení se otevře `#sheetNote` (`otevriPoznamku`, focus i po doběhnutí
+dotyku), vybraná poznámka má v paletě **tužku jako první** (paleta je na
+úzkém displeji posuvná) a místo alarmu nic. Výběr klepnutím na štítek
+nad bodem (`hitTest`). `posledniStyl` text nenese. Test: `tools/test-poznamka.py`.
+
 #### Vzhled kreseb a alarmy
 
 Po vybrání kresby se dole objeví paleta: šest barev, tři tloušťky, tři

@@ -1488,6 +1488,8 @@ function wireEvents() {
 
   naUdalost('styleDeleteBtn', 'click', () => chart?.deleteSelected());
   naUdalost('styleAlarmBtn', 'click', alarmZKresby);
+  naUdalost('styleNoteBtn', 'click', otevriPoznamku);
+  naUdalost('noteSaveBtn', 'click', ulozPoznamku);
 
   document.querySelectorAll('.tool-btn[data-tool]').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -2049,6 +2051,7 @@ async function otevriGraf(symbol, position, trh) {
       onDrawEnd: () => vyberNastroj(''), // po dokreslení zpět na kurzor
       onIndicatorsChanged: ulozIndikatory,
       onSelectionChanged: zobrazPaletu,
+      onNoteEdit: otevriPoznamku,
       onAlarmTapped: (id) => otevriAlarm(alarmy.najdi(id)),
       onStyleChanged: (styl) => store.saveDrawStyle(styl),
       // Šířka svíček po zoomu dvěma prsty — pamatuje se k páru.
@@ -5172,6 +5175,8 @@ function zobrazPaletu(styl) {
   if (!styl) return;
   // U měření jen koš: barva, tloušťka ani alarm tam smysl nemají.
   el('stylePanel').classList.toggle('jen-smazat', Boolean(styl.mereni));
+  // Poznámka: tužka na text místo alarmu.
+  el('stylePanel').classList.toggle('poznamka', Boolean(styl.poznamka));
 
   const oznac = (kontejner, atribut, hodnota) => {
     el(kontejner).querySelectorAll('.style-btn').forEach((btn) => {
@@ -5183,7 +5188,27 @@ function zobrazPaletu(styl) {
   oznac('styleOpacity', 'opacity', styl.opacity);
 }
 
-const NABIDKY = ['sheetIndicators', 'sheetSettings', 'sheetAlarm', 'sheetLayers', 'sheetTools'];
+const NABIDKY = ['sheetIndicators', 'sheetSettings', 'sheetAlarm', 'sheetLayers', 'sheetTools', 'sheetNote'];
+
+/** Okno s textem vybrané poznámky (po založení i z tužky v paletě). */
+function otevriPoznamku() {
+  const text = chart?.selectedNoteText();
+  if (text === null || text === undefined) return;
+  otevriNabidku('sheetNote');
+  const pole = el('noteText');
+  pole.value = text;
+  // Focus hned v obsluze dotyku (jinak telefon klávesnici neukáže) a znovu
+  // po doběhnutí dotyku — klepnutí do grafu ho po zvednutí prstu sebere.
+  pole.focus();
+  setTimeout(() => {
+    if (!el('sheetNote').hidden && document.activeElement !== pole) pole.focus();
+  }, 300);
+}
+
+function ulozPoznamku() {
+  chart?.setSelectedNoteText(el('noteText').value.trim());
+  zavriNabidky();
+}
 
 /** Chybějící prvek se přeskočí, ať rozpadlá aktualizace nesestřelí graf. */
 function ukazPrvek(id, viditelny) {

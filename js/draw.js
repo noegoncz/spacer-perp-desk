@@ -397,6 +397,11 @@ export function createTouchDrawing({
     hitTest(mx, my, kresby) {
       for (let i = kresby.length - 1; i >= 0; i -= 1) {
         const body = kresby[i].points.map(toPixel);
+        if (kresby[i].name === 'simpleAnnotation') {
+          // Poznámka: štítek nad bodem, ne čára přes celou šířku.
+          if (Math.abs(mx - body[0].x) < 70 && my > body[0].y - 80 && my < body[0].y + PRAH_ZASAHU) return i;
+          continue;
+        }
         if (body.length === 1) {
           // Vodorovné a cenové čáry jdou přes celou šířku.
           if (Math.abs(body[0].y - my) < PRAH_ZASAHU) return i;

@@ -1563,6 +1563,40 @@ function rgba(hex, alpha) {
   return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
 }
 
+/**
+ * Poznámka (simpleAnnotation): vestavěná bere text z celého `extendData`,
+ * jenže tam máme uložený vzhled kresby — text byl prázdný a nešel zadat.
+ * Text je `extendData.text`, kreslí se v rámečku nad šipkou.
+ */
+function registrovatPoznamku() {
+  K().registerOverlay({
+    name: 'simpleAnnotation',
+    totalStep: 2,
+    needDefaultPointFigure: true,
+    createPointFigures: ({ overlay, coordinates }) => {
+      const d = overlay.extendData || {};
+      const text = String(d.text || '').trim() || t('note.placeholder');
+      const x = coordinates[0].x;
+      const y = coordinates[0].y - 6;
+      const vrch = y - 40;
+      const barva = rgba(d.color || BARVY_KRESEB[0], d.opacity ?? 1);
+      return [
+        { type: 'line', attrs: { coordinates: [{ x, y }, { x, y: vrch }] }, ignoreEvent: true },
+        { type: 'polygon', attrs: { coordinates: [{ x, y: vrch }, { x: x - 4, y: vrch - 5 }, { x: x + 4, y: vrch - 5 }] }, ignoreEvent: true },
+        {
+          type: 'text',
+          attrs: { x, y: vrch - 7, text, align: 'center', baseline: 'bottom' },
+          styles: {
+            style: 'stroke_fill', color: '#0b0e14', size: 13, paddingLeft: 6, paddingRight: 6, paddingTop: 4, paddingBottom: 4,
+            backgroundColor: barva, borderColor: barva, borderSize: 1, borderRadius: 4,
+          },
+          ignoreEvent: true,
+        },
+      ];
+    },
+  });
+}
+
 /** Styl kresby se drží v `extendData`, aby se dal uložit i načíst zpět. */
 function stylKresby(styl) {
   const s = { ...VYCHOZI_STYL, ...(styl || {}) };
@@ -1583,6 +1617,7 @@ export function createPriceChart(container, layer, handlers = {}) {
   registrovatVolumeProfile();
   registrovatLinkuPnl();
   registrovatVodorovneKresby();
+  registrovatPoznamku();
   registrovatMereni();
   registrovatRsi();
   registrovatLikvidace();
@@ -2093,7 +2128,7 @@ export function createPriceChart(container, layer, handlers = {}) {
         handlers.onDrawEnd?.();
         return;
       }
-      chart.createOverlay({
+      const id = chart.createOverlay({
         name: rozdelanyNastroj,
         groupId: SKUPINA_KRESBY,
         points: body,
@@ -2103,10 +2138,20 @@ export function createPriceChart(container, layer, handlers = {}) {
         extendData: { ...posledniStyl, ...(dodatekKresby || {}) },
         styles: stylKresby(posledniStyl),
       });
+      const bylaPoznamka = rozdelanyNastroj === 'simpleAnnotation';
       rozdelanyNastroj = null;
       dodatekKresby = null;
       ohlasZmenu();
       handlers.onDrawEnd?.();
+      // Nová poznámka se vybere a hned se otevře psaní textu.
+      if (bylaPoznamka && id) {
+        upravovanaKresba = chart.getOverlays({ id })[0] ?? null;
+        if (upravovanaKresba) {
+          kresleni.beginEdit(upravovanaKresba.points);
+          handlers.onSelectionChanged?.({ ...vybranyStyl(), poznamka: true });
+          handlers.onNoteEdit?.('');
+        }
+      }
     },
     /**
      * Volá se při každém posunu, ne až na konci — uživatel musí vidět, jak
@@ -2218,7 +2263,7 @@ export function createPriceChart(container, layer, handlers = {}) {
       if (index >= 0) {
         upravovanaKresba = kresby[index];
         kresleni.beginEdit(upravovanaKresba.points);
-        handlers.onSelectionChanged?.(vybranyStyl());
+        handlers.onSelectionChanged?.({ ...vybranyStyl(), poznamka: upravovanaKresba.name === 'simpleAnnotation' });
         return;
       }
 
@@ -2985,7 +3030,8 @@ export function createPriceChart(container, layer, handlers = {}) {
     setSelectedStyle(zmena) {
       if (!upravovanaKresba) return;
       const novy = { ...vybranyStyl(), ...zmena };
-      posledniStyl = { ...novy };
+      const { text: _text, ...bezTextu } = novy;
+      posledniStyl = bezTextu;
       handlers.onStyleChanged?.(posledniStyl);
       chart.overrideOverlay({
         id: upravovanaKresba.id,
@@ -2997,7 +3043,22 @@ export function createPriceChart(container, layer, handlers = {}) {
         extendData: novy,
       };
       handlers.onDrawingsChanged?.();
-      handlers.onSelectionChanged?.(novy);
+      handlers.onSelectionChanged?.({ ...novy, poznamka: upravovanaKresba.name === 'simpleAnnotation' });
+    },
+
+    /** Text vybrané poznámky (null = není vybraná poznámka). */
+    selectedNoteText() {
+      if (upravovanaKresba?.name !== 'simpleAnnotation') return null;
+      return String(upravovanaKresba.extendData?.text || '');
+    },
+
+    /** Zapíše text vybrané poznámky a uloží kresby. */
+    setSelectedNoteText(text) {
+      if (upravovanaKresba?.name !== 'simpleAnnotation') return;
+      const novy = { ...(upravovanaKresba.extendData || {}), text: String(text || '').slice(0, 200) };
+      chart.overrideOverlay({ id: upravovanaKresba.id, extendData: novy });
+      upravovanaKresba = chart.getOverlays({ id: upravovanaKresba.id })[0] ?? { ...upravovanaKresba, extendData: novy };
+      handlers.onDrawingsChanged?.();
     },
 
     /* ---------- indikátory ---------- */

@@ -1,9 +1,9 @@
 {
-  "verze": "0.65.0",
+  "verze": "0.65.1",
   "novinky": [
     {
-      "en": "Liquidation map: real liquidation levels of Hyperliquid positions right in your chart — brighter = more money waiting there. Works on the same coin from other exchanges too (shifted to that price). Arrows at the top and bottom show the nearest big cluster off-screen. History fills in over time; switch it off in Layers.",
-      "cs": "Likvidační mapa: skutečné likvidační úrovně pozic na Hyperliquidu přímo v grafu — čím jasnější, tím víc peněz tam čeká. Funguje i na stejném coinu z jiných burz (posunutá na jejich cenu). Šipky nahoře a dole ukazují nejbližší velký shluk mimo obraz. Historie se postupně doplňuje; vypnout jde ve Vrstvách."
+      "en": "Notes in the chart work: place a note and type your text right away; tap a note and the pencil to edit it.",
+      "cs": "Poznámky v grafu fungují: polož poznámku a rovnou napiš text; klepnutím na poznámku a na tužku ho upravíš."
     }
   ],
   "opravy": []

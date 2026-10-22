@@ -239,6 +239,14 @@
 
       <!-- Vzhled vybrané kresby. Dole, aby nepřekrýval cenové dění nahoře. -->
       <div id="stylePanel" class="style-panel" hidden>
+        <!-- Poznámka: úprava textu jako první, na úzkém displeji je paleta posuvná. -->
+        <div class="style-group jen-poznamka">
+          <button type="button" class="style-btn" id="styleNoteBtn"
+                  data-i18n-aria="note.edit" data-i18n-title="note.edit">
+            <svg viewBox="0 0 24 24" class="style-icon"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/></svg>
+          </button>
+        </div>
+        <div class="style-sep jen-poznamka"></div>
         <div class="style-group" id="styleColors" role="group" data-i18n-aria="style.color"></div>
         <div class="style-sep"></div>
         <div class="style-group" id="styleWidths" role="group" data-i18n-aria="style.width"></div>
@@ -459,6 +467,19 @@
       <div class="sheet-akce">
         <button type="button" id="alarmSaveBtn" class="primary-btn"
                 data-i18n="alarm.save">Save alert</button>
+      </div>
+    </div>
+    <!-- Text poznámky v grafu (nástroj Note). -->
+    <div id="sheetNote" class="sheet" hidden>
+      <div class="sheet-head">
+        <span data-i18n="tool.simpleAnnotation">Note</span>
+        <button type="button" class="icon-btn" data-close="sheetNote" data-i18n-aria="action.close">✕</button>
+      </div>
+      <div class="sheet-body">
+        <textarea id="noteText" class="note-text" rows="3" maxlength="200" data-i18n-ph="note.placeholder"></textarea>
+      </div>
+      <div class="sheet-akce">
+        <button type="button" id="noteSaveBtn" class="primary-btn" data-i18n="note.save">Save note</button>
       </div>
     </div>
   </section>

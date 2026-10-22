@@ -2131,6 +2131,13 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
   background: var(--surface);
 }
 .sheet-akce .primary-btn { width: 100%; }
+.note-text {
+  width: 100%; box-sizing: border-box; resize: none; font: inherit; font-size: 1rem;
+  background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px;
+}
+.style-panel.poznamka #styleAlarmBtn,
+.style-panel:not(.poznamka) .jen-poznamka { display: none; }
 
 .alarm-note {
   margin: 2px 0 0;
