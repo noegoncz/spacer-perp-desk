@@ -640,9 +640,20 @@ statistiky a shrnutí v lidské řeči — „co mi to o mně jako traderovi ř�
     od 3 obchodů v obou) a `noSetup(R)`.
   - Testy: `test-denik.py` (přepsaný, skutečné dotyky, převod verze 1),
     `test-denik-edge.py` (A2: confluence, bez setupu).
-  - **Další krok:** tabulka a filtry v Trades (setup, signál, confluence
-    1/2/3+, výsledek, plán…), pak detail s MFE/MAE + chyby a emoce, pak
-    Calendar.
+- **v0.68.0 — Trades: filtry a tabulka.** Tlačítko „Filters · n"
+  (`#journalFilterBtn`) otevře okno (`denikUi.otevriFiltry`): období,
+  výsledek, stav, setup (i „No setup" = `'-'`), signály, confluence
+  0/1/2/3+, plán (i „Not reviewed"), review, doba držení. Mezi hodnotami
+  jednoho filtru „nebo", mezi filtry „a"; každé klepnutí se projeví hned,
+  tlačítko dole ukazuje počet. Logika bez DOM: `filtruj`, `pocetFiltru`,
+  `skupinaDrzeni` v denik-statistiky.js. Přepínač karty / tabulka
+  (`#journalLayout`, `ui.renderTradesTable` — vlastní vodorovný posuv),
+  souhrn výběru nad seznamem (`#journalSouhrn`: PnL, počet, win rate,
+  avg R, PF jen z uzavřených). Filtr a rozložení se pamatují
+  (`perpdesk.journalFilter`, `perpdesk.journalLayout`).
+  Test: `tools/test-denik-trades.py` (Node + aplikace).
+  - **Další krok:** detail obchodu s MFE/MAE + chyby a emoce ve
+    zhodnocení, pak Calendar.
 
 ### Ověření Binance uživatelem (2026-10-18) a opravy v0.61.1
 

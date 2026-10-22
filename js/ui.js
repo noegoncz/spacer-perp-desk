@@ -1087,6 +1087,49 @@ export function renderHistory(skupiny, hide, onSelect, volby = {}) {
   );
 }
 
+/**
+ * Trades jako tabulka (v0.68.0): datum zavření, pár + směr, setup,
+ * počet signálů, R, PnL, plán. Široká tabulka se posouvá ve vlastním
+ * obalu, stránka ne. Klepnutí na řádek = jako klepnutí na kartu.
+ * rows: [{ g, setup, signaly, r, plan }]
+ */
+export function renderTradesTable(rows, hide, onSelect) {
+  const el2 = (tag, trida, text = '') => {
+    const e = document.createElement(tag);
+    if (trida) e.className = trida;
+    if (text) e.textContent = text;
+    return e;
+  };
+  const obal = el2('div', 'trades-tabulka-obal');
+  const tab = el2('table', 'trades-tabulka');
+  const hlava = el2('tr');
+  ['date', 'pair', 'setup', 'sig', 'r', 'pnl', 'plan'].forEach((k) => hlava.append(el2('th', `tt-${k}`, t(`journal.col.${k}`))));
+  const thead = el2('thead');
+  thead.append(hlava);
+  const tbody = el2('tbody');
+  const PLAN = { yes: '✓', partly: '~', no: '✗' };
+  rows.forEach(({ g, setup, signaly, r, plan }) => {
+    const tr = el2('tr', g.otevrena ? 'otevreny' : '');
+    tr.tabIndex = 0;
+    const par = el2('td', 'tt-pair');
+    par.append(el2('span', `tt-smer ${g.long ? 'long' : 'short'}`, g.long ? 'L' : 'S'), document.createTextNode(` ${g.symbol.replace(/USDT$|USDC$/, '')}`));
+    tr.append(
+      el2('td', 'tt-date', g.otevrena ? t('history.open') : datum(g.zavreno).replace(/\.\d{4}$/, '')),
+      par,
+      el2('td', 'tt-setup', setup || '–'),
+      el2('td', 'tt-sig', signaly ? String(signaly) : '–'),
+      el2('td', `tt-r ${r > 0 ? 'up' : r < 0 ? 'down' : ''}`, r === null || r === undefined ? '–' : `${r >= 0 ? '+' : '−'}${Math.abs(r).toFixed(1)}`),
+      el2('td', `tt-pnl ${pnlClass(g.pnl)}`, hide ? MASK : formatSignedUsd(g.pnl)),
+      el2('td', `tt-plan plan-${plan || 'none'}`, PLAN[plan] || '–'),
+    );
+    tr.addEventListener('click', () => onSelect(g));
+    tbody.append(tr);
+  });
+  tab.append(thead, tbody);
+  obal.append(tab);
+  dom.historyList.replaceChildren(obal);
+}
+
 export function showHistoryNote(text) {
   dom.historyNote.textContent = text || '';
 }

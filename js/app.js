@@ -653,7 +653,7 @@ function denikSkupiny(g) {
 }
 
 function prekresliHistorii() {
-  if (skupinyObchodu.length) ui.renderHistory(skupinyObchodu, hideAmounts, otevriSkupinu, volbyHistorie());
+  if (skupinyObchodu.length) vykresliObchodyDeniku();
   vykresliEdge();
 }
 
@@ -1414,6 +1414,11 @@ function wireEvents() {
   naUdalost('historyMore', 'click', () => nactiStarsiHistorii());
   naUdalost('journalAccount', 'change', (e) => zmenFiltrUctu(e.target.value));
   naUdalost('journalPeriod', 'change', (e) => zmenObdobiDeniku(Number(e.target.value)));
+  naUdalost('journalFilterBtn', 'click', otevriFiltryDeniku);
+  naUdalost('journalLayout', 'click', (e) => {
+    const b = e.target.closest('button[data-l]');
+    if (b) zmenRozlozeniTrades(b.dataset.l);
+  });
   naUdalost('addPairClose', 'click', zavriNabidkyTrhu);
   naUdalost('addPairSearch', 'input', vykresliPridani);
   naUdalost('layoutBtn', 'click', () => {
@@ -4224,7 +4229,7 @@ function vykresliHistorii() {
   vykresliListuDeniku();
   slitSkupiny();
   vykresliEdge();
-  ui.renderHistory(skupinyObchodu, hideAmounts, otevriSkupinu, volbyHistorie());
+  vykresliObchodyDeniku();
   predNactiProhlidky();
   const stavy = uctyHistorie().map(stavHistorie);
   const od = spolecneOd();
@@ -4296,6 +4301,87 @@ const OBDOBI_DENIKU = [7, 30, 90, 0];   // dní; 0 = vše načtené
 let obdobiDeniku = OBDOBI_DENIKU.includes(store.loadJson('perpdesk.journalPeriod', 30))
   ? store.loadJson('perpdesk.journalPeriod', 30) : 30;
 
+// Trades (v0.68.0): filtry a karty / tabulka, pamatují se.
+let filtrDeniku = store.loadJson('perpdesk.journalFilter', {}) || {};
+let rozlozeniTrades = store.loadJson('perpdesk.journalLayout', 'cards') === 'table' ? 'table' : 'cards';
+
+const obchodySPoznamkou = () => skupinyObchodu.map((g) => ({ g, poznamka: poznamkaObchodu(g) }));
+
+/** Seznam v Trades podle filtrů: karty nebo tabulka, nad ním souhrn výběru. */
+function vykresliObchodyDeniku() {
+  const vse = obchodySPoznamkou();
+  const vybrane = statistiky.filtruj(vse, filtrDeniku);
+  const pocetF = statistiky.pocetFiltru(filtrDeniku);
+  const btn = el('journalFilterBtn');
+  if (btn) {
+    btn.textContent = pocetF ? `${t('journal.filters')} · ${pocetF}` : t('journal.filters');
+    btn.classList.toggle('on', pocetF > 0);
+  }
+  el('journalLayout')?.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.l === rozlozeniTrades));
+  // Souhrn výběru: jen uzavřené obchody.
+  const box = el('journalSouhrn');
+  const zavrene = vybrane.filter((x) => !x.g.otevrena);
+  if (box) {
+    box.hidden = !zavrene.length;
+    if (zavrene.length) {
+      const s = statistiky.souhrn(zavrene.map((x) => ({ pnl: x.g.pnl, zavreno: x.g.zavreno, poznamka: x.poznamka })));
+      const pnl = el2span(`journal-souhrn-pnl ${s.pnl >= 0 ? 'up' : 'down'}`, hideAmounts ? '••••' : `${s.pnl >= 0 ? '+' : '−'}${formatUsd(Math.abs(s.pnl))} USD`);
+      const casti = [t(zavrene.length === 1 ? 'journal.oneTrade' : 'journal.nTrades', { n: zavrene.length }),
+        `${t('journal.edge.winRate')} ${Math.round((s.uspesnost || 0) * 100)} %`];
+      if (s.prumerR !== null) casti.push(`${t('journal.edge.avgR')} ${formatR(s.prumerR)}`);
+      if (s.profitFactor !== null) casti.push(`PF ${Number.isFinite(s.profitFactor) ? s.profitFactor.toFixed(2) : '∞'}`);
+      box.replaceChildren(pnl, el2span('journal-souhrn-text', casti.join(' · ')));
+    }
+  }
+  if (!vybrane.length && vse.length) {
+    const prazdne = document.createElement('p');
+    prazdne.className = 'watch-note';
+    prazdne.textContent = t('journal.noMatch');
+    el('historyList')?.replaceChildren(prazdne);
+    return;
+  }
+  if (rozlozeniTrades === 'table') {
+    ui.renderTradesTable(vybrane.map(({ g, poznamka }) => {
+      const v = poznamka?.vstup;
+      return {
+        g,
+        setup: v?.setup ? (denik.polozka('setupy', v.setup)?.kratky || denik.nazev('setupy', v.setup)) : '',
+        signaly: v?.signaly?.length || 0,
+        r: g.otevrena ? null : denik.vysledekR(poznamka, g.pnl),
+        plan: poznamka?.zhodnoceni?.plan || '',
+      };
+    }), hideAmounts, otevriSkupinu);
+  } else {
+    ui.renderHistory(vybrane.map((x) => x.g), hideAmounts, otevriSkupinu, volbyHistorie());
+  }
+}
+
+function el2span(trida, text) {
+  const e = document.createElement('span');
+  e.className = trida;
+  e.textContent = text;
+  return e;
+}
+
+function otevriFiltryDeniku() {
+  const vse = obchodySPoznamkou();
+  denikUi.otevriFiltry({
+    filtr: filtrDeniku,
+    pocet: (f) => statistiky.filtruj(vse, f).length,
+    onZmena: (f) => {
+      filtrDeniku = f;
+      store.saveJson('perpdesk.journalFilter', f);
+      vykresliObchodyDeniku();
+    },
+  });
+}
+
+function zmenRozlozeniTrades(l) {
+  rozlozeniTrades = l === 'table' ? 'table' : 'cards';
+  store.saveJson('perpdesk.journalLayout', rozlozeniTrades);
+  vykresliObchodyDeniku();
+}
+
 function vykresliListuDeniku() {
   ui.renderListBar({
     misto: 'journalTabs',
@@ -4306,6 +4392,8 @@ function vykresliListuDeniku() {
   ukazPrvek('journalEdge', pohledDeniku === 'edge');
   ukazPrvek('journalTrades', pohledDeniku === 'trades');
   ukazPrvek('journalPeriodBox', pohledDeniku === 'edge');
+  ukazPrvek('journalFilterBtn', pohledDeniku === 'trades');
+  ukazPrvek('journalLayout', pohledDeniku === 'trades');
   const vyber = el('journalPeriod');
   if (vyber && vyber.options.length !== OBDOBI_DENIKU.length) {
     vyber.replaceChildren(...OBDOBI_DENIKU.map((d) => {

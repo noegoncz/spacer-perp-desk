@@ -573,3 +573,74 @@ export function tlacitka(poznamka, { review = false, uzavreny = false, cekaRevie
   }
   return radek;
 }
+
+/* ---------- filtry v Trades (v0.68.0) ---------- */
+
+/**
+ * Okno filtrů. Každé klepnutí se projeví hned (`onZmena`), tlačítko dole
+ * ukazuje, kolik obchodů projde (`pocet(f)`), a okno zavře.
+ * @param {object} o { filtr, onZmena(f), pocet(f) }
+ */
+export function otevriFiltry(o) {
+  const f = JSON.parse(JSON.stringify(o.filtr || {}));
+  // Období je v okně text (data-h), ven jde jako číslo dní.
+  if (f.obdobi) f.obdobi = String(f.obdobi);
+  const ven = () => ({ ...JSON.parse(JSON.stringify(f)), obdobi: Number(f.obdobi) || 0 });
+  const ukaz = tlacitko('', 'primary-btn denik-ulozit', zavri);
+  const popisTlacitka = () => {
+    const n = o.pocet(ven());
+    ukaz.textContent = t(n === 1 ? 'journal.f.show1' : 'journal.f.show', { n });
+  };
+  const obnov = () => {
+    popisTlacitka();
+    o.onZmena(ven());
+  };
+
+  // Jedna volba (klepnutí na vybranou ji zruší) nebo víc voleb.
+  const volby = (klic, hodnoty, vice) => {
+    const radek = el('div', 'denik-chips');
+    const vybrana = (h) => (vice ? (f[klic] || []).includes(h) : f[klic] === h);
+    hodnoty.forEach(([h, text, barva]) => {
+      const b = tlacitko(text, `chip${vybrana(h) ? ' on' : ''}`, () => {
+        if (vice) {
+          const s = new Set(f[klic] || []);
+          if (s.has(h)) s.delete(h); else s.add(h);
+          f[klic] = [...s];
+        } else f[klic] = f[klic] === h ? '' : h;
+        radek.querySelectorAll('.chip').forEach((x) => x.classList.toggle('on', vybrana(x.dataset.h)));
+        obnov();
+      });
+      b.dataset.h = h;
+      if (barva) {
+        b.classList.add('chip-barva');
+        b.style.setProperty('--c', barva);
+      }
+      radek.append(b);
+    });
+    return radek;
+  };
+
+  const setupy = [['-', t('journal.noSetup')], ...denik.polozky('setupy').map((p) => [p.id, p.kratky || p.nazev, SKUPINY.setup])];
+  const signaly = denik.polozky('signaly').map((p) => [p.id, p.kratky || p.nazev, SKUPINY[p.skupina]]);
+  const obsah = [
+    hlavicka(t('journal.filters'), ''),
+    skupina(t('journal.f.period'), volby('obdobi', [[7, '7 d'], [30, '30 d'], [90, '90 d']].map(([d, x]) => [String(d), x]), false)),
+    skupina(t('journal.f.result'), volby('vysledek', [['win', t('journal.f.win')], ['loss', t('journal.f.loss')]], false)),
+    skupina(t('journal.f.status'), volby('stav', [['open', t('journal.f.open')], ['closed', t('journal.f.closed')]], false)),
+    skupina(t('journal.setup'), volby('setupy', setupy, true)),
+    skupina(t('journal.signals'), volby('signaly', signaly, true)),
+    skupina(t('journal.f.conf'), volby('conf', [['0', '0'], ['1', '1'], ['2', '2'], ['3', '3+']], true)),
+    skupina(t('journal.plan'), volby('plan', [['yes', t('journal.planAns.yes')], ['partly', t('journal.planAns.partly')], ['no', t('journal.planAns.no')], ['none', t('journal.f.planNone')]], true)),
+    skupina(t('journal.reviewTab'), volby('review', [['done', t('journal.f.reviewDone')], ['missing', t('journal.f.reviewMissing')]], false)),
+    skupina(t('journal.f.held'), volby('drzeni', [['h', '< 1 h'], ['d', '1 h – 1 d'], ['w', '1–7 d'], ['m', '> 7 d']], true)),
+  ];
+  const radek = el('div', 'denik-tlacitka');
+  radek.append(tlacitko(t('journal.f.reset'), 'secondary-btn', () => {
+    Object.keys(f).forEach((k) => delete f[k]);
+    obnov();
+    otevriFiltry({ ...o, filtr: {} });
+  }), ukaz);
+  obsah.push(radek);
+  otevri(obsah);
+  popisTlacitka();
+}

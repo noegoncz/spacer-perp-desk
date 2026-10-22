@@ -3150,7 +3150,7 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 .journal-filtry:not(:has(.chip-vyber:not([hidden]))) { display: none; }
 .chip-vyber {
   position: relative; flex: 0 0 auto; display: inline-flex; align-items: center;
-  border: 1px solid var(--border); border-radius: 999px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 7px; background: var(--surface);
 }
 .chip-vyber.on, #journalPeriodBox { border-color: var(--accent); background: rgba(76, 154, 255, 0.14); }
 .chip-vyber select {
@@ -3207,3 +3207,32 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 .edge-obchod-info { font-size: 0.75rem; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .edge-obchod-info.vpravo { text-align: right; }
 .edge-prazdne { margin-top: 24px; }
+
+/* ---------- Trades: filtry, karty / tabulka (v0.68.0) ---------- */
+.journal-filtry { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.journal-filtr-btn { font: inherit; font-size: 0.82rem; color: var(--text); cursor: pointer; padding: 6px 26px 6px 12px; min-height: 34px; }
+.journal-rozlozeni { display: inline-flex; margin-left: auto; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+.journal-rozlozeni button { width: 40px; height: 34px; display: grid; place-items: center; border: 0; background: transparent; color: var(--text-dim); cursor: pointer; }
+.journal-rozlozeni button.on { background: color-mix(in srgb, var(--accent) 20%, var(--surface-2)); color: var(--text); }
+.journal-rozlozeni svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.journal-souhrn { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0 0 10px; padding: 9px 12px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); }
+.journal-souhrn-pnl { font-weight: 800; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.journal-souhrn-text { font-size: 0.8rem; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.denik-sheet .chip-barva { border-left: 4px solid color-mix(in srgb, var(--c) 70%, transparent); }
+.denik-sheet .chip-barva.on { border-color: var(--c); background: color-mix(in srgb, var(--c) 18%, transparent); }
+.trades-tabulka-obal { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.trades-tabulka { width: 100%; border-collapse: collapse; font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+.trades-tabulka th { position: sticky; top: 0; background: var(--surface-2); color: var(--text-dim); font-weight: 600; font-size: 0.72rem; text-align: right; padding: 7px 8px; white-space: nowrap; }
+.trades-tabulka td { padding: 9px 8px; border-top: 1px solid var(--border); text-align: right; white-space: nowrap; }
+.trades-tabulka .tt-date, .trades-tabulka .tt-pair, .trades-tabulka .tt-setup { text-align: left; }
+.trades-tabulka .tt-plan { text-align: center; }
+.trades-tabulka td.tt-setup { max-width: 92px; overflow: hidden; text-overflow: ellipsis; color: var(--text-dim); }
+.trades-tabulka td.tt-date { color: var(--text-dim); }
+.trades-tabulka tr.otevreny td.tt-date { color: var(--accent); }
+.trades-tabulka tbody tr { cursor: pointer; }
+.trades-tabulka tbody tr:active { background: var(--surface-2); }
+.tt-smer { display: inline-block; width: 16px; text-align: center; border-radius: 3px; font-size: 0.68rem; font-weight: 800; }
+.tt-smer.long { background: rgba(62, 230, 164, 0.16); color: #3ee6a4; }
+.tt-smer.short { background: rgba(246, 70, 93, 0.16); color: #f6465d; }
+.tt-r.up { color: #3ee6a4; } .tt-r.down { color: #f6465d; }
+.tt-plan.plan-yes { color: #3ee6a4; } .tt-plan.plan-no { color: #f6465d; } .tt-plan.plan-partly { color: #f0b90b; } .tt-plan.plan-none { color: var(--text-dim); }

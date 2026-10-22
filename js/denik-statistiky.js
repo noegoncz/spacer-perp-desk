@@ -141,3 +141,50 @@ export function vety(s) {
   }
   return vysledek;
 }
+
+/* ---------- filtry v Trades (v0.68.0) ---------- */
+
+/** Doba držení do skupin: < 1 h, 1 h – 1 d, 1–7 d, > 7 d. */
+export function skupinaDrzeni(ms) {
+  if (!(ms > 0)) return null;
+  if (ms < 3600e3) return 'h';
+  if (ms < 86400e3) return 'd';
+  if (ms < 7 * 86400e3) return 'w';
+  return 'm';
+}
+
+/** Kolik filtrů je zapnutých (číslo na tlačítku). */
+export function pocetFiltru(f = {}) {
+  return ['vysledek', 'stav', 'review'].filter((k) => f[k]).length
+    + ['setupy', 'signaly', 'conf', 'plan', 'drzeni'].filter((k) => f[k]?.length).length
+    + (f.obdobi ? 1 : 0);
+}
+
+/**
+ * Obchody, které projdou filtrem. o = { g, poznamka }: g = složený obchod
+ * z Historie (otevrena, pnl, otevreno, zavreno, posledni).
+ * Setup '-' = bez setupu (i bez plánu), confluence '3' = 3 a víc, plán
+ * 'none' = bez zhodnocení. Mezi hodnotami jednoho filtru platí „nebo",
+ * mezi filtry „a".
+ */
+export function filtruj(obchody, f = {}, ted = Date.now()) {
+  return obchody.filter(({ g, poznamka }) => {
+    const v = poznamka?.vstup;
+    const z = poznamka?.zhodnoceni;
+    if (f.stav === 'open' && !g.otevrena) return false;
+    if (f.stav === 'closed' && g.otevrena) return false;
+    if (f.vysledek && (g.otevrena || (f.vysledek === 'win' ? !(g.pnl > 0) : g.pnl > 0))) return false;
+    if (f.obdobi && !g.otevrena && (g.posledni || g.zavreno || 0) < ted - f.obdobi * 86400e3) return false;
+    if (f.setupy?.length && !f.setupy.includes(v?.setup || '-')) return false;
+    if (f.signaly?.length && !f.signaly.some((s) => v?.signaly?.includes(s))) return false;
+    if (f.conf?.length && !f.conf.includes(String(Math.min(v?.signaly?.length || 0, 3)))) return false;
+    if (f.plan?.length && !f.plan.includes(z?.plan || 'none')) return false;
+    if (f.review === 'done' && !z) return false;
+    if (f.review === 'missing' && (z || g.otevrena)) return false;
+    if (f.drzeni?.length) {
+      const d = skupinaDrzeni((g.zavreno || ted) - (g.otevreno || NaN));
+      if (!d || !f.drzeni.includes(d)) return false;
+    }
+    return true;
+  });
+}

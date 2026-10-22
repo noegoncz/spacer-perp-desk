@@ -1,5 +1,5 @@
 {
-  "verze": "0.67.0",
+  "verze": "0.68.0",
   "novinky": [
     {
       "en": "Trade journal: one Plan window with setup, signals and confluence. Every setup and signal has a sketch and a short explanation — tap ⓘ or hold the tile.",
@@ -10,7 +10,11 @@
       "cs": "Plán a Review jsou u každého obchodu vedle sebe, s fajfkou po vyplnění. Můžeš přidat vlastní setupy a signály; nejpoužívanější jsou napřed."
     },
     {
-      "en": "Edge now compares trades with 3+ signals against the rest, and shows how trades without a setup do.",
+      "en": "Trades: filter by setup, signals, confluence, result, plan and holding time, and switch between cards and a table. A summary shows PnL, win rate and average R of what you filtered.",
+      "cs": "Trades: filtry podle setupu, signálů, confluence, výsledku, plánu a doby držení a přepínání karty / tabulka. Souhrn ukáže PnL, úspěšnost a průměrné R vybraných obchodů."
+    },
+    {
+      "en": "Edge compares trades with 3+ signals against the rest, and shows how trades without a setup do.",
       "cs": "Edge porovná obchody se 3+ signály s ostatními a ukáže, jak dopadají obchody bez setupu."
     }
   ],

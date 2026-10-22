@@ -590,9 +590,16 @@
       <label id="journalAccountBox" class="chip-vyber" hidden>
         <select id="journalAccount" data-i18n-aria="journal.account"></select>
       </label>
+      <!-- Trades (v0.68.0): filtry v okně a přepínač karty / tabulka. -->
+      <button type="button" id="journalFilterBtn" class="chip-vyber journal-filtr-btn" hidden></button>
+      <div id="journalLayout" class="journal-rozlozeni" hidden>
+        <button type="button" data-l="cards" data-i18n-aria="journal.layoutCards"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="7" rx="1.5"/><rect x="4" y="13" width="16" height="7" rx="1.5"/></svg></button>
+        <button type="button" data-l="table" data-i18n-aria="journal.layoutTable"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg></button>
+      </div>
     </div>
     <div id="journalEdge" class="journal-edge"></div>
     <div id="journalTrades" hidden>
+      <div id="journalSouhrn" class="journal-souhrn" hidden></div>
       <p id="historyNote" class="watch-note history-note"></p>
       <div id="historyList" class="history-list"></div>
       <!-- Starší obchody po 30 dnech (v0.38.0) — napoprvé jen 7 dní, ať je
