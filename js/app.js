@@ -4251,6 +4251,7 @@ function vykresliHistorii() {
   slitSkupiny();
   vykresliEdge();
   vykresliObchodyDeniku();
+  vykresliKalendar();
   predNactiProhlidky();
   const stavy = uctyHistorie().map(stavHistorie);
   const od = spolecneOd();
@@ -4315,7 +4316,7 @@ function nactiStarsiHistorii(cil = null) {
 /* ---------- deník: podzáložky a Edge (v0.64.0) ---------- */
 
 // Podzáložka a období se pamatují (jako vybraný seznam ve Watchlists).
-const POHLEDY_DENIKU = ['edge', 'trades'];
+const POHLEDY_DENIKU = ['edge', 'trades', 'calendar'];
 let pohledDeniku = POHLEDY_DENIKU.includes(store.loadJson('perpdesk.journalView', 'edge'))
   ? store.loadJson('perpdesk.journalView', 'edge') : 'edge';
 const OBDOBI_DENIKU = [7, 30, 90, 0];   // dní; 0 = vše načtené
@@ -4377,6 +4378,46 @@ function vykresliObchodyDeniku() {
   }
 }
 
+/* Kalendář (v0.70.0): měsíc po dnech; den → Trades toho dne. */
+let mesicKalendare = (() => { const d = new Date(); return { rok: d.getFullYear(), mesic: d.getMonth() }; })();
+
+function vykresliKalendar() {
+  if (pohledDeniku !== 'calendar') return;
+  const { rok, mesic } = mesicKalendare;
+  const ted = new Date();
+  const ucty = uctyHistorie().map(stavHistorie);
+  ui.renderCalendar({
+    rok,
+    mesic,
+    data: statistiky.kalendar(obchodySPoznamkou(), rok, mesic),
+    hide: hideAmounts,
+    nacitam: ucty.some((x) => x.nacita),
+    dalsi: rok < ted.getFullYear() || (rok === ted.getFullYear() && mesic < ted.getMonth()),
+    onPrev: () => posunKalendar(-1),
+    onNext: () => posunKalendar(1),
+    onDay: (den) => {
+      filtrDeniku = { den };
+      store.saveJson('perpdesk.journalFilter', filtrDeniku);
+      vyberPohledDeniku('trades');
+    },
+  });
+  zajistiMesicKalendare();
+}
+
+function posunKalendar(o) {
+  const d = new Date(mesicKalendare.rok, mesicKalendare.mesic + o, 1);
+  mesicKalendare = { rok: d.getFullYear(), mesic: d.getMonth() };
+  vykresliKalendar();
+}
+
+/** Měsíc v kalendáři potřebuje historii od svého začátku — dotáhne ji. */
+function zajistiMesicKalendare() {
+  const cil = new Date(mesicKalendare.rok, mesicKalendare.mesic, 1).getTime();
+  const ucty = uctyHistorie().map(stavHistorie);
+  if (!ucty.length || ucty.some((x) => x.nacita || !x.od)) return;
+  if (ucty.some((x) => x.od > cil + 3600e3 && !historieNaKonci(x))) nactiStarsiHistorii(cil);
+}
+
 function el2span(trida, text) {
   const e = document.createElement('span');
   e.className = trida;
@@ -4412,6 +4453,7 @@ function vykresliListuDeniku() {
   });
   ukazPrvek('journalEdge', pohledDeniku === 'edge');
   ukazPrvek('journalTrades', pohledDeniku === 'trades');
+  ukazPrvek('journalCalendar', pohledDeniku === 'calendar');
   ukazPrvek('journalPeriodBox', pohledDeniku === 'edge');
   ukazPrvek('journalFilterBtn', pohledDeniku === 'trades');
   ukazPrvek('journalLayout', pohledDeniku === 'trades');
@@ -4433,7 +4475,7 @@ function vyberPohledDeniku(pohled) {
   pohledDeniku = pohled;
   store.saveJson('perpdesk.journalView', pohled);
   vykresliHistorii();
-  const obsah = el(pohled === 'edge' ? 'journalEdge' : 'journalTrades');
+  const obsah = el({ edge: 'journalEdge', trades: 'journalTrades', calendar: 'journalCalendar' }[pohled]);
   if (obsah) {
     obsah.classList.remove('prijezd-zprava', 'prijezd-zleva');
     void obsah.offsetWidth; // restart animace i při rychlém přejíždění

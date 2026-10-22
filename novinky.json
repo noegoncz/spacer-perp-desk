@@ -1,13 +1,13 @@
 {
-  "verze": "0.69.0",
+  "verze": "0.70.0",
   "novinky": [
     {
-      "en": "Review shows MFE and MAE: how far price went for you and against you while the trade was open (in R when your plan has a stop-loss).",
-      "cs": "Review ukáže MFE a MAE: jak daleko šla cena v tvůj prospěch a proti tobě, dokud byl obchod otevřený (v R, když má plán stop-loss)."
+      "en": "Journal → Calendar: every day of the month in green or red by your PnL, with the number of trades. Tap a day to see its trades.",
+      "cs": "Deník → Kalendář: každý den v měsíci zeleně nebo červeně podle PnL, s počtem obchodů. Klepni na den a uvidíš jeho obchody."
     },
     {
-      "en": "Mark your mistakes (entry, managing, exit) and how you felt. Edge tells you which mistake costs you the most, and Trades can filter by both.",
-      "cs": "Označ si chyby (vstup, řízení, výstup) a jak ses cítil. Edge řekne, která chyba tě stojí nejvíc, a Trades podle nich umí filtrovat."
+      "en": "Review shows MFE and MAE, and lets you mark mistakes and how you felt. Edge tells you which mistake costs you the most.",
+      "cs": "Review ukáže MFE a MAE a umožní označit chyby a jak ses cítil. Edge řekne, která chyba tě stojí nejvíc."
     },
     {
       "en": "Trades: filters, a table view and a summary of what you filtered. Plan window with setups, signals, confluence and built-in guides.",

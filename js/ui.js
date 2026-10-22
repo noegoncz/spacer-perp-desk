@@ -1130,6 +1130,77 @@ export function renderTradesTable(rows, hide, onSelect) {
   dom.historyList.replaceChildren(obal);
 }
 
+/**
+ * Kalendář deníku (v0.70.0): měsíc po dnech (pondělí první), buňka
+ * zelená / červená podle PnL dne, číslo a počet obchodů. Klepnutí na
+ * den s obchody → onDay(klíč dne). Nahoře měsíc, šipky a součet.
+ * k = { rok, mesic, data: kalendar(), hide, nacitam, onDay, onPrev, onNext, dalsi }
+ */
+export function renderCalendar(k) {
+  const box = el('journalCalendar');
+  if (!box) return;
+  const e = (tag, trida, text = '') => {
+    const x = document.createElement(tag);
+    if (trida) x.className = trida;
+    if (text !== '') x.textContent = text;
+    return x;
+  };
+  const castka = (v) => (k.hide ? MASK : `${v >= 0 ? '+' : '−'}${formatUsd(Math.abs(v))}`);
+  const kratce = (v) => {
+    if (k.hide) return '••';
+    const a = Math.abs(v);
+    const text = a >= 1000 ? `${(a / 1000).toFixed(a >= 10000 ? 0 : 1)}k` : a >= 100 ? a.toFixed(0) : a.toFixed(1);
+    return `${v >= 0 ? '+' : '−'}${text}`;
+  };
+  const hlava = e('div', 'kal-hlava');
+  const nazev = new Date(k.rok, k.mesic, 1).toLocaleDateString(getLocale(), { month: 'long', year: 'numeric' });
+  const zpet = e('button', 'kal-sipka', '‹');
+  zpet.type = 'button';
+  zpet.setAttribute('aria-label', t('journal.cal.prev'));
+  zpet.addEventListener('click', k.onPrev);
+  const vpred = e('button', 'kal-sipka', '›');
+  vpred.type = 'button';
+  vpred.disabled = !k.dalsi;
+  vpred.setAttribute('aria-label', t('journal.cal.next'));
+  vpred.addEventListener('click', k.onNext);
+  hlava.append(zpet, e('div', 'kal-mesic', nazev), vpred);
+
+  const souhrn = e('div', 'kal-souhrn');
+  souhrn.append(
+    e('span', `kal-pnl ${k.data.pnl >= 0 ? 'up' : 'down'}`, k.data.pocet ? `${castka(k.data.pnl)} USD` : ''),
+    e('span', 'kal-pocty', k.nacitam ? t('history.loading')
+      : k.data.pocet ? t('journal.cal.summary', { n: k.data.pocet, z: k.data.dnyZisk, l: k.data.dnyZtrata }) : t('journal.cal.none')),
+  );
+
+  const mrizka = e('div', 'kal-mrizka');
+  // Názvy dnů od pondělí (5. 1. 2026 je pondělí).
+  for (let i = 0; i < 7; i += 1) {
+    mrizka.append(e('div', 'kal-den-nazev', new Date(2026, 0, 5 + i).toLocaleDateString(getLocale(), { weekday: 'narrow' })));
+  }
+  const prvni = (new Date(k.rok, k.mesic, 1).getDay() + 6) % 7;
+  const pocetDni = new Date(k.rok, k.mesic + 1, 0).getDate();
+  for (let i = 0; i < prvni; i += 1) mrizka.append(e('div', 'kal-bunka prazdna'));
+  const dnes = new Date();
+  const maxAbs = Math.max(1, ...Object.values(k.data.dny).map((d) => Math.abs(d.pnl)));
+  for (let d = 1; d <= pocetDni; d += 1) {
+    const klic = `${k.rok}-${String(k.mesic + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const den = k.data.dny[klic];
+    const b = e(den ? 'button' : 'div', `kal-bunka${den ? (den.pnl >= 0 ? ' zisk' : ' ztrata') : ''}`);
+    if (dnes.getFullYear() === k.rok && dnes.getMonth() === k.mesic && dnes.getDate() === d) b.classList.add('dnes');
+    b.append(e('span', 'kal-cislo', String(d)));
+    if (den) {
+      b.type = 'button';
+      b.dataset.den = klic;
+      // Sytost podle velikosti PnL proti největšímu dni v měsíci.
+      b.style.setProperty('--sila', String(0.18 + 0.5 * Math.min(1, Math.abs(den.pnl) / maxAbs)));
+      b.append(e('span', 'kal-castka', kratce(den.pnl)), e('span', 'kal-obchody', String(den.pocet)));
+      b.addEventListener('click', () => k.onDay(klic));
+    }
+    mrizka.append(b);
+  }
+  box.replaceChildren(hlava, souhrn, mrizka, e('p', 'hint kal-pozn', t('journal.cal.hint')));
+}
+
 export function showHistoryNote(text) {
   dom.historyNote.textContent = text || '';
 }

@@ -157,7 +157,7 @@ export function skupinaDrzeni(ms) {
 
 /** Kolik filtrů je zapnutých (číslo na tlačítku). */
 export function pocetFiltru(f = {}) {
-  return ['vysledek', 'stav', 'review'].filter((k) => f[k]).length
+  return ['vysledek', 'stav', 'review', 'den'].filter((k) => f[k]).length
     + ['setupy', 'signaly', 'conf', 'plan', 'drzeni', 'chyby', 'emoce'].filter((k) => f[k]?.length).length
     + (f.obdobi ? 1 : 0);
 }
@@ -173,6 +173,7 @@ export function filtruj(obchody, f = {}, ted = Date.now()) {
   return obchody.filter(({ g, poznamka }) => {
     const v = poznamka?.vstup;
     const z = poznamka?.zhodnoceni;
+    if (f.den && (g.otevrena || !g.zavreno || klicDne(g.zavreno) !== f.den)) return false;
     if (f.stav === 'open' && !g.otevrena) return false;
     if (f.stav === 'closed' && g.otevrena) return false;
     if (f.vysledek && (g.otevrena || (f.vysledek === 'win' ? !(g.pnl > 0) : g.pnl > 0))) return false;
@@ -252,4 +253,37 @@ export function nejdrazsiChyba(obchody) {
   });
   const kandidati = [...mapa.values()].filter((s) => s.pocet >= 2 && s.pnl < 0);
   return kandidati.reduce((a, b) => (!a || b.pnl < a.pnl ? b : a), null);
+}
+
+/* ---------- kalendář (v0.70.0) ---------- */
+
+/** Den v místním čase jako klíč „2026-10-22" (filtr a buňky kalendáře). */
+export function klicDne(ms) {
+  const d = new Date(ms);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * Měsíc v kalendáři: PnL a počet uzavřených obchodů po dnech zavření.
+ * mesic 0–11. Vrací { dny: { 'YYYY-MM-DD': { pnl, pocet, vyhranych } },
+ * pnl, pocet, dnyZisk, dnyZtrata }.
+ */
+export function kalendar(obchody, rok, mesic) {
+  const od = new Date(rok, mesic, 1).getTime();
+  const do_ = new Date(rok, mesic + 1, 1).getTime();
+  const dny = {};
+  let pnl = 0;
+  let pocet = 0;
+  obchody.forEach(({ g }) => {
+    if (g.otevrena || !(g.zavreno >= od && g.zavreno < do_)) return;
+    const k = klicDne(g.zavreno);
+    const d = dny[k] || (dny[k] = { pnl: 0, pocet: 0, vyhranych: 0 });
+    d.pnl += Number(g.pnl) || 0;
+    d.pocet += 1;
+    if (g.pnl > 0) d.vyhranych += 1;
+    pnl += Number(g.pnl) || 0;
+    pocet += 1;
+  });
+  const hodnoty = Object.values(dny);
+  return { dny, pnl, pocet, dnyZisk: hodnoty.filter((d) => d.pnl > 0).length, dnyZtrata: hodnoty.filter((d) => d.pnl < 0).length };
 }

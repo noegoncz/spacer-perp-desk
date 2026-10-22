@@ -660,7 +660,17 @@ statistiky a shrnutí v lidské řeči — „co mi to o mně jako traderovi ř�
   výstup) a emoce (`EMOCE`) → `zhodnoceni.chyby`, `.emoce`; filtry
   v Trades (i „bez chyb“) a věta Edge `mistakeCost(R)` = nejdražší chyba
   od 2 obchodů. Testy: `test-denik.py`, `test-denik-edge.py` (A3).
-  - **Další krok:** Calendar.
+- **v0.70.0 — Calendar** (třetí podzáložka, `POHLEDY_DENIKU`): měsíc po
+  dnech zavření (pondělí první), buňka zelená / červená se sytostí podle
+  PnL proti největšímu dni, částka a počet obchodů, dnešek orámovaný,
+  šipky měsíců (dál než aktuální nejde). Měsíc si dotáhne historii od
+  svého začátku (`zajistiMesicKalendare`). Klepnutí na den → Trades
+  s filtrem `den` (klíč `klicDne`, místní čas). Výpočet `kalendar()`
+  v denik-statistiky.js, kreslení `ui.renderCalendar`.
+  Test: `tools/test-denik-kalendar.py`.
+  - **Fáze 2 deníku hotová.** Další: zdi z order booku (server), detail
+    klepnutím u zdí i likvidací, denní volume profile, RSI divergence +
+    skener; pak světlejší vzhled appky (návrh na plátně).
 
 ### Ověření Binance uživatelem (2026-10-18) a opravy v0.61.1
 

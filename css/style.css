@@ -3247,3 +3247,31 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 .denik-metriky-pozn { grid-column: 1 / -1; margin: 0; }
 .denik-chyby-radek { display: flex; flex-direction: column; gap: 5px; }
 .denik-chyby-skupina { font-size: 0.74rem; color: var(--text-dim); }
+
+/* ---------- Journal: kalendář (v0.70.0) ---------- */
+.journal-kalendar { display: flex; flex-direction: column; gap: 10px; }
+.kal-hlava { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.kal-mesic { font-weight: 700; font-size: 1.02rem; text-transform: capitalize; }
+.kal-sipka { width: 42px; height: 38px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); font-size: 1.3rem; cursor: pointer; }
+.kal-sipka:disabled { opacity: 0.3; cursor: default; }
+.kal-souhrn { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 9px 12px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); }
+.kal-pnl { font-weight: 800; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.kal-pnl:empty { display: none; }
+.kal-pnl.up { color: #3ee6a4; } .kal-pnl.down { color: #f6465d; }
+.kal-pocty { font-size: 0.8rem; color: var(--text-dim); }
+.kal-mrizka { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.kal-den-nazev { text-align: center; font-size: 0.7rem; color: var(--text-dim); padding-bottom: 2px; text-transform: uppercase; }
+.kal-bunka {
+  --sila: 0; aspect-ratio: 1 / 1.08; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  border-radius: 7px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; padding: 2px; overflow: hidden;
+}
+.kal-bunka.prazdna { border-color: transparent; background: transparent; }
+.kal-bunka.zisk { background: color-mix(in srgb, #3ee6a4 calc(var(--sila) * 100%), var(--surface)); border-color: rgba(62, 230, 164, 0.45); cursor: pointer; }
+.kal-bunka.ztrata { background: color-mix(in srgb, #f6465d calc(var(--sila) * 100%), var(--surface)); border-color: rgba(246, 70, 93, 0.45); cursor: pointer; }
+.kal-bunka.dnes { outline: 2px solid var(--accent); outline-offset: -2px; }
+.kal-cislo { font-size: 0.68rem; color: var(--text-dim); line-height: 1; }
+.kal-bunka.zisk .kal-cislo, .kal-bunka.ztrata .kal-cislo { color: var(--text); }
+.kal-castka { font-size: 0.7rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; white-space: nowrap; }
+.kal-obchody { font-size: 0.6rem; color: var(--text-dim); line-height: 1; }
+@media (min-width: 560px) { .kal-castka { font-size: 0.82rem; } .kal-cislo { font-size: 0.75rem; } .kal-bunka { aspect-ratio: 1.35 / 1; } }
+.kal-pozn { margin: 0; }
