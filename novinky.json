@@ -1,17 +1,17 @@
 {
-  "verze": "0.72.0",
+  "verze": "0.73.0",
   "novinky": [
     {
-      "en": "Order book walls in the chart (Binance, Bybit, Hyperliquid): big buy walls in green, sell walls in red, drawn over time like the liquidation map.",
-      "cs": "Zdi v knize příkazů v grafu (Binance, Bybit, Hyperliquid): velké nákupní zdi zeleně, prodejní červeně, v čase jako likvidační mapa."
+      "en": "Liquidation map in new colours (purple → blue → gold) and a slider right in the chart: drag it to hide smaller liquidation levels.",
+      "cs": "Likvidační mapa v nových barvách (fialová → modrá → zlatá) a posuvník přímo v grafu: tažením schováš menší likvidační úrovně."
     },
     {
-      "en": "Tap a wall or a liquidation bar to see its price, size now, min / max and how long it has been there.",
-      "cs": "Klepni na zeď nebo likvidační pruh a uvidíš cenu, velikost teď, min / max a jak dlouho tam stojí."
+      "en": "Order book walls are easier to read: a solid edge shows when the wall appeared, a bar at the right edge shows its size and the price sits on the price axis.",
+      "cs": "Zdi v knize jsou čitelnější: plná hrana ukazuje, kdy zeď vznikla, sloupec u pravého okraje její velikost a cena je na cenové ose."
     },
     {
-      "en": "Liquidation map: a slider in the layers menu hides small liquidations.",
-      "cs": "Likvidační mapa: posuvník v nabídce vrstev schová malé likvidace."
+      "en": "The layers menu is more compact, with a big Close button.",
+      "cs": "Nabídka vrstev je kompaktnější a má velké tlačítko Zavřít."
     }
   ],
   "opravy": []

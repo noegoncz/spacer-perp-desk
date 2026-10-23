@@ -225,6 +225,12 @@
       <!-- Vrstva pro zaměřovací kříž; sedne přesně na plochu se svíčkami. -->
       <div id="drawLayer" class="draw-layer"></div>
 
+      <!-- Filtr likvidační mapy tažením (v0.73.0): 0 dole, největší nahoře. -->
+      <div id="liqPosuvnik" class="liq-posuvnik" hidden role="slider" data-i18n-aria="layers.liqFilter">
+        <div id="liqPosuvnikPruh" class="liq-pruh"><div class="liq-zavoj"></div><div class="liq-uchyt"></div></div>
+        <span id="liqPosuvnikStitek" class="liq-stitek"></span>
+      </div>
+
 
       <!-- Rychlá nabídka po podržení prstu v grafu (v místě puštění prstu):
            alarm, nebo vodorovná čára na té ceně. Obojí jedním klepnutím. -->
@@ -432,8 +438,7 @@
         <span data-i18n="chart.layers">Layers</span>
         <div class="sheet-head-akce">
           <button type="button" id="layersAllBtn" class="text-btn"></button>
-          <button type="button" class="icon-btn" data-close="sheetLayers"
-                  data-i18n-aria="action.close">✕</button>
+          <button type="button" class="zavrit-velke" data-close="sheetLayers" data-i18n="action.close">Close</button>
         </div>
       </div>
       <div class="sheet-body nastaveni" id="layersBody"></div>

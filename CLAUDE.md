@@ -3447,6 +3447,23 @@ dlouho stojí, teď / min / max). Rozhodnutí: Binance + Bybit + Hyperliquid,
   karta `#mapDetail`): cena, teď, min / max, od kdy (a do kdy). Likvidační
   pruhy nesou `min`. Mock vrací zdi prázdné, naostro s `__zdiNaostro`.
   Test: `tools/test-zdi-graf.py` (naostro).
+- **v0.73.0 — vzhled z plátna** (https://claude.ai/artifact/MwvP4UmtNTfx45cDmkGWZX,
+  uživatel vybral variantu D + paletu 5):
+  - **Zdi:** blok pevné výšky `VYSKA_ZDI` 12 px (objem výškou by klamal —
+    zeď stojí na jedné ceně), plná hrana vlevo = vznik, výplň sílí doprava;
+    živá zeď má u pravého okraje sloupec hloubky (délka = objem) s číslem
+    a cenu na ose (overlay `zedOsa`, skupina `zdiOsa`, 4 největší na stranu).
+    Zmizelé zdi jen se stářím ≥ 20 min (`HIST_MIN_ZDI`), ztlumené, bez
+    sloupce — krátké dělaly šum.
+  - **Likvidace:** paleta `PALETA_MAPY` fialová → modrá → levandule → zlatá
+    (bez zelené, nesplete se s nákupní zdí).
+  - **Filtr mapy v grafu** (`#liqPosuvnik`, app.js `zapojPosuvnikMapy`):
+    svislý pruh u levého okraje v barvách mapy, tažením 0–90 % největšího,
+    štítek s prahem v USD; z nabídky oka zmizel. Vidět jen s vrstvou
+    a daty mapy (`mapaMaData`).
+  - Nabídka vrstev kompaktní, velké „Close“ (`.zavrit-velke`).
+  - Testy: `test-likvidace-graf.py` 2b (tažení skutečným dotykem),
+    `test-zdi-graf.py`.
 - **Zbývá:** přepínač „všechny burzy“ (přepočet poměrem cen, štítky
   burz); zvednout strop trhů podle `cpu` ze serveru; čas vzniku zdí
   na Hyperliquidu z otevřených příkazů známých účtů.

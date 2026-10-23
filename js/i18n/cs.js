@@ -899,6 +899,7 @@ export const cs = {
   "walls.since": "Od",
   "walls.until": "Do",
   "layers.liqFilter": "Skrýt malé likvidace",
+  "liq.filterAll": "Vše",
   "layers.liqFilterOff": "Vypnuto — vidíš všechno",
   "layers.liqFilterOn": "Pod {pct} % největší (< {usd} na tomto grafu)",
   'liq.label': 'Likvidace Hyperliquid · před {min} min',

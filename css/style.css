@@ -3294,3 +3294,39 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 .map-detail-radky b { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
 .map-detail-pozn { font-size: 0.7rem; color: var(--text-dim); }
 .map-detail-pozn:empty { display: none; }
+
+/* ---------- filtr likvidační mapy v grafu (v0.73.0) ---------- */
+.liq-posuvnik {
+  position: absolute; z-index: 6; left: 0; top: 54px; height: 42%; width: 40px;
+  touch-action: none; cursor: ns-resize; --uroven: 0%;
+}
+.liq-pruh {
+  position: absolute; left: 8px; top: 0; bottom: 0; width: 8px; border-radius: 4px; overflow: visible;
+  background: linear-gradient(0deg, rgb(38,10,72), rgb(70,30,170), rgb(40,110,240), rgb(180,170,235), rgb(255,212,60));
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.12);
+}
+.liq-zavoj {
+  position: absolute; left: 0; right: 0; bottom: 0; height: var(--uroven);
+  border-radius: 0 0 4px 4px; background: rgba(11,15,20,0.72);
+}
+.liq-uchyt {
+  position: absolute; left: -5px; width: 18px; height: 8px; border-radius: 4px; bottom: var(--uroven);
+  transform: translateY(50%); background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.6);
+}
+.liq-posuvnik.tazeny .liq-uchyt { height: 12px; }
+.liq-stitek {
+  position: absolute; left: 22px; bottom: var(--uroven); transform: translateY(50%);
+  white-space: nowrap; padding: 1px 6px; border-radius: 4px; pointer-events: none;
+  font-size: 0.68rem; font-weight: 700; color: #0b0f14; background: rgba(255,255,255,0.9);
+}
+
+/* Nabídka vrstev kompaktní, velké Zavřít nahoře (v0.73.0, přání uživatele). */
+#sheetLayers .nabidka-radek { min-height: 42px; font-size: 0.9rem; gap: 10px; }
+#sheetLayers .nabidka-radek small { font-size: 0.7rem; }
+#sheetLayers .sheet-body { gap: 0; }
+.zavrit-velke {
+  min-height: 40px; padding: 0 18px; border-radius: 20px; border: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--text);
+  font-size: 0.92rem; font-weight: 650; cursor: pointer;
+}
+.zavrit-velke:active { background: color-mix(in srgb, var(--accent) 32%, transparent); }

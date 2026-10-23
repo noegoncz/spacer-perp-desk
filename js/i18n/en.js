@@ -904,6 +904,7 @@ export const en = {
   "walls.since": "Since",
   "walls.until": "Until",
   "layers.liqFilter": "Hide small liquidations",
+  "liq.filterAll": "All",
   "layers.liqFilterOff": "Off — showing everything",
   "layers.liqFilterOn": "Below {pct} % of the largest (< {usd} on this chart)",
   'liq.label': 'Hyperliquid liquidations · {min} min ago',

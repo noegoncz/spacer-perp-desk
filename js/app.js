@@ -1234,6 +1234,7 @@ function boot() {
   });
   zapojPrejeti();
   zapojTlacitkoZpet();
+  zapojPosuvnikMapy();
   push.zapojMistni((data) => otevriGrafZNotifikace(data?.symbol));
   hlidejCasoveAlarmy();
   connectIfPossible();
@@ -2312,6 +2313,8 @@ function zastavMapu() {
   casovacMapy = null;
   oknoMapy = null;
   zadostMapy += 1;
+  mapaMaData = false;
+  ukazPosuvnikMapy();
   chart?.setLiquidations(null);
   zastavOi();
   zastavZdi();
@@ -2467,6 +2470,7 @@ async function nactiMapu() {
     });
   } catch { /* síť — zkusí se při další obnově */ }
   if (zadost !== zadostMapy || symbol !== chartSymbol || !chart) return;
+  mapaMaData = Boolean(vysledek?.pasy?.length);
   if (!vysledek?.pasy?.length) {
     chart.setLiquidations(null);
   } else {
@@ -2481,6 +2485,7 @@ async function nactiMapu() {
       popis: t(burza === 'hyperliquid' ? 'liq.label' : 'liq.labelOther', { min: minut }),
     });
   }
+  ukazPosuvnikMapy();
   if (!casovacMapy) casovacMapy = setInterval(nactiMapu, 60000);
 }
 
@@ -2792,6 +2797,7 @@ function vrstvyProGraf() {
   chart.setLayers(prohlizenyObchod ? { ...ulozene, alarmy: false } : ulozene);
   chart.setLiquidationFilter(filtrMapy());
   oznacVrstvy();
+  ukazPosuvnikMapy();
 }
 
 function ukazVrstvu(klic) {
@@ -2832,7 +2838,7 @@ function otevriVrstvy() {
       const nove = !chart.getLayers()[klic];
       nastavVrstvy({ [klic]: nove });
       radek.setAttribute('aria-pressed', String(nove));
-      if (klic === 'likvidace') { const r = el('liqFilterRow'); if (r) r.hidden = !nove; }
+      ukazPosuvnikMapy();
       popisVsechVrstev();
     });
     return radek;
@@ -2870,56 +2876,77 @@ function otevriVrstvy() {
     if (smazKresby()) zavriNabidky();
   });
 
-  el('layersBody').replaceChildren(...radky, posuvnikMapy(), jednotka, smazat);
+  el('layersBody').replaceChildren(...radky, jednotka, smazat);
   popisVsechVrstev();
   otevriNabidku('sheetLayers');
 }
 
 /*
- * Filtr šumu likvidační mapy (v0.71.0, přání uživatele): posuvník 0–50 %
- * největšího viditelného pruhu; menší pruhy se nekreslí. Relativně, ne
- * v USD — BTC má pruhy po stovkách milionů, malý coin po desítkách tisíc.
- * Platí pro všechny grafy (`perpdesk.liqFilter`), popisek ukáže práh v USD
- * na otevřeném grafu.
+ * Filtr šumu likvidační mapy přímo v grafu (v0.73.0, přání uživatele — dřív
+ * posuvník v nabídce oka): svislý pruh u levého okraje v barvách mapy
+ * (0 dole, největší pruh nahoře). Tažením prstu se nastaví práh — menší
+ * pruhy se nekreslí, štítek ukáže práh v USD na tomto grafu. Pamatuje se
+ * pro všechny grafy (`perpdesk.liqFilter`, 0–0,9 podílu největšího).
+ * Vidět jen se zapnutou vrstvou likvidací a s daty mapy.
  */
-function posuvnikMapy() {
-  const radek = document.createElement('div');
-  radek.className = 'nabidka-radek nabidka-posuvnik';
-  radek.id = 'liqFilterRow';
-  const text = document.createElement('span');
-  const vstup = document.createElement('input');
-  vstup.type = 'range';
-  vstup.id = 'liqFilter';
-  // Stupně jemnější na začátku: už 10 % schová většinu drobných pruhů.
-  const STUPNE = [0, 2, 5, 10, 15, 20, 30, 50];
-  vstup.min = '0';
-  vstup.max = String(STUPNE.length - 1);
-  vstup.step = '1';
-  const ted = Math.round(filtrMapy() * 100);
-  vstup.value = String(Math.max(0, STUPNE.findIndex((x) => x >= ted)));
-  vstup.setAttribute('aria-label', t('layers.liqFilter'));
-  const popis = () => {
-    const pct = STUPNE[Number(vstup.value)] || 0;
-    const prah = chart?.getLiquidationThreshold?.() || 0;
-    const usd = prah >= 1e6 ? `${(prah / 1e6).toFixed(1)} M` : `${Math.round(prah / 1e3)} k`;
-    text.replaceChildren(document.createTextNode(t('layers.liqFilter')));
-    const maly = document.createElement('small');
-    maly.textContent = pct ? t('layers.liqFilterOn', { pct, usd }) : t('layers.liqFilterOff');
-    text.append(maly);
-  };
-  vstup.addEventListener('input', () => {
-    const podil = (STUPNE[Number(vstup.value)] || 0) / 100;
-    store.saveJson('perpdesk.liqFilter', podil);
-    chart?.setLiquidationFilter(podil);
-    requestAnimationFrame(popis);
-  });
-  popis();
-  radek.append(text, vstup);
-  radek.hidden = !chart?.getLayers().likvidace;
-  return radek;
+let mapaMaData = false;
+
+function ukazPosuvnikMapy() {
+  const box = el('liqPosuvnik');
+  if (!box) return;
+  box.hidden = !(chart && mapaMaData && chart.getLayers().likvidace && !prohlizenyObchod);
+  if (!box.hidden) kresliPosuvnikMapy(filtrMapy());
 }
 
-const filtrMapy = () => Math.max(0, Math.min(0.5, Number(store.loadJson('perpdesk.liqFilter', 0)) || 0));
+function kresliPosuvnikMapy(podil) {
+  const box = el('liqPosuvnik');
+  if (!box) return;
+  const proc = `${(podil / 0.9) * 100}%`;
+  box.style.setProperty('--uroven', proc);
+  const stitek = el('liqPosuvnikStitek');
+  requestAnimationFrame(() => {
+    const prah = chart?.getLiquidationThreshold?.() || 0;
+    if (stitek) stitek.textContent = podil > 0 && prah ? `≥ ${prah >= 1e6 ? `${(prah / 1e6).toFixed(1)} M` : `${Math.round(prah / 1e3)} k`}` : t('liq.filterAll');
+  });
+}
+
+function zapojPosuvnikMapy() {
+  const box = el('liqPosuvnik');
+  if (!box) return;
+  let podil = filtrMapy();
+  const podle = (y) => {
+    const r = el('liqPosuvnikPruh').getBoundingClientRect();
+    return Math.max(0, Math.min(0.9, (1 - (y - r.top) / r.height) * 0.9));
+  };
+  const pohyb = (e) => {
+    const bod = e.touches?.[0] || e;
+    podil = podle(bod.clientY);
+    // Pod 2 % = vypnuto (u dna se trefuje špatně).
+    if (podil < 0.02) podil = 0;
+    chart?.setLiquidationFilter(podil);
+    kresliPosuvnikMapy(podil);
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  const konec = () => {
+    box.classList.remove('tazeny');
+    store.saveJson('perpdesk.liqFilter', podil);
+  };
+  box.addEventListener('touchstart', (e) => { box.classList.add('tazeny'); pohyb(e); }, { passive: false });
+  box.addEventListener('touchmove', pohyb, { passive: false });
+  box.addEventListener('touchend', konec);
+  box.addEventListener('touchcancel', konec);
+  box.addEventListener('mousedown', (e) => {
+    box.classList.add('tazeny');
+    pohyb(e);
+    const tah = (m) => pohyb(m);
+    const pust = () => { konec(); removeEventListener('mousemove', tah); removeEventListener('mouseup', pust); };
+    addEventListener('mousemove', tah);
+    addEventListener('mouseup', pust);
+  });
+}
+
+const filtrMapy = () => Math.max(0, Math.min(0.9, Number(store.loadJson('perpdesk.liqFilter', 0)) || 0));
 
 function popisVsechVrstev() {
   const vse = Object.values(chart?.getLayers() || {}).every(Boolean);

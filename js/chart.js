@@ -951,6 +951,21 @@ let pnlInfo = null;
  * tyrkysová, hodně = žlutá.
  */
 let likvidace = null;   // { pasy: [{ od, do, cena, vyska, usd, long }], popis }
+/*
+ * Paleta mapy (v0.73.0, volba uživatele z plátna): tmavě fialová → modrá →
+ * zlatá. Bez zelené, aby se mapa nepletla s nákupní zdí; mezi modrou
+ * a zlatou přes světlou levanduli (přímý přechod by dal špinavou zelenou).
+ * Stejné barvy má posuvník filtru v grafu (style.css `.liq-posuvnik`).
+ */
+const PALETA_MAPY = [[38, 10, 72], [70, 30, 170], [40, 110, 240], [180, 170, 235], [255, 212, 60]];
+function barvaMapy(v) {
+  const t = Math.min(0.999, Math.max(0, v)) * (PALETA_MAPY.length - 1);
+  const i = Math.floor(t);
+  const f = t - i;
+  const a = PALETA_MAPY[i];
+  const b = PALETA_MAPY[i + 1];
+  return a.map((x, k) => Math.round(x + (b[k] - x) * f)).join(',');
+}
 // Plynulý náběh mapy při prvním objevení na grafu (přání uživatele — dřív
 // po načtení „blikla“). Obnova po minutě náběh nespouští.
 const NABEH_MAPY = 450;
@@ -1006,9 +1021,7 @@ function registrovatLikvidace() {
         const x2 = p.do >= Date.now() - 120000 ? pravy : Math.min(pravy, b.x);
         if (x2 <= x1) continue;
         const sila = Math.sqrt(p.usd / max);
-        // tyrkysová (22, 120, 160) → žlutá (240, 220, 60)
-        const rgb = [22 + 218 * sila, 120 + 100 * sila, 160 - 100 * sila].map(Math.round);
-        ctx.fillStyle = `rgba(${rgb.join(',')},${(0.18 + 0.62 * sila).toFixed(2)})`;
+        ctx.fillStyle = `rgba(${barvaMapy(sila)},${(0.3 + 0.62 * sila).toFixed(2)})`;
         const y = Math.min(a.y, b.y);
         ctx.fillRect(x1, y, x2 - x1, Math.max(2, Math.abs(b.y - a.y)));
         nakresleno += 1;
@@ -1038,7 +1051,7 @@ function registrovatLikvidace() {
       });
       const mil = (v) => (v >= 1e6 ? `${(v / 1e6).toFixed(v >= 1e8 ? 0 : 1)} M` : `${Math.round(v / 1e3)} k`);
       const cenaText = (c) => (c >= 1000 ? Math.round(c).toLocaleString('en-US') : String(+c.toPrecision(5)));
-      ctx.fillStyle = 'rgba(240,220,60,0.95)';
+      ctx.fillStyle = 'rgba(255,212,60,0.95)';
       if (nad) ctx.fillText(`▲ ${cenaText(nad.cena)} · ${mil(nad.usd)}`, 8, 22);
       ctx.textBaseline = 'bottom';
       if (pod) ctx.fillText(`▼ ${cenaText(pod.cena)} · ${mil(pod.usd)}`, 8, bounding.height - 6);
@@ -1061,6 +1074,10 @@ const pruhlednostZdi = () => {
   return t >= 1 ? 1 : 1 - (1 - t) ** 3;
 };
 
+const VYSKA_ZDI = 12;
+const HIST_MIN_ZDI = 20 * 60000;
+const objemZdi = (v) => (v >= 1e6 ? `${(v / 1e6).toFixed(v >= 1e8 ? 0 : 1)} M` : `${Math.round(v / 1e3)} k`);
+
 /** Pruhy zdí v jednotném tvaru (pro kreslení i klepnutí). */
 function pruhyZdi() {
   const d = zdiGrafu;
@@ -1069,7 +1086,9 @@ function pruhyZdi() {
   const vyska = (d.krok || 0) * posun;
   return [
     ...d.zive.map(([s, cena, usd, od, min, max]) => ({ s, cena: cena * posun, vyska, usd, od, do: Infinity, min, max, zivy: true })),
-    ...d.hist.map(([s, cena, od, doKdy, min, max]) => ({ s, cena: cena * posun, vyska, usd: max, od, do: doKdy, min, max, zivy: false })),
+    // Zmizelé zdi jen ty, co stály aspoň HIST_MIN_ZDI — krátké by graf zaplnily šumem (v0.73.0).
+    ...d.hist.filter(([, , od, doKdy]) => doKdy - od >= HIST_MIN_ZDI)
+      .map(([s, cena, od, doKdy, min, max]) => ({ s, cena: cena * posun, vyska, usd: max, od, do: doKdy, min, max, zivy: false })),
   ];
 }
 
@@ -1100,19 +1119,46 @@ function registrovatZdi() {
       ctx.globalAlpha = pruhlednostZdi();
       const pravy = bounding.width;
       let nakresleno = 0;
+      /*
+       * Varianta D (v0.73.0, volba uživatele z plátna): blok pevné výšky
+       * (VYSKA_ZDI — zeď stojí na jedné ceně, objem výškou by klamal)
+       * od vzniku zdi, plná hrana vlevo = kdy vznikla, výplň sílí doprava.
+       * Živá zeď má u pravého okraje sloupec hloubky (délka = objem)
+       * s číslem; cena zdi je cenovkou na ose (overlay `zedOsa`).
+       * Zmizelá zeď končí, kde zmizela, ztlumená a bez sloupce.
+       */
+      const zive = [];
       for (const p of viditelne) {
-        const a = px(p.od, p.cena + p.vyska / 2);
-        const b = px(Number.isFinite(p.do) ? p.do : Date.now(), p.cena - p.vyska / 2);
-        if (!a || !b || !Number.isFinite(a.y) || !Number.isFinite(b.y)) continue;
+        const a = px(p.od, p.cena);
+        const b = px(Number.isFinite(p.do) ? p.do : Date.now(), p.cena);
+        if (!a || !b || !Number.isFinite(a.y)) continue;
         const x1 = Math.max(0, a.x);
         const x2 = p.zivy ? pravy : Math.min(pravy, b.x);
         if (x2 <= x1) continue;
-        const sila = Math.sqrt(p.usd / max);
+        const sila = p.usd / max;
         const rgb = p.s === 0 ? '62,230,164' : '246,70,93';
-        ctx.fillStyle = `rgba(${rgb},${((p.zivy ? 0.16 : 0.08) + 0.38 * sila).toFixed(2)})`;
-        const y = Math.min(a.y, b.y);
-        ctx.fillRect(x1, y, x2 - x1, Math.max(2, Math.abs(b.y - a.y)));
+        const y = Math.round(a.y - VYSKA_ZDI / 2);
+        const sytost = p.zivy ? 0.35 + 0.55 * sila : 0.22;
+        const prechod = ctx.createLinearGradient(x1, 0, x2, 0);
+        prechod.addColorStop(0, `rgba(${rgb},0.1)`);
+        prechod.addColorStop(1, `rgba(${rgb},${sytost.toFixed(2)})`);
+        ctx.fillStyle = prechod;
+        ctx.fillRect(x1, y, x2 - x1, VYSKA_ZDI);
+        if (a.x >= 0) {
+          ctx.fillStyle = `rgba(${rgb},${p.zivy ? 1 : 0.5})`;
+          ctx.fillRect(x1, y, 3, VYSKA_ZDI);
+        }
+        if (p.zivy) zive.push({ p, y, rgb, sila });
         nakresleno += 1;
+      }
+      ctx.font = 'bold 10px -apple-system, "Segoe UI", Roboto, sans-serif';
+      ctx.textBaseline = 'middle';
+      for (const { p, y, rgb, sila } of zive) {
+        const delka = Math.round(28 + 92 * sila);
+        ctx.fillStyle = `rgba(${rgb},0.92)`;
+        ctx.fillRect(pravy - delka, y, delka, VYSKA_ZDI);
+        ctx.fillStyle = BARVY.pozadi;
+        ctx.fillText(objemZdi(p.usd), pravy - delka + 5, y + VYSKA_ZDI / 2 + 0.5);
       }
       globalThis.__pruhyZdi = nakresleno;   // pro test
       if (zdiGrafu.popis) {
@@ -1180,6 +1226,21 @@ function registrovatLinkuPnl() {
    * jako linka aktuální ceny u pozice, se štítkem „Current price" na čáře
    * a cenovkou na ose. Cenu dodává app.js (`setCurrentPrice`).
    */
+  // Cena živé zdi na cenové ose (v0.73.0) — v ploše grafu nic nekreslí.
+  K().registerOverlay({
+    name: 'zedOsa',
+    totalStep: 1,
+    needDefaultPointFigure: false,
+    needDefaultXAxisFigure: false,
+    needDefaultYAxisFigure: false,
+    createPointFigures: () => [],
+    createYAxisFigures: ({ chart, overlay, coordinates }) => {
+      const cena = overlay.points?.[0]?.value;
+      if (!Number.isFinite(cena) || !coordinates?.[0]) return [];
+      return [cenovkaNaOse(chart, cena, coordinates[0].y, overlay.extendData?.barva || '#3ee6a4')];
+    },
+  });
+
   K().registerOverlay({
     name: 'cenaTed',
     totalStep: 1,
@@ -1990,9 +2051,17 @@ export function createPriceChart(container, layer, handlers = {}) {
     const ukazat = Boolean(zdiGrafu && (zdiGrafu.zive.length || zdiGrafu.hist.length)) && vrstvy.zdi;
     if (zdiZapnute) chart.removeIndicator({ name: 'ZDIMAP' });
     zdiZapnute = false;
+    chart.removeOverlay({ groupId: 'zdiOsa' });
     if (ukazat) {
       chart.createIndicator({ name: 'ZDIMAP', paneId: HLAVNI_PANEL }, true);
       zdiZapnute = true;
+      // Cenovky na ose: živé zdi, nejvýš 4 největší na stranu (víc by osu zaplnilo).
+      [0, 1].forEach((strana) => pruhyZdi().filter((p) => p.zivy && p.s === strana)
+        .sort((a, b) => b.usd - a.usd).slice(0, 4)
+        .forEach((p) => chart.createOverlay({
+          name: 'zedOsa', groupId: 'zdiOsa', zLevel: 1, lock: true,
+          points: [{ value: p.cena }], extendData: { barva: strana === 0 ? '#3ee6a4' : '#f6465d' },
+        })));
     }
   };
   // Mapu přidat / sundat podle dat a vrstvy; překreslení vynutí nové vložení.

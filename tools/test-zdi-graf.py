@@ -80,10 +80,12 @@ if SNIMKY:
 print('2) klepnutí na zeď')
 bod = ev("""(async () => {
   const z = await (await fetch('https://perpyx.com/api/zdi?k=binance:BTCUSDT')).json();
-  const zed = z.zdi.sort((a, b) => Math.abs(a[1] - z.mid) - Math.abs(b[1] - z.mid))[0];
   const r = document.getElementById('drawLayer').getBoundingClientRect();
-  const b = window.__graf.convertToPixel({ value: zed[1] }, { paneId: 'candle_pane' });
-  const y = (Array.isArray(b) ? b[0] : b).y;
+  const yy = (c) => { const b = window.__graf.convertToPixel({ value: c }, { paneId: 'candle_pane' }); return (Array.isArray(b) ? b[0] : b).y; };
+  // Živá zeď uvnitř obrazu (vzdálené jsou mimo); jinak nejbližší ceně.
+  const zed = z.zdi.filter((x) => yy(x[1]) > 30 && yy(x[1]) < r.height - 30)[0]
+    || z.zdi.sort((a, b) => Math.abs(a[1] - z.mid) - Math.abs(b[1] - z.mid))[0];
+  const y = yy(zed[1]);
   return { x: r.left + r.width - 40, y: r.top + y, cena: zed[1], strana: zed[0] };
 })()""")
 print('   zeď:', bod)
