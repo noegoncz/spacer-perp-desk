@@ -3462,6 +3462,12 @@ dlouho stojí, teď / min / max). Rozhodnutí: Binance + Bybit + Hyperliquid,
     štítek s prahem v USD; z nabídky oka zmizel. Vidět jen s vrstvou
     a daty mapy (`mapaMaData`).
   - Nabídka vrstev kompaktní, velké „Close“ (`.zavrit-velke`).
+  - **v0.73.1 (snímky uživatele: „pořád zmatečné“):** živé zdi téže strany
+    do 0,3 % ceny se slučují (`SLOUCIT_ZDI`, objem sečtený), na stranu
+    3 nejbližší ceně + 2 největší (`ZIVYCH_ZDI`); číslo jen u nepřekrytých.
+    Historie: kousky na stejné ceně s mezerou < 30 min = jedna zeď, jen
+    ≥ 1 h (`HIST_MIN_ZDI`), tenká tlumená linka bez hrany; zeď, která
+    dál žije, svou historii pohltí.
   - Testy: `test-likvidace-graf.py` 2b (tažení skutečným dotykem),
     `test-zdi-graf.py`.
 - **Zbývá:** přepínač „všechny burzy“ (přepočet poměrem cen, štítky

@@ -1,5 +1,5 @@
 {
-  "verze": "0.73.0",
+  "verze": "0.73.1",
   "novinky": [
     {
       "en": "Liquidation map in new colours (purple → blue → gold) and a slider right in the chart: drag it to hide smaller liquidation levels.",
@@ -14,5 +14,10 @@
       "cs": "Nabídka vrstev je kompaktnější a má velké tlačítko Zavřít."
     }
   ],
-  "opravy": []
+  "opravy": [
+    {
+      "en": "Order book walls are tidier: walls close together are merged, fewer labels overlap and the history is calmer.",
+      "cs": "Zdi v knize jsou přehlednější: blízké zdi se slučují, štítky se nepřekrývají a historie je klidnější."
+    }
+  ]
 }

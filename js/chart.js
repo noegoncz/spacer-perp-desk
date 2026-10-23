@@ -1075,7 +1075,9 @@ const pruhlednostZdi = () => {
 };
 
 const VYSKA_ZDI = 12;
-const HIST_MIN_ZDI = 20 * 60000;
+const HIST_MIN_ZDI = 60 * 60000;
+const SLOUCIT_ZDI = 0.003;
+const ZIVYCH_ZDI = 5;
 const objemZdi = (v) => (v >= 1e6 ? `${(v / 1e6).toFixed(v >= 1e8 ? 0 : 1)} M` : `${Math.round(v / 1e3)} k`);
 
 /** Pruhy zdí v jednotném tvaru (pro kreslení i klepnutí). */
@@ -1084,12 +1086,58 @@ function pruhyZdi() {
   if (!d) return [];
   const posun = d.posun || 1;
   const vyska = (d.krok || 0) * posun;
-  return [
-    ...d.zive.map(([s, cena, usd, od, min, max]) => ({ s, cena: cena * posun, vyska, usd, od, do: Infinity, min, max, zivy: true })),
-    // Zmizelé zdi jen ty, co stály aspoň HIST_MIN_ZDI — krátké by graf zaplnily šumem (v0.73.0).
-    ...d.hist.filter(([, , od, doKdy]) => doKdy - od >= HIST_MIN_ZDI)
-      .map(([s, cena, od, doKdy, min, max]) => ({ s, cena: cena * posun, vyska, usd: max, od, do: doKdy, min, max, zivy: false })),
-  ];
+  /*
+   * Živé zdi (v0.73.1, uživatel: „pořád zmatečné“ — u BTC pět zdí do 0,25 %
+   * se štítky přes sebe): zdi téže strany blíž než SLOUCIT_ZDI ceny se
+   * sloučí do největší (objem sečtený), nejvýš ZIVYCH_ZDI na stranu.
+   */
+  const zive = [];
+  [...d.zive].sort((x, y) => y[2] - x[2]).forEach(([s, cena, usd, od, min, max]) => {
+    const c = cena * posun;
+    const blizka = zive.find((z) => z.s === s && Math.abs(z.cena - c) <= z.cena * SLOUCIT_ZDI);
+    if (blizka) {
+      blizka.usd += usd;
+      blizka.min += min;
+      blizka.max += max;
+      blizka.od = Math.min(blizka.od, od);
+      return;
+    }
+    zive.push({ s, cena: c, vyska, usd, od, do: Infinity, min, max, zivy: true });
+  });
+  // Na stranu 3 nejbližší ceně (na ty se kouká) + 2 největší ze zbytku.
+  const nakup = zive.filter((z) => z.s === 0);
+  const prodej = zive.filter((z) => z.s === 1);
+  const stred = nakup.length && prodej.length
+    ? (Math.max(...nakup.map((z) => z.cena)) + Math.min(...prodej.map((z) => z.cena))) / 2
+    : (zive[0]?.cena || 0);
+  const vyber = (seznam) => {
+    const blizke = [...seznam].sort((x, y) => Math.abs(x.cena - stred) - Math.abs(y.cena - stred)).slice(0, 3);
+    const velke = seznam.filter((z) => !blizke.includes(z)).sort((x, y) => y.usd - x.usd).slice(0, ZIVYCH_ZDI - 3);
+    return [...blizke, ...velke];
+  };
+  zive.splice(0, zive.length, ...vyber(nakup), ...vyber(prodej));
+  /*
+   * Zmizelé: kousky na stejné ceně s mezerou < 30 min jsou jedna zeď
+   * (zeď problikává — dřív z toho byla mozaika), ukáže se jen ta, co
+   * stála aspoň HIST_MIN_ZDI. Živá zeď na stejné ceně historii pohltí.
+   */
+  const podleCeny = new Map();
+  [...d.hist].sort((x, y) => x[2] - y[2]).forEach(([s, cena, od, doKdy, min, max]) => {
+    const k = `${s}:${cena}`;
+    const seznam = podleCeny.get(k) || [];
+    const posl = seznam[seznam.length - 1];
+    if (posl && od - posl.do < 30 * 60000) {
+      posl.do = Math.max(posl.do, doKdy);
+      posl.min = Math.min(posl.min, min);
+      posl.max = Math.max(posl.max, max);
+    } else seznam.push({ s, cena: cena * posun, vyska, usd: max, od, do: doKdy, min, max, zivy: false });
+    podleCeny.set(k, seznam);
+  });
+  const hist = [...podleCeny.values()].flat()
+    .filter((h) => h.do - h.od >= HIST_MIN_ZDI)
+    .filter((h) => !zive.some((z) => z.s === h.s && Math.abs(z.cena - h.cena) <= z.cena * SLOUCIT_ZDI && h.do > z.od - 30 * 60000));
+  hist.forEach((h) => { h.usd = h.max; });
+  return [...hist, ...zive];   // živé navrch
 }
 
 function registrovatZdi() {
@@ -1113,7 +1161,8 @@ function registrovatZdi() {
         return Array.isArray(b) ? b[0] : b;
       };
       const viditelne = pruhy.filter((p) => p.do >= prvni);
-      const max = Math.max(0, ...viditelne.map((p) => p.usd));
+      const max = Math.max(0, ...viditelne.filter((p) => p.zivy).map((p) => p.usd))
+        || Math.max(0, ...viditelne.map((p) => p.usd));
       if (!max) return true;
       ctx.save();
       ctx.globalAlpha = pruhlednostZdi();
@@ -1137,15 +1186,22 @@ function registrovatZdi() {
         if (x2 <= x1) continue;
         const sila = p.usd / max;
         const rgb = p.s === 0 ? '62,230,164' : '246,70,93';
+        if (!p.zivy) {
+          // Zmizelá zeď: tenká tlumená linka, ať nekonkuruje živým.
+          ctx.fillStyle = `rgba(${rgb},${(0.18 + 0.25 * Math.min(1, sila)).toFixed(2)})`;
+          ctx.fillRect(x1, Math.round(a.y - 2), x2 - x1, 4);
+          nakresleno += 1;
+          continue;
+        }
         const y = Math.round(a.y - VYSKA_ZDI / 2);
-        const sytost = p.zivy ? 0.35 + 0.55 * sila : 0.22;
+        const sytost = 0.35 + 0.55 * Math.min(1, sila);
         const prechod = ctx.createLinearGradient(x1, 0, x2, 0);
         prechod.addColorStop(0, `rgba(${rgb},0.1)`);
         prechod.addColorStop(1, `rgba(${rgb},${sytost.toFixed(2)})`);
         ctx.fillStyle = prechod;
         ctx.fillRect(x1, y, x2 - x1, VYSKA_ZDI);
         if (a.x >= 0) {
-          ctx.fillStyle = `rgba(${rgb},${p.zivy ? 1 : 0.5})`;
+          ctx.fillStyle = `rgba(${rgb},1)`;
           ctx.fillRect(x1, y, 3, VYSKA_ZDI);
         }
         if (p.zivy) zive.push({ p, y, rgb, sila });
@@ -1153,10 +1209,15 @@ function registrovatZdi() {
       }
       ctx.font = 'bold 10px -apple-system, "Segoe UI", Roboto, sans-serif';
       ctx.textBaseline = 'middle';
+      // Větší napřed; číslo jen tam, kde se nepřekryje s už napsaným.
+      const obsazeno = [];
+      zive.sort((x, y) => y.p.usd - x.p.usd);
       for (const { p, y, rgb, sila } of zive) {
-        const delka = Math.round(28 + 92 * sila);
+        const delka = Math.round(28 + 92 * Math.min(1, sila));
         ctx.fillStyle = `rgba(${rgb},0.92)`;
         ctx.fillRect(pravy - delka, y, delka, VYSKA_ZDI);
+        if (obsazeno.some((o) => Math.abs(o - y) < VYSKA_ZDI + 1)) continue;
+        obsazeno.push(y);
         ctx.fillStyle = BARVY.pozadi;
         ctx.fillText(objemZdi(p.usd), pravy - delka + 5, y + VYSKA_ZDI / 2 + 0.5);
       }
@@ -2057,7 +2118,6 @@ export function createPriceChart(container, layer, handlers = {}) {
       zdiZapnute = true;
       // Cenovky na ose: živé zdi, nejvýš 4 největší na stranu (víc by osu zaplnilo).
       [0, 1].forEach((strana) => pruhyZdi().filter((p) => p.zivy && p.s === strana)
-        .sort((a, b) => b.usd - a.usd).slice(0, 4)
         .forEach((p) => chart.createOverlay({
           name: 'zedOsa', groupId: 'zdiOsa', zLevel: 1, lock: true,
           points: [{ value: p.cena }], extendData: { barva: strana === 0 ? '#3ee6a4' : '#f6465d' },
