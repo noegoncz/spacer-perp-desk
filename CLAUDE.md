@@ -3467,6 +3467,10 @@ https://claude.ai/artifact/BHAHkgLcFuhiFkUPLreNi3, vybraná varianta B):**
   hladověl za dotazy na účty (váha 2) v omezovači tempa; teď přednost
   velkých dotazů (`cekaVelky` v likvidace.mjs). Ověřeno: hromadné začátky
   22. 10. 23:00 a 24. 10. 10:00 zmizely, `test-likvidace.py` prošel.
+  **v0.74.7 (1D):** snímky po 6 h se braly jako výpadek (> 3 h) → každých
+  6 h se všech ~200 pruhů ukončilo. Výpadek = mezera > max(3 h, 3× rozestup
+  k předchozímu snímku) — **místně**, ne medián (na konec se připojují
+  minutové snímky za 2 h a medián vyšel 1 min).
 - Tmavý svislý pruh po prudkém pohybu není chyba: cena vybrala pásma
   a OI zároveň klesal → nové pozice nevznikly.
 - Test: `test-likvidace-graf.py` (Binance na 4h, bod 4: SPCX bez HL má

@@ -160,9 +160,13 @@ export async function pasy({ symbol, burza, od, doKdy, delkaSvicky }) {
    * neukončí. Úplný = aspoň 97 % nejvíc pásem za poslední 2 h.
    */
   const nedavne = [];   // [t, počet]
+  // Výpadek = mezera přes 3 h a zároveň přes 3 rozestupy k předchozímu
+  // snímku (na 1D jsou snímky po 6 h, na konci minutové — rozestup se bere
+  // místně; v0.74.7, dřív se na 1D každých 6 h všechno ukončilo).
   s.forEach((snimek, i) => {
     const dalsi = s[i + 1]?.t ?? ted;
-    const dlouhaMezera = i < s.length - 1 && dalsi - snimek.t > 3 * 3600e3;
+    const bezny = i ? snimek.t - s[i - 1].t : (s[1] ? s[1].t - snimek.t : 60000);
+    const dlouhaMezera = i < s.length - 1 && dalsi - snimek.t > Math.max(3 * 3600e3, 3 * bezny);
     nedavne.push([snimek.t, snimek.pasma.size]);
     while (nedavne[0][0] < snimek.t - 2 * 3600e3) nedavne.shift();
     const uplny = snimek.pasma.size >= 0.97 * Math.max(...nedavne.map((x) => x[1]));
@@ -185,7 +189,7 @@ export async function pasy({ symbol, burza, od, doKdy, delkaSvicky }) {
     }
     for (const [k, p] of otevrene) {
       // Chybějící pásmo končí tam, kde bylo naposledy vidět (p.do se neposouvá).
-      if ((uplny && snimek.t - p.videno > CHYBI_MS) || dlouhaMezera) {
+      if ((uplny && snimek.t - p.videno > Math.max(CHYBI_MS, 1.5 * bezny)) || dlouhaMezera) {
         hotove.push(p);
         otevrene.delete(k);
       }
