@@ -1,5 +1,5 @@
 {
-  "verze": "0.74.3",
+  "verze": "0.74.4",
   "novinky": [
     {
       "en": "Liquidation map: Calculated (from Binance + Bybit open interest) and Real (Hyperliquid positions); longs in blue, shorts in orange.",
@@ -11,6 +11,10 @@
     }
   ],
   "opravy": [
+    {
+      "en": "Liquidation map is clean on 1h, 4h and 1D too (no more mosaic near the price).",
+      "cs": "Likvidační mapa je čistá i na 1h, 4h a 1D (u ceny už žádná mozaika)."
+    },
     {
       "en": "Real liquidation map no longer splits into vertical blocks after a gap in data collection; the source switch follows the chart size.",
       "cs": "Reálná mapa se už nerozpadá na svislé bloky po výpadku sběru; přepínač zdroje drží u spodního okraje grafu."

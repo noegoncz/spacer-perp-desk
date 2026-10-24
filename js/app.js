@@ -2481,9 +2481,9 @@ let dostupneZdroje = { odhad: false, skutecne: false };
  * těchto burz týž pár, jinak coin + USDT.
  */
 const odhadyMapy = new Map();   // coin → { cas, slib }
-function odhadMapy(symbol, burza) {
+function odhadMapy(symbol, burza, nasobek = 1) {
   const par = ['binance', 'bybit'].includes(burza) ? symbol : symbol.replace(/USDC$/, 'USDT');
-  const klic = par;
+  const klic = `${par}|${nasobek}`;
   const ulozeny = odhadyMapy.get(klic);
   if (ulozeny && Date.now() - ulozeny.cas < 10 * 60000) return ulozeny.slib;
   const slib = (async () => {
@@ -2500,7 +2500,7 @@ function odhadMapy(symbol, burza) {
     // Svíčky z burzy s delší řadou (cena je na obou skoro stejná).
     const svicky = platne.reduce((x, y) => (y.svicky.length > x.svicky.length ? y : x)).svicky;
     const mark = svicky[svicky.length - 1].close;
-    const pasy = odhadPasu(svicky, platne.map((v) => v.oi), krokPasma(mark));
+    const pasy = odhadPasu(svicky, platne.map((v) => v.oi), krokPasma(mark * nasobek));
     return { pasy, mark, burzy: platne.map((v) => v.b) };
   })();
   odhadyMapy.set(klic, { cas: Date.now(), slib });
@@ -2519,7 +2519,7 @@ async function nactiMapu() {
     likvidace.pasy({
       symbol, burza, od: oknoMapy.od, doKdy: Date.now(), delkaSvicky: DELKA_INTERVALU[chartInterval] || 3600e3,
     }).catch(() => undefined),   // síť — zkusí se při další obnově
-    odhadMapy(symbol, burza).catch(() => null),
+    odhadMapy(symbol, burza, likvidace.nasobekPasma(DELKA_INTERVALU[chartInterval] || 3600e3)).catch(() => null),
   ]);
   if (zadost !== zadostMapy || symbol !== chartSymbol || !chart) return;
   dostupneZdroje = { odhad: Boolean(odhad?.pasy?.length), skutecne: Boolean(skutecne?.pasy?.length) };

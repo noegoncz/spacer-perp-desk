@@ -10,7 +10,7 @@
  * Historie se plní od spuštění sběru (2026-10-21) — co server nenasbíral,
  * to v grafu není; pruhy se tak „doplňují“ postupně.
  */
-import { rozbal } from './likvidace-format.js';
+import { rozbal, krokCeny } from './likvidace-format.js';
 import { zkratkaCoinu } from './sestavy.js';
 
 const API = 'https://perpyx.com/api/likvidace';
@@ -75,7 +75,9 @@ async function snimky(coin, od, doKdy, delkaSvicky) {
   if (ted - od <= MAX_POKRYTI_R1) {
     radky = await hodiny(coin, 1, od, doKdy);
   } else {
-    const krok = delkaSvicky >= HOD ? Math.floor(delkaSvicky / HOD) * HOD : 0;
+    // Snímek aspoň 4× za svíčku, nejvýš po hodině (v0.74.4 — jeden snímek na
+    // svíčku dělal na 4h mozaiku: pásma u ceny mezi snímky naskakovala a mizela).
+    const krok = delkaSvicky >= 4 * HOD ? Math.floor(delkaSvicky / 4 / HOD) * HOD : 0;
     radky = await hodiny(coin, 15, Math.max(od, ted - 90 * 24 * HOD), doKdy, krok);
     const nedavno = await hodiny(coin, 1, ted - 2 * HOD, doKdy);
     const posledniKompakt = radky.length ? radky[radky.length - 1][0] : 0;
@@ -90,6 +92,9 @@ async function snimky(coin, od, doKdy, delkaSvicky) {
  * Pruhy pro graf: [{ od, do, cena, vyska, usd, long }] + poslední mark
  * a čas posledního snímku. `null`, když coin na Hyperliquidu data nemá.
  */
+/** Kolikrát širší pásmo než základních ~0,1 % ceny pro danou délku svíčky. */
+export const nasobekPasma = (delkaSvicky) => Math.max(1, ((delkaSvicky || 0) / (30 * 60000)) ** 0.25);
+
 export async function pasy({ symbol, burza, od, doKdy, delkaSvicky }) {
   let coin = nazvy.get(`${burza}:${symbol}`);
   if (coin === null) return null;
@@ -118,7 +123,12 @@ export async function pasy({ symbol, burza, od, doKdy, delkaSvicky }) {
    * skončí a začnou znovu s jinou hodnotou. Snímky se proto přeskládají na
    * nejhrubší krok v okně (součet jemnějších pásem).
    */
-  const krok = Math.max(...s.map((x) => x.krok));
+  /*
+   * v0.74.4 (video uživatele: na 4h a 1D se mapa u ceny rozpadala na
+   * kostičky): pásmo ≈ 0,1 % ceny má na delším timeframu 1–2 px. Šířka
+   * pásma roste s délkou svíčky (4. odmocnina, od 30m výš) — `nasobekPasma`.
+   */
+  const krok = Math.max(...s.map((x) => x.krok), krokCeny(s[s.length - 1].mark * nasobekPasma(delkaSvicky)));
   s = s.map((x) => {
     if (x.krok === krok) return x;
     const pasma = new Map();

@@ -3442,6 +3442,10 @@ https://claude.ai/artifact/BHAHkgLcFuhiFkUPLreNi3, vybraná varianta B):**
   sběru do 3 h se přemostí (`CHYBI_SNIMKU` v likvidace.js). Ověřeno na
   BTC: hromadné konce 22. 10. 23:00 a 24. 10. 10:00 zmizely.
   ⚠ Každá úprava likvidace.mjs restartuje sběr (pozor u `VERZE_ZDI`).
+  **v0.74.4 (video: na 1h/4h/1D mozaika u ceny):** šířka pásma roste
+  s timeframem (`nasobekPasma` = (svíčka / 30 min)^0,25, BTC: 30m 50, 4h 100,
+  1D 200 USD) — reálná i kalkulovaná mapa; snímky reálné mapy aspoň 4× za
+  svíčku (dřív jeden na svíčku → pásma u ceny mezi snímky blikala).
   Kalkulovaná a reálná se **nemusí potkávat**: jiný trh (HL vs. Binance +
   Bybit) a model předpokládá rozložení pák, skutečné pozice ne.
 - Tmavý svislý pruh po prudkém pohybu není chyba: cena vybrala pásma
