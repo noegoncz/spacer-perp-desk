@@ -1,23 +1,7 @@
 {
-  "verze": "0.73.1",
+  "verze": "0.73.2",
   "novinky": [
-    {
-      "en": "Liquidation map in new colours (purple → blue → gold) and a slider right in the chart: drag it to hide smaller liquidation levels.",
-      "cs": "Likvidační mapa v nových barvách (fialová → modrá → zlatá) a posuvník přímo v grafu: tažením schováš menší likvidační úrovně."
-    },
-    {
-      "en": "Order book walls are easier to read: a solid edge shows when the wall appeared, a bar at the right edge shows its size and the price sits on the price axis.",
-      "cs": "Zdi v knize jsou čitelnější: plná hrana ukazuje, kdy zeď vznikla, sloupec u pravého okraje její velikost a cena je na cenové ose."
-    },
-    {
-      "en": "The layers menu is more compact, with a big Close button.",
-      "cs": "Nabídka vrstev je kompaktnější a má velké tlačítko Zavřít."
-    }
+    { "en": "Order book walls no longer cover the latest candles: a thin line over the chart, the block only to the right of the last candle.", "cs": "Zdi v knize už nezakrývají poslední svíčky: přes graf tenká linka, blok až vpravo za poslední svíčkou." }
   ],
-  "opravy": [
-    {
-      "en": "Order book walls are tidier: walls close together are merged, fewer labels overlap and the history is calmer.",
-      "cs": "Zdi v knize jsou přehlednější: blízké zdi se slučují, štítky se nepřekrývají a historie je klidnější."
-    }
-  ]
+  "opravy": []
 }

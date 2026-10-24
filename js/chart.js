@@ -1171,7 +1171,7 @@ function registrovatZdi() {
       /*
        * Varianta D (v0.73.0, volba uživatele z plátna): blok pevné výšky
        * (VYSKA_ZDI — zeď stojí na jedné ceně, objem výškou by klamal)
-       * od vzniku zdi, plná hrana vlevo = kdy vznikla, výplň sílí doprava.
+       * vpravo za poslední svíčkou, přes svíčky tenká linka od vzniku.
        * Živá zeď má u pravého okraje sloupec hloubky (délka = objem)
        * s číslem; cena zdi je cenovkou na ose (overlay `zedOsa`).
        * Zmizelá zeď končí, kde zmizela, ztlumená a bez sloupce.
@@ -1193,18 +1193,25 @@ function registrovatZdi() {
           nakresleno += 1;
           continue;
         }
+        /*
+         * v0.73.2 (uživatel: přes blok nebylo vidět aktuální svíčku): přes
+         * svíčky jen tenká linka od vzniku zdi, blok až vpravo za poslední
+         * svíčkou, bez výrazné hrany.
+         */
         const y = Math.round(a.y - VYSKA_ZDI / 2);
+        const ted = px(Date.now(), p.cena);
+        const xBlok = Math.max(x1, Math.min(pravy - 40, (ted?.x ?? x1) + 8));
+        if (xBlok > x1) {
+          ctx.fillStyle = `rgba(${rgb},${(0.3 + 0.3 * Math.min(1, sila)).toFixed(2)})`;
+          ctx.fillRect(x1, Math.round(a.y - 1), xBlok - x1, 2);
+        }
         const sytost = 0.35 + 0.55 * Math.min(1, sila);
-        const prechod = ctx.createLinearGradient(x1, 0, x2, 0);
-        prechod.addColorStop(0, `rgba(${rgb},0.1)`);
+        const prechod = ctx.createLinearGradient(xBlok, 0, x2, 0);
+        prechod.addColorStop(0, `rgba(${rgb},0.08)`);
         prechod.addColorStop(1, `rgba(${rgb},${sytost.toFixed(2)})`);
         ctx.fillStyle = prechod;
-        ctx.fillRect(x1, y, x2 - x1, VYSKA_ZDI);
-        if (a.x >= 0) {
-          ctx.fillStyle = `rgba(${rgb},1)`;
-          ctx.fillRect(x1, y, 3, VYSKA_ZDI);
-        }
-        if (p.zivy) zive.push({ p, y, rgb, sila });
+        ctx.fillRect(xBlok, y, x2 - xBlok, VYSKA_ZDI);
+        zive.push({ p, y, rgb, sila });
         nakresleno += 1;
       }
       ctx.font = 'bold 10px -apple-system, "Segoe UI", Roboto, sans-serif';
