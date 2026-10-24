@@ -111,6 +111,25 @@ export async function pasy({ symbol, burza, od, doKdy, delkaSvicky }) {
   }
   if (!s.length) return { pasy: [], mark: null, cas: null, sledovano: 0, coin };
 
+  /*
+   * Jedna šířka pásma pro celé okno (v0.74.2, video uživatele: mapa
+   * rozdělená na svislé bloky). Server volí krok podle ceny (≈ 0,1 %,
+   * 1/2/5 × 10^n) — když cena přejde hranici, krok se změní, všechny pruhy
+   * skončí a začnou znovu s jinou hodnotou. Snímky se proto přeskládají na
+   * nejhrubší krok v okně (součet jemnějších pásem).
+   */
+  const krok = Math.max(...s.map((x) => x.krok));
+  s = s.map((x) => {
+    if (x.krok === krok) return x;
+    const pasma = new Map();
+    for (const [idx, [l, sh]] of x.pasma) {
+      const i = Math.round((idx * x.krok) / krok);
+      const p = pasma.get(i) || [0, 0];
+      pasma.set(i, [p[0] + l, p[1] + sh]);
+    }
+    return { ...x, krok, pasma };
+  });
+
   // Pruh trvá od snímku, kde se pásmo objevilo, do snímku, kde zmizelo.
   // Mezera ve sběru (výpadek serveru) pruh ukončí.
   const krokSnimku = s.length > 1 ? Math.max(60000, (s[s.length - 1].t - s[0].t) / (s.length - 1)) : 60000;

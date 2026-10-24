@@ -2565,6 +2565,10 @@ function kresliPrepinacZdroje() {
 function zapojPrepinacZdroje() {
   const box = el('liqZdroj');
   if (!box) return;
+  // Plocha svíček se mění i tažením výšky panelu indikátoru — přepínač
+  // musí zůstat u jejího spodního okraje (v0.74.2, video uživatele).
+  const vrstva = el('drawLayer');
+  if (vrstva && 'ResizeObserver' in window) new ResizeObserver(() => ukazPosuvnikMapy()).observe(vrstva);
   box.addEventListener('click', (e) => {
     const b = e.target.closest('[data-zdroj]');
     if (!b) return;

@@ -25,7 +25,7 @@ mock = open(os.path.join(KOREN, 'tools', 'mock-bybit.js'), encoding='utf-8').rea
 mock = "sessionStorage.setItem('__mapaNaostro', '1');" + mock + """
 localStorage.setItem('perpdesk.lists', JSON.stringify({ verze: 1, aktivni: 'a',
   seznamy: [{ id: 'a', nazev: 'Main', polozky: %s }] }));
-localStorage.setItem('perpdesk.chartView', JSON.stringify({ 'hyperliquid:BTCUSDC': { interval: '1' }, 'binance:BTCUSDT': { interval: '240' } }));
+localStorage.setItem('perpdesk.chartView', JSON.stringify({ 'hyperliquid:BTCUSDC': { interval: '1' }, 'binance:BTCUSDT': { interval: '30' } }));
 // Kdy dorazily svíčky a kdy se začala stahovat mapa.
 window.__casy = {};
 const __f = window.fetch;

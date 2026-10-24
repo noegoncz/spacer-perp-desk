@@ -1,13 +1,9 @@
 {
-  "verze": "0.74.1",
+  "verze": "0.74.2",
   "novinky": [
     {
-      "en": "Clearer liquidation map: long liquidations in blue, short liquidations in orange, only big clusters stand out.",
-      "cs": "Přehlednější likvidační mapa: likvidace longů modře, shortů oranžově, vystupují jen velké shluky."
-    },
-    {
-      "en": "Liquidation map now also estimates liquidations from Binance + Bybit open interest (like Coinglass) — weeks of history on any chart.",
-      "cs": "Likvidační mapa nově odhaduje likvidace i z open interestu Binance + Bybit (jako Coinglass) — týdny historie na každém grafu."
+      "en": "Liquidation map: Calculated (from Binance + Bybit open interest) and Real (Hyperliquid positions); longs in blue, shorts in orange.",
+      "cs": "Likvidační mapa: Kalkulovaná (z open interestu Binance + Bybit) a Reálná (pozice na Hyperliquidu); longy modře, shorty oranžově."
     },
     {
       "en": "Switch at the bottom of the chart: Estimate · Both · Actual (Hyperliquid).",
@@ -15,6 +11,10 @@
     }
   ],
   "opravy": [
+    {
+      "en": "Real liquidation map no longer splits into vertical blocks; the source switch follows the chart size.",
+      "cs": "Reálná mapa se už nerozpadá na svislé bloky; přepínač zdroje drží u spodního okraje grafu."
+    },
     {
       "en": "Order book walls further from the price are visible again.",
       "cs": "Zdi dál od ceny jsou zase vidět."

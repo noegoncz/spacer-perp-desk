@@ -3430,6 +3430,14 @@ https://claude.ai/artifact/BHAHkgLcFuhiFkUPLreNi3, vybraná varianta B):**
   `BARVA_SHORTU`, krytí 0,04 + 0,9 × v^1,6, v = usd / 97. percentil viditelných
   (pod 0,06 se nekreslí). Paleta `PALETA_MAPY` z v0.73.0 zrušená; šipky
   ▲ / ▼ v barvě své strany, posuvník filtru modrá → oranžová.
+- **v0.74.2 (video uživatele):** názvy **Calculated / Kalkulovaná** a **Real /
+  Reálná**. Reálná mapa se rozpadala na svislé bloky: server volí krok pásma
+  podle ceny, při přechodu hranice (BTC 50 ↔ 100) všechny pruhy skončily
+  a začaly s jinou hodnotou → `likvidace.pasy` přeskládá snímky okna na
+  nejhrubší krok. Přepínač drží u spodku plochy svíček i při tažení
+  panelu indikátoru (`ResizeObserver` na `#drawLayer`).
+  Kalkulovaná a reálná se **nemusí potkávat**: jiný trh (HL vs. Binance +
+  Bybit) a model předpokládá rozložení pák, skutečné pozice ne.
 - Tmavý svislý pruh po prudkém pohybu není chyba: cena vybrala pásma
   a OI zároveň klesal → nové pozice nevznikly.
 - Test: `test-likvidace-graf.py` (Binance na 4h, bod 4: SPCX bez HL má
