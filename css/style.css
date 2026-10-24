@@ -3302,7 +3302,8 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 }
 .liq-pruh {
   position: absolute; left: 8px; top: 0; bottom: 0; width: 8px; border-radius: 4px; overflow: visible;
-  background: linear-gradient(0deg, rgb(38,10,72), rgb(70,30,170), rgb(40,110,240), rgb(180,170,235), rgb(255,212,60));
+  /* Síla mapy (v0.74.1): od průhledné po plnou — barvy longů a shortů dohromady. */
+  background: linear-gradient(0deg, rgba(70,150,255,0.08), rgba(70,150,255,0.6) 45%, rgba(255,150,50,0.95));
   box-shadow: 0 0 0 1px rgba(255,255,255,0.12);
 }
 .liq-zavoj {

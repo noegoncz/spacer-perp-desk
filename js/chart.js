@@ -946,26 +946,18 @@ let pnlInfo = null;
  * Likvidační mapa Hyperliquidu (v0.65.0): pruhy v čase, data skládá
  * js/likvidace.js. Indikátor bez figur (do měřítka osy nemluví, jako VOL),
  * kreslí se pod svíčky jen při překreslení grafu — žádná práce navíc při
- * ticku ceny. Barva a průhlednost podle velikosti proti největšímu pruhu
- * ve viditelném okně (jako heatmapy Coinglass / Coinee): málo = tlumeně
- * tyrkysová, hodně = žlutá.
+ * ticku ceny. Barva podle strany (longy modře, shorty oranžově), krytí
+ * podle velikosti proti 97. percentilu viditelných pruhů.
  */
 let likvidace = null;   // { pasy: [{ od, do, cena, vyska, usd, long }], popis }
 /*
- * Paleta mapy (v0.73.0, volba uživatele z plátna): tmavě fialová → modrá →
- * zlatá. Bez zelené, aby se mapa nepletla s nákupní zdí; mezi modrou
- * a zlatou přes světlou levanduli (přímý přechod by dal špinavou zelenou).
- * Stejné barvy má posuvník filtru v grafu (style.css `.liq-posuvnik`).
+ * Barvy mapy (v0.74.1, varianta C z plátna
+ * https://claude.ai/artifact/SkvgjpRnyFDBKu4qzhjLH7 — spektrum z v0.73.0 nešlo
+ * číst): likvidace longů modře, shortů oranžově, síla = krytí. Bez zelené
+ * a červené, aby se mapa nepletla se zdmi a svíčkami.
  */
-const PALETA_MAPY = [[38, 10, 72], [70, 30, 170], [40, 110, 240], [180, 170, 235], [255, 212, 60]];
-function barvaMapy(v) {
-  const t = Math.min(0.999, Math.max(0, v)) * (PALETA_MAPY.length - 1);
-  const i = Math.floor(t);
-  const f = t - i;
-  const a = PALETA_MAPY[i];
-  const b = PALETA_MAPY[i + 1];
-  return a.map((x, k) => Math.round(x + (b[k] - x) * f)).join(',');
-}
+const BARVA_LONGU = '70,150,255';
+const BARVA_SHORTU = '255,150,50';
 // Plynulý náběh mapy při prvním objevení na grafu (přání uživatele — dřív
 // po načtení „blikla“). Obnova po minutě náběh nespouští.
 const NABEH_MAPY = 450;
@@ -1006,6 +998,9 @@ function registrovatLikvidace() {
       viditelne.forEach((p) => { if (p.usd > max) max = p.usd; });
       if (!max) return true;
       prahMapyUsd = max * filtrMapy;
+      // Měřítko barev z 97. percentilu — jeden extrém by zbytek zhasnul.
+      const serazene = viditelne.map((p) => p.usd).sort((x, y) => x - y);
+      const ref = serazene[Math.floor(serazene.length * 0.97)] || max;
       const pravy = bounding.width;
       ctx.save();
       ctx.globalAlpha = pruhlednostNabehu();
@@ -1020,8 +1015,11 @@ function registrovatLikvidace() {
         const x1 = Math.max(0, a.x);
         const x2 = p.do >= Date.now() - 120000 ? pravy : Math.min(pravy, b.x);
         if (x2 <= x1) continue;
-        const sila = Math.sqrt(p.usd / max);
-        ctx.fillStyle = `rgba(${barvaMapy(sila)},${(0.3 + 0.62 * sila).toFixed(2)})`;
+        // v0.74.1 (uživatel: spektrum nešlo číst — všechno svítilo): malé
+        // hodnoty skoro průhledné, svítí jen velké shluky (jako Coinglass).
+        const v = Math.min(1, p.usd / ref);
+        if (v < 0.06) continue;
+        ctx.fillStyle = `rgba(${p.long ? BARVA_LONGU : BARVA_SHORTU},${(0.04 + 0.9 * v ** 1.6).toFixed(3)})`;
         const y = Math.min(a.y, b.y);
         ctx.fillRect(x1, y, x2 - x1, Math.max(2, Math.abs(b.y - a.y)));
         nakresleno += 1;
@@ -1051,9 +1049,10 @@ function registrovatLikvidace() {
       });
       const mil = (v) => (v >= 1e6 ? `${(v / 1e6).toFixed(v >= 1e8 ? 0 : 1)} M` : `${Math.round(v / 1e3)} k`);
       const cenaText = (c) => (c >= 1000 ? Math.round(c).toLocaleString('en-US') : String(+c.toPrecision(5)));
-      ctx.fillStyle = 'rgba(255,212,60,0.95)';
+      ctx.fillStyle = `rgba(${BARVA_SHORTU},0.95)`;
       if (nad) ctx.fillText(`▲ ${cenaText(nad.cena)} · ${mil(nad.usd)}`, 8, 22);
       ctx.textBaseline = 'bottom';
+      ctx.fillStyle = `rgba(${BARVA_LONGU},0.95)`;
       if (pod) ctx.fillText(`▼ ${cenaText(pod.cena)} · ${mil(pod.usd)}`, 8, bounding.height - 6);
       ctx.restore();
       return true;

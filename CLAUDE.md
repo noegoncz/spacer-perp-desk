@@ -3425,6 +3425,11 @@ https://claude.ai/artifact/BHAHkgLcFuhiFkUPLreNi3, vybraná varianta B):**
   Both · Actual, `perpdesk.liqZdroj` (výchozí `oboje`), zdroj bez dat
   zašedlý (`bez-dat`). Každý pruh nese `popis` svého zdroje → detail
   klepnutím ví, odkud je.
+- **Barvy (v0.74.1, varianta C z plátna https://claude.ai/artifact/SkvgjpRnyFDBKu4qzhjLH7,
+  uživatel: spektrum nešlo číst):** longy modře `BARVA_LONGU`, shorty oranžově
+  `BARVA_SHORTU`, krytí 0,04 + 0,9 × v^1,6, v = usd / 97. percentil viditelných
+  (pod 0,06 se nekreslí). Paleta `PALETA_MAPY` z v0.73.0 zrušená; šipky
+  ▲ / ▼ v barvě své strany, posuvník filtru modrá → oranžová.
 - Tmavý svislý pruh po prudkém pohybu není chyba: cena vybrala pásma
   a OI zároveň klesal → nové pozice nevznikly.
 - Test: `test-likvidace-graf.py` (Binance na 4h, bod 4: SPCX bez HL má
