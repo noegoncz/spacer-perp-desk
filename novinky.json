@@ -1,5 +1,5 @@
 {
-  "verze": "0.75.1",
+  "verze": "0.75.2",
   "novinky": [
     {
       "en": "Binance charts open much faster right after starting the app.",
@@ -11,6 +11,10 @@
     }
   ],
   "opravy": [
+    {
+      "en": "Liquidation levels the price has run through end at that candle; the source switch is centred.",
+      "cs": "Likvidační hladiny, kterými cena prošla, u té svíčky končí; přepínač zdroje je na středu."
+    },
     {
       "en": "The liquidation filter in millions now matches the values in the level details.",
       "cs": "Filtr likvidací v milionech teď odpovídá hodnotám v detailu hladiny."

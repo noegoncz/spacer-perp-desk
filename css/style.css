@@ -3339,6 +3339,7 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 .liq-zdroj {
   /* v0.75.1: nahoře vpravo v ploše svíček, styl jako posuvník vlevo. */
   position: absolute; z-index: 6; display: flex; padding: 2px; gap: 2px; border-radius: 12px;
+  transform: translateX(-50%);
   background: rgba(11,15,20,0.72); box-shadow: 0 0 0 1px rgba(255,255,255,0.12);
 }
 .liq-zdroj button {

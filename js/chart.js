@@ -3636,6 +3636,31 @@ export function createPriceChart(container, layer, handlers = {}) {
 
     /** Likvidační mapa: `{ pasy, popis }`, null = žádná (jiný pár, bez dat). */
     setLiquidations(data) {
+      /*
+       * Pruh, kterým svíčka grafu prošla celým pásmem, tam končí (v0.75.2,
+       * uživatel: knot pruh proťal a ten zůstal). Hyperliquid likviduje podle
+       * mark ceny a knot ho nemusí dosáhnout — ale hladinu cena „vybrala“,
+       * tak to ukazuje i Coinglass. Jen živé pruhy, jednou za obnovu mapy.
+       */
+      if (data?.pasy?.length) {
+        const svicky = chart.getDataList();
+        const nyni = Date.now() - 120000;
+        const prvniPo = (t) => {
+          let lo = 0;
+          let hi = svicky.length;
+          while (lo < hi) { const m = (lo + hi) >> 1; if (svicky[m].timestamp < t) lo = m + 1; else hi = m; }
+          return lo;
+        };
+        data = { ...data, pasy: data.pasy.map((p) => {
+          if (p.do < nyni) return p;
+          const hrana = p.long ? p.cena - p.vyska / 2 : p.cena + p.vyska / 2;
+          for (let i = prvniPo(p.od); i < svicky.length; i += 1) {
+            const s = svicky[i];
+            if (p.long ? s.low <= hrana : s.high >= hrana) return { ...p, do: s.timestamp, vybrano: true };
+          }
+          return p;
+        }) };
+      }
       const nova = !likvidace?.pasy?.length && data?.pasy?.length;
       likvidace = data;
       obnovMapu();

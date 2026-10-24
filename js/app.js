@@ -3013,8 +3013,9 @@ function ukazPosuvnikMapy() {
         const r = vrstva.getBoundingClientRect();
         if (!r.height) return;
         const rr = rodic.getBoundingClientRect();
+        // Na střed plochy svíček (v0.75.2 — vpravo vypadal vyosený, hlavně na úzkém displeji).
         zdroj.style.top = `${r.top - rr.top + 54}px`;
-        zdroj.style.right = `${rr.right - r.right + 6}px`;
+        zdroj.style.left = `${r.left - rr.left + r.width / 2}px`;
       });
     }
   }

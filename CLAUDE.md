@@ -3487,6 +3487,11 @@ https://claude.ai/artifact/BHAHkgLcFuhiFkUPLreNi3, vybraná varianta B):**
   nic není, ze všech. Přepínač zdroje nahoře vpravo ve stylu posuvníku,
   posuvník širší (56 px dotyk, pruh 12 px), oba plynule naběhnou (CSS
   `liqNabeh`); OI čára naběhne přes barvu s alfou, nápis „Loading“ zmizel.
+- **v0.75.2:** živý pruh, kterým svíčka grafu prošla celým pásmem, u ní
+  končí (`setLiquidations` v chart.js, binární hledání první svíčky po
+  vzniku pruhu). Hyperliquid likviduje podle mark ceny, knot ji nemusí
+  dosáhnout — ale hladina je „vybraná“ (jako Coinglass). Přepínač zdroje
+  na středu plochy svíček.
 - Tmavý svislý pruh po prudkém pohybu není chyba: cena vybrala pásma
   a OI zároveň klesal → nové pozice nevznikly.
 - Test: `test-likvidace-graf.py` (Binance na 4h, bod 4: SPCX bez HL má
