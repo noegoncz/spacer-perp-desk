@@ -3480,6 +3480,13 @@ https://claude.ai/artifact/BHAHkgLcFuhiFkUPLreNi3, vybraná varianta B):**
   **v0.74.8:** reálná mapa se ukazuje až od `SBER_PLNY_OD` (22. 10. 2026
   8:00) — první noc se seznam účtů plnil (~100 → ~760 pásem u BTC)
   a na 1D to dělalo odlišné bloky.
+- **v0.75.1:** jedna hodnota pruhu pro barvu, filtr i detail
+  (`hodnotaPasu`: živý = aktuální, skončený = maximum); měřítko a práh
+  filtru jen z pruhů cenově v obraze (`yAxis.convertFromPixel` z parametrů
+  kreslení — `chart` uvnitř draw je vnitřní objekt knihovny), když v obraze
+  nic není, ze všech. Přepínač zdroje nahoře vpravo ve stylu posuvníku,
+  posuvník širší (56 px dotyk, pruh 12 px), oba plynule naběhnou (CSS
+  `liqNabeh`); OI čára naběhne přes barvu s alfou, nápis „Loading“ zmizel.
 - Tmavý svislý pruh po prudkém pohybu není chyba: cena vybrala pásma
   a OI zároveň klesal → nové pozice nevznikly.
 - Test: `test-likvidace-graf.py` (Binance na 4h, bod 4: SPCX bez HL má

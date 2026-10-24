@@ -966,6 +966,13 @@ const NABEH_MAPY = 450;
 // (pro popisek u posuvníku).
 let filtrMapy = 0;
 let prahMapyUsd = 0;
+/*
+ * Hodnota pruhu pro barvu, filtr i detail (v0.75.1, uživatel: posuvník
+ * v milionech nesouhlasil s detailem): živý pruh = kolik na hladině leží
+ * teď, skončený = nejvíc, kolik tam bylo. Dřív filtr i barva braly maximum
+ * za celou dobu a detail aktuální hodnotu.
+ */
+const hodnotaPasu = (p) => (p.do >= Date.now() - 120000 ? (p.posledni ?? p.usd) : p.usd);
 let nabehMapyOd = 0;
 const pruhlednostNabehu = () => {
   const t = (performance.now() - nabehMapyOd) / NABEH_MAPY;
@@ -981,7 +988,7 @@ function registrovatLikvidace() {
     figures: [],
     createTooltipDataSource: () => ({ name: '', calcParamsText: '', legends: [] }),
     calc: (data) => data.map(() => ({})),
-    draw: ({ ctx, chart, bounding }) => {
+    draw: ({ ctx, chart, bounding, yAxis }) => {
       const pasy = likvidace?.pasy;
       const data = chart.getDataList();
       if (!pasy?.length || !data.length) return true;
@@ -994,12 +1001,22 @@ function registrovatLikvidace() {
         return Array.isArray(b) ? b[0] : b;
       };
       const viditelne = pasy.filter((p) => p.do >= prvni && p.od <= posledni + 86400e3);
+      // Měřítko i práh filtru jen z pruhů v obraze (i cenově) — dřív je
+      // určoval třeba shluk 116 M daleko nad obrazem a filtr skryl všechno.
+      const c0 = yAxis?.convertFromPixel?.(0);
+      const c1 = yAxis?.convertFromPixel?.(bounding.height);
+      const okDve = Number.isFinite(c0) && Number.isFinite(c1);
+      const horni = okDve ? Math.max(c0, c1) : Infinity;
+      const dolni = okDve ? Math.min(c0, c1) : -Infinity;
+      const vObrazeCene = viditelne.filter((p) => p.cena <= horni && p.cena >= dolni);
+      // V obraze nic (úzký výřez na 1m) → měřítko ze všech; šipky ke shlukům mimo obraz se kreslí dál.
+      const vObraze = vObrazeCene.length ? vObrazeCene : viditelne;
       let max = 0;
-      viditelne.forEach((p) => { if (p.usd > max) max = p.usd; });
+      vObraze.forEach((p) => { const h = hodnotaPasu(p); if (h > max) max = h; });
       if (!max) return true;
       prahMapyUsd = max * filtrMapy;
       // Měřítko barev z 97. percentilu — jeden extrém by zbytek zhasnul.
-      const serazene = viditelne.map((p) => p.usd).sort((x, y) => x - y);
+      const serazene = vObraze.map(hodnotaPasu).sort((x, y) => x - y);
       const ref = serazene[Math.floor(serazene.length * 0.97)] || max;
       const pravy = bounding.width;
       ctx.save();
@@ -1007,7 +1024,8 @@ function registrovatLikvidace() {
       globalThis.__nabehMapy?.push(ctx.globalAlpha);   // pro test
       let nakresleno = 0;
       for (const p of viditelne) {
-        if (p.usd < prahMapyUsd) continue;
+        const h = hodnotaPasu(p);
+        if (h < prahMapyUsd) continue;
         const a = px(p.od, p.cena + p.vyska / 2);
         const b = px(p.do, p.cena - p.vyska / 2);
         if (!a || !b || !Number.isFinite(a.y) || !Number.isFinite(b.y)) continue;
@@ -1017,7 +1035,7 @@ function registrovatLikvidace() {
         if (x2 <= x1) continue;
         // v0.74.1 (uživatel: spektrum nešlo číst — všechno svítilo): malé
         // hodnoty skoro průhledné, svítí jen velké shluky (jako Coinglass).
-        const v = Math.min(1, p.usd / ref);
+        const v = Math.min(1, h / ref);
         if (v < 0.06) continue;
         ctx.fillStyle = `rgba(${p.long ? BARVA_LONGU : BARVA_SHORTU},${(0.04 + 0.9 * v ** 1.6).toFixed(3)})`;
         const y = Math.min(a.y, b.y);
@@ -1587,7 +1605,8 @@ function registrovatOi() {
       });
     },
     draw: ({ ctx, bounding }) => {
-      if (openInterest?.body?.length) return false;
+      // Bez dat zatím nic (v0.75.1 — nápis „Loading…“ pak problikl na čáru).
+      if (openInterest?.body?.length || !openInterest) return false;
       ctx.save();
       ctx.font = '11px -apple-system, "Segoe UI", Roboto, sans-serif';
       ctx.fillStyle = 'rgba(139,155,176,0.9)';
@@ -2552,7 +2571,7 @@ export function createPriceChart(container, layer, handlers = {}) {
     if (vrstvy.likvidace && mapaZapnuta) {
       const ted = Date.now() - 120000;
       for (const p of likvidace?.pasy || []) {
-        if (p.usd < prahMapyUsd) continue;
+        if (hodnotaPasu(p) < prahMapyUsd) continue;
         zkus('likvidace', p, p.do >= ted ? Infinity : p.do);
       }
     }
@@ -3569,10 +3588,25 @@ export function createPriceChart(container, layer, handlers = {}) {
 
     /** Open interest: `{ body: [{ time, oi }], popis }`, null = načítá se. */
     setOpenInterest(data) {
+      const nova = !openInterest?.body?.length && data?.body?.length;
       openInterest = data;
       verzeOi += 1;
       // Jiné calcParams = knihovna indikátor přepočítá.
       try { chart.overrideIndicator({ name: 'OI', calcParams: [verzeOi] }); } catch { /* není v grafu */ }
+      // Plynulý náběh čáry jako u likvidační mapy (v0.75.1, přání uživatele).
+      if (nova) {
+        const od = performance.now();
+        const barva = nactiNastaveni('OI').barvaOi;
+        const snimek = () => {
+          const t = Math.min(1, (performance.now() - od) / NABEH_MAPY);
+          const a = 1 - (1 - t) ** 3;
+          try {
+            chart.overrideIndicator({ name: 'OI', styles: { lines: [{ color: t < 1 ? sAlfou(barva, a) : barva, size: 1.5 }] } });
+          } catch { return; }
+          if (t < 1) requestAnimationFrame(snimek);
+        };
+        requestAnimationFrame(snimek);
+      }
     },
 
     /** Zdi v knize: { zive, hist, krok, popis, posun } nebo null. */

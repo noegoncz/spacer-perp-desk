@@ -3297,26 +3297,29 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 
 /* ---------- filtr likvidační mapy v grafu (v0.73.0) ---------- */
 .liq-posuvnik {
-  position: absolute; z-index: 6; left: 0; top: 54px; height: 42%; width: 40px;
+  position: absolute; z-index: 6; left: 0; top: 54px; height: 42%; width: 56px;
   touch-action: none; cursor: ns-resize; --uroven: 0%;
 }
+/* Plynulý náběh posuvníku i přepínače mapy (v0.75.1, přání uživatele). */
+@keyframes liqNabeh { from { opacity: 0; } to { opacity: 1; } }
+.liq-posuvnik:not([hidden]), .liq-zdroj:not([hidden]) { animation: liqNabeh 0.45s ease-out; }
 .liq-pruh {
-  position: absolute; left: 8px; top: 0; bottom: 0; width: 8px; border-radius: 4px; overflow: visible;
+  position: absolute; left: 10px; top: 0; bottom: 0; width: 12px; border-radius: 6px; overflow: visible;
   /* Síla mapy (v0.74.1): od průhledné po plnou — barvy longů a shortů dohromady. */
   background: linear-gradient(0deg, rgba(70,150,255,0.08), rgba(70,150,255,0.6) 45%, rgba(255,150,50,0.95));
   box-shadow: 0 0 0 1px rgba(255,255,255,0.12);
 }
 .liq-zavoj {
   position: absolute; left: 0; right: 0; bottom: 0; height: var(--uroven);
-  border-radius: 0 0 4px 4px; background: rgba(11,15,20,0.72);
+  border-radius: 0 0 6px 6px; background: rgba(11,15,20,0.72);
 }
 .liq-uchyt {
-  position: absolute; left: -5px; width: 18px; height: 8px; border-radius: 4px; bottom: var(--uroven);
+  position: absolute; left: -7px; width: 26px; height: 10px; border-radius: 5px; bottom: var(--uroven);
   transform: translateY(50%); background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.6);
 }
-.liq-posuvnik.tazeny .liq-uchyt { height: 12px; }
+.liq-posuvnik.tazeny .liq-uchyt { height: 14px; }
 .liq-stitek {
-  position: absolute; left: 22px; bottom: var(--uroven); transform: translateY(50%);
+  position: absolute; left: 30px; bottom: var(--uroven); transform: translateY(50%);
   white-space: nowrap; padding: 1px 6px; border-radius: 4px; pointer-events: none;
   font-size: 0.68rem; font-weight: 700; color: #0b0f14; background: rgba(255,255,255,0.9);
 }
@@ -3334,18 +3337,18 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 
 /* ---------- zdroj likvidační mapy v grafu (v0.74.0, varianta B) ---------- */
 .liq-zdroj {
-  position: absolute; z-index: 6; left: 50%; transform: translateX(-50%); bottom: auto;
-  width: min(76%, 360px); display: flex; padding: 2px; gap: 2px; border-radius: 16px;
-  background: rgba(18,24,33,0.88); border: 1px solid var(--line, #223044);
+  /* v0.75.1: nahoře vpravo v ploše svíček, styl jako posuvník vlevo. */
+  position: absolute; z-index: 6; display: flex; padding: 2px; gap: 2px; border-radius: 12px;
+  background: rgba(11,15,20,0.72); box-shadow: 0 0 0 1px rgba(255,255,255,0.12);
 }
 .liq-zdroj button {
-  flex: 1 1 0; min-height: 28px; border: 1px solid transparent; border-radius: 14px; background: none;
+  flex: 0 0 auto; min-height: 30px; min-width: 52px; border: 0; border-radius: 10px; background: none;
   color: var(--text); display: flex; flex-direction: column; align-items: center; justify-content: center;
   line-height: 1.1; cursor: pointer; padding: 2px 4px;
 }
-.liq-zdroj button b { font-size: 0.72rem; }
-.liq-zdroj button small { font-size: 0.56rem; color: var(--muted); }
-.liq-zdroj button.active { background: rgba(34,211,238,0.2); border-color: #22d3ee; }
+.liq-zdroj button b { font-size: 0.7rem; font-weight: 700; }
+.liq-zdroj button small { display: none; }
+.liq-zdroj button.active { background: rgba(255,255,255,0.9); color: #0b0f14; }
 .liq-zdroj button.bez-dat { opacity: 0.4; }
 
 /* ---------- hladina mapy (v0.74.5) ---------- */

@@ -3005,15 +3005,16 @@ function ukazPosuvnikMapy() {
     zdroj.hidden = !(chart && oknoMapy && chart.getLayers().likvidace && !prohlizenyObchod);
     if (!zdroj.hidden) {
       kresliPrepinacZdroje();
-      // Dole v ploše svíček (pod ní můžou být panely RSI, OI).
+      // Nahoře vpravo v ploše svíček, pod popisky map (v0.75.1).
       const vrstva = el('drawLayer');
       const rodic = zdroj.offsetParent;
       requestAnimationFrame(() => {
         if (!vrstva || !rodic) return;
         const r = vrstva.getBoundingClientRect();
         if (!r.height) return;
-        // Nad šipkou ▼ nejbližšího shluku u spodního okraje.
-        zdroj.style.top = `${r.bottom - rodic.getBoundingClientRect().top - zdroj.offsetHeight - 30}px`;
+        const rr = rodic.getBoundingClientRect();
+        zdroj.style.top = `${r.top - rr.top + 54}px`;
+        zdroj.style.right = `${rr.right - r.right + 6}px`;
       });
     }
   }
