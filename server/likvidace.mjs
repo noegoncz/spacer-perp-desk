@@ -63,14 +63,35 @@ let tempo = VAHA_ZA_MINUTU;      // aktuální tempo (po 429 nižší)
 let tempoDo = 0;
 const stat = { dotazu: 0, chyb: 0, limit429: 0 };
 
+/*
+ * Přednost velkých dotazů (2026-10-24): metaAndAssetCtxs (váha 20) hladověl —
+ * dotazy na účty (váha 2) sebraly každou dokapanou váhu dřív, než se jí
+ * nastřádalo 20, a mark ceny stály celé hodiny (posun mapy na jiné burzy
+ * byl mimo). Když čeká velký dotaz, malé počkají.
+ */
+let cekaVelky = 0;
 async function vaha(v) {
-  for (;;) {
+  const velky = v >= 10;
+  if (velky) cekaVelky += 1;
+  try {
+    for (;;) {
+      if (!velky && cekaVelky) { await spi(250); continue; }
+      if (await vahaKrok(v)) return;
+    }
+  } finally {
+    if (velky) cekaVelky -= 1;
+  }
+}
+
+async function vahaKrok(v) {
+  {
     const ted = Date.now();
     if (tempoDo && ted > tempoDo) { tempo = VAHA_ZA_MINUTU; tempoDo = 0; }
     vahy = Math.min(tempo / 6, vahy + (ted - doplneno) * tempo / MIN);
     doplneno = ted;
-    if (vahy >= v) { vahy -= v; return; }
+    if (vahy >= v) { vahy -= v; return true; }
     await spi(Math.ceil((v - vahy) * MIN / tempo));
+    return false;
   }
 }
 

@@ -1,5 +1,5 @@
 {
-  "verze": "0.74.5",
+  "verze": "0.74.6",
   "novinky": [
     {
       "en": "Tap the liquidation map or a wall: the level is highlighted and its details appear top left. Drag up or down to move the level; pin the details to keep them.",
@@ -15,6 +15,10 @@
     }
   ],
   "opravy": [
+    {
+      "en": "Real liquidation map stays continuous across server restarts; Hyperliquid price used for the shift is fresh again.",
+      "cs": "Reálná mapa zůstává souvislá i přes restart serveru; cena Hyperliquidu pro posun je zase aktuální."
+    },
     {
       "en": "Switching timeframes no longer flashes the previous map.",
       "cs": "Při přepnutí timeframu už nebliká mapa z předchozího."

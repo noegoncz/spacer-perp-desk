@@ -154,9 +154,18 @@ export async function pasy({ symbol, burza, od, doKdy, delkaSvicky }) {
   const otevrene = new Map();   // `${long}|${cena}` → pruh
   const hotove = [];
   const ted = Date.now();
+  /*
+   * Neúplný snímek (první minuty po restartu serveru — účty se dočítají
+   * ~45 min, 112 / 443 pásem místo ~760) pruhy jen prodlužuje, nic
+   * neukončí. Úplný = aspoň 97 % nejvíc pásem za poslední 2 h.
+   */
+  const nedavne = [];   // [t, počet]
   s.forEach((snimek, i) => {
     const dalsi = s[i + 1]?.t ?? ted;
     const dlouhaMezera = i < s.length - 1 && dalsi - snimek.t > 3 * 3600e3;
+    nedavne.push([snimek.t, snimek.pasma.size]);
+    while (nedavne[0][0] < snimek.t - 2 * 3600e3) nedavne.shift();
+    const uplny = snimek.pasma.size >= 0.97 * Math.max(...nedavne.map((x) => x[1]));
     for (const [idx, [l, sh]] of snimek.pasma) {
       const cena = idx * snimek.krok;
       for (const [usd, long] of [[l, true], [sh, false]]) {
@@ -176,7 +185,7 @@ export async function pasy({ symbol, burza, od, doKdy, delkaSvicky }) {
     }
     for (const [k, p] of otevrene) {
       // Chybějící pásmo končí tam, kde bylo naposledy vidět (p.do se neposouvá).
-      if (snimek.t - p.videno > CHYBI_MS || dlouhaMezera) {
+      if ((uplny && snimek.t - p.videno > CHYBI_MS) || dlouhaMezera) {
         hotove.push(p);
         otevrene.delete(k);
       }

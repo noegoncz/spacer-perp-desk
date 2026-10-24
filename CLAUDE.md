@@ -3459,6 +3459,14 @@ https://claude.ai/artifact/BHAHkgLcFuhiFkUPLreNi3, vybraná varianta B):**
   funkce v ní pojmenovávat jedinečně (stínění rozbilo kreslení grafu).
   Změna timeframu mapu hned sundá (dřív chvíli visela mapa předchozího).
   Reálná mapa: tolerance chybějícího pásma 45 min v čase (`CHYBI_MS`).
+- **v0.74.6 — skutečná příčina svislých bloků:** restarty serveru. Po
+  restartu je první snímek neúplný (112 / 443 pásem místo ~760) a účty se
+  dočítají ~45 min → stovky pásem „vznikly znovu“. `likvidace.pasy`:
+  neúplný snímek (< 97 % maxima za 2 h) jen prodlužuje, nic neukončí.
+  **Server:** mark ceny zamrzaly na hodiny — `metaAndAssetCtxs` (váha 20)
+  hladověl za dotazy na účty (váha 2) v omezovači tempa; teď přednost
+  velkých dotazů (`cekaVelky` v likvidace.mjs). Ověřeno: hromadné začátky
+  22. 10. 23:00 a 24. 10. 10:00 zmizely, `test-likvidace.py` prošel.
 - Tmavý svislý pruh po prudkém pohybu není chyba: cena vybrala pásma
   a OI zároveň klesal → nové pozice nevznikly.
 - Test: `test-likvidace-graf.py` (Binance na 4h, bod 4: SPCX bez HL má
