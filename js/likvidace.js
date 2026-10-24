@@ -145,10 +145,12 @@ export async function pasy({ symbol, burza, od, doKdy, delkaSvicky }) {
    * v0.74.3 (snímek uživatele: reálná mapa ve svislých blocích s jinou
    * sytostí): výpadek sběru (restart serveru) a neúplný první snímek po něm
    * dřív ukončily všechny pruhy naráz. Teď pásmo, které chybí nejvýš
-   * CHYBI_SNIMKU snímků po sobě, pokračuje; mezera ve sběru do 3 h se
-   * přemostí. Delší mezera pruhy ukončí (o době mezi nevíme nic).
+   * CHYBI_MS, pokračuje; mezera ve sběru do 3 h se přemostí. Delší mezera
+   * pruhy ukončí (o době mezi nevíme nic). v0.74.5: tolerance v čase, ne
+   * ve snímcích — u minutových snímků byly 2 snímky jen 2 min a po
+   * restartu se účty načítají ~45 min (svislé dělení na 1m / 5m).
    */
-  const CHYBI_SNIMKU = 2;
+  const CHYBI_MS = 45 * 60000;
   const otevrene = new Map();   // `${long}|${cena}` → pruh
   const hotove = [];
   const ted = Date.now();
@@ -163,19 +165,18 @@ export async function pasy({ symbol, burza, od, doKdy, delkaSvicky }) {
         const p = otevrene.get(k);
         if (p) {
           p.do = dalsi;
-          p.chybi = -1;
+          p.videno = snimek.t;
           p.usd = Math.max(p.usd, usd);
           p.min = Math.min(p.min, usd);
           p.posledni = usd;
         } else {
-          otevrene.set(k, { od: snimek.t, do: dalsi, cena, vyska: snimek.krok, usd, min: usd, posledni: usd, long, chybi: -1 });
+          otevrene.set(k, { od: snimek.t, do: dalsi, cena, vyska: snimek.krok, usd, min: usd, posledni: usd, long, videno: snimek.t });
         }
       }
     }
     for (const [k, p] of otevrene) {
-      p.chybi += 1;
       // Chybějící pásmo končí tam, kde bylo naposledy vidět (p.do se neposouvá).
-      if (p.chybi > CHYBI_SNIMKU || dlouhaMezera) {
+      if (snimek.t - p.videno > CHYBI_MS || dlouhaMezera) {
         hotove.push(p);
         otevrene.delete(k);
       }

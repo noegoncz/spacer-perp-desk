@@ -3347,3 +3347,21 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 .liq-zdroj button small { font-size: 0.56rem; color: var(--muted); }
 .liq-zdroj button.active { background: rgba(34,211,238,0.2); border-color: #22d3ee; }
 .liq-zdroj button.bez-dat { opacity: 0.4; }
+
+/* ---------- hladina mapy (v0.74.5) ---------- */
+.mapa-hladina {
+  position: absolute; z-index: 5; height: 0; pointer-events: none;
+  border-top: 1px solid rgba(255,255,255,0.85); box-shadow: 0 0 6px rgba(255,255,255,0.5);
+}
+.map-detail { pointer-events: none; }
+.map-detail-hlava { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.map-detail-hlava b { font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+.map-detail-pin {
+  pointer-events: auto; width: 30px; height: 30px; margin: -6px -6px -6px 0; border: 0; border-radius: 8px;
+  background: none; color: var(--text-dim); display: grid; place-items: center; cursor: pointer;
+}
+.map-detail-pin.active { color: #22d3ee; background: rgba(34,211,238,0.15); }
+.map-detail-radky span.long { color: rgb(70,150,255); }
+.map-detail-radky span.short { color: rgb(255,150,50); }
+.map-detail-radky span.nakup { color: #3ee6a4; }
+.map-detail-radky span.prodej { color: #f6465d; }

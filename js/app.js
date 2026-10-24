@@ -2088,7 +2088,7 @@ async function otevriGraf(symbol, position, trh) {
       onSelectionChanged: zobrazPaletu,
       onNoteEdit: otevriPoznamku,
       onAlarmTapped: (id) => otevriAlarm(alarmy.najdi(id)),
-      onMapTapped: (m, bod) => ukazDetailMapy(m, bod),
+      onMapLevel: (u) => ukazDetailMapy(u),
       onStyleChanged: (styl) => store.saveDrawStyle(styl),
       // Šířka svíček po zoomu dvěma prsty — pamatuje se k páru.
       onZoomChanged: (sirka) => { if (!prohlizenyObchod) store.saveChartView(grafKlic(), { sirka }); },
@@ -2375,53 +2375,63 @@ const nazevBurzy = (id) => ({ binance: 'Binance', bybit: 'Bybit', hyperliquid: '
  * „od kdy, teď / min / max“). Malá karta u prstu, zavře ji další klepnutí
  * kamkoli nebo 8 s.
  */
-let casovacDetailuMapy = null;
-
-function ukazDetailMapy(m, bod) {
+/*
+ * Detail hladiny mapy (v0.74.5, přání uživatele): vždy vlevo nahoře v grafu,
+ * ne u prstu. Co na zvýrazněné hladině leží — likvidace longů / shortů
+ * (kalkulované a reálné zvlášť) a živá zeď. Zmizí s hladinou (2 s bez
+ * dotyku); připínáček ji nechá, dokud se znovu neodepne.
+ */
+function ukazDetailMapy(u) {
   const box = el('mapDetail');
   if (!box) return;
-  clearTimeout(casovacDetailuMapy);
-  if (!m) { box.hidden = true; return; }
-  const usd = (v) => (v == null ? '—' : v >= 1e6 ? `${(v / 1e6).toFixed(v >= 1e8 ? 0 : 1)} M` : `${Math.round(v / 1e3)} k`);
+  if (!u) { box.hidden = true; return; }
+  const usd = (v) => (v >= 1e6 ? `${(v / 1e6).toFixed(v >= 1e8 ? 0 : 1)} M` : `${Math.round(v / 1e3)} k`);
   const cas = (ms) => new Date(ms).toLocaleTimeString(getLocale(), { hour: '2-digit', minute: '2-digit' });
-  const datumCas = (ms) => (Date.now() - ms > 20 * 3600e3
-    ? `${new Date(ms).getDate()}.${new Date(ms).getMonth() + 1}. ${cas(ms)}` : cas(ms));
-  const nadpis = m.druh === 'zed'
-    ? t(m.nakup ? 'walls.buy' : 'walls.sell')
-    : t(m.long ? 'liq.longs' : 'liq.shorts');
-  const trvani = denikUi.drzeno((m.do || Date.now()) - m.od) || '< 1 m';
-  const radky = [
-    [t('walls.price'), formatPrice(m.cena)],
-    [t('walls.now'), m.ted == null ? t('walls.gone') : `${usd(m.ted)} USD`],
-    [t('walls.minMax'), `${usd(m.min)} / ${usd(m.max)}`],
-    [t('walls.since'), `${datumCas(m.od)} · ${trvani}`],
-  ];
-  if (m.do) radky.push([t('walls.until'), datumCas(m.do)]);
-  const titul = document.createElement('div');
-  titul.className = `map-detail-titul ${m.druh === 'zed' ? (m.nakup ? 'nakup' : 'prodej') : 'likv'}`;
-  titul.textContent = nadpis;
+  const radky = [];
+  for (const [strana, klic, trida] of [['short', 'map.shortsLiq', 'short'], ['long', 'map.longsLiq', 'long']]) {
+    const { odhad, realna } = u.lik[strana];
+    if (!odhad && !realna) continue;
+    const casti = [];
+    if (odhad) casti.push(`${usd(odhad)} ${t('map.calc')}`);
+    if (realna) casti.push(`${usd(realna)} ${t('map.real')}`);
+    radky.push([t(klic), casti.join(' · '), trida]);
+  }
+  if (u.zed) {
+    radky.push([t(u.zed.nakup ? 'walls.buy' : 'walls.sell'),
+      `${usd(u.zed.usd)} · ${t('walls.since')} ${cas(u.zed.od)}`, u.zed.nakup ? 'nakup' : 'prodej']);
+  }
+  const hlava = document.createElement('div');
+  hlava.className = 'map-detail-hlava';
+  const cena = document.createElement('b');
+  cena.textContent = formatPrice(u.cena);
+  const spendlik = document.createElement('button');
+  spendlik.type = 'button';
+  spendlik.className = `map-detail-pin${u.pripnuto ? ' active' : ''}`;
+  spendlik.setAttribute('aria-label', t('map.pin'));
+  spendlik.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M16 3l5 5-3 1-3 3 1 5-2 2-4-4-5 5-1-1 5-5-4-4 2-2 5 1 3-3z"/></svg>';
+  spendlik.addEventListener('click', (e) => { e.stopPropagation(); chart?.setMapLevelPinned(!u.pripnuto); });
+  hlava.append(cena, spendlik);
   const telo = document.createElement('div');
   telo.className = 'map-detail-radky';
-  radky.forEach(([a, b]) => {
+  if (!radky.length) {
+    const x = document.createElement('span');
+    x.textContent = t('map.nothing');
+    telo.append(x);
+  }
+  radky.forEach(([a, b, trida]) => {
     const x = document.createElement('span');
     x.textContent = a;
+    x.className = trida;
     const y = document.createElement('b');
     y.textContent = b;
     telo.append(x, y);
   });
-  const pozn = document.createElement('div');
-  pozn.className = 'map-detail-pozn';
-  pozn.textContent = m.popis || '';
-  box.replaceChildren(titul, telo, pozn);
+  box.replaceChildren(hlava, telo);
   box.hidden = false;
-  // U prstu, ale celé v obrazovce.
-  const w = box.offsetWidth;
-  const h = box.offsetHeight;
-  const x = Math.min(Math.max(8, bod.x - w / 2), innerWidth - w - 8);
-  const y = bod.y - h - 18 > 60 ? bod.y - h - 18 : Math.min(bod.y + 18, innerHeight - h - 8);
-  box.style.left = `${x}px`;
-  box.style.top = `${y}px`;
-  casovacDetailuMapy = setTimeout(() => { box.hidden = true; }, 8000);
+  // Vlevo nahoře v ploše svíček, pod popisky map.
+  const r = el('drawLayer')?.getBoundingClientRect();
+  box.style.left = `${(r?.left || 0) + 44}px`;
+  box.style.top = `${(r?.top || 60) + 50}px`;
 }
 
 /*
@@ -2534,7 +2544,7 @@ async function nactiMapu() {
   if (zdroj !== 'odhad' && dostupneZdroje.skutecne) {
     const minut = Math.max(0, Math.round((Date.now() - skutecne.cas) / 60000));
     const popis = t(burza === 'hyperliquid' ? 'liq.label' : 'liq.labelOther', { min: minut });
-    pasy.push(...posun(skutecne.pasy, skutecne.mark, burza === 'hyperliquid').map((p) => ({ ...p, popis })));
+    pasy.push(...posun(skutecne.pasy, skutecne.mark, burza === 'hyperliquid').map((p) => ({ ...p, popis, zdroj: 'realna' })));
     casti.push(popis);
   }
   if (zdroj !== 'skutecne' && dostupneZdroje.odhad) {
@@ -2542,7 +2552,7 @@ async function nactiMapu() {
     const od = oknoMapy.od;
     const ted = Date.now();
     pasy.push(...posun(odhad.pasy.filter((p) => p.do >= od), odhad.mark, burza === 'binance' || burza === 'bybit')
-      .map((p) => ({ ...p, popis, ...(p.ziva ? { do: ted } : {}) })));
+      .map((p) => ({ ...p, popis, zdroj: 'odhad', ...(p.ziva ? { do: ted } : {}) })));
     casti.push(popis);
   }
   mapaMaData = pasy.length > 0;
@@ -2653,6 +2663,11 @@ async function zmenInterval(interval) {
     intervalUzivatele = interval;
     store.saveChartView(grafKlic(), { interval });
   }
+  // Mapa předchozího timeframu má jiné okno i šířku pásma — pryč hned,
+  // nová naběhne se svíčkami (v0.74.5, video uživatele: „problikne“).
+  zadostMapy += 1;
+  chart.setLiquidations(null);
+  chart.hideMapLevel?.();
   chart.setInterval(interval);
   odebiratZiveSvice(chartSymbol, interval);
 }

@@ -2623,11 +2623,112 @@ export function createPriceChart(container, layer, handlers = {}) {
       const alarm = alarmPodPrstem(mx, my);
       if (alarm) { handlers.onAlarmTapped?.(alarm); return; }
 
-      // Zeď nebo likvidační pruh pod prstem → detail (v0.72.0).
-      handlers.onMapTapped?.(mapaPodPrstem(mx, my), { x: e.clientX, y: e.clientY });
+      // Zeď nebo likvidační pruh pod prstem → hladina s detailem (v0.74.5).
+      if (mapaPodPrstem(mx, my)) ukazHladinu(chart.convertFromPixel([{ x: mx, y: my }], { paneId: HLAVNI_PANEL })[0]?.value);
+      else if (hladina && !hladina.pripnuto) skryjHladinu();
     },
     { passive: true },
   );
+
+  /*
+   * Hladina mapy (v0.74.5, přání uživatele — detail u prstu zavazel):
+   * klepnutí do zdi / likvidace zvýrazní vodorovnou hladinu, detail je
+   * vlevo nahoře (app.js). Tažení prstem nahoru / dolů hladinu plynule
+   * posouvá; 2 s bez dotyku a zmizí. Připnutá zůstane, táhne se jen
+   * od hladiny (jinde graf normálně posouvá).
+   */
+  let hladina = null;   // { cena, pripnuto, casovac }
+  const caraHladiny = document.createElement('div');
+  caraHladiny.className = 'mapa-hladina';
+  caraHladiny.hidden = true;
+  layer.parentElement.appendChild(caraHladiny);
+  // Čas poslední svíčky — čas za koncem dat knihovna převést neumí.
+  const yHladiny = () => {
+    const posledni = chart.getDataList().at(-1);
+    if (!posledni || !hladina) return NaN;
+    try { return toPixel({ timestamp: posledni.timestamp, value: hladina.cena }).y; } catch { return NaN; }
+  };
+  const umistiHladinu = () => {
+    if (!hladina) return;
+    const y = yHladiny();
+    caraHladiny.hidden = !Number.isFinite(y) || y < 0 || y > layer.clientHeight;
+    caraHladiny.style.top = `${layer.offsetTop + y}px`;
+    caraHladiny.style.left = `${layer.offsetLeft}px`;
+    caraHladiny.style.width = `${layer.clientWidth}px`;
+    requestAnimationFrame(umistiHladinu);   // drží krok s posunem / zoomem grafu
+  };
+  function urovenMapy(cena) {
+    const ted = Date.now() - 120000;
+    const lik = { long: { odhad: 0, realna: 0 }, short: { odhad: 0, realna: 0 } };
+    if (vrstvy.likvidace && mapaZapnuta) {
+      for (const p of likvidace?.pasy || []) {
+        if (p.do < ted || Math.abs(p.cena - cena) > p.vyska / 2) continue;
+        lik[p.long ? 'long' : 'short'][p.zdroj === 'odhad' ? 'odhad' : 'realna'] += p.posledni ?? p.usd;
+      }
+    }
+    let zed = null;
+    if (vrstvy.zdi && zdiZapnute) {
+      for (const p of pruhyZdi()) {
+        const vzd = Math.abs(p.cena - cena);
+        if (!p.zivy || vzd > Math.max(p.vyska, cena * 0.0015)) continue;
+        if (!zed || vzd < Math.abs(zed.cena - cena)) zed = p;
+      }
+    }
+    return {
+      cena, lik,
+      zed: zed && { nakup: zed.s === 0, cena: zed.cena, usd: zed.usd, min: zed.min, max: zed.max, od: zed.od },
+    };
+  }
+  const ohlasHladinu = () => handlers.onMapLevel?.(hladina && { ...urovenMapy(hladina.cena), pripnuto: hladina.pripnuto });
+  const odpocetHladiny = () => {
+    clearTimeout(hladina?.casovac);
+    if (hladina && !hladina.pripnuto) hladina.casovac = setTimeout(skryjHladinu, 2000);
+  };
+  function ukazHladinu(cena) {
+    if (!Number.isFinite(cena)) return;
+    const nova = !hladina;
+    hladina = { cena, pripnuto: hladina?.pripnuto || false, casovac: hladina?.casovac };
+    ohlasHladinu();
+    odpocetHladiny();
+    if (nova) umistiHladinu();
+  }
+  function skryjHladinu() {
+    if (!hladina) return;
+    clearTimeout(hladina.casovac);
+    hladina = null;
+    caraHladiny.hidden = true;
+    ohlasHladinu();
+  }
+  let tahHladiny = null;   // { y0, x0, tahne }
+  container.addEventListener('touchstart', (e) => {
+    if (!hladina || e.touches.length !== 1 || kresleni.isActive()) { tahHladiny = null; return; }
+    const r = layer.getBoundingClientRect();
+    const y = e.touches[0].clientY - r.top;
+    if (hladina.pripnuto && Math.abs(y - yHladiny()) > 30) { tahHladiny = null; return; }
+    tahHladiny = { y0: e.touches[0].clientY, x0: e.touches[0].clientX, tahne: false };
+    clearTimeout(hladina.casovac);
+    chart.setScrollEnabled(false);
+  }, { capture: true, passive: true });
+  container.addEventListener('touchmove', (e) => {
+    if (!tahHladiny || !hladina || e.touches.length !== 1) return;
+    const t = e.touches[0];
+    if (!tahHladiny.tahne && Math.abs(t.clientY - tahHladiny.y0) < 6) return;
+    tahHladiny.tahne = true;
+    e.preventDefault();
+    e.stopPropagation();
+    const r = layer.getBoundingClientRect();
+    const y = Math.max(0, Math.min(r.height, t.clientY - r.top));
+    const cena = chart.convertFromPixel([{ x: 10, y }], { paneId: HLAVNI_PANEL })[0]?.value;
+    if (Number.isFinite(cena)) { hladina.cena = cena; ohlasHladinu(); }
+  }, { capture: true, passive: false });
+  const konecTahu = () => {
+    if (!tahHladiny) return;
+    tahHladiny = null;
+    chart.setScrollEnabled(true);
+    odpocetHladiny();
+  };
+  container.addEventListener('touchend', konecTahu, { capture: true, passive: true });
+  container.addEventListener('touchcancel', konecTahu, { capture: true, passive: true });
 
   /*
    * Gesto zahájené na cenové ose musí zůstat u osy, i když prst sjede do
@@ -2952,6 +3053,15 @@ export function createPriceChart(container, layer, handlers = {}) {
   observer.observe(container);
 
   return {
+    /** Připnutí hladiny mapy (v0.74.5): připnutá nezmizí sama. */
+    setMapLevelPinned(ano) {
+      if (!hladina) return;
+      hladina.pripnuto = ano;
+      ohlasHladinu();
+      odpocetHladiny();
+    },
+    hideMapLevel() { skryjHladinu(); },
+
     setLoader(nactiSvice) {
       aktualniLoader = nactiSvice;
       chart.setDataLoader({

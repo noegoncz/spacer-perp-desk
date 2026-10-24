@@ -3448,6 +3448,17 @@ https://claude.ai/artifact/BHAHkgLcFuhiFkUPLreNi3, vybraná varianta B):**
   svíčku (dřív jeden na svíčku → pásma u ceny mezi snímky blikala).
   Kalkulovaná a reálná se **nemusí potkávat**: jiný trh (HL vs. Binance +
   Bybit) a model předpokládá rozložení pák, skutečné pozice ne.
+- **Hladina mapy (v0.74.5, přání uživatele — detail u prstu zavazel):**
+  klepnutí do zdi / likvidace → bílá hladina přes graf (`.mapa-hladina`,
+  chart.js `ukazHladinu`), detail vlevo nahoře (`ukazDetailMapy(u)` v app.js:
+  likvidace longů / shortů kalkulované a reálné zvlášť podle `p.zdroj`, živá
+  zeď do 0,15 %). Tažení prstem nahoru / dolů hladinu posouvá (capture
+  posluchače dotyků, posun grafu vypnutý), 2 s bez dotyku → zmizí;
+  připínáček (`setMapLevelPinned`) ji nechá, táhne se pak jen od hladiny.
+  ⚠ V `createPriceChart` už existují názvy jako `odpocet` (modul) — nové
+  funkce v ní pojmenovávat jedinečně (stínění rozbilo kreslení grafu).
+  Změna timeframu mapu hned sundá (dřív chvíli visela mapa předchozího).
+  Reálná mapa: tolerance chybějícího pásma 45 min v čase (`CHYBI_MS`).
 - Tmavý svislý pruh po prudkém pohybu není chyba: cena vybrala pásma
   a OI zároveň klesal → nové pozice nevznikly.
 - Test: `test-likvidace-graf.py` (Binance na 4h, bod 4: SPCX bez HL má
