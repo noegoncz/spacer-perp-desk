@@ -2566,7 +2566,7 @@ export function createPriceChart(container, layer, handlers = {}) {
     }
     const zivy = p.do >= Date.now() - 120000;
     return { druh, long: p.long, cena: p.cena, ted: zivy ? (p.posledni ?? p.usd) : null, min: p.min ?? p.posledni ?? p.usd,
-      max: p.usd, od: p.od, do: zivy ? null : p.do, popis: likvidace?.popis || '' };
+      max: p.usd, od: p.od, do: zivy ? null : p.do, popis: p.popis || likvidace?.popis || '' };
   }
 
   /**

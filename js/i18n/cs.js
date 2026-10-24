@@ -904,4 +904,10 @@ export const cs = {
   "layers.liqFilterOn": "Pod {pct} % největší (< {usd} na tomto grafu)",
   'liq.label': 'Likvidace Hyperliquid · před {min} min',
   'liq.labelOther': 'Likvidace Hyperliquid (posunuté na tuto cenu) · před {min} min',
+  "liq.labelEst": "Odhad likvidací · open interest Binance + Bybit",
+  'liq.labelBoth': "Likvidace · odhad + Hyperliquid",
+  "liq.srcEst": "Odhad",
+  "liq.srcBoth": "Obojí",
+  "liq.srcBothSub": "součet",
+  "liq.srcActual": "Skutečné",
 };

@@ -3330,3 +3330,19 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
   font-size: 0.92rem; font-weight: 650; cursor: pointer;
 }
 .zavrit-velke:active { background: color-mix(in srgb, var(--accent) 32%, transparent); }
+
+/* ---------- zdroj likvidační mapy v grafu (v0.74.0, varianta B) ---------- */
+.liq-zdroj {
+  position: absolute; z-index: 6; left: 50%; transform: translateX(-50%); bottom: auto;
+  width: min(76%, 360px); display: flex; padding: 2px; gap: 2px; border-radius: 16px;
+  background: rgba(18,24,33,0.88); border: 1px solid var(--line, #223044);
+}
+.liq-zdroj button {
+  flex: 1 1 0; min-height: 28px; border: 1px solid transparent; border-radius: 14px; background: none;
+  color: var(--text); display: flex; flex-direction: column; align-items: center; justify-content: center;
+  line-height: 1.1; cursor: pointer; padding: 2px 4px;
+}
+.liq-zdroj button b { font-size: 0.72rem; }
+.liq-zdroj button small { font-size: 0.56rem; color: var(--muted); }
+.liq-zdroj button.active { background: rgba(34,211,238,0.2); border-color: #22d3ee; }
+.liq-zdroj button.bez-dat { opacity: 0.4; }

@@ -1,14 +1,19 @@
 {
-  "verze": "0.73.3",
+  "verze": "0.74.0",
   "novinky": [
     {
-      "en": "Order book walls no longer cover the latest candles: a thin line over the chart, the block only to the right of the last candle.",
-      "cs": "Zdi v knize už nezakrývají poslední svíčky: přes graf tenká linka, blok až vpravo za poslední svíčkou."
+      "en": "Liquidation map now also estimates liquidations from Binance + Bybit open interest (like Coinglass) — weeks of history on any chart.",
+      "cs": "Likvidační mapa nově odhaduje likvidace i z open interestu Binance + Bybit (jako Coinglass) — týdny historie na každém grafu."
     },
     {
-      "en": "Walls further from the price (up to ±15 %) are visible when you zoom out.",
-      "cs": "Po oddálení grafu jsou vidět i vzdálenější zdi (až ±15 % od ceny)."
+      "en": "Switch at the bottom of the chart: Estimate · Both · Actual (Hyperliquid).",
+      "cs": "Přepínač dole v grafu: Odhad · Obojí · Skutečné (Hyperliquid)."
     }
   ],
-  "opravy": []
+  "opravy": [
+    {
+      "en": "Order book walls further from the price are visible again.",
+      "cs": "Zdi dál od ceny jsou zase vidět."
+    }
+  ]
 }

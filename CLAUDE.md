@@ -3405,6 +3405,31 @@ HL žebříček + stream trades (adresy) ─▶ server/likvidace.mjs (Hetzner)
   platí pro všechny grafy. Test: bod 2b `test-likvidace-graf.py`
   (`__pruhyMapy`; BTC naostro 778 → 15 pruhů na 30 %).
 
+**v0.74.0 — odhad z CEX (přání uživatele, jako Coinglass; plátno
+https://claude.ai/artifact/BHAHkgLcFuhiFkUPLreNi3, vybraná varianta B):**
+- **Počítá telefon, ne server** (proti plánu): hodinové svíčky + OI Binance
+  a Bybitu přes adaptéry (`getKlines(…, '60', 600)`, `getOpenInterest(…, '60')`
+  — Binance ~500 h, Bybit 600 h), model `js/likvidace-odhad.js` (bez sítě,
+  ~70 ms u BTC). Bez serveru, bez D1 (backfill by přetekl 100 k zápisů/den),
+  pro jakýkoli coin z Binance / Bybitu. Paměť 10 min na pár (`odhadyMapy`).
+- **Model:** přírůstek OI za hodinu (rozdíly po burzách sečtené, × close) =
+  nové pozice za (H+L+C)/3, rozdělené podle `PAKY` (5×–100×) a 55/45
+  long/short podle barvy svíčky; likvidace cena × (1 ∓ 1/páka ± 0,4 %).
+  Úbytek OI zmenší živé pozice poměrně. Pozici zruší cena, která ji dojde.
+  Pásma pod 0,2 % největšího pryč. Živé mají `ziva` → `do` = teď při každé
+  obnově (jinak by z mezipaměti končily časem stažení).
+- **Likvidace patří ke coinu:** na grafu kterékoli burzy posun o poměr cen
+  (odhad přesně jen na Binance / Bybitu, skutečné jen na Hyperliquidu).
+  Pár: na Binance / Bybitu týž, jinak `…USDC` → `…USDT`.
+- **Přepínač** `#liqZdroj` dole v ploše svíček (nad šipkou ▼), Estimate ·
+  Both · Actual, `perpdesk.liqZdroj` (výchozí `oboje`), zdroj bez dat
+  zašedlý (`bez-dat`). Každý pruh nese `popis` svého zdroje → detail
+  klepnutím ví, odkud je.
+- Tmavý svislý pruh po prudkém pohybu není chyba: cena vybrala pásma
+  a OI zároveň klesal → nové pozice nevznikly.
+- Test: `test-likvidace-graf.py` (Binance na 4h, bod 4: SPCX bez HL má
+  odhad, přepínač skutečným dotykem).
+
 ## Zdi v knize příkazů — sběr na serveru (2026-10-22, v0.72.0)
 
 Přání uživatele (snímek nástroje z Discordu: „velká nákupní zeď“, jak

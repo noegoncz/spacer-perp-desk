@@ -38,6 +38,7 @@ const SHELL = [
   './js/zdi.js',
   './js/zdi-format.js',
   './js/likvidace.js',
+  './js/likvidace-odhad.js',
   './js/likvidace-format.js',
   './js/format.js',
   './js/ui.js',

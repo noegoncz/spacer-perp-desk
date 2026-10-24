@@ -25,6 +25,8 @@ import * as denik from './denik.js';
 import * as denikUi from './denik-ui.js';
 import * as statistiky from './denik-statistiky.js';
 import * as likvidace from './likvidace.js';
+import { odhadPasu } from './likvidace-odhad.js';
+import { krokCeny as krokPasma } from './likvidace-format.js';
 import * as zdiKnihy from './zdi.js';
 import * as alarmyServer from './alarmy-server.js';
 import * as push from './push.js';
@@ -1235,6 +1237,7 @@ function boot() {
   zapojPrejeti();
   zapojTlacitkoZpet();
   zapojPosuvnikMapy();
+  zapojPrepinacZdroje();
   push.zapojMistni((data) => otevriGrafZNotifikace(data?.symbol));
   hlidejCasoveAlarmy();
   connectIfPossible();
@@ -2457,36 +2460,119 @@ async function nactiOi() {
   if (!casovacOi && data.body.length) casovacOi = setInterval(nactiOi, 120000);
 }
 
+/*
+ * Zdroj likvidační mapy (v0.74.0, varianta B z plátna
+ * https://claude.ai/artifact/BHAHkgLcFuhiFkUPLreNi3): odhad z open interestu
+ * Binance + Bybit, skutečné pozice Hyperliquidu, nebo obojí (výchozí).
+ * Likvidace patří ke coinu, ne k burze — na grafu kterékoli burzy se
+ * posunou o poměr cen. `perpdesk.liqZdroj`, platí pro všechny grafy.
+ */
+const ZDROJE_MAPY = ['odhad', 'oboje', 'skutecne'];
+const zdrojMapy = () => {
+  const z = store.loadJson('perpdesk.liqZdroj', 'oboje');
+  return ZDROJE_MAPY.includes(z) ? z : 'oboje';
+};
+let dostupneZdroje = { odhad: false, skutecne: false };
+
+/*
+ * Odhad: hodinové svíčky + OI z Binance a Bybitu (~3–4 týdny zpět), model
+ * v likvidace-odhad.js. V paměti 10 min na coin; ze sítě jen se zapnutou
+ * vrstvou a zdrojem, který odhad ukazuje. Pár na Binance / Bybitu: na grafu
+ * těchto burz týž pár, jinak coin + USDT.
+ */
+const odhadyMapy = new Map();   // coin → { cas, slib }
+function odhadMapy(symbol, burza) {
+  const par = ['binance', 'bybit'].includes(burza) ? symbol : symbol.replace(/USDC$/, 'USDT');
+  const klic = par;
+  const ulozeny = odhadyMapy.get(klic);
+  if (ulozeny && Date.now() - ulozeny.cas < 10 * 60000) return ulozeny.slib;
+  const slib = (async () => {
+    const zdroje = ['binance', 'bybit'];
+    const vysledky = await Promise.all(zdroje.map(async (b) => {
+      try {
+        const k = verejnyKlient(b);
+        const [svicky, oi] = await Promise.all([k.getKlines(par, '60', 600), k.getOpenInterest(par, '60')]);
+        return { b, svicky, oi };
+      } catch { return null; }
+    }));
+    const platne = vysledky.filter((v) => v?.svicky?.length && v.oi?.length);
+    if (!platne.length) return null;
+    // Svíčky z burzy s delší řadou (cena je na obou skoro stejná).
+    const svicky = platne.reduce((x, y) => (y.svicky.length > x.svicky.length ? y : x)).svicky;
+    const mark = svicky[svicky.length - 1].close;
+    const pasy = odhadPasu(svicky, platne.map((v) => v.oi), krokPasma(mark));
+    return { pasy, mark, burzy: platne.map((v) => v.b) };
+  })();
+  odhadyMapy.set(klic, { cas: Date.now(), slib });
+  slib.then((v) => { if (!v) odhadyMapy.delete(klic); });
+  return slib;
+}
+
 async function nactiMapu() {
   if (!chart || !chartSymbol || !oknoMapy) return;
   if (!chart.getLayers().likvidace) return;
   const zadost = ++zadostMapy;
   const symbol = chartSymbol;
   const burza = chartBurza || client?.burza?.id || 'bybit';
-  let vysledek = null;
-  try {
-    vysledek = await likvidace.pasy({
+  const zdroj = zdrojMapy();
+  const [skutecne, odhad] = await Promise.all([
+    likvidace.pasy({
       symbol, burza, od: oknoMapy.od, doKdy: Date.now(), delkaSvicky: DELKA_INTERVALU[chartInterval] || 3600e3,
-    });
-  } catch { /* síť — zkusí se při další obnově */ }
+    }).catch(() => undefined),   // síť — zkusí se při další obnově
+    odhadMapy(symbol, burza).catch(() => null),
+  ]);
   if (zadost !== zadostMapy || symbol !== chartSymbol || !chart) return;
-  mapaMaData = Boolean(vysledek?.pasy?.length);
-  if (!vysledek?.pasy?.length) {
-    chart.setLiquidations(null);
-  } else {
-    // Posun na cenu této burzy (BTCUSDT na Binance ≠ BTC na Hyperliquidu).
-    const cena = Number(poslednicCena) || Number(chartTrh?.last) || 0;
-    const pomer = burza !== 'hyperliquid' && cena > 0 && vysledek.mark > 0 ? cena / vysledek.mark : 1;
-    const pasy = pomer === 1 ? vysledek.pasy
-      : vysledek.pasy.map((p) => ({ ...p, cena: p.cena * pomer, vyska: p.vyska * pomer }));
-    const minut = Math.max(0, Math.round((Date.now() - vysledek.cas) / 60000));
-    chart.setLiquidations({
-      pasy,
-      popis: t(burza === 'hyperliquid' ? 'liq.label' : 'liq.labelOther', { min: minut }),
-    });
+  dostupneZdroje = { odhad: Boolean(odhad?.pasy?.length), skutecne: Boolean(skutecne?.pasy?.length) };
+  // Posun na cenu této burzy (BTCUSDT na Binance ≠ BTC na Hyperliquidu).
+  const cena = Number(poslednicCena) || Number(chartTrh?.last) || 0;
+  const posun = (pasy, mark, presne) => {
+    const pomer = !presne && cena > 0 && mark > 0 ? cena / mark : 1;
+    return pomer === 1 ? pasy : pasy.map((p) => ({ ...p, cena: p.cena * pomer, vyska: p.vyska * pomer }));
+  };
+  const pasy = [];
+  const casti = [];
+  if (zdroj !== 'odhad' && dostupneZdroje.skutecne) {
+    const minut = Math.max(0, Math.round((Date.now() - skutecne.cas) / 60000));
+    const popis = t(burza === 'hyperliquid' ? 'liq.label' : 'liq.labelOther', { min: minut });
+    pasy.push(...posun(skutecne.pasy, skutecne.mark, burza === 'hyperliquid').map((p) => ({ ...p, popis })));
+    casti.push(popis);
   }
+  if (zdroj !== 'skutecne' && dostupneZdroje.odhad) {
+    const popis = t('liq.labelEst');
+    const od = oknoMapy.od;
+    const ted = Date.now();
+    pasy.push(...posun(odhad.pasy.filter((p) => p.do >= od), odhad.mark, burza === 'binance' || burza === 'bybit')
+      .map((p) => ({ ...p, popis, ...(p.ziva ? { do: ted } : {}) })));
+    casti.push(popis);
+  }
+  mapaMaData = pasy.length > 0;
+  chart.setLiquidations(pasy.length ? { pasy, popis: casti.length > 1 ? t('liq.labelBoth') : casti[0] } : null);
   ukazPosuvnikMapy();
   if (!casovacMapy) casovacMapy = setInterval(nactiMapu, 60000);
+}
+
+function kresliPrepinacZdroje() {
+  const box = el('liqZdroj');
+  if (!box) return;
+  const zdroj = zdrojMapy();
+  box.querySelectorAll('[data-zdroj]').forEach((b) => {
+    const z = b.dataset.zdroj;
+    b.classList.toggle('active', z === zdroj);
+    b.classList.toggle('bez-dat', z !== 'oboje' && !dostupneZdroje[z]);
+  });
+}
+
+function zapojPrepinacZdroje() {
+  const box = el('liqZdroj');
+  if (!box) return;
+  box.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-zdroj]');
+    if (!b) return;
+    e.stopPropagation();
+    store.saveJson('perpdesk.liqZdroj', b.dataset.zdroj);
+    kresliPrepinacZdroje();
+    nactiMapu();
+  });
 }
 
 /*
@@ -2894,6 +2980,24 @@ let mapaMaData = false;
 function ukazPosuvnikMapy() {
   const box = el('liqPosuvnik');
   if (!box) return;
+  // Přepínač zdroje je vidět i bez dat (zdroj s daty jde vybrat zpátky).
+  const zdroj = el('liqZdroj');
+  if (zdroj) {
+    zdroj.hidden = !(chart && oknoMapy && chart.getLayers().likvidace && !prohlizenyObchod);
+    if (!zdroj.hidden) {
+      kresliPrepinacZdroje();
+      // Dole v ploše svíček (pod ní můžou být panely RSI, OI).
+      const vrstva = el('drawLayer');
+      const rodic = zdroj.offsetParent;
+      requestAnimationFrame(() => {
+        if (!vrstva || !rodic) return;
+        const r = vrstva.getBoundingClientRect();
+        if (!r.height) return;
+        // Nad šipkou ▼ nejbližšího shluku u spodního okraje.
+        zdroj.style.top = `${r.bottom - rodic.getBoundingClientRect().top - zdroj.offsetHeight - 30}px`;
+      });
+    }
+  }
   box.hidden = !(chart && mapaMaData && chart.getLayers().likvidace && !prohlizenyObchod);
   if (!box.hidden) kresliPosuvnikMapy(filtrMapy());
 }

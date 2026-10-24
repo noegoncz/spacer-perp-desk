@@ -909,4 +909,10 @@ export const en = {
   "layers.liqFilterOn": "Below {pct} % of the largest (< {usd} on this chart)",
   'liq.label': 'Hyperliquid liquidations · {min} min ago',
   'liq.labelOther': 'Hyperliquid liquidations (shifted to this price) · {min} min ago',
+  "liq.labelEst": "Liquidation estimate · Binance + Bybit open interest",
+  'liq.labelBoth': "Liquidations · estimate + Hyperliquid",
+  "liq.srcEst": "Estimate",
+  "liq.srcBoth": "Both",
+  "liq.srcBothSub": "sum",
+  "liq.srcActual": "Actual",
 };

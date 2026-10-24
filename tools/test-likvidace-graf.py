@@ -25,7 +25,7 @@ mock = open(os.path.join(KOREN, 'tools', 'mock-bybit.js'), encoding='utf-8').rea
 mock = "sessionStorage.setItem('__mapaNaostro', '1');" + mock + """
 localStorage.setItem('perpdesk.lists', JSON.stringify({ verze: 1, aktivni: 'a',
   seznamy: [{ id: 'a', nazev: 'Main', polozky: %s }] }));
-localStorage.setItem('perpdesk.chartView', JSON.stringify({ 'hyperliquid:BTCUSDC': { interval: '1' }, 'binance:BTCUSDT': { interval: '15' } }));
+localStorage.setItem('perpdesk.chartView', JSON.stringify({ 'hyperliquid:BTCUSDC': { interval: '1' }, 'binance:BTCUSDT': { interval: '240' } }));
 // Kdy dorazily svíčky a kdy se začala stahovat mapa.
 window.__casy = {};
 const __f = window.fetch;
@@ -150,7 +150,7 @@ time.sleep(0.3)
 ev("history.back()")
 time.sleep(1.5)
 
-print('3) BTC na Binance (15m) — posun na cenu Binance')
+print('3) BTC na Binance (4h) — posun na cenu Binance')
 ev("document.querySelector('#watchList .tile[data-klic=\"binance:BTCUSDT\"]').click()")
 for _ in range(40):
     time.sleep(0.25)
@@ -158,14 +158,34 @@ for _ in range(40):
         break
 over(mapa() == 1, 'mapa i na grafu Binance')
 time.sleep(1)
-snimek('liq-binance-15m.png')
+snimek('liq-binance-4h.png')
 ev("history.back()")
 time.sleep(1.5)
 
 print('4) pár bez Hyperliquidu')
 ev("document.querySelector('#watchList .tile[data-klic=\"binance:SPCXUSDT\"]').click()")
 time.sleep(6)
-over(mapa() == 0, 'SPCX (na HL není) mapu nemá')
+over(not ev("document.getElementById('liqZdroj').hidden"), 'přepínač zdroje je vidět')
+over(ev("document.querySelector('[data-zdroj=skutecne]').classList.contains('bez-dat')"), 'SPCX (na HL není): Actual zašedlé')
+odhad = ev("document.querySelector('[data-zdroj=odhad]').classList.contains('bez-dat')")
+print('   odhad bez dat:', odhad, '· pruhů:', mapa())
+
+
+def zdroj(z):
+    r = ev(f"(() => {{ const r = document.querySelector('[data-zdroj={z}]').getBoundingClientRect(); return {{ x: r.left + r.width / 2, y: r.top + r.height / 2 }}; }})()")
+    bod = [{'x': r['x'], 'y': r['y'], 'radiusX': 6, 'radiusY': 6, 'force': 1, 'id': 1}]
+    p.prikaz('Input.dispatchTouchEvent', type='touchStart', touchPoints=bod)
+    p.prikaz('Input.dispatchTouchEvent', type='touchEnd', touchPoints=[])
+    time.sleep(3)
+
+
+zdroj('skutecne')
+over(mapa() == 0, 'Actual: SPCX (na HL není) mapu nemá')
+over(ev("localStorage.getItem('perpdesk.liqZdroj')") == '"skutecne"', 'zdroj se uložil')
+if not odhad:
+    zdroj('odhad')
+    over(mapa() > 0, f'Estimate: SPCX má odhad z Binance + Bybit ({mapa()})')
+zdroj('oboje')
 ev("history.back()")
 
 konzole = ev('(window.__chyby||[]).join(" | ")') or ''
