@@ -3471,6 +3471,9 @@ https://claude.ai/artifact/BHAHkgLcFuhiFkUPLreNi3, vybraná varianta B):**
   6 h se všech ~200 pruhů ukončilo. Výpadek = mezera > max(3 h, 3× rozestup
   k předchozímu snímku) — **místně**, ne medián (na konec se připojují
   minutové snímky za 2 h a medián vyšel 1 min).
+  **v0.74.8:** reálná mapa se ukazuje až od `SBER_PLNY_OD` (22. 10. 2026
+  8:00) — první noc se seznam účtů plnil (~100 → ~760 pásem u BTC)
+  a na 1D to dělalo odlišné bloky.
 - Tmavý svislý pruh po prudkém pohybu není chyba: cena vybrala pásma
   a OI zároveň klesal → nové pozice nevznikly.
 - Test: `test-likvidace-graf.py` (Binance na 4h, bod 4: SPCX bez HL má

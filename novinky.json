@@ -1,5 +1,5 @@
 {
-  "verze": "0.74.7",
+  "verze": "0.74.8",
   "novinky": [
     {
       "en": "Tap the liquidation map or a wall: the level is highlighted and its details appear top left. Drag up or down to move the level; pin the details to keep them.",

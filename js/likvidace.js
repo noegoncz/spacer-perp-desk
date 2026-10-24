@@ -15,6 +15,7 @@ import { zkratkaCoinu } from './sestavy.js';
 
 const API = 'https://perpyx.com/api/likvidace';
 const HOD = 3600000;
+const SBER_PLNY_OD = Date.UTC(2026, 9, 22, 6);   // 22. 10. 2026 8:00 SELČ
 const MAX_POKRYTI_R1 = 48 * HOD;   // minutové snímky nejvýš 2 dny zpátky (server je drží 3 dny)
 
 // coin|r|krok → Map(hodina → text řádků); hotové hodiny se znovu nestahují
@@ -114,6 +115,12 @@ export async function pasy({ symbol, burza, od, doKdy, delkaSvicky }) {
     }
     nazvy.set(`${burza}:${symbol}`, coin);
   }
+  /*
+   * Náběh sběru (v0.74.8): server začal 21. 10. 2026 ve 22:45 a seznam
+   * sledovaných účtů se plnil přes noc (~100 → ~760 pásem u BTC). Snímky
+   * z té doby by na 1D vypadaly jako odlišné bloky — nezobrazují se.
+   */
+  s = s.filter((x) => x.t >= SBER_PLNY_OD);
   if (!s.length) return { pasy: [], mark: null, cas: null, sledovano: 0, coin };
 
   /*
