@@ -1,7 +1,14 @@
 {
-  "verze": "0.73.2",
+  "verze": "0.73.3",
   "novinky": [
-    { "en": "Order book walls no longer cover the latest candles: a thin line over the chart, the block only to the right of the last candle.", "cs": "Zdi v knize už nezakrývají poslední svíčky: přes graf tenká linka, blok až vpravo za poslední svíčkou." }
+    {
+      "en": "Order book walls no longer cover the latest candles: a thin line over the chart, the block only to the right of the last candle.",
+      "cs": "Zdi v knize už nezakrývají poslední svíčky: přes graf tenká linka, blok až vpravo za poslední svíčkou."
+    },
+    {
+      "en": "Walls further from the price (up to ±15 %) are visible when you zoom out.",
+      "cs": "Po oddálení grafu jsou vidět i vzdálenější zdi (až ±15 % od ceny)."
+    }
   ],
   "opravy": []
 }

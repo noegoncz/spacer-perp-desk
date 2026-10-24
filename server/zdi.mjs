@@ -31,7 +31,7 @@ const MIN_OBRAT = +process.env.ZDI_MIN_OBRAT || 20e6;
 const MAX_TRHU = +process.env.ZDI_MAX || 250;
 const MAX_ZADOSTI = 100;
 const NEDAVNE = 90 * MIN;          // hotové zdi v řádku „teď“ (do dávky historie)
-const OREZ = 0.15;                 // úrovně dál než ±15 % od středu se zahodí
+const OREZ = 0.2;                  // úrovně dál než ±20 % od středu se zahodí
 // ⚠ Binance dělí futures proudy podle druhu (2025/26): kniha (depth) je
 // mezi „public“ (vysokofrekvenční), ceny mezi „market“. Ověřeno testem.
 const BINANCE_WS = process.env.ZDI_BINANCE_WS || 'wss://fstream.binance.com/public/ws';

@@ -1077,7 +1077,7 @@ const pruhlednostZdi = () => {
 const VYSKA_ZDI = 12;
 const HIST_MIN_ZDI = 60 * 60000;
 const SLOUCIT_ZDI = 0.003;
-const ZIVYCH_ZDI = 5;
+const ZIVYCH_ZDI = 7;
 const objemZdi = (v) => (v >= 1e6 ? `${(v / 1e6).toFixed(v >= 1e8 ? 0 : 1)} M` : `${Math.round(v / 1e3)} k`);
 
 /** Pruhy zdí v jednotném tvaru (pro kreslení i klepnutí). */
@@ -1104,7 +1104,8 @@ function pruhyZdi() {
     }
     zive.push({ s, cena: c, vyska, usd, od, do: Infinity, min, max, zivy: true });
   });
-  // Na stranu 3 nejbližší ceně (na ty se kouká) + 2 největší ze zbytku.
+  // Na stranu 3 nejbližší ceně (na ty se kouká) + 2 největší do 6 % + 2 největší dál
+  // (v0.73.3 — po oddálení mají být vidět i vzdálené zdi).
   const nakup = zive.filter((z) => z.s === 0);
   const prodej = zive.filter((z) => z.s === 1);
   const stred = nakup.length && prodej.length
@@ -1112,8 +1113,11 @@ function pruhyZdi() {
     : (zive[0]?.cena || 0);
   const vyber = (seznam) => {
     const blizke = [...seznam].sort((x, y) => Math.abs(x.cena - stred) - Math.abs(y.cena - stred)).slice(0, 3);
-    const velke = seznam.filter((z) => !blizke.includes(z)).sort((x, y) => y.usd - x.usd).slice(0, ZIVYCH_ZDI - 3);
-    return [...blizke, ...velke];
+    const zbytek = seznam.filter((z) => !blizke.includes(z)).sort((x, y) => y.usd - x.usd);
+    const vzd = (z) => Math.abs(z.cena / stred - 1);
+    const stredni = zbytek.filter((z) => vzd(z) < 0.06).slice(0, 2);
+    const daleke = zbytek.filter((z) => vzd(z) >= 0.06).slice(0, ZIVYCH_ZDI - 5);
+    return [...blizke, ...stredni, ...daleke];
   };
   zive.splice(0, zive.length, ...vyber(nakup), ...vyber(prodej));
   /*

@@ -14,11 +14,14 @@
 
 import { krokCeny } from './likvidace-format.js';
 
-export const ROZSAH_ZDI = 0.1;
+export const ROZSAH_ZDI = 0.15;
+// Pásma vzdálenosti od středu a kolik zdí z každého (v0.73.3, uživatel: po oddálení
+// nebyly vidět vzdálené zdi — největší bývají u ceny a vytlačily je).
+export const PASMA_VZDALENOSTI = [[0.02, 4], [0.06, 4], [Infinity, 4]];
 export const NASOBEK = 5;
 export const NASOBEK_HL = 2.5;
 export const MIN_ZED_USD = 25000;
-export const MAX_NA_STRANU = 8;
+export const MAX_NA_STRANU = 12;
 export const TOLERANCE = 2;           // minut bez zdi, než se uzavře
 export const MIN_TRVANI = 2 * 60000;  // kratší zdi se neukládají (šum)
 
@@ -59,10 +62,14 @@ export function najdiZdi(bids, asks, krok = 0, nasobek = NASOBEK) {
       pasma.set(i, (pasma.get(i) || 0) + p * q);
     }
     const prah = Math.max(MIN_ZED_USD, nasobek * median([...pasma.values()]));
-    [...pasma].filter(([, usd]) => usd >= prah)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, MAX_NA_STRANU)
-      .forEach(([i, usd]) => zdi.push([s, i, zaokrouhli(usd)]));
+    const nad = [...pasma].filter(([, usd]) => usd >= prah).sort((a, b) => b[1] - a[1]);
+    let dolni = 0;
+    for (const [horni, kolik] of PASMA_VZDALENOSTI) {
+      nad.filter(([i]) => { const v = Math.abs((i * k) / mid - 1); return v >= dolni && v < horni; })
+        .slice(0, kolik)
+        .forEach(([i, usd]) => zdi.push([s, i, zaokrouhli(usd)]));
+      dolni = horni;
+    }
   });
   return { mid, krok: k, zdi };
 }
