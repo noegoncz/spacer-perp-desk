@@ -1,39 +1,15 @@
 {
-  "verze": "0.74.8",
+  "verze": "0.75.0",
   "novinky": [
     {
-      "en": "Tap the liquidation map or a wall: the level is highlighted and its details appear top left. Drag up or down to move the level; pin the details to keep them.",
-      "cs": "Klepnutí do likvidační mapy nebo zdi zvýrazní hladinu a detail ukáže vlevo nahoře. Tažením nahoru / dolů hladinu posuneš, připínáčkem detail necháš."
-    },
-    {
-      "en": "Liquidation map: Calculated (from Binance + Bybit open interest) and Real (Hyperliquid positions); longs in blue, shorts in orange.",
-      "cs": "Likvidační mapa: Kalkulovaná (z open interestu Binance + Bybit) a Reálná (pozice na Hyperliquidu); longy modře, shorty oranžově."
-    },
-    {
-      "en": "Switch at the bottom of the chart: Estimate · Both · Actual (Hyperliquid).",
-      "cs": "Přepínač dole v grafu: Odhad · Obojí · Skutečné (Hyperliquid)."
+      "en": "Binance charts open much faster right after starting the app.",
+      "cs": "Grafy Binance se hned po spuštění aplikace otevírají mnohem rychleji."
     }
   ],
   "opravy": [
     {
-      "en": "Real liquidation map stays continuous on every timeframe, including across server restarts and on 1D.",
-      "cs": "Reálná mapa je souvislá na všech timeframech, i přes restart serveru a na 1D."
-    },
-    {
-      "en": "Switching timeframes no longer flashes the previous map.",
-      "cs": "Při přepnutí timeframu už nebliká mapa z předchozího."
-    },
-    {
-      "en": "Liquidation map is clean on 1h, 4h and 1D too (no more mosaic near the price).",
-      "cs": "Likvidační mapa je čistá i na 1h, 4h a 1D (u ceny už žádná mozaika)."
-    },
-    {
-      "en": "Real liquidation map no longer splits into vertical blocks after a gap in data collection; the source switch follows the chart size.",
-      "cs": "Reálná mapa se už nerozpadá na svislé bloky po výpadku sběru; přepínač zdroje drží u spodního okraje grafu."
-    },
-    {
-      "en": "Order book walls further from the price are visible again.",
-      "cs": "Zdi dál od ceny jsou zase vidět."
+      "en": "Liquidation map: smoother on every timeframe.",
+      "cs": "Likvidační mapa: plynulejší na všech timeframech."
     }
   ]
 }

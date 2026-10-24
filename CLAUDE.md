@@ -222,6 +222,12 @@ Binance → Gate → MEXC → OKX (+EEA) → Bitget → Hyperliquid, pak vlny 2 
   proud Binance by chtěl listenKey — zatím ne). ⚠ `mock-bybit.js` od
   v0.59.10 podstrkuje jen WebSocket Bybitu, ostatní burzy jdou naostro.
   Test: `tools/test-binance-proud.py` (na v0.59.9 padá v 6 bodech).
+- **Graf bez CCXT (v0.75.0, video uživatele: první graf Binance po startu
+  4–5 s prázdný):** `getKlines` a `getTicker` jdou u ostré Binance přímo na
+  `fapi.binance.com` (`fapi()` v binance.js), CCXT jen pro Demo Trading
+  a jako záloha při chybě. Dřív graf čekal na načtení CCXT (~6 MB), trhy
+  a frontu za předčítáním. Měřeno (CPU 4×, síť 150 ms, klepnutí hned po
+  vykreslení dlaždice): 2,4 s → 0,6 s.
 - **Zbývá:** soukromý proud Binance (pozice živě, listenKey).
 - Test: `tools/test-vyber-burzy.py` (výběr, neplatný klíč, veřejná data
   ze skutečného Binance v aplikaci), `test-uvod.py`.

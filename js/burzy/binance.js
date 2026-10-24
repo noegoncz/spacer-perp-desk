@@ -14,7 +14,7 @@
  *    a plnění s realizovaným ziskem, jeden záznam na zavírací příkaz.
  */
 import { CcxtAdapter, poplatek } from './ccxt-adapter.js';
-import { nactiCcxt, nativniFetch } from './ccxt.js';
+import { nactiCcxt, nativniFetch, TIMEFRAME } from './ccxt.js';
 
 const cislo = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const TYDEN = 7 * 864e5;
@@ -48,6 +48,55 @@ export class BinanceClient extends CcxtAdapter {
 
   popisUctu() {
     return 'USDⓈ-M';
+  }
+
+  /* ---------- graf bez CCXT (v0.75.0) ---------- */
+
+  /*
+   * Video uživatele 2026-10-24: první graf Binance po startu byl 4–5 s
+   * prázdný — CCXT se musela načíst (~6 MB), stáhnout všechny trhy a teprve
+   * pak poslala dotaz na svíčky (Bybit má graf za ~0,5 s). Svíčky a ticker
+   * jsou veřejná data, jdou jedním dotazem rovnou na fapi (CORS povolený).
+   * Demo Trading má jiné ceny → dál přes CCXT; chyba → záloha přes CCXT.
+   */
+  primoFapi() {
+    return !this.volby.demo && !this.volby.testnet;
+  }
+
+  async fapi(cesta, parametry) {
+    const r = await fetch(`https://fapi.binance.com${cesta}?${new URLSearchParams(parametry)}`,
+      { signal: AbortSignal.timeout(15000) });
+    if (!r.ok) throw new Error(`fapi ${r.status}`);
+    return r.json();
+  }
+
+  async getKlines(symbol, interval, limit = 500, endTime = null, volby = {}) {
+    const tf = TIMEFRAME[interval];
+    if (!this.primoFapi() || !tf) return super.getKlines(symbol, interval, limit, endTime, volby);
+    try {
+      const radky = await this.fapi('/fapi/v1/klines', {
+        symbol, interval: tf, limit: String(Math.min(limit, 1500)),
+        ...(endTime ? { endTime: String(Math.ceil(endTime)) } : {}),
+      });
+      return radky.map(([time, open, high, low, close, volume]) => ({
+        time: Number(time), open: Number(open), high: Number(high), low: Number(low), close: Number(close), volume: Number(volume),
+      }));
+    } catch {
+      return super.getKlines(symbol, interval, limit, endTime, volby);
+    }
+  }
+
+  async getTicker(symbol) {
+    if (!this.primoFapi()) return super.getTicker(symbol);
+    try {
+      const t = await this.fapi('/fapi/v1/ticker/24hr', { symbol });
+      return {
+        symbol, last: Number(t.lastPrice), changePct: Number(t.priceChangePercent),
+        turnover: Number(t.quoteVolume), funding: 0, openInterest: 0,
+      };
+    } catch {
+      return super.getTicker(symbol);
+    }
   }
 
   /* ---------- živý proud: cena (@miniTicker) a svíčka (@kline) ---------- */
