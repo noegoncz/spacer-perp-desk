@@ -130,36 +130,42 @@ export async function pasy({ symbol, burza, od, doKdy, delkaSvicky }) {
     return { ...x, krok, pasma };
   });
 
-  // Pruh trvá od snímku, kde se pásmo objevilo, do snímku, kde zmizelo.
-  // Mezera ve sběru (výpadek serveru) pruh ukončí.
-  const krokSnimku = s.length > 1 ? Math.max(60000, (s[s.length - 1].t - s[0].t) / (s.length - 1)) : 60000;
+  /*
+   * Pruh trvá od snímku, kde se pásmo objevilo, do snímku, kde zmizelo.
+   * v0.74.3 (snímek uživatele: reálná mapa ve svislých blocích s jinou
+   * sytostí): výpadek sběru (restart serveru) a neúplný první snímek po něm
+   * dřív ukončily všechny pruhy naráz. Teď pásmo, které chybí nejvýš
+   * CHYBI_SNIMKU snímků po sobě, pokračuje; mezera ve sběru do 3 h se
+   * přemostí. Delší mezera pruhy ukončí (o době mezi nevíme nic).
+   */
+  const CHYBI_SNIMKU = 2;
   const otevrene = new Map();   // `${long}|${cena}` → pruh
   const hotove = [];
   const ted = Date.now();
   s.forEach((snimek, i) => {
     const dalsi = s[i + 1]?.t ?? ted;
-    const mezera = dalsi - snimek.t > Math.max(3 * krokSnimku, 20 * 60000) && i < s.length - 1;
-    const videne = new Set();
+    const dlouhaMezera = i < s.length - 1 && dalsi - snimek.t > 3 * 3600e3;
     for (const [idx, [l, sh]] of snimek.pasma) {
       const cena = idx * snimek.krok;
       for (const [usd, long] of [[l, true], [sh, false]]) {
         if (!usd) continue;
         const k = `${long}|${cena}`;
-        videne.add(k);
         const p = otevrene.get(k);
         if (p) {
           p.do = dalsi;
+          p.chybi = -1;
           p.usd = Math.max(p.usd, usd);
           p.min = Math.min(p.min, usd);
           p.posledni = usd;
         } else {
-          otevrene.set(k, { od: snimek.t, do: dalsi, cena, vyska: snimek.krok, usd, min: usd, posledni: usd, long });
+          otevrene.set(k, { od: snimek.t, do: dalsi, cena, vyska: snimek.krok, usd, min: usd, posledni: usd, long, chybi: -1 });
         }
       }
     }
     for (const [k, p] of otevrene) {
-      if (!videne.has(k) || mezera) {
-        if (!videne.has(k)) p.do = snimek.t;
+      p.chybi += 1;
+      // Chybějící pásmo končí tam, kde bylo naposledy vidět (p.do se neposouvá).
+      if (p.chybi > CHYBI_SNIMKU || dlouhaMezera) {
         hotove.push(p);
         otevrene.delete(k);
       }

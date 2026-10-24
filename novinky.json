@@ -1,5 +1,5 @@
 {
-  "verze": "0.74.2",
+  "verze": "0.74.3",
   "novinky": [
     {
       "en": "Liquidation map: Calculated (from Binance + Bybit open interest) and Real (Hyperliquid positions); longs in blue, shorts in orange.",
@@ -12,8 +12,8 @@
   ],
   "opravy": [
     {
-      "en": "Real liquidation map no longer splits into vertical blocks; the source switch follows the chart size.",
-      "cs": "Reálná mapa se už nerozpadá na svislé bloky; přepínač zdroje drží u spodního okraje grafu."
+      "en": "Real liquidation map no longer splits into vertical blocks after a gap in data collection; the source switch follows the chart size.",
+      "cs": "Reálná mapa se už nerozpadá na svislé bloky po výpadku sběru; přepínač zdroje drží u spodního okraje grafu."
     },
     {
       "en": "Order book walls further from the price are visible again.",

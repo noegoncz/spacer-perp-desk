@@ -3436,6 +3436,12 @@ https://claude.ai/artifact/BHAHkgLcFuhiFkUPLreNi3, vybraná varianta B):**
   a začaly s jinou hodnotou → `likvidace.pasy` přeskládá snímky okna na
   nejhrubší krok. Přepínač drží u spodku plochy svíček i při tažení
   panelu indikátoru (`ResizeObserver` na `#drawLayer`).
+  **v0.74.3:** skutečná příčina bloků byla jinde — výpadek sběru (restart
+  serveru, 75 min) a neúplný první snímek po něm ukončily všechny pruhy
+  naráz. Teď pásmo chybějící ≤ 2 snímky po sobě pokračuje a mezera ve
+  sběru do 3 h se přemostí (`CHYBI_SNIMKU` v likvidace.js). Ověřeno na
+  BTC: hromadné konce 22. 10. 23:00 a 24. 10. 10:00 zmizely.
+  ⚠ Každá úprava likvidace.mjs restartuje sběr (pozor u `VERZE_ZDI`).
   Kalkulovaná a reálná se **nemusí potkávat**: jiný trh (HL vs. Binance +
   Bybit) a model předpokládá rozložení pák, skutečné pozice ne.
 - Tmavý svislý pruh po prudkém pohybu není chyba: cena vybrala pásma
