@@ -974,49 +974,66 @@ let prahMapyUsd = 0;
  */
 const hodnotaPasu = (p) => (p.do >= Date.now() - 120000 ? (p.posledni ?? p.usd) : p.usd);
 /*
- * Rozsvěcování v čase (v0.76.0, náhled https://claude.ai/artifact/S6MeKNFVoiT78NPYtb2Jd2,
- * přání uživatele — jako Coinglass): pruh nemá jednu barvu, jas sleduje
- * průběh hodnoty `p.prubeh` = [[čas, usd, odKdyZmena]]. Dokud se objem
- * nemění, jas stojí; přechod je plynulý a jen v úseku, kdy se objem
- * opravdu změnil (od `odKdyZmena` do `čas`). Bez průběhu jedna barva.
+ * Likvidace jako čáry (v0.77.0, podle screenshotu z TradingView od uživatele,
+ * náhled https://claude.ai/artifact/VCBSiJGV2Sxk5UyR7SBLaM — varianta 3):
+ * každá hladina je ostrá čára, **barva i tloušťka podle objemu, stejná škála
+ * nahoře i dole** (strana je jasná z polohy vůči ceně). Zelená tenká = malá,
+ * žlutá tlustá = velká. Čára začne, kde hladina vznikla, a od okamžiku, kdy
+ * objem přibyl (`p.prubeh` = [[čas, usd, …]]), ztloustne a zežloutne.
+ * Kreslí se jen vrcholy shluků (`p.vrchol`, viz setLiquidations).
  */
-const alfaMapy = (usd, ref) => {
-  const v = Math.min(1, usd / ref);
-  return v < 0.06 ? 0 : 0.04 + 0.9 * v ** 1.6;
+const SKALA_MAPY = [[0, [47, 143, 78]], [0.5, [124, 200, 58]], [1, [242, 229, 58]]];
+const barvaMapy = (v) => {
+  let i = 0;
+  while (i < SKALA_MAPY.length - 2 && v > SKALA_MAPY[i + 1][0]) i += 1;
+  const [a, ca] = SKALA_MAPY[i];
+  const [b, cb] = SKALA_MAPY[i + 1];
+  const k = Math.min(1, Math.max(0, (v - a) / (b - a)));
+  return ca.map((x, j) => Math.round(x + (cb[j] - x) * k));
 };
-function kresliPrubeh(ctx, p, barva, ref, x1, x2, y, vyska, xCasu) {
-  const pr = p.prubeh;
-  if (!pr?.length) {
-    ctx.fillStyle = `rgba(${barva},${alfaMapy(hodnotaPasu(p), ref).toFixed(3)})`;
-    ctx.fillRect(x1, y, x2 - x1, vyska);
-    return;
-  }
-  const rgba = (a) => `rgba(${barva},${a.toFixed(3)})`;
-  const usek = (od, k, styl) => {
-    const a = Math.max(x1, od);
-    const b = Math.min(x2, k);
-    if (b > a) { ctx.fillStyle = styl; ctx.fillRect(a, y, b - a, vyska); }
-  };
+function kresliCaru(ctx, p, ref, x1, x2, y, xCasu) {
+  const pr = p.prubeh?.length ? p.prubeh : [[p.od, hodnotaPasu(p)]];
   for (let i = 0; i < pr.length; i += 1) {
-    const a1 = alfaMapy(pr[i][1], ref);
-    const zac = i ? xCasu(pr[i][0]) : x1;
-    if (i + 1 === pr.length) {
-      if (a1) usek(zac, x2, rgba(a1));
-      break;
-    }
-    const a2 = alfaMapy(pr[i + 1][1], ref);
-    const konec = xCasu(pr[i + 1][0]);
-    const zmena = Math.max(zac, xCasu(pr[i + 1][2]));
-    if (!Number.isFinite(zac) || !Number.isFinite(konec)) continue;
-    if (konec <= x1) continue;
-    if (zac >= x2) break;
-    if (a1) usek(zac, zmena, rgba(a1));
-    if (konec - zmena >= 1 && (a1 || a2)) {
-      const g = ctx.createLinearGradient(zmena, 0, konec, 0);
-      g.addColorStop(0, rgba(a1));
-      g.addColorStop(1, rgba(a2));
-      usek(zmena, konec, g);
-    } else if (a2) usek(zmena, konec, rgba(a2));
+    const a = Math.max(x1, i ? xCasu(pr[i][0]) : x1);
+    const b = Math.min(x2, i + 1 < pr.length ? xCasu(pr[i + 1][0]) : x2);
+    if (!Number.isFinite(a) || !Number.isFinite(b) || b <= a) continue;
+    const v = Math.min(1, pr[i][1] / ref);
+    const [r, g, bl] = barvaMapy(v);
+    const tl = 1 + 3 * v;
+    ctx.fillStyle = `rgba(${r},${g},${bl},${(0.55 + 0.45 * v).toFixed(3)})`;
+    ctx.fillRect(a, y - tl / 2, b - a, tl);
+  }
+}
+/*
+ * Vrcholy shluků: ze sousedních hladin téhož zdroje a strany do ±0,3 % ceny,
+ * které se v čase překrývají, zůstane jen nejsilnější (jinak pásma po 0,1 %
+ * splývají do žlutých bloků). Počítá se jednou při nastavení dat.
+ */
+function oznacVrcholy(pasy) {
+  const skupiny = new Map();
+  pasy.forEach((p) => {
+    const k = `${p.zdroj || ''}|${p.long}`;
+    if (!skupiny.has(k)) skupiny.set(k, []);
+    skupiny.get(k).push(p);
+  });
+  for (const sk of skupiny.values()) {
+    sk.sort((x, y) => x.cena - y.cena);
+    sk.forEach((p, i) => {
+      const h = hodnotaPasu(p);
+      const okno = p.cena * 0.003;
+      let vrchol = true;
+      for (const smer of [-1, 1]) {
+        for (let j = i + smer; vrchol && j >= 0 && j < sk.length && Math.abs(sk[j].cena - p.cena) <= okno; j += smer) {
+          const q = sk[j];
+          // Schová jen soused, který s hladinou sdílí aspoň polovinu jejího
+          // trvání — krátký úlomek nesmí schovat dlouhou hladinu.
+          if (Math.min(q.do, p.do) - Math.max(q.od, p.od) < 0.5 * (p.do - p.od)) continue;
+          const hq = hodnotaPasu(q);
+          if (hq > h || (hq === h && q.cena < p.cena)) vrchol = false;
+        }
+      }
+      p.vrchol = vrchol;
+    });
   }
 }
 let nabehMapyOd = 0;
@@ -1057,13 +1074,24 @@ function registrovatLikvidace() {
       const vObrazeCene = viditelne.filter((p) => p.cena <= horni && p.cena >= dolni);
       // V obraze nic (úzký výřez na 1m) → měřítko ze všech; šipky ke shlukům mimo obraz se kreslí dál.
       const vObraze = vObrazeCene.length ? vObrazeCene : viditelne;
-      let max = 0;
-      vObraze.forEach((p) => { const h = hodnotaPasu(p); if (h > max) max = h; });
-      if (!max) return true;
-      prahMapyUsd = max * filtrMapy;
-      // Měřítko barev z 97. percentilu — jeden extrém by zbytek zhasnul.
-      const serazene = vObraze.map(hodnotaPasu).sort((x, y) => x - y);
-      const ref = serazene[Math.floor(serazene.length * 0.97)] || max;
+      // Měřítko a práh zvlášť pro každý zdroj (v0.77.0): v režimu Both
+      // reálná mapa (stovky M) jinak přebila kalkulovanou (jednotky M).
+      const meritka = new Map();
+      vObraze.forEach((p) => {
+        const k = p.zdroj || '';
+        if (!meritka.has(k)) meritka.set(k, []);
+        meritka.get(k).push(hodnotaPasu(p));
+      });
+      if (!meritka.size) return true;
+      prahMapyUsd = 0;
+      for (const [k, hodnoty] of meritka) {
+        hodnoty.sort((x, y) => x - y);
+        // Měřítko barev i práh filtru z 97. percentilu (v0.77.0) — jeden
+        // extrém by zbytek zhasnul a filtr by schoval skoro všechno.
+        const ref = hodnoty[Math.floor(hodnoty.length * 0.97)] || hodnoty[hodnoty.length - 1];
+        meritka.set(k, { prah: ref * filtrMapy, ref });
+        prahMapyUsd = Math.max(prahMapyUsd, ref * filtrMapy);
+      }
       const pravy = bounding.width;
       /*
        * Živý pruh jen kousek za poslední svíčku (v0.76.1, přání uživatele):
@@ -1078,23 +1106,18 @@ function registrovatLikvidace() {
       globalThis.__nabehMapy?.push(ctx.globalAlpha);   // pro test
       let nakresleno = 0;
       for (const p of viditelne) {
+        if (p.vrchol === false) continue;
+        const m = meritka.get(p.zdroj || '') || { prah: prahMapyUsd, ref: 1 };
         const h = hodnotaPasu(p);
-        if (h < prahMapyUsd) continue;
-        const a = px(p.od, p.cena + p.vyska / 2);
-        const b = px(p.do, p.cena - p.vyska / 2);
+        if (h < m.prah || !(m.ref > 0)) continue;
+        const a = px(p.od, p.cena);
+        const b = px(p.do, p.cena);
         if (!a || !b || !Number.isFinite(a.y) || !Number.isFinite(b.y)) continue;
         // Pruh, který dál trvá, vede až k pravému okraji (budoucnost).
         const x1 = Math.max(0, a.x);
         const x2 = p.do >= Date.now() - 120000 ? Math.min(pravy, budouci) : Math.min(pravy, b.x);
         if (x2 <= x1) continue;
-        // v0.74.1 (uživatel: spektrum nešlo číst — všechno svítilo): malé
-        // hodnoty skoro průhledné, svítí jen velké shluky (jako Coinglass).
-        const v = Math.min(1, h / ref);
-        if (v < 0.06) continue;
-        const barva = p.long ? BARVA_LONGU : BARVA_SHORTU;
-        const y = Math.min(a.y, b.y);
-        const vyska = Math.max(2, Math.abs(b.y - a.y));
-        kresliPrubeh(ctx, p, barva, ref, x1, x2, y, vyska, (ts) => px(ts, p.cena)?.x);
+        kresliCaru(ctx, p, m.ref, x1, x2, a.y, (ts) => px(ts, p.cena)?.x);
         nakresleno += 1;
       }
       globalThis.__pruhyMapy = nakresleno;   // pro test
@@ -3716,6 +3739,7 @@ export function createPriceChart(container, layer, handlers = {}) {
           return p;
         }) };
       }
+      if (data?.pasy?.length) oznacVrcholy(data.pasy);
       const nova = !likvidace?.pasy?.length && data?.pasy?.length;
       likvidace = data;
       obnovMapu();

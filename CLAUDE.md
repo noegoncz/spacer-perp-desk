@@ -3510,6 +3510,17 @@ https://claude.ai/artifact/BHAHkgLcFuhiFkUPLreNi3, vybraná varianta B):**
   obou map jen 3 svíčky (≥ 16 px) za poslední svíčku, ne k pravému okraji.
   Reálná mapa je „bloková" z podstaty dat: účet se čte jednou za 1–30 min
   podle priority, hodnota pásma skočí až při dalším čtení.
+- **v0.77.0 — mapa jako čáry** (screenshot z TradingView od uživatele,
+  náhled https://claude.ai/artifact/VCBSiJGV2Sxk5UyR7SBLaM, varianta 3):
+  každá hladina ostrá čára, **barva + tloušťka podle objemu, jedna škála
+  pro obě strany** (`SKALA_MAPY` zelená → žlutá, 1–4 px, `kresliCaru`),
+  skok tloušťky v okamžiku přírůstku (`prubeh`). Jen **vrcholy shluků**
+  (`oznacVrcholy` v setLiquidations: ±0,3 % ceny, stejný zdroj a strana;
+  schová jen soused sdílející ≥ 50 % trvání — krátký úlomek dlouhou
+  hladinu neschová). **Měřítko i práh filtru zvlášť pro každý zdroj
+  z 97. percentilu** (Both: reálná už nepřebije kalkulovanou; práh z max
+  schovával skoro celou reálnou mapu). Výchozí filtr 10 %, posuvník
+  72 px / pruh 16 px v barvách škály. Šipky ▲/▼ zůstaly v barvách stran.
 - Tmavý svislý pruh po prudkém pohybu není chyba: cena vybrala pásma
   a OI zároveň klesal → nové pozice nevznikly.
 - Test: `test-likvidace-graf.py` (Binance na 4h, bod 4: SPCX bez HL má

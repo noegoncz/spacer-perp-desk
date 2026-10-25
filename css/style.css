@@ -3297,16 +3297,16 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 
 /* ---------- filtr likvidační mapy v grafu (v0.73.0) ---------- */
 .liq-posuvnik {
-  position: absolute; z-index: 6; left: 0; top: 54px; height: 42%; width: 56px;
+  position: absolute; z-index: 6; left: 0; top: 54px; height: 42%; width: 72px;
   touch-action: none; cursor: ns-resize; --uroven: 0%;
 }
 /* Plynulý náběh posuvníku i přepínače mapy (v0.75.1, přání uživatele). */
 @keyframes liqNabeh { from { opacity: 0; } to { opacity: 1; } }
 .liq-posuvnik:not([hidden]), .liq-zdroj:not([hidden]) { animation: liqNabeh 0.45s ease-out; }
 .liq-pruh {
-  position: absolute; left: 10px; top: 0; bottom: 0; width: 12px; border-radius: 6px; overflow: visible;
-  /* Síla mapy (v0.74.1): od průhledné po plnou — barvy longů a shortů dohromady. */
-  background: linear-gradient(0deg, rgba(70,150,255,0.08), rgba(70,150,255,0.6) 45%, rgba(255,150,50,0.95));
+  position: absolute; left: 10px; top: 0; bottom: 0; width: 16px; border-radius: 8px; overflow: visible;
+  /* Škála mapy (v0.77.0): zelená = malé, žlutá = velké, stejně pro obě strany. */
+  background: linear-gradient(0deg, rgba(47,143,78,0.35), rgb(124,200,58) 50%, rgb(242,229,58));
   box-shadow: 0 0 0 1px rgba(255,255,255,0.12);
 }
 .liq-zavoj {
@@ -3314,12 +3314,12 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
   border-radius: 0 0 6px 6px; background: rgba(11,15,20,0.72);
 }
 .liq-uchyt {
-  position: absolute; left: -7px; width: 26px; height: 10px; border-radius: 5px; bottom: var(--uroven);
+  position: absolute; left: -8px; width: 32px; height: 12px; border-radius: 6px; bottom: var(--uroven);
   transform: translateY(50%); background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.6);
 }
 .liq-posuvnik.tazeny .liq-uchyt { height: 14px; }
 .liq-stitek {
-  position: absolute; left: 30px; bottom: var(--uroven); transform: translateY(50%);
+  position: absolute; left: 34px; bottom: var(--uroven); transform: translateY(50%);
   white-space: nowrap; padding: 1px 6px; border-radius: 4px; pointer-events: none;
   font-size: 0.68rem; font-weight: 700; color: #0b0f14; background: rgba(255,255,255,0.9);
 }

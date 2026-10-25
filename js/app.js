@@ -3106,7 +3106,7 @@ function zapojPosuvnikMapy() {
   });
 }
 
-const filtrMapy = () => Math.max(0, Math.min(0.9, Number(store.loadJson('perpdesk.liqFilter', 0)) || 0));
+const filtrMapy = () => Math.max(0, Math.min(0.9, Number(store.loadJson('perpdesk.liqFilter', 0.1)) || 0));
 
 function popisVsechVrstev() {
   const vse = Object.values(chart?.getLayers() || {}).every(Boolean);

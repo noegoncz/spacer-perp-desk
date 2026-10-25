@@ -1,13 +1,13 @@
 {
-  "verze": "0.76.1",
+  "verze": "0.77.0",
   "novinky": [
     {
-      "en": "Calculated liquidation levels only grow with new positions and end when the price reaches them — no more vertical seams.",
-      "cs": "Kalkulované likvidační hladiny jen sílí s novými pozicemi a končí, když k nim dojde cena — bez svislých předělů."
+      "en": "New liquidation map look: clean lines, colour and thickness by size (green small, yellow large), only the strongest level of each cluster.",
+      "cs": "Nový vzhled likvidační mapy: čisté čáry, barva a tloušťka podle velikosti (zelená malá, žlutá velká), z každého shluku jen nejsilnější hladina."
     },
     {
-      "en": "Live liquidation levels reach only a few candles past the price instead of across the whole chart.",
-      "cs": "Živé likvidační hladiny sahají jen pár svíček za cenu, ne přes celý graf."
+      "en": "In Both, calculated and real liquidations each have their own scale, so neither hides the other. Wider filter slider.",
+      "cs": "V režimu Both má kalkulovaná i reálná mapa vlastní měřítko, takže jedna nepřebije druhou. Širší posuvník filtru."
     }
   ],
   "opravy": []
