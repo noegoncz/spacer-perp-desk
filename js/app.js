@@ -28,6 +28,7 @@ import * as likvidace from './likvidace.js';
 import { odhadPasu } from './likvidace-odhad.js';
 import { krokCeny as krokPasma } from './likvidace-format.js';
 import * as zdiKnihy from './zdi.js';
+import * as skutecneLikvidace from './likvidovano.js';
 import * as alarmyServer from './alarmy-server.js';
 import * as push from './push.js';
 import * as hlaseni from './hlaseni.js';
@@ -2321,6 +2322,37 @@ function zastavMapu() {
   chart?.setLiquidations(null);
   zastavOi();
   zastavZdi();
+  zastavLikvidovano();
+}
+
+/*
+ * Skutečné likvidace z CEX (v0.83.0, přání uživatele) — bubliny na svíčkách,
+ * data ze serveru (js/likvidovano.js, /api/likvidovano). Likvidace patří
+ * ke coinu (Binance + Bybit + OKX), na grafu kterékoli burzy. Po svíčkách,
+ * obnova po minutě.
+ */
+let casovacLikvidovano = null;
+let zadostLikvidovano = 0;
+
+function zastavLikvidovano() {
+  clearInterval(casovacLikvidovano);
+  casovacLikvidovano = null;
+  zadostLikvidovano += 1;
+  chart?.setRealLiquidations(null);
+}
+
+async function nactiLikvidovano() {
+  if (!chart || !chartSymbol || !oknoMapy || prohlizenyObchod) return;
+  if (!chart.getLayers().likvidovano) return;
+  const zadost = ++zadostLikvidovano;
+  const symbol = chartSymbol;
+  let v = null;
+  try {
+    v = await skutecneLikvidace.likvidovano({ symbol, od: oknoMapy.od, doKdy: Date.now() });
+  } catch { /* síť — zkusí se při další obnově */ }
+  if (zadost !== zadostLikvidovano || symbol !== chartSymbol || !chart) return;
+  chart.setRealLiquidations(v?.udalosti?.length ? v : null);
+  if (!casovacLikvidovano) casovacLikvidovano = setInterval(nactiLikvidovano, 60000);
 }
 
 /*
@@ -2795,6 +2827,7 @@ async function nactiSvice() {
     oknoMapy = { od: bars[0].timestamp, do: bars[bars.length - 1].timestamp };
     setTimeout(nactiMapu, 50);
     setTimeout(nactiZdi, 65);
+    setTimeout(nactiLikvidovano, 80);
     // OI jiného timeframu je jiná řada — načíst znovu.
     zadostOi += 1;
     oiNacteno = false;
@@ -3052,6 +3085,7 @@ const VRSTVY = [
   { klic: 'obchod', popisek: 'layers.trade', poznamka: 'layers.tradeNote' },
   { klic: 'likvidace', popisek: 'layers.liq', poznamka: 'layers.liqNote' },
   { klic: 'zdi', popisek: 'layers.walls', poznamka: 'layers.wallsNote' },
+  { klic: 'likvidovano', popisek: 'layers.realLiq', poznamka: 'layers.realLiqNote' },
 ];
 
 function nastavVrstvy(zmena) {
@@ -3060,6 +3094,7 @@ function nastavVrstvy(zmena) {
   const vrstvy = chart.getLayers();
   if (zmena?.likvidace) nactiMapu();
   if (zmena?.zdi) nactiZdi();
+  if (zmena?.likvidovano) nactiLikvidovano();
   // Vrstvy prohlídky obchodu se neukládají — platí jen do jejího zavření.
   if (!prohlizenyObchod) store.saveLayers(vrstvy);
   // Skryté kresby nejde upravovat — rozdělaná úprava a paleta zmizí.
@@ -3078,7 +3113,7 @@ function nastavVrstvy(zmena) {
  */
 function vrstvyProGraf() {
   if (!chart) return;
-  const ulozene = { kresby: true, alarmy: true, indikatory: true, obchod: true, likvidace: true, zdi: true, ...store.loadLayers() };
+  const ulozene = { kresby: true, alarmy: true, indikatory: true, obchod: true, likvidace: true, zdi: true, likvidovano: true, ...store.loadLayers() };
   chart.setLayers(prohlizenyObchod ? { ...ulozene, alarmy: false } : ulozene);
   chart.setLiquidationFilter(filtrMapy());
   oznacVrstvy();

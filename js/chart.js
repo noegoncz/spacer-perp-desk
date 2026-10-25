@@ -1194,6 +1194,99 @@ function registrovatLikvidace() {
 }
 
 /*
+ * Skutečné likvidace z CEX (v0.83.0): bubliny na svíčkách — součet likvidací
+ * za svíčku a stranu, na ceně vážené objemem. Plocha bubliny = objem
+ * (poloměr √), měřítko z největší viditelné. Zlikvidované longy červeně,
+ * shorty zeleně; kroužek s výplní, ať se neplete se zdmi (obdélníky).
+ */
+let likvidovanoGrafu = null;   // { udalosti: [[minuta, cena, usd, strana, burza]], t }
+let bublinyCache = null;       // { klic, bubliny: [{ ts, cena, usd, s }] }
+let nabehBublinOd = 0;
+const pruhlednostBublin = () => {
+  const t = (performance.now() - nabehBublinOd) / NABEH_MAPY;
+  return t >= 1 ? 1 : 1 - (1 - t) ** 3;
+};
+
+/** Události → bubliny po svíčkách (cache do změny dat nebo událostí). */
+function bublinyLikvidaci(data) {
+  const u = likvidovanoGrafu?.udalosti;
+  if (!u?.length || !data.length) return [];
+  const klic = `${data.length}|${data[0].timestamp}|${data[data.length - 1].timestamp}|${u.length}|${likvidovanoGrafu.t}`;
+  if (bublinyCache?.klic === klic) return bublinyCache.bubliny;
+  const mapa = new Map();
+  let i = 0;
+  for (const z of u) {   // události jsou seřazené podle času
+    if (z[0] < data[0].timestamp) continue;
+    while (i + 1 < data.length && data[i + 1].timestamp <= z[0]) i += 1;
+    const k = `${i}|${z[3]}`;
+    const b = mapa.get(k);
+    if (b) {
+      b.cena = (b.cena * b.usd + z[1] * z[2]) / (b.usd + z[2]);
+      b.usd += z[2];
+    } else {
+      mapa.set(k, { ts: data[i].timestamp, cena: z[1], usd: z[2], s: z[3] });
+    }
+  }
+  const bubliny = [...mapa.values()];
+  bublinyCache = { klic, bubliny };
+  return bubliny;
+}
+
+function registrovatLikvidovano() {
+  K().registerIndicator({
+    name: 'LIKVBUB',
+    shortName: '',
+    series: 'normal',
+    calcParams: [],
+    figures: [],
+    createTooltipDataSource: () => ({ name: '', calcParamsText: '', legends: [] }),
+    calc: (data) => data.map(() => ({})),
+    draw: ({ ctx, chart }) => {
+      const data = chart.getDataList();
+      const bubliny = bublinyLikvidaci(data);
+      if (!bubliny.length) return true;
+      const rozsah = chart.getVisibleRange();
+      const od = data[Math.max(0, rozsah.from)]?.timestamp ?? 0;
+      const doTs = data[Math.min(data.length - 1, rozsah.to)]?.timestamp ?? Infinity;
+      const vidne = bubliny.filter((b) => b.ts >= od && b.ts <= doTs);
+      const max = Math.max(0, ...vidne.map((b) => b.usd));
+      if (!max) return true;
+      ctx.save();
+      ctx.globalAlpha = pruhlednostBublin();
+      ctx.font = '10px -apple-system, "Segoe UI", Roboto, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      let nakresleno = 0;
+      // Malé dřív, velké navrch.
+      for (const b of vidne.sort((a, c) => a.usd - c.usd)) {
+        const sila = b.usd / max;
+        if (sila < 0.01) continue;
+        const bod = chart.convertToPixel({ timestamp: b.ts, value: b.cena }, { paneId: HLAVNI_PANEL });
+        const p = Array.isArray(bod) ? bod[0] : bod;
+        if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) continue;
+        const r = 2.5 + 15 * Math.sqrt(sila);
+        const rgb = b.s === 0 ? '246,70,93' : '62,230,164';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${rgb},${(0.22 + 0.3 * sila).toFixed(2)})`;
+        ctx.fill();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = `rgba(${rgb},0.85)`;
+        ctx.stroke();
+        if (sila >= 0.35 && r >= 10) {
+          ctx.fillStyle = 'rgba(255,255,255,0.92)';
+          ctx.fillText(objemZdi(b.usd).replace(' ', ''), p.x, p.y);
+        }
+        nakresleno += 1;
+      }
+      ctx.restore();
+      globalThis.__bublinyLikv = nakresleno;   // pro testy
+      return true;
+    },
+  });
+}
+
+/*
  * Zdi v knize příkazů (v0.72.0): pruhy v čase jako likvidační mapa, data
  * ze serveru (js/zdi.js). Nákupní zeleně, prodejní červeně, sytost podle
  * velikosti proti největší viditelné zdi. Živá zeď vede k pravému okraji.
@@ -2037,6 +2130,7 @@ export function createPriceChart(container, layer, handlers = {}) {
   registrovatOi();
   registrovatLikvidace();
   registrovatZdi();
+  registrovatLikvidovano();
 
   const chart = K().init(container, { styles: styly() });
   chart.setTimezone('Europe/Prague');
@@ -2249,9 +2343,19 @@ export function createPriceChart(container, layer, handlers = {}) {
    * aby se sbalily i jejich panely; výběr uživatele (`aktivniIndikatory`)
    * zůstává a s odkrytím se vrátí.
    */
-  const vrstvy = { kresby: true, alarmy: true, indikatory: true, obchod: true, likvidace: true, zdi: true };
+  const vrstvy = { kresby: true, alarmy: true, indikatory: true, obchod: true, likvidace: true, zdi: true, likvidovano: true };
   let mapaZapnuta = false;
   let zdiZapnute = false;
+  let bublinyZapnute = false;
+  const obnovBubliny = () => {
+    const ukazat = Boolean(likvidovanoGrafu?.udalosti?.length) && vrstvy.likvidovano;
+    if (bublinyZapnute) chart.removeIndicator({ name: 'LIKVBUB' });
+    bublinyZapnute = false;
+    if (ukazat) {
+      chart.createIndicator({ name: 'LIKVBUB', paneId: HLAVNI_PANEL }, true);
+      bublinyZapnute = true;
+    }
+  };
   const obnovZdi = () => {
     const ukazat = Boolean(zdiGrafu && (zdiGrafu.zive.length || zdiGrafu.hist.length)) && vrstvy.zdi;
     if (zdiZapnute) chart.removeIndicator({ name: 'ZDIMAP' });
@@ -3724,6 +3828,23 @@ export function createPriceChart(container, layer, handlers = {}) {
       }
     },
 
+    /** Skutečné likvidace: { udalosti: [[minuta, cena, usd, strana, burza]], t } nebo null. */
+    setRealLiquidations(data) {
+      const nova = !likvidovanoGrafu?.udalosti?.length && data?.udalosti?.length;
+      likvidovanoGrafu = data;
+      bublinyCache = null;
+      obnovBubliny();
+      if (nova && bublinyZapnute) {
+        nabehBublinOd = performance.now();
+        const snimek = () => {
+          if (!bublinyZapnute) return;
+          chart.overrideIndicator({ name: 'LIKVBUB', extendData: performance.now() });
+          if (pruhlednostBublin() < 1) requestAnimationFrame(snimek);
+        };
+        requestAnimationFrame(snimek);
+      }
+    },
+
     /** Zdi v knize: { zive, hist, krok, popis, posun } nebo null. */
     setWalls(data) {
       const nova = !(zdiGrafu?.zive?.length || zdiGrafu?.hist?.length) && (data?.zive?.length || data?.hist?.length);
@@ -3814,6 +3935,7 @@ export function createPriceChart(container, layer, handlers = {}) {
       }
       if (pred.likvidace !== vrstvy.likvidace) obnovMapu();
       if (pred.zdi !== vrstvy.zdi) obnovZdi();
+      if (pred.likvidovano !== vrstvy.likvidovano) obnovBubliny();
       if (pred.indikatory !== vrstvy.indikatory) {
         aktivniIndikatory.forEach((nazev) => {
           if (vrstvy.indikatory) vlozIndikator(nazev);

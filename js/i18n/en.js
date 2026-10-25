@@ -889,6 +889,8 @@ export const en = {
   'journal.edge.net1': 'Net PnL · 1 trade',
   'layers.liq': 'Liquidations (Hyperliquid)',
   'layers.liqNote': 'Real positions on Hyperliquid, collected since 21 Oct 2026 — history fills in over time.',
+  "layers.realLiq": "Liquidations that happened",
+  "layers.realLiqNote": "Real liquidations on Binance, Bybit and OKX, collected since 25 Oct 2026 (Binance reports only the largest per second).",
   "layers.walls": "Order book walls",
   "layers.wallsNote": "Big limit orders and how long they stand",
   "walls.label": "{burza} order book walls · {min} min ago",

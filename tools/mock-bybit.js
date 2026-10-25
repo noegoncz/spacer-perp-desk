@@ -73,6 +73,11 @@ window.fetch = function (vstup, volby) {
     if (sessionStorage.getItem('__zdiNaostro')) return __puvodniFetch(vstup, volby);
     return Promise.resolve(new Response('{"ok":true,"sleduje":true,"zdi":[],"hist":[]}', { headers: { 'Content-Type': 'application/json' } }));
   }
+  // Skutečné likvidace (v0.83.0): test vrstvy podstrčí události
+  // v sessionStorage '__likvidovano' (JSON odpovědi), jinak prázdno.
+  if (u.includes('/api/likvidovano')) {
+    return Promise.resolve(new Response(sessionStorage.getItem('__likvidovano') || '{"ok":true,"t":null,"u":[]}', { headers: { 'Content-Type': 'application/json' } }));
+  }
   // Ostatní burzy (adaptéry přes CCXT) jdou na skutečnou burzu — mock
   // podstrkuje jen Bybit a perpyx.com (kontraktní test, v0.53.0).
   if (/binance|gateio|gate\.io|mexc|okx|bitget|hyperliquid/i.test(u)) return __puvodniFetch(vstup, volby);

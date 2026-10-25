@@ -27,11 +27,12 @@ import { readFileSync, writeFileSync, mkdirSync, renameSync, appendFileSync } fr
 import { join } from 'node:path';
 import { krokCeny, snimek, rozdil, radek } from '../js/likvidace-format.js';
 import { spustZdi } from './zdi.mjs';
+import { spustLikvidovano } from './likvidovano.mjs';
 
 // Zdi v knize příkazů běží v této službě (server/zdi.mjs). Aktualizace
 // restartuje službu jen při změně tohoto souboru → při změně zdi.mjs nebo
 // js/zdi-format.js zvedni tuto verzi.
-const VERZE_ZDI = 3;
+const VERZE_ZDI = 4;
 
 const API = (process.env.API || 'https://perpyx.com').replace(/\/$/, '');
 const TOKEN = process.env.WATCHER_TOKEN || '';
@@ -442,6 +443,8 @@ if (process.env.ZDI !== '0') {
   log(`zdi: start (verze ${VERZE_ZDI})`);
   spustZdi({ log, API, TOKEN, ZKOUSKA, STAV, limitTrhu: +process.env.ZDI_LIMIT || Infinity });
 }
+// Skutečné likvidace z CEX (server/likvidovano.mjs) — taky v této službě.
+if (process.env.LIKVIDOVANO !== '0') spustLikvidovano({ log, API, TOKEN, ZKOUSKA, STAV });
 
 // Snímek 5 s po celé minutě (mark ceny jsou nejvýš 30 s staré).
 (function planuj() {

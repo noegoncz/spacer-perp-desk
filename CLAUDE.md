@@ -3581,6 +3581,34 @@ https://claude.ai/artifact/BHAHkgLcFuhiFkUPLreNi3, vybraná varianta B):**
 - Test: `test-likvidace-graf.py` (Binance na 4h, bod 4: SPCX bez HL má
   odhad, přepínač skutečným dotykem).
 
+## Skutečné likvidace z CEX (v0.83.0, 2026-10-25)
+
+Přání uživatele: porovnat kalkulovanou mapu se skutečností (nezobrazovat
+hlouposti) a ukázat proběhlé likvidace v grafu. Pořadí: sběr → vrstva →
+**porovnání s mapou (zbývá, až se nasbírají data)**.
+- `server/likvidovano.mjs` uvnitř služby mapy (jako zdi; ⚠ při změně zvedni
+  `VERZE_ZDI` v likvidace.mjs). Proudy ověřené sondou: Binance
+  `!forceOrder@arr` na **`/market/ws`** (⚠ jen největší likvidace páru za
+  vteřinu → objem podhodnocený; S = SELL → long), Bybit `allLiquidation.<pár>`
+  pro všech ~876 párů (S = strana pozice, Buy → long), OKX
+  `liquidation-orders` SWAP (sz v kontraktech × ctVal; po přihlášení přehraje
+  staré → jen čerstvé). Hyperliquid zatím ne (veřejný proud likvidace neoznačuje).
+- Coin bez násobku (`coinParu`: 1000PEPE → PEPE, cena na 1 coin), všechny
+  burzy v jednom řádku. Slučuje se po minutách: minuta + burza + strana +
+  cena na 4 číslice → `[minuta, cena, usd, strana 0 long|1 short, burza 0|1|2]`.
+- D1 `LIQ` (migrace `0003_likvidovano.sql`): `likvidovano_stav` 1 řádek /
+  min (od poslední hodinové dávky), `likvidovano_dny` coin × den, dávka
+  jednou za hodinu, 365 dní. API `POST/GET /api/watcher/likvidovano`
+  (token), veřejně `GET /api/likvidovano?c=BTC&od&do` (≤ 30 dní, cache 60 s,
+  `?stav=1` = souhrn provozu).
+- Aplikace: vrstva **Proběhlé likvidace** (`likvidovano`, výchozí zapnutá),
+  `js/likvidovano.js` (`coinGrafu` — i HL `kPEPE`), indikátor `LIKVBUB`
+  (chart.js `setRealLiquidations`): bubliny po svíčkách a stranách, cena
+  vážená objemem, plocha = objem (√, měřítko z viditelných), longy červeně,
+  shorty zeleně, číslo u velkých. Graf jakékoli burzy, obnova po minutě.
+  Mock vrací prázdno, test podstrčí `sessionStorage.__likvidovano`.
+  Test: `tools/test-likvidovano-graf.py`.
+
 ## Zdi v knize příkazů — sběr na serveru (2026-10-22, v0.72.0)
 
 Přání uživatele (snímek nástroje z Discordu: „velká nákupní zeď“, jak

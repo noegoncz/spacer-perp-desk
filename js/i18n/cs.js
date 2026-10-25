@@ -884,6 +884,8 @@ export const cs = {
   'journal.edge.net1': 'Čistý PnL · 1 obchod',
   'layers.liq': 'Likvidace (Hyperliquid)',
   'layers.liqNote': 'Skutečné pozice na Hyperliquidu, sbírané od 21. 10. 2026 — historie se postupně doplňuje.',
+  "layers.realLiq": "Proběhlé likvidace",
+  "layers.realLiqNote": "Skutečné likvidace na Binance, Bybitu a OKX, sbírané od 25. 10. 2026 (Binance hlásí jen největší za vteřinu).",
   "layers.walls": "Zdi v knize",
   "layers.wallsNote": "Velké limitní příkazy a jak dlouho stojí",
   "walls.label": "Zdi v knize {burza} · před {min} min",
