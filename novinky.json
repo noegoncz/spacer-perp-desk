@@ -1,5 +1,5 @@
 {
-  "verze": "0.84.2",
+  "verze": "0.84.3",
   "novinky": [
     {
       "en": "Liquidation map controls in one panel with sections (filter, map source, executed); folded after 3 seconds, a touch opens them.",
@@ -14,5 +14,10 @@
       "cs": "Proběhlé likvidace se řídí vybraným zdrojem, nově i z Hyperliquidu."
     }
   ],
-  "opravy": []
+  "opravy": [
+    {
+      "en": "Updated description of the Liquidations layer.",
+      "cs": "Aktuální popis vrstvy Likvidace."
+    }
+  ]
 }
