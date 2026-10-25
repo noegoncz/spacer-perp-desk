@@ -3540,6 +3540,10 @@ https://claude.ai/artifact/BHAHkgLcFuhiFkUPLreNi3, vybraná varianta B):**
   reálné. Výchozí zdroj `vse`; staré `mix`/`oboje` → `vse`. Pod tlačítky
   podtitulky (open interest / Binance + Bybit + OKX / Hyperliquid /
   kalk. ∩ reálná). Test začíná se zdrojem `skutecne` (localStorage).
+  **v0.79.1 (snímek uživatele: na 1h Shoda = Real):** potvrzuje jen vrchol
+  shluku kalkulované (±0,3 %, ≥ 25 % p97) a jen do ±0,15 % ceny — dřív
+  stačila jakákoli kalkulovaná hladina do ±0,15 % + šířky pásma (BTC 1h:
+  78 reálných čar → 32 ve shodě).
 - Tmavý svislý pruh po prudkém pohybu není chyba: cena vybrala pásma
   a OI zároveň klesal → nové pozice nevznikly.
 - Test: `test-likvidace-graf.py` (Binance na 4h, bod 4: SPCX bez HL má

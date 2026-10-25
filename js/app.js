@@ -2605,24 +2605,40 @@ async function nactiMapu() {
 }
 
 /*
- * Shoda (v0.79.0): reálná hladina zůstane, když kalkulovaná mapa má na téže
- * straně hladinu do ±0,15 % ceny, která se s ní v čase překrývá a není
- * zanedbatelná (≥ 10 % 97. percentilu kalkulovaných).
+ * Shoda (v0.79.0): reálná hladina zůstane, když ji potvrzuje kalkulovaná
+ * mapa (všechny CEX). v0.79.1 (snímek uživatele: na 1h Shoda = Real):
+ * potvrzuje jen **vrchol shluku** kalkulované mapy (nejsilnější hladina
+ * v okolí ±0,3 %, stejná strana, překryv v čase), který je aspoň 25 % p97,
+ * a jen do ±0,15 % ceny — dřív stačila jakákoli kalkulovaná hladina do
+ * ±0,15 % + šířky pásma, a ty leží po 50 USD skoro všude.
  */
 function shodaMap(realne, kalkulovane, ted) {
   const hodnota = (p) => p.posledni ?? p.usd;
+  const doKdy = (q) => (q.ziva ? ted : q.do);
   const serazene = kalkulovane.map(hodnota).sort((a, b) => a - b);
-  const prah = (serazene[Math.floor(serazene.length * 0.97)] || 0) * 0.1;
-  const kandidati = kalkulovane.filter((q) => hodnota(q) >= prah).sort((a, b) => a.cena - b.cena);
+  const prah = (serazene[Math.floor(serazene.length * 0.97)] || 0) * 0.25;
+  const silne = kalkulovane.filter((q) => hodnota(q) >= prah).sort((a, b) => a.cena - b.cena);
+  const prekryv = (a, b) => a.od < doKdy(b) && b.od < doKdy(a);
+  const vrcholy = silne.filter((q, i) => {
+    const okno = q.cena * 0.003;
+    for (let j = i - 1; j >= 0 && q.cena - silne[j].cena <= okno; j -= 1) {
+      const r = silne[j];
+      if (r.long === q.long && prekryv(r, q) && hodnota(r) > hodnota(q)) return false;
+    }
+    for (let j = i + 1; j < silne.length && silne[j].cena - q.cena <= okno; j += 1) {
+      const r = silne[j];
+      if (r.long === q.long && prekryv(r, q) && hodnota(r) >= hodnota(q)) return false;
+    }
+    return true;
+  });
   return realne.filter((p) => {
-    const tol = p.cena * 0.0015 + p.vyska;
+    const tol = p.cena * 0.0015;
     let lo = 0;
-    let hi = kandidati.length;
-    while (lo < hi) { const m = (lo + hi) >> 1; if (kandidati[m].cena < p.cena - tol) lo = m + 1; else hi = m; }
-    for (let i = lo; i < kandidati.length && kandidati[i].cena <= p.cena + tol; i += 1) {
-      const q = kandidati[i];
-      const qDo = q.ziva ? ted : q.do;
-      if (q.long === p.long && q.od < p.do && p.od < qDo) return true;
+    let hi = vrcholy.length;
+    while (lo < hi) { const m = (lo + hi) >> 1; if (vrcholy[m].cena < p.cena - tol) lo = m + 1; else hi = m; }
+    for (let i = lo; i < vrcholy.length && vrcholy[i].cena <= p.cena + tol; i += 1) {
+      const q = vrcholy[i];
+      if (q.long === p.long && q.od < p.do && p.od < doKdy(q)) return true;
     }
     return false;
   });
