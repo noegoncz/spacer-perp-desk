@@ -1130,7 +1130,9 @@ function registrovatLikvidace() {
       globalThis.__nabehMapy?.push(ctx.globalAlpha);   // pro test
       let nakresleno = 0;
       for (const p of viditelne) {
-        if (p.vrchol === false) continue;
+        // `skryta` = Shoda: hladina se počítá do vrcholů i měřítka (jako v Real),
+        // ale nekreslí se (v0.79.2 — dřív Shoda ukázala čáry, které Real neměl).
+        if (p.vrchol === false || p.skryta) continue;
         const m = meritka.get(p.zdroj || '') || { prah: prahMapyUsd, ref: 1 };
         const h = hodnotaPasu(p);
         if (h < m.prah || !(m.ref > 0)) continue;
@@ -1145,6 +1147,7 @@ function registrovatLikvidace() {
         nakresleno += 1;
       }
       globalThis.__pruhyMapy = nakresleno;   // pro test
+      globalThis.__carMapy = viditelne.filter((p) => p.vrchol !== false && !p.skryta && hodnotaPasu(p) >= (meritka.get(p.zdroj || '')?.prah ?? 0)).map((p) => `${p.long}|${Math.round(p.cena)}`);   // pro test
       ctx.font = '11px -apple-system, "Segoe UI", Roboto, sans-serif';
       ctx.fillStyle = 'rgba(139,155,176,0.9)';
       ctx.textBaseline = 'top';
@@ -1156,7 +1159,7 @@ function registrovatLikvidace() {
        * od ceny a na krátkém timeframu by mapa vypadala prázdná.
        */
       const ted = Date.now() - 120000;
-      const ziva = pasy.filter((p) => p.do >= ted);
+      const ziva = pasy.filter((p) => p.do >= ted && !p.skryta);
       const maxZiva = Math.max(0, ...ziva.map((p) => p.posledni || p.usd));
       let nad = null;
       let pod = null;
@@ -2674,7 +2677,7 @@ export function createPriceChart(container, layer, handlers = {}) {
     if (vrstvy.likvidace && mapaZapnuta) {
       const ted = Date.now() - 120000;
       for (const p of likvidace?.pasy || []) {
-        if (hodnotaPasu(p) < prahMapyUsd) continue;
+        if (p.skryta || hodnotaPasu(p) < prahMapyUsd) continue;
         zkus('likvidace', p, p.do >= ted ? Infinity : p.do);
       }
     }
@@ -2784,7 +2787,7 @@ export function createPriceChart(container, layer, handlers = {}) {
     const lik = { long: { odhad: 0, realna: 0 }, short: { odhad: 0, realna: 0 } };
     if (vrstvy.likvidace && mapaZapnuta) {
       for (const p of likvidace?.pasy || []) {
-        if (p.do < ted || Math.abs(p.cena - cena) > p.vyska / 2) continue;
+        if (p.skryta || p.do < ted || Math.abs(p.cena - cena) > p.vyska / 2) continue;
         lik[p.long ? 'long' : 'short'][p.zdroj === 'odhad' ? 'odhad' : 'realna'] += p.posledni ?? p.usd;
       }
     }

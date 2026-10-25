@@ -3544,6 +3544,12 @@ https://claude.ai/artifact/BHAHkgLcFuhiFkUPLreNi3, vybraná varianta B):**
   shluku kalkulované (±0,3 %, ≥ 25 % p97) a jen do ±0,15 % ceny — dřív
   stačila jakákoli kalkulovaná hladina do ±0,15 % + šířky pásma (BTC 1h:
   78 reálných čar → 32 ve shodě).
+  **v0.79.2 (uživatel: Shoda měla čáry, které v Real nebyly):** Shoda
+  dostávala jen potvrzené hladiny, takže vrcholy shluků i práh filtru se
+  počítaly z menšího vzorku a vystoupily slabší sousedé. Teď se předává
+  celá reálná mapa a nepotvrzené mají `skryta` (počítají se do vrcholů
+  a měřítka, nekreslí se, nejsou v šipkách ani v detailu) → Shoda ⊆ Real
+  (ověřeno: 72 → 20, nic navíc; `__carMapy` pro test).
 - Tmavý svislý pruh po prudkém pohybu není chyba: cena vybrala pásma
   a OI zároveň klesal → nové pozice nevznikly.
 - Test: `test-likvidace-graf.py` (Binance na 4h, bod 4: SPCX bez HL má

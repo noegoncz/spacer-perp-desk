@@ -1,5 +1,5 @@
 {
-  "verze": "0.79.1",
+  "verze": "0.79.2",
   "novinky": [
     {
       "en": "New Match view on the liquidation map: only real Hyperliquid levels that the calculated map (all CEX) confirms.",
@@ -14,6 +14,10 @@
     {
       "en": "Match on the liquidation map now really filters: only levels confirmed by the strongest calculated clusters.",
       "cs": "Shoda na likvidační mapě teď opravdu filtruje: jen hladiny potvrzené nejsilnějšími kalkulovanými shluky."
+    },
+    {
+      "en": "Match shows only lines you also see in Real.",
+      "cs": "Shoda ukazuje jen čáry, které vidíš i v pohledu Real."
     }
   ]
 }
