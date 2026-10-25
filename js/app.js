@@ -2351,7 +2351,8 @@ async function nactiLikvidovano() {
     v = await skutecneLikvidace.likvidovano({ symbol, od: oknoMapy.od, doKdy: Date.now() });
   } catch { /* síť — zkusí se při další obnově */ }
   if (zadost !== zadostLikvidovano || symbol !== chartSymbol || !chart) return;
-  chart.setRealLiquidations(v?.udalosti?.length ? v : null);
+  // Pevné měřítko bublin: 0,05 % obratu páru za 24 h (BTC ~2 M, malé coiny desítky k).
+  chart.setRealLiquidations(v?.udalosti?.length ? { ...v, meritko: chartObrat > 0 ? chartObrat * 0.0005 : 0 } : null);
   if (!casovacLikvidovano) casovacLikvidovano = setInterval(nactiLikvidovano, 60000);
 }
 

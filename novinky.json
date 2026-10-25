@@ -1,10 +1,15 @@
 {
-  "verze": "0.83.0",
+  "verze": "0.83.1",
   "novinky": [
     {
       "en": "New chart layer: liquidations that actually happened on Binance, Bybit and OKX, as bubbles on the candles.",
       "cs": "Nová vrstva grafu: likvidace, které opravdu proběhly na Binance, Bybitu a OKX, jako bubliny na svíčkách."
     }
   ],
-  "opravy": []
+  "opravy": [
+    {
+      "en": "Liquidation map no longer covers the volume bars and chart labels; small liquidation bubbles stay small.",
+      "cs": "Likvidační mapa už nepřekrývá objem a popisky grafu; malé likvidace zůstávají malými bublinami."
+    }
+  ]
 }

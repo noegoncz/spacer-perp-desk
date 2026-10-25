@@ -26,6 +26,7 @@ mock = "sessionStorage.setItem('__mapaNaostro', '1');" + mock + """
 localStorage.setItem('perpdesk.lists', JSON.stringify({ verze: 1, aktivni: 'a',
   seznamy: [{ id: 'a', nazev: 'Main', polozky: %s }] }));
 localStorage.setItem('perpdesk.chartView', JSON.stringify({ 'hyperliquid:BTCUSDC': { interval: '1' }, 'binance:BTCUSDT': { interval: '30' } }));
+localStorage.setItem('perpdesk.indicators', JSON.stringify(['VOL']));
 // Kdy dorazily svíčky a kdy se začala stahovat mapa.
 window.__casy = {};
 const __f = window.fetch;
@@ -160,6 +161,11 @@ for _ in range(40):
 over(mapa() == 1, 'mapa i na grafu Binance')
 time.sleep(1)
 snimek('liq-binance-4h.png')
+# v0.83.1: čáry nesmí přes popisky nahoře ani přes pruh objemu dole.
+orez = ev("(() => { const o = window.__orezMapy; const h = window.__graf.getSize('candle_pane', 'main').height; const vol = window.__graf.getIndicators({ name: 'VOL', paneId: 'candle_pane' }).length; return { ...o, h, vol }; })()")
+print('   ořez mapy:', orez)
+over(orez and orez['horni'] >= 70, 'mapa začíná pod popisky')
+over(orez and (orez['dolni'] < orez['h'] * 0.85 if orez['vol'] else orez['dolni'] >= orez['h'] - 3), 'mapa končí nad pruhem objemu (je-li zapnutý)')
 ev("history.back()")
 time.sleep(1.5)
 

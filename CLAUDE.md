@@ -3608,6 +3608,11 @@ hlouposti) a ukázat proběhlé likvidace v grafu. Pořadí: sběr → vrstva �
   shorty zeleně, číslo u velkých. Graf jakékoli burzy, obnova po minutě.
   Mock vrací prázdno, test podstrčí `sessionStorage.__likvidovano`.
   Test: `tools/test-likvidovano-graf.py`.
+- **v0.83.1 (snímky uživatele):** bubliny s pevným měřítkem — největší
+  viditelná, ale aspoň 0,05 % obratu páru za 24 h (`meritko`; osamělých
+  5 k na ETH bylo obří). Čáry mapy jen mezi popisky (`HORNI_OKRAJ_MAPY`
+  72 px) a pruhem objemu (`pasObjemu`, je-li VOL v hlavním panelu) —
+  uživatel: „nesmí to překrývat". Test: bod 3 `test-likvidace-graf.py`.
 
 ## Zdi v knize příkazů — sběr na serveru (2026-10-22, v0.72.0)
 

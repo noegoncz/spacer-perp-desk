@@ -751,6 +751,15 @@ function registrovatZnackuPlneni() {
  * indikátor do měřítka osy nemluví, cenová stupnice zůstane cenová, a
  * sloupce si dokreslíme sami do spodního pruhu panelu.
  */
+/*
+ * Výška pruhu objemu v hlavním panelu při posledním kreslení — mapa likvidací
+ * pod něj nesmí (v0.83.1, uživatel: čáry překrývaly objem). Platí jen čerstvá
+ * hodnota (vypnutý objem se přestane kreslit).
+ */
+let pasObjemu = { vyska: 0, t: 0 };
+/** Horní okraj plochy mapy: pod popiskem a šipkou ▲ (y 40–70). */
+const HORNI_OKRAJ_MAPY = 72;
+
 function registrovatObjem() {
   K().registerIndicator({
     name: 'VOL',
@@ -801,6 +810,7 @@ function registrovatObjem() {
       if (max <= 0) return true;
 
       const pas = bounding.height * (Number(n.vyska) || 22) / 100;
+      pasObjemu = { vyska: pas, t: performance.now() };
       const dno = bounding.height;
       const doPixelu = (hodnota) => dno - (hodnota / max) * pas;
       const x = (i) =>
@@ -1128,6 +1138,21 @@ function registrovatLikvidace() {
       ctx.save();
       ctx.globalAlpha = pruhlednostNabehu();
       globalThis.__nabehMapy?.push(ctx.globalAlpha);   // pro test
+      /*
+       * Čáry jen mezi popisky nahoře a pruhem objemu dole (v0.83.1, uživatel:
+       * „nesmí to překrývat"). Objem se kreslí ve stejném snímku — jeho výška
+       * platí, jen když je čerstvá.
+       */
+      let volJe = performance.now() - pasObjemu.t < 1500;
+      try { if (typeof chart.getIndicators === 'function') volJe = chart.getIndicators({ name: 'VOL', paneId: HLAVNI_PANEL }).length > 0; } catch { /* starší API */ }
+      // Výška z posledního kreslení objemu, jinak výchozí 22 % (první snímek).
+      const objemDole = volJe ? (pasObjemu.vyska || bounding.height * 0.22) : 0;
+      const dolniOkraj = bounding.height - objemDole - 2;
+      globalThis.__orezMapy = { horni: HORNI_OKRAJ_MAPY, dolni: dolniOkraj };   // pro test
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, HORNI_OKRAJ_MAPY, bounding.width, Math.max(0, dolniOkraj - HORNI_OKRAJ_MAPY));
+      ctx.clip();
       let nakresleno = 0;
       for (const p of viditelne) {
         if (p.vrchol === false) continue;
@@ -1155,6 +1180,7 @@ function registrovatLikvidace() {
         ctx.globalAlpha = alfa;
         nakresleno += 1;
       }
+      ctx.restore();   // konec ořezu
       globalThis.__pruhyMapy = nakresleno;   // pro test
       globalThis.__carMapy = viditelne.filter((p) => p.vrchol !== false && p.shoda !== false && hodnotaPasu(p) >= (meritka.get(p.zdroj || '')?.prah ?? 0)).map((p) => `${p.long}|${Math.round(p.cena)}`);   // pro test
       ctx.font = '11px -apple-system, "Segoe UI", Roboto, sans-serif';
@@ -1249,7 +1275,12 @@ function registrovatLikvidovano() {
       const od = data[Math.max(0, rozsah.from)]?.timestamp ?? 0;
       const doTs = data[Math.min(data.length - 1, rozsah.to)]?.timestamp ?? Infinity;
       const vidne = bubliny.filter((b) => b.ts >= od && b.ts <= doTs);
-      const max = Math.max(0, ...vidne.map((b) => b.usd));
+      /*
+       * Měřítko (v0.83.1, uživatel: osamělá likvidace 5 k na ETH byla obří):
+       * největší viditelná, ale aspoň pevná hodnota podle coinu (`meritko`
+       * = podíl obratu za 24 h) — drobná likvidace zůstane tečkou.
+       */
+      const max = Math.max(likvidovanoGrafu.meritko || 0, ...vidne.map((b) => b.usd));
       if (!max) return true;
       ctx.save();
       ctx.globalAlpha = pruhlednostBublin();
@@ -1260,11 +1291,11 @@ function registrovatLikvidovano() {
       // Malé dřív, velké navrch.
       for (const b of vidne.sort((a, c) => a.usd - c.usd)) {
         const sila = b.usd / max;
-        if (sila < 0.01) continue;
+        if (sila < 0.002) continue;
         const bod = chart.convertToPixel({ timestamp: b.ts, value: b.cena }, { paneId: HLAVNI_PANEL });
         const p = Array.isArray(bod) ? bod[0] : bod;
         if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) continue;
-        const r = 2.5 + 15 * Math.sqrt(sila);
+        const r = 2 + 16 * Math.sqrt(sila);
         const rgb = b.s === 0 ? '246,70,93' : '62,230,164';
         ctx.beginPath();
         ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
@@ -1273,7 +1304,7 @@ function registrovatLikvidovano() {
         ctx.lineWidth = 1;
         ctx.strokeStyle = `rgba(${rgb},0.85)`;
         ctx.stroke();
-        if (sila >= 0.35 && r >= 10) {
+        if (r >= 11) {
           ctx.fillStyle = 'rgba(255,255,255,0.92)';
           ctx.fillText(objemZdi(b.usd).replace(' ', ''), p.x, p.y);
         }
