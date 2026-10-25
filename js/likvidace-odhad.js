@@ -19,19 +19,20 @@ const PRAH = 0.002;           // pásma pod 0,2 % největšího se zahodí (šum
 /**
  * svicky: hodinové [{ time, open, high, low, close }] vzestupně.
  * rady: řady OI po burzách, každá [{ time, oi }] v coinech (hodinově).
- * krok: šířka cenového pásma. Vrací pruhy jako likvidace.pasy:
+ * krok: šířka cenového pásma. delka: délka svíčky v ms (v0.81.0 — na delších
+ * timeframech se počítá ze 4h / denních dat, hodinová sahají jen ~25 dní). Vrací pruhy jako likvidace.pasy:
  * [{ od, do, cena, vyska, usd, min, posledni, long, prubeh }]; živé mají do = teď
  * a `ziva` (aplikace jim při každém kreslení posune konec na „teď“).
  */
-export function odhadPasu(svicky, rady, krok, ted = Date.now()) {
+export function odhadPasu(svicky, rady, krok, ted = Date.now(), delka = 3600e3) {
   if (!svicky.length || !(krok > 0)) return [];
   // Přírůstek OI v USD za každou hodinu: součet rozdílů po burzách (burza,
   // které hodina chybí, nepřispěje — skok mezi burzami by vyrobil falešný objem).
   const pres = new Map();
   for (const rada of rady) {
-    const podle = new Map(rada.map((b) => [Math.floor(b.time / 3600e3), b.oi]));
+    const podle = new Map(rada.map((b) => [Math.floor(b.time / delka), b.oi]));
     for (const s of svicky) {
-      const h = Math.floor(s.time / 3600e3);
+      const h = Math.floor(s.time / delka);
       const a = podle.get(h - 1);
       const b = podle.get(h);
       // Jen přírůstek každé burzy zvlášť (v0.80.0): úbytek pruhy nemění, a kdyby
@@ -51,7 +52,7 @@ export function odhadPasu(svicky, rady, krok, ted = Date.now()) {
   };
   const hotove = [];
   for (const s of svicky) {
-    const konec = s.time + 3600e3;
+    const konec = s.time + delka;
     // Nejdřív likvidace cenou této svíčky (pozice otevřené dřív).
     for (const [k, p] of zive) {
       if (p.long ? s.low <= p.cena : s.high >= p.cena) {

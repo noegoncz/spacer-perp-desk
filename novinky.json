@@ -1,19 +1,14 @@
 {
-  "verze": "0.80.1",
+  "verze": "0.81.0",
   "novinky": [
     {
-      "en": "Liquidation map switch shows how much is at stake: live liquidations within ±10 % of the price; Match also shows its share of the real volume.",
-      "cs": "Přepínač likvidační mapy ukazuje, o kolik jde: živé likvidace do ±10 % od ceny; Shoda i svůj podíl z reálného objemu."
+      "en": "Calculated liquidation map shows history on 4h, daily and weekly charts too (Bybit and OKX up to ~1.5 years back).",
+      "cs": "Kalkulovaná likvidační mapa má historii i na 4h, denním a týdenním grafu (Bybit a OKX až ~1,5 roku zpět)."
     },
     {
-      "en": "Match shows the whole real Hyperliquid map with confirmed levels highlighted.",
-      "cs": "Shoda ukazuje celou reálnou mapu Hyperliquidu a zvýrazní potvrzené hladiny."
+      "en": "Liquidation map switch shows live liquidations within ±10 % of the price; Match also its share of the real volume.",
+      "cs": "Přepínač likvidační mapy ukazuje živé likvidace do ±10 % od ceny; Shoda i svůj podíl z reálného objemu."
     }
   ],
-  "opravy": [
-    {
-      "en": "All CEX now adds new positions from each exchange separately (it could come out smaller than a single exchange).",
-      "cs": "Všechny CEX teď sčítají nové pozice každé burzy zvlášť (mohly vyjít menší než jedna burza)."
-    }
-  ]
+  "opravy": []
 }

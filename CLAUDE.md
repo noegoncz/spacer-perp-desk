@@ -3563,6 +3563,12 @@ https://claude.ai/artifact/BHAHkgLcFuhiFkUPLreNi3, vybraná varianta B):**
   Bybit podstrčený (OI konstantní) — součty ověřovat na `/tools/`.
   v0.80.1: u Shody i podíl z Real („229 M · 40 %") — Shoda je podmnožina,
   sčítat se nedá.
+- **v0.81.0 — model podle timeframu** (video uživatele: na 1W jen blok
+  vpravo): `obdobiModelu` — do 1h hodinová data (~25 dní), 4h po 4 h
+  (~100 dní), od 1D denní; `odhadPasu(…, delka)`. Naostro: Bybit denní od
+  2025-03, 834 hladin; **Binance OI jen 30 dní** na jakémkoli období (na
+  1W s volbou Binance zůstane historie krátká — All CEX ji má z Bybitu
+  a OKX). Reálná mapa má historii od 22. 10. 2026 (začátek sběru).
 - Tmavý svislý pruh po prudkém pohybu není chyba: cena vybrala pásma
   a OI zároveň klesal → nové pozice nevznikly.
 - Test: `test-likvidace-graf.py` (Binance na 4h, bod 4: SPCX bez HL má

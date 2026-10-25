@@ -2522,17 +2522,26 @@ const burzyOdhadu = (burza, jenGraf) => (jenGraf && BURZY_ODHADU.includes(burza)
 const NAZVY_BURZ_ODHADU = { binance: 'Binance', bybit: 'Bybit', okx: 'OKX' };
 
 const odhadyMapy = new Map();   // coin → { cas, slib }
-function odhadMapy(symbol, burza, nasobek = 1, jenGraf = true) {
+/*
+ * Data pro model podle timeframu (v0.81.0, video uživatele: na 1W jen blok
+ * vpravo): hodinová sahají ~25 dní (600 svíček), na 1W to jsou 3 svíčky.
+ * Do 1h hodinová, 4h po 4 h (~100 dní), od 1D denní (Bybit / OKX ~1,5 roku;
+ * Binance dává OI jen za 30 dní na jakémkoli období).
+ */
+const obdobiModelu = (delkaSvicky) => (delkaSvicky >= 86400e3 ? ['D', 86400e3] : delkaSvicky >= 4 * 3600e3 ? ['240', 4 * 3600e3] : ['60', 3600e3]);
+
+function odhadMapy(symbol, burza, nasobek = 1, jenGraf = true, delkaSvicky = 3600e3) {
   const zdroje = burzyOdhadu(burza, jenGraf);
   const par = zdroje.length === 1 ? symbol : symbol.replace(/USDC$/, 'USDT');
-  const klic = `${par}|${nasobek}|${zdroje.join('+')}`;
+  const [obdobi, delka] = obdobiModelu(delkaSvicky);
+  const klic = `${par}|${nasobek}|${zdroje.join('+')}|${obdobi}`;
   const ulozeny = odhadyMapy.get(klic);
   if (ulozeny && Date.now() - ulozeny.cas < 10 * 60000) return ulozeny.slib;
   const slib = (async () => {
     const vysledky = await Promise.all(zdroje.map(async (b) => {
       try {
         const k = verejnyKlient(b);
-        const [svicky, oi] = await Promise.all([k.getKlines(par, '60', 600), k.getOpenInterest(par, '60')]);
+        const [svicky, oi] = await Promise.all([k.getKlines(par, obdobi, 600), k.getOpenInterest(par, obdobi)]);
         return { b, svicky, oi };
       } catch { return null; }
     }));
@@ -2541,7 +2550,7 @@ function odhadMapy(symbol, burza, nasobek = 1, jenGraf = true) {
     // Svíčky z burzy s delší řadou (cena je na obou skoro stejná).
     const svicky = platne.reduce((x, y) => (y.svicky.length > x.svicky.length ? y : x)).svicky;
     const mark = svicky[svicky.length - 1].close;
-    const pasy = odhadPasu(svicky, platne.map((v) => v.oi), krokPasma(mark * nasobek));
+    const pasy = odhadPasu(svicky, platne.map((v) => v.oi), krokPasma(mark * nasobek), Date.now(), delka);
     return { pasy, mark, burzy: platne.map((v) => v.b) };
   })();
   odhadyMapy.set(klic, { cas: Date.now(), slib });
@@ -2564,7 +2573,7 @@ async function nactiMapu() {
     chceReal ? likvidace.pasy({
       symbol, burza, od: oknoMapy.od, doKdy: Date.now(), delkaSvicky: DELKA_INTERVALU[chartInterval] || 3600e3,
     }).catch(() => undefined) : null,   // síť — zkusí se při další obnově
-    chceOdhad ? odhadMapy(symbol, burza, nasobek, zdroj === 'burza').catch(() => null) : null,
+    chceOdhad ? odhadMapy(symbol, burza, nasobek, zdroj === 'burza', DELKA_INTERVALU[chartInterval] || 3600e3).catch(() => null) : null,
   ]);
   if (zadost !== zadostMapy || symbol !== chartSymbol || !chart) return;
   if (chceReal) dostupneZdroje.skutecne = Boolean(skutecne?.pasy?.length);
