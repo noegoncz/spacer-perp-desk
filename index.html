@@ -230,11 +230,13 @@
         <div id="liqPosuvnikPruh" class="liq-pruh"><div class="liq-zavoj"></div><div class="liq-uchyt"></div></div>
         <span id="liqPosuvnikStitek" class="liq-stitek"></span>
       </div>
-      <!-- Zdroj likvidační mapy (v0.74.0): odhad z CEX / obojí / skutečné z Hyperliquidu. -->
+      <!-- Zdroj likvidační mapy (v0.78.0): kalkulovaná z burzy grafu / ze všech CEX,
+           skutečná z Hyperliquidu, mix (všechny CEX + skutečná). -->
       <div id="liqZdroj" class="liq-zdroj" hidden>
-        <button type="button" data-zdroj="odhad"><b data-i18n="liq.srcEst">Calculated</b><small>Binance + Bybit</small></button>
-        <button type="button" data-zdroj="oboje"><b data-i18n="liq.srcBoth">Both</b><small data-i18n="liq.srcBothSub">sum</small></button>
-        <button type="button" data-zdroj="skutecne"><b data-i18n="liq.srcActual">Real</b><small>Hyperliquid</small></button>
+        <button type="button" data-zdroj="burza"><b id="liqZdrojBurza">Binance</b></button>
+        <button type="button" data-zdroj="vse"><b data-i18n="liq.srcAll">All CEX</b></button>
+        <button type="button" data-zdroj="skutecne"><b data-i18n="liq.srcActual">Real</b></button>
+        <button type="button" data-zdroj="mix"><b data-i18n="liq.srcMix">Mix</b></button>
       </div>
 
 

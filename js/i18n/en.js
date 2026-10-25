@@ -923,5 +923,7 @@ export const en = {
   "liq.srcEst": "Calculated",
   "liq.srcBoth": "Both",
   "liq.srcBothSub": "sum",
+  "liq.srcAll": "All CEX",
+  "liq.srcMix": "Mix",
   "liq.srcActual": "Real",
 };

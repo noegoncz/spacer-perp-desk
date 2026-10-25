@@ -918,5 +918,7 @@ export const cs = {
   "liq.srcEst": "Kalkulovaná",
   "liq.srcBoth": "Obojí",
   "liq.srcBothSub": "součet",
+  "liq.srcAll": "Všechny CEX",
+  "liq.srcMix": "Mix",
   "liq.srcActual": "Reálná",
 };

@@ -3521,6 +3521,18 @@ https://claude.ai/artifact/BHAHkgLcFuhiFkUPLreNi3, vybraná varianta B):**
   z 97. percentilu** (Both: reálná už nepřebije kalkulovanou; práh z max
   schovával skoro celou reálnou mapu). Výchozí filtr 10 %, posuvník
   72 px / pruh 16 px v barvách škály. Šipky ▲/▼ zůstaly v barvách stran.
+- **v0.78.0 — přepínač se čtyřmi volbami úplně nahoře** (přání uživatele):
+  `burza` (název burzy grafu, jen Binance / Bybit / OKX) · `vse` (All CEX =
+  Binance + Bybit + OKX) · `skutecne` (Hyperliquid) · `mix` (vše + reálná,
+  výchozí). Volba burz z nabídky oka zmizela; staré `odhad` / `oboje` /
+  `perpdesk.liqBurzy` se převedou (`zdrojMapy`). Stahuje se jen to, co volba
+  ukazuje. Popisek mapy a šipka ▲ pod přepínačem, posuvník od 78 px.
+  **Reálné hladiny, kterými prošla svíčka grafu, se neukončí** — `prosla`
+  a od toho místa čárkovaně slabší (pozice na HL dál existují: mark cena
+  ≠ knot Binance, částečné likvidace, přidaný margin). Kalkulovaná končí
+  dál. Reálná: hodnota trvající < 30 min se nekreslí (`KRATKY_SKOK`).
+  Barva z maxima zdroje (√), práh filtru dál z p97. ⚠ Uživatel používá
+  jen APK — OKX (bez CORS) jde přes nativní HTTP, v prohlížeči neřešit.
 - Tmavý svislý pruh po prudkém pohybu není chyba: cena vybrala pásma
   a OI zároveň klesal → nové pozice nevznikly.
 - Test: `test-likvidace-graf.py` (Binance na 4h, bod 4: SPCX bez HL má

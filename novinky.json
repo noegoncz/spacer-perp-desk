@@ -1,14 +1,19 @@
 {
-  "verze": "0.77.0",
+  "verze": "0.78.0",
   "novinky": [
     {
-      "en": "New liquidation map look: clean lines, colour and thickness by size (green small, yellow large), only the strongest level of each cluster.",
-      "cs": "Nový vzhled likvidační mapy: čisté čáry, barva a tloušťka podle velikosti (zelená malá, žlutá velká), z každého shluku jen nejsilnější hladina."
+      "en": "Liquidation map switch at the very top: this exchange, All CEX (Binance + Bybit + OKX), Real (Hyperliquid) or Mix.",
+      "cs": "Přepínač likvidační mapy úplně nahoře: tato burza, Všechny CEX (Binance + Bybit + OKX), Reálná (Hyperliquid) nebo Mix."
     },
     {
-      "en": "In Both, calculated and real liquidations each have their own scale, so neither hides the other. Wider filter slider.",
-      "cs": "V režimu Both má kalkulovaná i reálná mapa vlastní měřítko, takže jedna nepřebije druhou. Širší posuvník filtru."
+      "en": "Real Hyperliquid levels the price has passed stay visible as a dashed line — the positions are still there.",
+      "cs": "Reálné hladiny Hyperliquidu, kterými cena prošla, zůstávají jako čárkovaná čára — pozice tam pořád jsou."
     }
   ],
-  "opravy": []
+  "opravy": [
+    {
+      "en": "Calculated map: only the truly largest levels are yellow; short data jumps on real levels are smoothed out.",
+      "cs": "Kalkulovaná mapa: žlutě jen opravdu největší hladiny; krátké skoky v datech reálných hladin jsou vyhlazené."
+    }
+  ]
 }

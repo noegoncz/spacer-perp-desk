@@ -2477,12 +2477,26 @@ async function nactiOi() {
  * Likvidace patří ke coinu, ne k burze — na grafu kterékoli burzy se
  * posunou o poměr cen. `perpdesk.liqZdroj`, platí pro všechny grafy.
  */
-const ZDROJE_MAPY = ['odhad', 'oboje', 'skutecne'];
+/*
+ * v0.78.0 (přání uživatele): čtyři volby v přepínači nahoře — kalkulovaná
+ * z burzy grafu („Binance"), ze všech CEX (Binance + Bybit + OKX), reálná
+ * (Hyperliquid) a mix (všechny CEX + reálná). Volba burz z nabídky oka
+ * zmizela. Staré hodnoty: 'odhad' → burza, 'oboje' → mix.
+ */
+const ZDROJE_MAPY = ['burza', 'vse', 'skutecne', 'mix'];
 const zdrojMapy = () => {
-  const z = store.loadJson('perpdesk.liqZdroj', 'oboje');
-  return ZDROJE_MAPY.includes(z) ? z : 'oboje';
+  let z = store.loadJson('perpdesk.liqZdroj', 'mix');
+  if (z === 'odhad') z = store.loadJson('perpdesk.liqBurzy', 'graf') === 'vse' ? 'vse' : 'burza';
+  if (z === 'oboje') z = 'mix';
+  if (!ZDROJE_MAPY.includes(z)) z = 'mix';
+  // Graf burzy bez historie OI nemá volbu „burza grafu“ — počítá ze všech.
+  if (z === 'burza' && !BURZY_ODHADU.includes(burzaGrafuMapy())) z = 'vse';
+  return z;
 };
-let dostupneZdroje = { odhad: false, skutecne: false };
+const burzaGrafuMapy = () => chartBurza || client?.burza?.id || 'bybit';
+// Které zdroje mají na tomto grafu data (undefined = ještě nevíme).
+let dostupneZdroje = {};
+let dostupneProGraf = '';
 
 /*
  * Odhad: hodinové svíčky + OI z Binance a Bybitu (~3–4 týdny zpět), model
@@ -2495,16 +2509,15 @@ let dostupneZdroje = { odhad: false, skutecne: false };
  * po srovnání s Coinglassem): výchozí jen burza grafu (Binance graf = OI
  * Binance, jako Coinglass u jedné burzy), volba „All exchanges“ = součet
  * Binance + Bybit + OKX. Graf burzy bez historie OI (Hyperliquid, Gate…)
- * počítá ze všech. `perpdesk.liqBurzy`: 'graf' | 'vse'.
+ * počítá ze všech. Volí se přepínačem nad grafem (v0.78.0, viz zdrojMapy).
  */
 const BURZY_ODHADU = ['binance', 'bybit', 'okx'];
-const rezimBurzMapy = () => (store.loadJson('perpdesk.liqBurzy', 'graf') === 'vse' ? 'vse' : 'graf');
-const burzyOdhadu = (burza) => (rezimBurzMapy() === 'graf' && BURZY_ODHADU.includes(burza) ? [burza] : BURZY_ODHADU);
+const burzyOdhadu = (burza, jenGraf) => (jenGraf && BURZY_ODHADU.includes(burza) ? [burza] : BURZY_ODHADU);
 const NAZVY_BURZ_ODHADU = { binance: 'Binance', bybit: 'Bybit', okx: 'OKX' };
 
 const odhadyMapy = new Map();   // coin → { cas, slib }
-function odhadMapy(symbol, burza, nasobek = 1) {
-  const zdroje = burzyOdhadu(burza);
+function odhadMapy(symbol, burza, nasobek = 1, jenGraf = true) {
+  const zdroje = burzyOdhadu(burza, jenGraf);
   const par = zdroje.length === 1 ? symbol : symbol.replace(/USDC$/, 'USDT');
   const klic = `${par}|${nasobek}|${zdroje.join('+')}`;
   const ulozeny = odhadyMapy.get(klic);
@@ -2535,16 +2548,21 @@ async function nactiMapu() {
   if (!chart.getLayers().likvidace) return;
   const zadost = ++zadostMapy;
   const symbol = chartSymbol;
-  const burza = chartBurza || client?.burza?.id || 'bybit';
+  const burza = burzaGrafuMapy();
+  if (dostupneProGraf !== `${burza}:${symbol}`) { dostupneZdroje = {}; dostupneProGraf = `${burza}:${symbol}`; }
   const zdroj = zdrojMapy();
+  const nasobek = likvidace.nasobekPasma(DELKA_INTERVALU[chartInterval] || 3600e3);
+  const chceReal = zdroj === 'skutecne' || zdroj === 'mix';
+  const chceOdhad = zdroj !== 'skutecne';
   const [skutecne, odhad] = await Promise.all([
-    likvidace.pasy({
+    chceReal ? likvidace.pasy({
       symbol, burza, od: oknoMapy.od, doKdy: Date.now(), delkaSvicky: DELKA_INTERVALU[chartInterval] || 3600e3,
-    }).catch(() => undefined),   // síť — zkusí se při další obnově
-    odhadMapy(symbol, burza, likvidace.nasobekPasma(DELKA_INTERVALU[chartInterval] || 3600e3)).catch(() => null),
+    }).catch(() => undefined) : null,   // síť — zkusí se při další obnově
+    chceOdhad ? odhadMapy(symbol, burza, nasobek, zdroj === 'burza').catch(() => null) : null,
   ]);
   if (zadost !== zadostMapy || symbol !== chartSymbol || !chart) return;
-  dostupneZdroje = { odhad: Boolean(odhad?.pasy?.length), skutecne: Boolean(skutecne?.pasy?.length) };
+  if (chceReal) dostupneZdroje.skutecne = Boolean(skutecne?.pasy?.length);
+  if (chceOdhad) dostupneZdroje[zdroj === 'burza' ? 'burza' : 'vse'] = Boolean(odhad?.pasy?.length);
   // Posun na cenu této burzy (BTCUSDT na Binance ≠ BTC na Hyperliquidu).
   const cena = Number(poslednicCena) || Number(chartTrh?.last) || 0;
   const posun = (pasy, mark, presne) => {
@@ -2553,13 +2571,13 @@ async function nactiMapu() {
   };
   const pasy = [];
   const casti = [];
-  if (zdroj !== 'odhad' && dostupneZdroje.skutecne) {
+  if (chceReal && skutecne?.pasy?.length) {
     const minut = Math.max(0, Math.round((Date.now() - skutecne.cas) / 60000));
     const popis = t(burza === 'hyperliquid' ? 'liq.label' : 'liq.labelOther', { min: minut });
     pasy.push(...posun(skutecne.pasy, skutecne.mark, burza === 'hyperliquid').map((p) => ({ ...p, popis, zdroj: 'realna' })));
     casti.push(popis);
   }
-  if (zdroj !== 'skutecne' && dostupneZdroje.odhad) {
+  if (chceOdhad && odhad?.pasy?.length) {
     const popis = t('liq.labelEst', { burzy: odhad.burzy.map((b) => NAZVY_BURZ_ODHADU[b] || b).join(' + ') });
     const od = oknoMapy.od;
     const ted = Date.now();
@@ -2578,10 +2596,15 @@ function kresliPrepinacZdroje() {
   const box = el('liqZdroj');
   if (!box) return;
   const zdroj = zdrojMapy();
+  const burza = burzaGrafuMapy();
+  const nazev = el('liqZdrojBurza');
+  if (nazev) nazev.textContent = NAZVY_BURZ_ODHADU[burza] || burza;
   box.querySelectorAll('[data-zdroj]').forEach((b) => {
     const z = b.dataset.zdroj;
+    if (z === 'burza') b.hidden = !BURZY_ODHADU.includes(burza);
     b.classList.toggle('active', z === zdroj);
-    b.classList.toggle('bez-dat', z !== 'oboje' && !dostupneZdroje[z]);
+    // Zašedlá jen volba, o které víme, že data nemá (ještě nenačtená ne).
+    b.classList.toggle('bez-dat', z !== 'mix' && dostupneZdroje[z] === false);
   });
 }
 
@@ -2982,27 +3005,6 @@ function otevriVrstvy() {
   });
   jednotka.append(jText, volba);
 
-  // Z jakých burz kalkulovaná mapa (v0.76.0): burza grafu / všechny.
-  const burzyMapy = document.createElement('div');
-  burzyMapy.className = 'nabidka-radek';
-  const bText = document.createElement('span');
-  bText.textContent = t('layers.liqExchanges');
-  const bVolba = document.createElement('div');
-  bVolba.className = 'nabidka-volba';
-  [['graf', t('layers.liqExChart')], ['vse', t('layers.liqExAll')]].forEach(([rezim, popis]) => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.dataset.liqBurzy = rezim;
-    b.textContent = popis;
-    b.classList.toggle('active', rezimBurzMapy() === rezim);
-    b.addEventListener('click', () => {
-      store.saveJson('perpdesk.liqBurzy', rezim);
-      bVolba.querySelectorAll('button').forEach((x) => x.classList.toggle('active', x.dataset.liqBurzy === rezim));
-      nactiMapu();
-    });
-    bVolba.append(b);
-  });
-  burzyMapy.append(bText, bVolba);
 
   const smazat = document.createElement('button');
   smazat.type = 'button';
@@ -3016,7 +3018,7 @@ function otevriVrstvy() {
     if (smazKresby()) zavriNabidky();
   });
 
-  el('layersBody').replaceChildren(...radky, burzyMapy, jednotka, smazat);
+  el('layersBody').replaceChildren(...radky, jednotka, smazat);
   popisVsechVrstev();
   otevriNabidku('sheetLayers');
 }
@@ -3049,7 +3051,8 @@ function ukazPosuvnikMapy() {
         if (!r.height) return;
         const rr = rodic.getBoundingClientRect();
         // Na střed plochy svíček (v0.75.2 — vpravo vypadal vyosený, hlavně na úzkém displeji).
-        zdroj.style.top = `${r.top - rr.top + 54}px`;
+        // Úplně nahoře (v0.78.0, přání uživatele — ať neleze do grafu).
+        zdroj.style.top = `${r.top - rr.top + 4}px`;
         zdroj.style.left = `${r.left - rr.left + r.width / 2}px`;
       });
     }

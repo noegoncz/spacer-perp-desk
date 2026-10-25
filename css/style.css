@@ -3297,7 +3297,7 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 
 /* ---------- filtr likvidační mapy v grafu (v0.73.0) ---------- */
 .liq-posuvnik {
-  position: absolute; z-index: 6; left: 0; top: 54px; height: 42%; width: 72px;
+  position: absolute; z-index: 6; left: 0; top: 78px; height: 42%; width: 72px;
   touch-action: none; cursor: ns-resize; --uroven: 0%;
 }
 /* Plynulý náběh posuvníku i přepínače mapy (v0.75.1, přání uživatele). */

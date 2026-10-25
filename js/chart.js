@@ -991,17 +991,40 @@ const barvaMapy = (v) => {
   const k = Math.min(1, Math.max(0, (v - a) / (b - a)));
   return ca.map((x, j) => Math.round(x + (cb[j] - x) * k));
 };
+const KRATKY_SKOK = 30 * 60000;
 function kresliCaru(ctx, p, ref, x1, x2, y, xCasu) {
-  const pr = p.prubeh?.length ? p.prubeh : [[p.od, hodnotaPasu(p)]];
+  let pr = p.prubeh?.length ? p.prubeh : [[p.od, hodnotaPasu(p)]];
+  /*
+   * Reálná mapa: hodnota, která vydržela < 30 min, je skok v datech (účet
+   * přečtený s jinou hodnotou), ne změna objemu — nekreslí se (v0.78.0,
+   * uživatel: žluté tečky na čarách). Poslední hodnota zůstává vždy.
+   */
+  if (p.zdroj === 'realna' && pr.length > 2) {
+    pr = pr.filter((b, i) => i === 0 || i === pr.length - 1 || pr[i + 1][0] - b[0] >= KRATKY_SKOK);
+  }
+  const xProsla = p.prosla ? xCasu(p.prosla) : Infinity;
   for (let i = 0; i < pr.length; i += 1) {
     const a = Math.max(x1, i ? xCasu(pr[i][0]) : x1);
     const b = Math.min(x2, i + 1 < pr.length ? xCasu(pr[i + 1][0]) : x2);
     if (!Number.isFinite(a) || !Number.isFinite(b) || b <= a) continue;
-    const v = Math.min(1, pr[i][1] / ref);
+    const v = Math.sqrt(Math.min(1, pr[i][1] / ref));
     const [r, g, bl] = barvaMapy(v);
     const tl = 1 + 3 * v;
-    ctx.fillStyle = `rgba(${r},${g},${bl},${(0.55 + 0.45 * v).toFixed(3)})`;
-    ctx.fillRect(a, y - tl / 2, b - a, tl);
+    const plna = Math.min(b, xProsla);
+    if (plna > a) {
+      ctx.fillStyle = `rgba(${r},${g},${bl},${(0.55 + 0.45 * v).toFixed(3)})`;
+      ctx.fillRect(a, y - tl / 2, plna - a, tl);
+    }
+    /*
+     * Za místem, kde svíčka grafu hladinou prošla (jen reálná mapa —
+     * pozice na Hyperliquidu dál existují, mark ceně to nestačilo nebo
+     * likvidace byla částečná): čárkovaná a slabší (v0.78.0, varianta C).
+     */
+    if (b > plna) {
+      ctx.fillStyle = `rgba(${r},${g},${bl},${(0.25 + 0.3 * v).toFixed(3)})`;
+      const t2 = Math.max(1, tl * 0.6);
+      for (let x = Math.max(a, plna); x < b; x += 8) ctx.fillRect(x, y - t2 / 2, Math.min(4, b - x), t2);
+    }
   }
 }
 /*
@@ -1086,11 +1109,12 @@ function registrovatLikvidace() {
       prahMapyUsd = 0;
       for (const [k, hodnoty] of meritka) {
         hodnoty.sort((x, y) => x - y);
-        // Měřítko barev i práh filtru z 97. percentilu (v0.77.0) — jeden
-        // extrém by zbytek zhasnul a filtr by schoval skoro všechno.
-        const ref = hodnoty[Math.floor(hodnoty.length * 0.97)] || hodnoty[hodnoty.length - 1];
-        meritka.set(k, { prah: ref * filtrMapy, ref });
-        prahMapyUsd = Math.max(prahMapyUsd, ref * filtrMapy);
+        // Práh filtru z 97. percentilu (v0.77.0 — z maxima schoval skoro
+        // celou reálnou mapu). Barva z maxima (v0.78.0, uživatel: přežluté —
+        // s p97 měly desítky čar plnou žlutou); odmocnina, ať střed není tmavý.
+        const p97 = hodnoty[Math.floor(hodnoty.length * 0.97)] || hodnoty[hodnoty.length - 1];
+        meritka.set(k, { prah: p97 * filtrMapy, ref: hodnoty[hodnoty.length - 1] });
+        prahMapyUsd = Math.max(prahMapyUsd, p97 * filtrMapy);
       }
       const pravy = bounding.width;
       /*
@@ -1124,7 +1148,8 @@ function registrovatLikvidace() {
       ctx.font = '11px -apple-system, "Segoe UI", Roboto, sans-serif';
       ctx.fillStyle = 'rgba(139,155,176,0.9)';
       ctx.textBaseline = 'top';
-      if (likvidace.popis) ctx.fillText(likvidace.popis, 8, 6);
+      // Pod přepínačem zdroje (ten je od v0.78.0 úplně nahoře).
+      if (likvidace.popis) ctx.fillText(likvidace.popis, 8, 40);
       /*
        * Nejbližší velký shluk **mimo obraz** nahoře a dole (šipka u okraje):
        * skutečné likvidace velkých pozic bývají jednotky až desítky procent
@@ -1146,7 +1171,7 @@ function registrovatLikvidace() {
       const mil = (v) => (v >= 1e6 ? `${(v / 1e6).toFixed(v >= 1e8 ? 0 : 1)} M` : `${Math.round(v / 1e3)} k`);
       const cenaText = (c) => (c >= 1000 ? Math.round(c).toLocaleString('en-US') : String(+c.toPrecision(5)));
       ctx.fillStyle = `rgba(${BARVA_SHORTU},0.95)`;
-      if (nad) ctx.fillText(`▲ ${cenaText(nad.cena)} · ${mil(nad.usd)}`, 8, 22);
+      if (nad) ctx.fillText(`▲ ${cenaText(nad.cena)} · ${mil(nad.usd)}`, 8, 56);
       ctx.textBaseline = 'bottom';
       ctx.fillStyle = `rgba(${BARVA_LONGU},0.95)`;
       if (pod) ctx.fillText(`▼ ${cenaText(pod.cena)} · ${mil(pod.usd)}`, 8, bounding.height - 6);
@@ -3734,7 +3759,10 @@ export function createPriceChart(container, layer, handlers = {}) {
           const hrana = p.long ? p.cena - p.vyska / 2 : p.cena + p.vyska / 2;
           for (let i = prvniPo(p.od); i < svicky.length; i += 1) {
             const s = svicky[i];
-            if (p.long ? s.low <= hrana : s.high >= hrana) return { ...p, do: s.timestamp, vybrano: true };
+            if (p.long ? s.low <= hrana : s.high >= hrana) {
+              // Reálné pozice dál existují (Hyperliquid je má) — jen označit (v0.78.0).
+              return p.zdroj === 'realna' ? { ...p, prosla: s.timestamp } : { ...p, do: s.timestamp, vybrano: true };
+            }
           }
           return p;
         }) };
