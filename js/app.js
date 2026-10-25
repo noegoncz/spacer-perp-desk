@@ -2582,6 +2582,12 @@ let dostupneProGraf = '';
 const BURZY_ODHADU = ['binance', 'bybit', 'okx'];
 const burzyOdhadu = (burza, jenGraf) => (jenGraf && BURZY_ODHADU.includes(burza) ? [burza] : BURZY_ODHADU);
 const NAZVY_BURZ_ODHADU = { binance: 'Binance', bybit: 'Bybit', okx: 'OKX' };
+// Zjednodušené značky burz pro sbalenou lištu mapy (v0.84.1) — barvy burz, ne oficiální loga.
+const ZNACKY_BURZ = {
+  binance: '<svg viewBox="0 0 20 20"><g fill="#f0b90b"><rect x="7.6" y="2" width="4.8" height="4.8" transform="rotate(45 10 4.4)"/><rect x="7.6" y="7.6" width="4.8" height="4.8" transform="rotate(45 10 10)"/><rect x="7.6" y="13.2" width="4.8" height="4.8" transform="rotate(45 10 15.6)"/><rect x="2" y="7.6" width="4.8" height="4.8" transform="rotate(45 4.4 10)"/><rect x="13.2" y="7.6" width="4.8" height="4.8" transform="rotate(45 15.6 10)"/></g></svg>',
+  bybit: '<svg viewBox="0 0 20 20"><rect x="1" y="3" width="18" height="14" rx="3" fill="#17181e" stroke="#f7a600" stroke-width="1.2"/><text x="10" y="13.6" text-anchor="middle" font-size="8.5" font-weight="800" fill="#f7a600" font-family="system-ui,sans-serif">BY</text></svg>',
+  okx: '<svg viewBox="0 0 20 20"><g fill="#e6edf6"><rect x="2" y="2" width="5" height="5"/><rect x="13" y="2" width="5" height="5"/><rect x="7.5" y="7.5" width="5" height="5"/><rect x="2" y="13" width="5" height="5"/><rect x="13" y="13" width="5" height="5"/></g></svg>',
+};
 
 const odhadyMapy = new Map();   // coin → { cas, slib }
 /*
@@ -2786,6 +2792,11 @@ function kresliPrepinacZdroje() {
   const burza = burzaGrafuMapy();
   const nazev = el('liqZdrojBurza');
   if (nazev) nazev.textContent = NAZVY_BURZ_ODHADU[burza] || burza;
+  const logo = el('liqZdrojLogo');
+  if (logo && logo.dataset.burza !== burza) {
+    logo.dataset.burza = burza;
+    logo.innerHTML = ZNACKY_BURZ[burza] || '';
+  }
   box.querySelectorAll('[data-zdroj]').forEach((b) => {
     const z = b.dataset.zdroj;
     if (z === 'burza') b.hidden = !BURZY_ODHADU.includes(burza);
@@ -3263,9 +3274,17 @@ const SIRKA_LISTY = 112;
 function ukazPosuvnikMapy() {
   const lista = el('liqLista');
   if (!lista) return;
+  const bylaSkryta = lista.hidden;
   lista.hidden = !(chart && oknoMapy && chart.getLayers().likvidace && !prohlizenyObchod);
-  chart?.setMapInset(lista.hidden ? 0 : SIRKA_LISTY + 4);
-  if (lista.hidden) return;
+  if (lista.hidden) {
+    clearTimeout(casovacListy);
+    lista.classList.remove('sbalena');
+    chart?.setMapInset(0);
+    return;
+  }
+  // Nově ukázaná lišta je rozbalená a po 3 s se sbalí.
+  if (bylaSkryta) sbalListu(false);
+  else chart?.setMapInset((lista.classList.contains('sbalena') ? 46 : SIRKA_LISTY) + 4);
   kresliPrepinacZdroje();
   kresliProbehle();
   const box = el('chartBox');
@@ -3304,9 +3323,16 @@ function kresliZebrik() {
     b.type = 'button';
     b.dataset.filtr = String(f);
     b.style.setProperty('--barva', BARVY_SCHODU[Math.round((i / Math.max(1, stupne.length - 1)) * 7)]);
-    let text = f === 0 ? t('liq.filterAll') : p97 > 0 ? `≥ ${usdKratce(p97 * f)}` : `${Math.round(f * 100)} %`;
+    const rozsah = f === 0 ? t('liq.filterAll') : p97 > 0 ? usdKratce(p97 * f) : `${Math.round(f * 100)} %`;
+    let text = f === 0 || !(p97 > 0) ? rozsah : `≥ ${rozsah}`;
     if (i === vybrany && hladin != null) text += ` · ${hladin}`;
-    b.textContent = text;
+    const dlouhe = document.createElement('span');
+    dlouhe.className = 'dlouhe';
+    dlouhe.textContent = text;
+    const kratke = document.createElement('span');
+    kratke.className = 'kratke';
+    kratke.textContent = rozsah.replace(' ', '');
+    b.append(dlouhe, kratke);
     b.classList.toggle('active', i === vybrany);
     b.classList.toggle('nad', i > vybrany);
     return b;
@@ -3314,7 +3340,41 @@ function kresliZebrik() {
   box.replaceChildren(...tlacitka);
 }
 
+/*
+ * Sbalení lišty (v0.84.1, přání uživatele): po 3 s bez dotyku se zúží
+ * (schody jen s rozsahem, zdroje značkou, proběhlé ikonou). Dotyk na
+ * sbalenou lištu ji jen rozbalí — nic nepřepne (klepnutí se spolkne).
+ */
+let casovacListy = null;
+const sbalitListuPo = () => globalThis.__sbalitListuPo ?? 3000;
+
+function naplanujSbaleni() {
+  clearTimeout(casovacListy);
+  casovacListy = setTimeout(() => sbalListu(true), sbalitListuPo());
+}
+
+function sbalListu(sbalit) {
+  const lista = el('liqLista');
+  if (!lista) return;
+  lista.classList.toggle('sbalena', sbalit);
+  chart?.setMapInset(lista.hidden ? 0 : (sbalit ? 46 : SIRKA_LISTY) + 4);
+  if (!sbalit) naplanujSbaleni();
+}
+
 function zapojPosuvnikMapy() {
+  const lista = el('liqLista');
+  let spolknout = false;
+  lista?.addEventListener('pointerdown', () => {
+    spolknout = lista.classList.contains('sbalena');
+    if (spolknout) sbalListu(false);
+    else naplanujSbaleni();
+  }, true);
+  lista?.addEventListener('click', (e) => {
+    if (!spolknout) return;
+    spolknout = false;
+    e.stopImmediatePropagation();
+    e.preventDefault();
+  }, true);
   el('liqZebrik')?.addEventListener('click', (e) => {
     const b = e.target.closest('[data-filtr]');
     if (!b) return;

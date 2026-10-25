@@ -31,6 +31,7 @@ odpoved = json.dumps({'ok': True, 't': int(time.time() * 1000), 'u': udalosti})
 
 mock = open(os.path.join(KOREN, 'tools', 'mock-bybit.js'), encoding='utf-8').read()
 mock = "sessionStorage.setItem('__likvidovano', %s);" % json.dumps(odpoved) + mock + """
+window.__sbalitListuPo = 1e9;
 localStorage.setItem('perpdesk.lists', JSON.stringify({ verze: 1, aktivni: 'a', seznamy: [{ id: 'a', nazev: 'Main', polozky: %s }] }));
 localStorage.setItem('perpdesk.chartView', JSON.stringify({ 'binance:BTCUSDT': { interval: '15' }, 'binance:1000PEPEUSDT': { interval: '15' } }));
 window.__dotazyLikv = [];

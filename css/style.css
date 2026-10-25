@@ -3310,8 +3310,21 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 @keyframes liqNabeh { from { opacity: 0; } to { opacity: 1; } }
 .liq-lista {
   position: absolute; z-index: 6; width: 112px; display: flex; flex-direction: column; gap: 6px;
-  animation: liqNabeh 0.45s ease-out;
+  animation: liqNabeh 0.45s ease-out; transition: width 0.25s ease-out;
 }
+/* Sbalená lišta (v0.84.1, přání uživatele — po 3 s bez dotyku): úzká,
+   schody jen s rozsahem, zdroje jen značkou, proběhlé jen ikonou. */
+.liq-lista.sbalena { width: 46px; }
+.liq-zebrik .kratke, .liq-lista.sbalena .liq-zebrik .dlouhe { display: none; }
+.liq-lista.sbalena .liq-zebrik .kratke { display: inline; }
+.liq-lista.sbalena .liq-zebrik button { padding: 0 2px; font-size: 0.62rem; }
+.liq-lista.sbalena .liq-zdroj button { min-height: 34px; padding: 3px 0; }
+.liq-lista.sbalena .liq-zdroj button > :not(.liq-logo),
+.liq-lista.sbalena .liq-probehle > :not(.liq-bub) { display: none; }
+.liq-lista.sbalena .liq-probehle { padding: 8px 0; }
+.liq-logo { display: none; width: 22px; height: 22px; }
+.liq-logo svg { width: 100%; height: 100%; display: block; }
+.liq-lista.sbalena .liq-logo { display: block; }
 .liq-zebrik { display: flex; flex-direction: column; gap: 3px; }
 .liq-zebrik button {
   height: 26px; border: 0; border-radius: 3px; padding: 0 4px; cursor: pointer;
@@ -3341,7 +3354,7 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
   border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; background: rgba(11,15,20,0.8); color: var(--text);
   display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 5px 4px; cursor: pointer; line-height: 1.15;
 }
-.liq-probehle b { font-size: 0.68rem; font-weight: 700; }
+.liq-probehle b { font-size: 0.66rem; font-weight: 700; text-align: center; }
 .liq-probehle small { font-size: 0.56rem; opacity: 0.75; white-space: nowrap; }
 .liq-probehle[aria-pressed="true"] { border-color: #3ee6a4; background: rgba(62,230,164,0.14); }
 .liq-probehle[aria-pressed="false"] { opacity: 0.6; }

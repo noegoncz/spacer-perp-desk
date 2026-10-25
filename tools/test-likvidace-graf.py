@@ -23,6 +23,7 @@ KOREN = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 KLICE = ['hyperliquid:BTCUSDC', 'binance:BTCUSDT', 'binance:SPCXUSDT']
 mock = open(os.path.join(KOREN, 'tools', 'mock-bybit.js'), encoding='utf-8').read()
 mock = "sessionStorage.setItem('__mapaNaostro', '1');" + mock + """
+window.__sbalitListuPo = 1e9;
 localStorage.setItem('perpdesk.lists', JSON.stringify({ verze: 1, aktivni: 'a',
   seznamy: [{ id: 'a', nazev: 'Main', polozky: %s }] }));
 localStorage.setItem('perpdesk.chartView', JSON.stringify({ 'hyperliquid:BTCUSDC': { interval: '1' }, 'binance:BTCUSDT': { interval: '30' } }));
@@ -236,6 +237,22 @@ over(ev("document.getElementById('liqProbehle').getAttribute('aria-pressed')") =
 over(ev("!window.__graf.getIndicators({ name: 'LIKVBUB' }).length"), 'bubliny pryč')
 klepni('#liqProbehle')
 over(ev("document.getElementById('liqProbehle').getAttribute('aria-pressed')") == 'true', 'a zase zapne')
+print('7) lišta se po chvíli bez dotyku sbalí (v0.84.1)')
+ev("window.__sbalitListuPo = 400")
+klepni('#liqZebrik button:last-child')
+time.sleep(0.8)
+over(ev("document.getElementById('liqLista').classList.contains('sbalena')"), 'po chvíli sbalená')
+sirka = ev("document.getElementById('liqLista').getBoundingClientRect().width")
+over(sirka and sirka < 60, f'úzká ({sirka})')
+kratke = ev("[...document.querySelectorAll('#liqZebrik .kratke')].map((e) => getComputedStyle(e).display === 'none' ? '' : e.textContent)") or []
+print('   schody sbalené:', kratke)
+over(kratke and all(k for k in kratke) and not any('≥' in k for k in kratke), 'schody jen s rozsahem')
+over(ev("getComputedStyle(document.querySelector('[data-zdroj=vse] .liq-logo')).display") == 'block', 'zdroje se značkou')
+ev("window.__sbalitListuPo = 1e9")
+klepni('[data-zdroj=vse]')
+over(not ev("document.getElementById('liqLista').classList.contains('sbalena')"), 'dotyk lištu rozbalí')
+over(ev("document.querySelector('[data-zdroj=burza]').classList.contains('active')"), 'a nic nepřepne (zdroj zůstal)')
+snimek('lista-sbalena.png')
 ev("history.back()")
 time.sleep(1)
 

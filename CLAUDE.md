@@ -3628,6 +3628,13 @@ hlouposti) a ukázat proběhlé likvidace v grafu. Pořadí: sběr → vrstva �
   **Hyperliquid na serveru:** `hlidejLikvidaci` v likvidace.mjs — obchod
   sledovaného účtu za cenu na jeho likvidační ceně nebo za ní (0,3 %),
   nejvýš do velikosti pozice → `zapisHl`. Jen účty, které sběr mapy zná.
+- **v0.84.1 (video uživatele):** po 3 s bez dotyku se lišta sbalí na 46 px
+  (`sbalListu`, třída `sbalena`): schody jen s rozsahem (`.kratke`), zdroje
+  zjednodušenou značkou (`ZNACKY_BURZ`, ne oficiální loga), proběhlé ikonou.
+  Dotyk na sbalenou lištu ji jen rozbalí — klepnutí se spolkne
+  (`pointerdown` + `click` v capture). Testy vypínají `__sbalitListuPo`.
+  EN „Executed liquidations“. Rozsahy schodů se mění se zoomem záměrně —
+  filtr je relativní k viditelné mapě (p97 v obraze).
 
 ## Zdi v knize příkazů — sběr na serveru (2026-10-22, v0.72.0)
 
