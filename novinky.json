@@ -1,13 +1,13 @@
 {
-  "verze": "0.81.0",
+  "verze": "0.82.0",
   "novinky": [
+    {
+      "en": "The liquidation map always opens for the chart's exchange; volumes of the other sources fill in on their own.",
+      "cs": "Likvidační mapa se vždy otevře podle burzy grafu; objemy ostatních zdrojů se doplní samy."
+    },
     {
       "en": "Calculated liquidation map shows history on 4h, daily and weekly charts too (Bybit and OKX up to ~1.5 years back).",
       "cs": "Kalkulovaná likvidační mapa má historii i na 4h, denním a týdenním grafu (Bybit a OKX až ~1,5 roku zpět)."
-    },
-    {
-      "en": "Liquidation map switch shows live liquidations within ±10 % of the price; Match also its share of the real volume.",
-      "cs": "Přepínač likvidační mapy ukazuje živé likvidace do ±10 % od ceny; Shoda i svůj podíl z reálného objemu."
     }
   ],
   "opravy": []

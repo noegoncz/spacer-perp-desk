@@ -3352,6 +3352,7 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 /* Objem živých likvidací do ±10 % od ceny (v0.80.0). */
 .liq-zdroj button .liq-objem { font-style: normal; font-size: 0.62rem; font-weight: 700; color: #c9e84a; font-variant-numeric: tabular-nums; }
 .liq-zdroj button.active .liq-objem { color: #4d6a00; }
+.liq-zdroj button .liq-objem.naskok { animation: liqNabeh 0.6s ease-out; }
 .liq-zdroj button.active { background: rgba(255,255,255,0.9); color: #0b0f14; }
 .liq-zdroj button.bez-dat { opacity: 0.4; }
 

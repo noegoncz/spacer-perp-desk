@@ -2489,14 +2489,19 @@ async function nactiOi() {
  * všech CEX (`shodaMap`). Hodnoty zůstávají skutečné.
  */
 const ZDROJE_MAPY = ['burza', 'vse', 'skutecne', 'shoda'];
+/*
+ * v0.82.0 (přání uživatele): mapa se vždy otevře podle burzy grafu —
+ * Binance / Bybit / OKX = kalkulovaná z té burzy, Hyperliquid = reálná,
+ * ostatní (bez historie OI) = všechny CEX. Ruční volba platí jen pro
+ * otevřený graf (pár + burza), neukládá se.
+ */
+let volbaZdroje = null;
+let volbaProGraf = '';
+const klicGrafuMapy = () => `${burzaGrafuMapy()}:${chartSymbol}`;
 const zdrojMapy = () => {
-  let z = store.loadJson('perpdesk.liqZdroj', 'vse');
-  if (z === 'odhad') z = store.loadJson('perpdesk.liqBurzy', 'graf') === 'vse' ? 'vse' : 'burza';
-  if (z === 'oboje' || z === 'mix') z = 'vse';
-  if (!ZDROJE_MAPY.includes(z)) z = 'vse';
-  // Graf burzy bez historie OI nemá volbu „burza grafu“ — počítá ze všech.
-  if (z === 'burza' && !BURZY_ODHADU.includes(burzaGrafuMapy())) z = 'vse';
-  return z;
+  if (volbaZdroje && volbaProGraf === klicGrafuMapy()) return volbaZdroje;
+  const b = burzaGrafuMapy();
+  return BURZY_ODHADU.includes(b) ? 'burza' : b === 'hyperliquid' ? 'skutecne' : 'vse';
 };
 const burzaGrafuMapy = () => chartBurza || client?.burza?.id || 'bybit';
 // Které zdroje mají na tomto grafu data (undefined = ještě nevíme).
@@ -2580,16 +2585,10 @@ async function nactiMapu() {
   if (chceOdhad) dostupneZdroje[zdroj === 'burza' ? 'burza' : 'vse'] = Boolean(odhad?.pasy?.length);
   // Posun na cenu této burzy (BTCUSDT na Binance ≠ BTC na Hyperliquidu).
   const cena = Number(poslednicCena) || Number(chartTrh?.last) || 0;
-  const posun = (pasy, mark, presne) => {
-    const pomer = !presne && cena > 0 && mark > 0 ? cena / mark : 1;
-    return pomer === 1 ? pasy : pasy.map((p) => ({ ...p, cena: p.cena * pomer, vyska: p.vyska * pomer }));
-  };
+  const posun = (pasy, mark, presne) => posunPasu(pasy, mark, presne, cena);
   const pasy = [];
   const casti = [];
-  // Objem u tlačítek (v0.80.0): živé likvidace do ±10 % od ceny.
-  const ted0 = Date.now() - 120000;
-  const objemZivych = (seznam) => seznam.reduce((sum, p) => (
-    (p.ziva || p.do >= ted0) && cena > 0 && Math.abs(p.cena / cena - 1) <= 0.1 ? sum + (p.posledni ?? p.usd) : sum), 0);
+  const objemZivych = (seznam) => objemZivychMapy(seznam, cena);
   if (chceReal && skutecne?.pasy?.length) objemyZdroju.skutecne = objemZivych(posun(skutecne.pasy, skutecne.mark, burza === 'hyperliquid'));
   if (chceOdhad && odhad?.pasy?.length) objemyZdroju[zdroj === 'burza' ? 'burza' : 'vse'] = objemZivych(posun(odhad.pasy, odhad.mark, odhad.burzy.length === 1 && odhad.burzy[0] === burza));
   if (zdroj === 'shoda') {
@@ -2622,6 +2621,7 @@ async function nactiMapu() {
   chart.setLiquidations(pasy.length ? { pasy, popis: casti.length > 1 ? t('liq.labelBoth') : casti[0] } : null);
   ukazPosuvnikMapy();
   kresliPrepinacZdroje();
+  doplnObjemyMapy(symbol, burza, cena);
   if (!casovacMapy) casovacMapy = setInterval(nactiMapu, 60000);
 }
 
@@ -2665,6 +2665,60 @@ function shodaMap(realne, kalkulovane, ted) {
   });
 }
 
+/** Posun pruhů na cenu burzy grafu (poměr cen), `presne` = bez posunu. */
+const posunPasu = (pasy, mark, presne, cena) => {
+  const pomer = !presne && cena > 0 && mark > 0 ? cena / mark : 1;
+  return pomer === 1 ? pasy : pasy.map((p) => ({ ...p, cena: p.cena * pomer, vyska: p.vyska * pomer }));
+};
+/** Objem u tlačítek (v0.80.0): živé likvidace do ±10 % od ceny. */
+const objemZivychMapy = (seznam, cena) => {
+  const ted0 = Date.now() - 120000;
+  return seznam.reduce((sum, p) => (
+    (p.ziva || p.do >= ted0) && cena > 0 && Math.abs(p.cena / cena - 1) <= 0.1 ? sum + (p.posledni ?? p.usd) : sum), 0);
+};
+
+/*
+ * Objemy ostatních zdrojů na pozadí (v0.82.0, přání uživatele): po načtení
+ * mapy se dopočítají i zdroje, na které uživatel neklikl, a u tlačítek
+ * plynule naskočí. Jen chybějící, jednou za graf (odhady jsou v paměti 10 min).
+ */
+let objemyBezi = '';
+async function doplnObjemyMapy(symbol, burza, cena) {
+  const klic = `${burza}:${symbol}`;
+  if (objemyBezi === klic || !cena) return;
+  objemyBezi = klic;
+  const delka = DELKA_INTERVALU[chartInterval] || 3600e3;
+  const nasobek = likvidace.nasobekPasma(delka);
+  const platny = () => klicGrafuMapy() === klic && chart;
+  const zapis = (z, v) => {
+    if (!platny() || objemyZdroju[z] != null) return;
+    objemyZdroju[z] = v;
+    kresliPrepinacZdroje();
+  };
+  try {
+    const [jeden, vse, real] = await Promise.all([
+      BURZY_ODHADU.includes(burza) && objemyZdroju.burza == null
+        ? odhadMapy(symbol, burza, nasobek, true, delka).catch(() => null) : null,
+      odhadMapy(symbol, burza, nasobek, false, delka).catch(() => null),
+      likvidace.pasy({ symbol, burza, od: Date.now() - 3 * 86400e3, doKdy: Date.now(), delkaSvicky: delka }).catch(() => null),
+    ]);
+    if (platny()) {
+      if (dostupneZdroje.skutecne === undefined) dostupneZdroje.skutecne = Boolean(real?.pasy?.length);
+      if (dostupneZdroje.vse === undefined) dostupneZdroje.vse = Boolean(vse?.pasy?.length);
+    }
+    const presne = (o) => o.burzy.length === 1 && o.burzy[0] === burza;
+    if (jeden?.pasy?.length) zapis('burza', objemZivychMapy(posunPasu(jeden.pasy, jeden.mark, presne(jeden), cena), cena));
+    if (vse?.pasy?.length) zapis('vse', objemZivychMapy(posunPasu(vse.pasy, vse.mark, presne(vse), cena), cena));
+    if (real?.pasy?.length) {
+      const realne = posunPasu(real.pasy, real.mark, burza === 'hyperliquid', cena);
+      zapis('skutecne', objemZivychMapy(realne, cena));
+      if (vse?.pasy?.length) zapis('shoda', objemZivychMapy(shodaMap(realne, posunPasu(vse.pasy, vse.mark, false, cena), Date.now()), cena));
+    }
+  } finally {
+    if (objemyBezi === klic) objemyBezi = '';
+  }
+}
+
 const formatObjemMapy = (v) => (v >= 1e9 ? `${(v / 1e9).toFixed(1)} B` : v >= 1e6 ? `${(v / 1e6).toFixed(v >= 1e8 ? 0 : 1)} M` : `${Math.round(v / 1e3)} k`);
 
 function kresliPrepinacZdroje() {
@@ -2680,11 +2734,18 @@ function kresliPrepinacZdroje() {
     b.classList.toggle('active', z === zdroj);
     let o = b.querySelector('.liq-objem');
     if (!o) { o = document.createElement('i'); o.className = 'liq-objem'; b.append(o); }
-    o.textContent = objemyZdroju[z] != null ? formatObjemMapy(objemyZdroju[z]) : '–';
+    let text = objemyZdroju[z] != null ? formatObjemMapy(objemyZdroju[z]) : '–';
     // Shoda je podmnožina Real — u ní i podíl z reálného objemu (v0.80.1).
     if (z === 'shoda' && objemyZdroju.shoda != null && objemyZdroju.skutecne > 0) {
-      o.textContent += ` · ${Math.round((objemyZdroju.shoda / objemyZdroju.skutecne) * 100)} %`;
+      text += ` · ${Math.round((objemyZdroju.shoda / objemyZdroju.skutecne) * 100)} %`;
     }
+    // Číslo, které právě dorazilo, plynule naskočí (v0.82.0).
+    if (o.textContent === '–' && text !== '–') {
+      o.classList.remove('naskok');
+      void o.offsetWidth;
+      o.classList.add('naskok');
+    }
+    o.textContent = text;
     // Zašedlá jen volba, o které víme, že data nemá (ještě nenačtená ne).
     b.classList.toggle('bez-dat', z === 'shoda' ? dostupneZdroje.skutecne === false : dostupneZdroje[z] === false);
   });
@@ -2701,7 +2762,8 @@ function zapojPrepinacZdroje() {
     const b = e.target.closest('[data-zdroj]');
     if (!b) return;
     e.stopPropagation();
-    store.saveJson('perpdesk.liqZdroj', b.dataset.zdroj);
+    volbaZdroje = ZDROJE_MAPY.includes(b.dataset.zdroj) ? b.dataset.zdroj : null;
+    volbaProGraf = klicGrafuMapy();
     kresliPrepinacZdroje();
     nactiMapu();
   });

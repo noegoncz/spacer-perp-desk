@@ -25,8 +25,6 @@ mock = open(os.path.join(KOREN, 'tools', 'mock-bybit.js'), encoding='utf-8').rea
 mock = "sessionStorage.setItem('__mapaNaostro', '1');" + mock + """
 localStorage.setItem('perpdesk.lists', JSON.stringify({ verze: 1, aktivni: 'a',
   seznamy: [{ id: 'a', nazev: 'Main', polozky: %s }] }));
-// Výchozí zdroj je od v0.79.0 All CEX — test začíná na reálné mapě.
-localStorage.setItem('perpdesk.liqZdroj', JSON.stringify('skutecne'));
 localStorage.setItem('perpdesk.chartView', JSON.stringify({ 'hyperliquid:BTCUSDC': { interval: '1' }, 'binance:BTCUSDT': { interval: '30' } }));
 // Kdy dorazily svíčky a kdy se začala stahovat mapa.
 window.__casy = {};
@@ -184,7 +182,7 @@ def zdroj(z):
 
 zdroj('skutecne')
 over(mapa() == 0, 'Actual: SPCX (na HL není) mapu nemá')
-over(ev("localStorage.getItem('perpdesk.liqZdroj')") == '"skutecne"', 'zdroj se uložil')
+over(ev("document.querySelector('[data-zdroj=skutecne]').classList.contains('active')"), 'Real je vybraný')
 if not odhad:
     zdroj('burza')
     over(mapa() > 0, f'Estimate: SPCX má odhad z Binance + Bybit ({mapa()})')
@@ -192,9 +190,17 @@ zdroj('shoda')
 ev("history.back()")
 time.sleep(1)
 
-print('5) přepínač: burza grafu / všechny CEX / shoda (v0.79.0)')
+print('5) přepínač: burza grafu / všechny CEX / shoda (v0.79.0), výchozí podle burzy a objemy (v0.82.0)')
 ev("document.querySelector('#watchList .tile[data-klic=\"binance:BTCUSDT\"]').click()")
 time.sleep(8)
+over(ev("document.querySelector('[data-zdroj=burza]').classList.contains('active')"), 'graf Binance otevře mapu Binance')
+for _ in range(30):
+    objemy = ev("[...document.querySelectorAll('#liqZdroj .liq-objem')].map((e) => e.textContent)") or []
+    if objemy and all(o != '–' for o in objemy):
+        break
+    time.sleep(1)
+print('   objemy:', objemy)
+over(objemy and all(o != '–' for o in objemy), 'objemy všech zdrojů se doplnily samy')
 over(ev("document.getElementById('liqZdrojBurza').textContent") == 'Binance', 'první volba nese název burzy grafu')
 zdroj('burza')
 time.sleep(3)
@@ -207,7 +213,7 @@ time.sleep(6)
 info = ev('window.__mapaInfo') or {}
 print('  ', info)
 over('Bybit' in info.get('popis', '') and 'Hyperliquid' not in info.get('popis', ''), 'All CEX: i Bybit, bez reálné')
-over(ev("localStorage.getItem('perpdesk.liqZdroj')") == '"vse"', 'volba se uložila')
+over(ev("document.querySelector('[data-zdroj=vse]').classList.contains('active')"), 'All CEX je vybraný')
 zdroj('shoda')
 time.sleep(6)
 info = ev('window.__mapaInfo') or {}

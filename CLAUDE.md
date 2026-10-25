@@ -3569,6 +3569,13 @@ https://claude.ai/artifact/BHAHkgLcFuhiFkUPLreNi3, vybraná varianta B):**
   2025-03, 834 hladin; **Binance OI jen 30 dní** na jakémkoli období (na
   1W s volbou Binance zůstane historie krátká — All CEX ji má z Bybitu
   a OKX). Reálná mapa má historii od 22. 10. 2026 (začátek sběru).
+- **v0.82.0 (přání uživatele):** zdroj mapy **vždy podle burzy grafu**
+  (`zdrojMapy`: Binance / Bybit / OKX → `burza`, Hyperliquid → `skutecne`,
+  ostatní → `vse`); ruční volba jen pro otevřený graf (`volbaZdroje`,
+  `volbaProGraf`), `perpdesk.liqZdroj` se už nečte ani neukládá.
+  `doplnObjemyMapy` po načtení mapy dopočítá na pozadí objemy ostatních
+  zdrojů (i Shodu) a nastaví jejich dostupnost; nové číslo plynule naskočí
+  (`.liq-objem.naskok`). Test bod 5: výchozí zdroj + objemy všech zdrojů.
 - Tmavý svislý pruh po prudkém pohybu není chyba: cena vybrala pásma
   a OI zároveň klesal → nové pozice nevznikly.
 - Test: `test-likvidace-graf.py` (Binance na 4h, bod 4: SPCX bez HL má
