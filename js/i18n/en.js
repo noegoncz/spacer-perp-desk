@@ -933,5 +933,9 @@ export const en = {
   "liq.subReal": "Hyperliquid positions",
   "liq.happened": "Executed liquidations",
   "liq.happenedOff": "off",
+  "liq.secFilter": "Level filter",
+  "liq.secSource": "Map source",
+  "liq.secExecuted": "Executed",
+  "liq.happenedShort": "Liq.",
   "liq.srcActual": "Real",
 };

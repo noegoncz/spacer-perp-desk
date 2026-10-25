@@ -3635,6 +3635,11 @@ hlouposti) a ukázat proběhlé likvidace v grafu. Pořadí: sběr → vrstva �
   (`pointerdown` + `click` v capture). Testy vypínají `__sbalitListuPo`.
   EN „Executed liquidations“. Rozsahy schodů se mění se zoomem záměrně —
   filtr je relativní k viditelné mapě (p97 v obraze).
+- **v0.84.2 — varianta K** (plátno, kolo 3): `#liqLista` je jeden panel
+  s oddíly `.liq-oddil` (filtr / zdroj mapy / proběhlé), dělí je čára,
+  barevný nadpis `.liq-nadpis` a jemný podklad. Sbalená 58 px: bez nadpisů
+  a popisů, zdroje jen názvem (značky burz zrušené — uživatel: nedávaly
+  smysl), proběhlé „Liq.“ / „Likv.“. Názvy a popisy chce uživatel ještě doladit.
 
 ## Zdi v knize příkazů — sběr na serveru (2026-10-22, v0.72.0)
 

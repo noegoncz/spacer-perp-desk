@@ -3308,23 +3308,36 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 
 /* ---------- ovládání likvidační mapy na levé stěně (v0.84.0, varianta E) ---------- */
 @keyframes liqNabeh { from { opacity: 0; } to { opacity: 1; } }
+/* Varianta K (v0.84.2, volba uživatele): jeden panel, oddíly dělí čára,
+   barevný nadpis a jemný podklad. Sbalený panel drží stejné oddíly. */
 .liq-lista {
-  position: absolute; z-index: 6; width: 112px; display: flex; flex-direction: column; gap: 6px;
+  position: absolute; z-index: 6; width: 120px; display: flex; flex-direction: column;
+  border-radius: 14px; border: 1px solid #2a3547; background: rgba(14,20,31,0.9); overflow: hidden;
   animation: liqNabeh 0.45s ease-out; transition: width 0.25s ease-out;
 }
-/* Sbalená lišta (v0.84.1, přání uživatele — po 3 s bez dotyku): úzká,
-   schody jen s rozsahem, zdroje jen značkou, proběhlé jen ikonou. */
-.liq-lista.sbalena { width: 46px; }
+.liq-oddil { padding: 6px; display: flex; flex-direction: column; gap: 3px; }
+.liq-oddil + .liq-oddil { border-top: 1px solid #2a3547; }
+.liq-oddil-zdroj { background: rgba(127,179,255,0.05); }
+.liq-oddil-probehle { background: rgba(62,230,164,0.06); }
+.liq-nadpis { font-size: 0.56rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; overflow: hidden; }
+.liq-oddil-filtr .liq-nadpis { color: #c9de3b; }
+.liq-oddil-zdroj .liq-nadpis { color: #7fb3ff; }
+.liq-oddil-probehle .liq-nadpis { color: #3ee6a4; }
+/* Sbalená (po 3 s bez dotyku): bez nadpisů a popisů, jen rozsahy a názvy. */
+.liq-lista.sbalena { width: 58px; }
+.liq-lista.sbalena .liq-oddil { padding: 4px; }
+.liq-lista.sbalena .liq-nadpis { display: none; }
 .liq-zebrik .kratke, .liq-lista.sbalena .liq-zebrik .dlouhe { display: none; }
 .liq-lista.sbalena .liq-zebrik .kratke { display: inline; }
 .liq-lista.sbalena .liq-zebrik button { padding: 0 2px; font-size: 0.62rem; }
-.liq-lista.sbalena .liq-zdroj button { min-height: 34px; padding: 3px 0; }
-.liq-lista.sbalena .liq-zdroj button > :not(.liq-logo),
-.liq-lista.sbalena .liq-probehle > :not(.liq-bub) { display: none; }
+.liq-lista.sbalena .liq-zdroj button { min-height: 30px; padding: 2px 0; }
+.liq-lista.sbalena .liq-zdroj button b { font-size: 0.6rem; }
+.liq-lista.sbalena .liq-zdroj button small,
+.liq-lista.sbalena .liq-zdroj button .liq-objem,
+.liq-lista.sbalena .liq-probehle > :not(.liq-kratky) { display: none; }
+.liq-kratky { display: none; font-style: normal; font-size: 0.62rem; font-weight: 700; }
+.liq-lista.sbalena .liq-kratky { display: block; }
 .liq-lista.sbalena .liq-probehle { padding: 8px 0; }
-.liq-logo { display: none; width: 22px; height: 22px; }
-.liq-logo svg { width: 100%; height: 100%; display: block; }
-.liq-lista.sbalena .liq-logo { display: block; }
 .liq-zebrik { display: flex; flex-direction: column; gap: 3px; }
 .liq-zebrik button {
   height: 26px; border: 0; border-radius: 3px; padding: 0 4px; cursor: pointer;
@@ -3338,7 +3351,7 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 .liq-zebrik button.active { box-shadow: inset 0 0 0 2px #fff; font-weight: 800; }
 .liq-zdroj { display: flex; flex-direction: column; gap: 3px; }
 .liq-zdroj button {
-  border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; background: rgba(11,15,20,0.8);
+  border: 0; border-radius: 8px; background: none;
   color: var(--text); display: flex; flex-direction: column; align-items: center; justify-content: center;
   line-height: 1.15; cursor: pointer; padding: 3px 4px; min-height: 40px;
 }
@@ -3351,17 +3364,13 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 .liq-zdroj button.active { background: rgba(255,255,255,0.92); color: #0b0f14; border-color: transparent; }
 .liq-zdroj button.bez-dat { opacity: 0.4; }
 .liq-probehle {
-  border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; background: rgba(11,15,20,0.8); color: var(--text);
+  border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; background: none; color: var(--text);
   display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 5px 4px; cursor: pointer; line-height: 1.15;
 }
 .liq-probehle b { font-size: 0.66rem; font-weight: 700; text-align: center; }
 .liq-probehle small { font-size: 0.56rem; opacity: 0.75; white-space: nowrap; }
 .liq-probehle[aria-pressed="true"] { border-color: #3ee6a4; background: rgba(62,230,164,0.14); }
 .liq-probehle[aria-pressed="false"] { opacity: 0.6; }
-.liq-bub { display: flex; align-items: center; gap: 3px; }
-.liq-bub i { display: block; border-radius: 50%; }
-.liq-bub i:first-child { width: 11px; height: 11px; background: rgba(246,70,93,0.5); border: 1px solid #f6465d; }
-.liq-bub i:last-child { width: 7px; height: 7px; background: rgba(62,230,164,0.5); border: 1px solid #3ee6a4; }
 
 /* ---------- hladina mapy (v0.74.5) ---------- */
 .mapa-hladina {

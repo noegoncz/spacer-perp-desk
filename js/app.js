@@ -2582,12 +2582,6 @@ let dostupneProGraf = '';
 const BURZY_ODHADU = ['binance', 'bybit', 'okx'];
 const burzyOdhadu = (burza, jenGraf) => (jenGraf && BURZY_ODHADU.includes(burza) ? [burza] : BURZY_ODHADU);
 const NAZVY_BURZ_ODHADU = { binance: 'Binance', bybit: 'Bybit', okx: 'OKX' };
-// Zjednodušené značky burz pro sbalenou lištu mapy (v0.84.1) — barvy burz, ne oficiální loga.
-const ZNACKY_BURZ = {
-  binance: '<svg viewBox="0 0 20 20"><g fill="#f0b90b"><rect x="7.6" y="2" width="4.8" height="4.8" transform="rotate(45 10 4.4)"/><rect x="7.6" y="7.6" width="4.8" height="4.8" transform="rotate(45 10 10)"/><rect x="7.6" y="13.2" width="4.8" height="4.8" transform="rotate(45 10 15.6)"/><rect x="2" y="7.6" width="4.8" height="4.8" transform="rotate(45 4.4 10)"/><rect x="13.2" y="7.6" width="4.8" height="4.8" transform="rotate(45 15.6 10)"/></g></svg>',
-  bybit: '<svg viewBox="0 0 20 20"><rect x="1" y="3" width="18" height="14" rx="3" fill="#17181e" stroke="#f7a600" stroke-width="1.2"/><text x="10" y="13.6" text-anchor="middle" font-size="8.5" font-weight="800" fill="#f7a600" font-family="system-ui,sans-serif">BY</text></svg>',
-  okx: '<svg viewBox="0 0 20 20"><g fill="#e6edf6"><rect x="2" y="2" width="5" height="5"/><rect x="13" y="2" width="5" height="5"/><rect x="7.5" y="7.5" width="5" height="5"/><rect x="2" y="13" width="5" height="5"/><rect x="13" y="13" width="5" height="5"/></g></svg>',
-};
 
 const odhadyMapy = new Map();   // coin → { cas, slib }
 /*
@@ -2792,11 +2786,6 @@ function kresliPrepinacZdroje() {
   const burza = burzaGrafuMapy();
   const nazev = el('liqZdrojBurza');
   if (nazev) nazev.textContent = NAZVY_BURZ_ODHADU[burza] || burza;
-  const logo = el('liqZdrojLogo');
-  if (logo && logo.dataset.burza !== burza) {
-    logo.dataset.burza = burza;
-    logo.innerHTML = ZNACKY_BURZ[burza] || '';
-  }
   box.querySelectorAll('[data-zdroj]').forEach((b) => {
     const z = b.dataset.zdroj;
     if (z === 'burza') b.hidden = !BURZY_ODHADU.includes(burza);
@@ -3269,7 +3258,8 @@ const STUPNE_FILTRU = {
 // Barvy schodů = škála mapy (zelená malé → žlutá velké).
 const BARVY_SCHODU = ['#3f8a36', '#5ba53c', '#6fb83f', '#8cc93f', '#9fd23f', '#b9db3c', '#c9de3b', '#e8e23a'];
 let pocetSchodu = 5;
-const SIRKA_LISTY = 112;
+const SIRKA_LISTY = 120;
+const SIRKA_SBALENE = 58;
 
 function ukazPosuvnikMapy() {
   const lista = el('liqLista');
@@ -3284,7 +3274,7 @@ function ukazPosuvnikMapy() {
   }
   // Nově ukázaná lišta je rozbalená a po 3 s se sbalí.
   if (bylaSkryta) sbalListu(false);
-  else chart?.setMapInset((lista.classList.contains('sbalena') ? 46 : SIRKA_LISTY) + 4);
+  else chart?.setMapInset((lista.classList.contains('sbalena') ? SIRKA_SBALENE : SIRKA_LISTY) + 4);
   kresliPrepinacZdroje();
   kresliProbehle();
   const box = el('chartBox');
@@ -3357,7 +3347,7 @@ function sbalListu(sbalit) {
   const lista = el('liqLista');
   if (!lista) return;
   lista.classList.toggle('sbalena', sbalit);
-  chart?.setMapInset(lista.hidden ? 0 : (sbalit ? 46 : SIRKA_LISTY) + 4);
+  chart?.setMapInset(lista.hidden ? 0 : (sbalit ? SIRKA_SBALENE : SIRKA_LISTY) + 4);
   if (!sbalit) naplanujSbaleni();
 }
 

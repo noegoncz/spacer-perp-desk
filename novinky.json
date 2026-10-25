@@ -1,9 +1,9 @@
 {
-  "verze": "0.84.1",
+  "verze": "0.84.2",
   "novinky": [
     {
-      "en": "The liquidation map controls fold into a slim strip after 3 seconds; a touch opens them again.",
-      "cs": "Ovládání likvidační mapy se po 3 s sbalí do úzkého pruhu; dotyk ho zase rozbalí."
+      "en": "Liquidation map controls in one panel with sections (filter, map source, executed); folded after 3 seconds, a touch opens them.",
+      "cs": "Ovládání likvidační mapy v jednom panelu s oddíly (filtr, zdroj mapy, proběhlé); po 3 s se sbalí, dotyk ho rozbalí."
     },
     {
       "en": "Liquidation map controls moved to the left edge of the chart: filter steps with their USD range, map source and liquidations that happened.",

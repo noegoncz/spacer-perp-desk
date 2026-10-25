@@ -928,5 +928,9 @@ export const cs = {
   "liq.subReal": "pozice Hyperliquid",
   "liq.happened": "Proběhlé likvidace",
   "liq.happenedOff": "vypnuto",
+  "liq.secFilter": "Filtr hladin",
+  "liq.secSource": "Zdroj mapy",
+  "liq.secExecuted": "Proběhlé",
+  "liq.happenedShort": "Likv.",
   "liq.srcActual": "Reálná",
 };

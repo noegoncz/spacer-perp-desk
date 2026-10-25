@@ -228,18 +228,27 @@
       <!-- Ovládání likvidační mapy na levé stěně (v0.84.0, varianta E z plátna):
            žebřík filtru s rozsahy, zdroj mapy, proběhlé likvidace podle zdroje. -->
       <div id="liqLista" class="liq-lista" hidden>
-        <div id="liqZebrik" class="liq-zebrik" role="group" data-i18n-aria="layers.liqFilter"></div>
-        <div id="liqZdroj" class="liq-zdroj">
-          <button type="button" data-zdroj="burza"><span class="liq-logo" id="liqZdrojLogo" aria-hidden="true"></span><b id="liqZdrojBurza">Binance</b><small data-i18n="liq.subOi">open interest</small></button>
-          <button type="button" data-zdroj="vse"><span class="liq-logo" aria-hidden="true"><svg viewBox="0 0 20 20"><circle cx="5" cy="10" r="3.6" fill="#f0b90b"/><circle cx="10" cy="10" r="3.6" fill="#f7a600"/><circle cx="15" cy="10" r="3.6" fill="#e6edf6"/></svg></span><b data-i18n="liq.srcAll">All CEX</b><small>Binance+Bybit+OKX</small></button>
-          <button type="button" data-zdroj="skutecne"><span class="liq-logo" aria-hidden="true"><svg viewBox="0 0 20 20"><rect x="1" y="3" width="18" height="14" rx="7" fill="#97fce4"/><text x="10" y="13.6" text-anchor="middle" font-size="9" font-weight="800" fill="#0b2a24" font-family="system-ui,sans-serif">HL</text></svg></span><b data-i18n="liq.srcActual">Real</b><small data-i18n="liq.subReal">Hyperliquid positions</small></button>
-          <button type="button" data-zdroj="shoda"><span class="liq-logo" aria-hidden="true"><svg viewBox="0 0 20 20"><circle cx="7.5" cy="10" r="5.5" fill="none" stroke="#c9de3b" stroke-width="1.8"/><circle cx="12.5" cy="10" r="5.5" fill="none" stroke="#97fce4" stroke-width="1.8"/></svg></span><b data-i18n="liq.srcMatch">Match</b><small data-i18n="liq.subMatch">calc. ∩ real</small></button>
-        </div>
-        <button id="liqProbehle" class="liq-probehle" type="button" aria-pressed="true">
-          <span class="liq-bub" aria-hidden="true"><i></i><i></i></span>
-          <b data-i18n="liq.happened">Executed liquidations</b>
-          <small id="liqProbehleZdroj"></small>
-        </button>
+        <section class="liq-oddil liq-oddil-filtr">
+          <span class="liq-nadpis" data-i18n="liq.secFilter">Level filter</span>
+          <div id="liqZebrik" class="liq-zebrik" role="group" data-i18n-aria="layers.liqFilter"></div>
+        </section>
+        <section class="liq-oddil liq-oddil-zdroj">
+          <span class="liq-nadpis" data-i18n="liq.secSource">Map source</span>
+          <div id="liqZdroj" class="liq-zdroj">
+            <button type="button" data-zdroj="burza"><b id="liqZdrojBurza">Binance</b><small data-i18n="liq.subOi">open interest</small></button>
+            <button type="button" data-zdroj="vse"><b data-i18n="liq.srcAll">All CEX</b><small>Binance+Bybit+OKX</small></button>
+            <button type="button" data-zdroj="skutecne"><b data-i18n="liq.srcActual">Real</b><small data-i18n="liq.subReal">Hyperliquid positions</small></button>
+            <button type="button" data-zdroj="shoda"><b data-i18n="liq.srcMatch">Match</b><small data-i18n="liq.subMatch">calc. ∩ real</small></button>
+          </div>
+        </section>
+        <section class="liq-oddil liq-oddil-probehle">
+          <span class="liq-nadpis" data-i18n="liq.secExecuted">Executed</span>
+          <button id="liqProbehle" class="liq-probehle" type="button" aria-pressed="true">
+            <b data-i18n="liq.happened">Executed liquidations</b>
+            <i class="liq-kratky" data-i18n="liq.happenedShort">Liq.</i>
+            <small id="liqProbehleZdroj"></small>
+          </button>
+        </section>
       </div>
 
 
