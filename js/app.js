@@ -2672,6 +2672,10 @@ function kresliPrepinacZdroje() {
     let o = b.querySelector('.liq-objem');
     if (!o) { o = document.createElement('i'); o.className = 'liq-objem'; b.append(o); }
     o.textContent = objemyZdroju[z] != null ? formatObjemMapy(objemyZdroju[z]) : '–';
+    // Shoda je podmnožina Real — u ní i podíl z reálného objemu (v0.80.1).
+    if (z === 'shoda' && objemyZdroju.shoda != null && objemyZdroju.skutecne > 0) {
+      o.textContent += ` · ${Math.round((objemyZdroju.shoda / objemyZdroju.skutecne) * 100)} %`;
+    }
     // Zašedlá jen volba, o které víme, že data nemá (ještě nenačtená ne).
     b.classList.toggle('bez-dat', z === 'shoda' ? dostupneZdroje.skutecne === false : dostupneZdroje[z] === false);
   });

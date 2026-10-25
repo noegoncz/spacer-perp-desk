@@ -3561,6 +3561,8 @@ https://claude.ai/artifact/BHAHkgLcFuhiFkUPLreNi3, vybraná varianta B):**
   na Bybitu smazal nové pozice na Binance (All CEX < Binance). Naostro BTC:
   Binance 2,36 B + Bybit 2,39 B = 4,75 B. ⚠ V testech s mock-bybit.js je
   Bybit podstrčený (OI konstantní) — součty ověřovat na `/tools/`.
+  v0.80.1: u Shody i podíl z Real („229 M · 40 %") — Shoda je podmnožina,
+  sčítat se nedá.
 - Tmavý svislý pruh po prudkém pohybu není chyba: cena vybrala pásma
   a OI zároveň klesal → nové pozice nevznikly.
 - Test: `test-likvidace-graf.py` (Binance na 4h, bod 4: SPCX bez HL má

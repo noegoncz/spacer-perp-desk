@@ -1,9 +1,9 @@
 {
-  "verze": "0.80.0",
+  "verze": "0.80.1",
   "novinky": [
     {
-      "en": "Liquidation map switch shows how much is at stake: live liquidations within ±10 % of the price for each source.",
-      "cs": "Přepínač likvidační mapy ukazuje, o kolik jde: živé likvidace do ±10 % od ceny u každého zdroje."
+      "en": "Liquidation map switch shows how much is at stake: live liquidations within ±10 % of the price; Match also shows its share of the real volume.",
+      "cs": "Přepínač likvidační mapy ukazuje, o kolik jde: živé likvidace do ±10 % od ceny; Shoda i svůj podíl z reálného objemu."
     },
     {
       "en": "Match shows the whole real Hyperliquid map with confirmed levels highlighted.",
