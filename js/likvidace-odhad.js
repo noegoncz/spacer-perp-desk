@@ -20,7 +20,7 @@ const PRAH = 0.002;           // pásma pod 0,2 % největšího se zahodí (šum
  * svicky: hodinové [{ time, open, high, low, close }] vzestupně.
  * rady: řady OI po burzách, každá [{ time, oi }] v coinech (hodinově).
  * krok: šířka cenového pásma. Vrací pruhy jako likvidace.pasy:
- * [{ od, do, cena, vyska, usd, min, posledni, long }]; živé mají do = teď
+ * [{ od, do, cena, vyska, usd, min, posledni, long, prubeh }]; živé mají do = teď
  * a `ziva` (aplikace jim při každém kreslení posune konec na „teď“).
  */
 export function odhadPasu(svicky, rady, krok, ted = Date.now()) {
@@ -38,6 +38,14 @@ export function odhadPasu(svicky, rady, krok, ted = Date.now()) {
     }
   }
   const zive = new Map();   // `${long}|${i}` → pruh
+  // Průběh hodnoty pruhu (v0.76.0): [konec hodiny, usd, začátek hodiny] při
+  // každé změně — graf jas mezi body plynule přechází jen v té hodině.
+  const zapis = (p, s, konec) => {
+    const b = p.prubeh[p.prubeh.length - 1];
+    // Bod jen při změně o 3 % (drobné hodinové úbytky by nafoukly kreslení).
+    if (b[0] === konec) b[1] = p.posledni;
+    else if (Math.abs(p.posledni - b[1]) > b[1] * 0.03) p.prubeh.push([konec, p.posledni, s.time]);
+  };
   const hotove = [];
   for (const s of svicky) {
     const konec = s.time + 3600e3;
@@ -57,6 +65,7 @@ export function odhadPasu(svicky, rady, krok, ted = Date.now()) {
       for (const p of zive.values()) {
         p.posledni *= pomer;
         p.min = Math.min(p.min, p.posledni);
+        zapis(p, s, konec);
       }
     } else if (d > 0) {
       const podilLong = s.close >= s.open ? 0.55 : 0.45;
@@ -73,8 +82,9 @@ export function odhadPasu(svicky, rady, krok, ted = Date.now()) {
           if (p) {
             p.posledni += usd;
             p.usd = Math.max(p.usd, p.posledni);
+            zapis(p, s, konec);
           } else {
-            zive.set(k, { od: konec, do: ted, cena: i * krok, vyska: krok, usd, min: usd, posledni: usd, long });
+            zive.set(k, { od: konec, do: ted, cena: i * krok, vyska: krok, usd, min: usd, posledni: usd, long, prubeh: [[konec, usd, s.time]] });
           }
         }
       }

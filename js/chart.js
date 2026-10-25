@@ -973,6 +973,52 @@ let prahMapyUsd = 0;
  * za celou dobu a detail aktuální hodnotu.
  */
 const hodnotaPasu = (p) => (p.do >= Date.now() - 120000 ? (p.posledni ?? p.usd) : p.usd);
+/*
+ * Rozsvěcování v čase (v0.76.0, náhled https://claude.ai/artifact/S6MeKNFVoiT78NPYtb2Jd2,
+ * přání uživatele — jako Coinglass): pruh nemá jednu barvu, jas sleduje
+ * průběh hodnoty `p.prubeh` = [[čas, usd, odKdyZmena]]. Dokud se objem
+ * nemění, jas stojí; přechod je plynulý a jen v úseku, kdy se objem
+ * opravdu změnil (od `odKdyZmena` do `čas`). Bez průběhu jedna barva.
+ */
+const alfaMapy = (usd, ref) => {
+  const v = Math.min(1, usd / ref);
+  return v < 0.06 ? 0 : 0.04 + 0.9 * v ** 1.6;
+};
+function kresliPrubeh(ctx, p, barva, ref, x1, x2, y, vyska, xCasu) {
+  const pr = p.prubeh;
+  if (!pr?.length) {
+    ctx.fillStyle = `rgba(${barva},${alfaMapy(hodnotaPasu(p), ref).toFixed(3)})`;
+    ctx.fillRect(x1, y, x2 - x1, vyska);
+    return;
+  }
+  const rgba = (a) => `rgba(${barva},${a.toFixed(3)})`;
+  const usek = (od, k, styl) => {
+    const a = Math.max(x1, od);
+    const b = Math.min(x2, k);
+    if (b > a) { ctx.fillStyle = styl; ctx.fillRect(a, y, b - a, vyska); }
+  };
+  for (let i = 0; i < pr.length; i += 1) {
+    const a1 = alfaMapy(pr[i][1], ref);
+    const zac = i ? xCasu(pr[i][0]) : x1;
+    if (i + 1 === pr.length) {
+      if (a1) usek(zac, x2, rgba(a1));
+      break;
+    }
+    const a2 = alfaMapy(pr[i + 1][1], ref);
+    const konec = xCasu(pr[i + 1][0]);
+    const zmena = Math.max(zac, xCasu(pr[i + 1][2]));
+    if (!Number.isFinite(zac) || !Number.isFinite(konec)) continue;
+    if (konec <= x1) continue;
+    if (zac >= x2) break;
+    if (a1) usek(zac, zmena, rgba(a1));
+    if (konec - zmena >= 1 && (a1 || a2)) {
+      const g = ctx.createLinearGradient(zmena, 0, konec, 0);
+      g.addColorStop(0, rgba(a1));
+      g.addColorStop(1, rgba(a2));
+      usek(zmena, konec, g);
+    } else if (a2) usek(zmena, konec, rgba(a2));
+  }
+}
 let nabehMapyOd = 0;
 const pruhlednostNabehu = () => {
   const t = (performance.now() - nabehMapyOd) / NABEH_MAPY;
@@ -1037,9 +1083,10 @@ function registrovatLikvidace() {
         // hodnoty skoro průhledné, svítí jen velké shluky (jako Coinglass).
         const v = Math.min(1, h / ref);
         if (v < 0.06) continue;
-        ctx.fillStyle = `rgba(${p.long ? BARVA_LONGU : BARVA_SHORTU},${(0.04 + 0.9 * v ** 1.6).toFixed(3)})`;
+        const barva = p.long ? BARVA_LONGU : BARVA_SHORTU;
         const y = Math.min(a.y, b.y);
-        ctx.fillRect(x1, y, x2 - x1, Math.max(2, Math.abs(b.y - a.y)));
+        const vyska = Math.max(2, Math.abs(b.y - a.y));
+        kresliPrubeh(ctx, p, barva, ref, x1, x2, y, vyska, (ts) => px(ts, p.cena)?.x);
         nakresleno += 1;
       }
       globalThis.__pruhyMapy = nakresleno;   // pro test

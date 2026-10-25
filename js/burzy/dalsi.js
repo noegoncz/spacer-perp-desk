@@ -23,6 +23,7 @@
  * účtu); ostatní vrací null („nevím") a doplní se při zapnutí připojení.
  */
 import { CcxtAdapter } from './ccxt-adapter.js';
+import { nativniFetch } from './ccxt.js';
 
 export class OkxClient extends CcxtAdapter {
   constructor(handlers = {}, volby = {}) {
@@ -35,6 +36,30 @@ export class OkxClient extends CcxtAdapter {
 
   popisUctu() {
     return 'Swap';
+  }
+
+  /*
+   * Historie OI pro kalkulovanou likvidační mapu (v0.76.0). Endpoint rubik
+   * nemá CORS → v APK nativní HTTP, v prohlížeči zkusí běžný fetch (spadne
+   * a mapa OKX vynechá). OKX vrací nejvýš 100 řádků, po stránkách přes `end`.
+   * Řádek: [čas, kontrakty, OI v coinu, OI v USD].
+   */
+  async getOpenInterest(symbol, interval) {
+    const obdobi = { 60: '1H', 240: '4H', D: '1D' }[interval] || (Number(interval) < 60 ? '5m' : '1D');
+    const inst = `${symbol.replace(/(USDT|USDC)$/, '')}-${symbol.endsWith('USDC') ? 'USDC' : 'USDT'}-SWAP`;
+    const ziskej = nativniFetch() || fetch.bind(globalThis);
+    const body = new Map();
+    let end = '';
+    for (let i = 0; i < 6; i += 1) {
+      const url = `https://www.okx.com/api/v5/rubik/stat/contracts/open-interest-history?instId=${inst}&period=${obdobi}&limit=100${end ? `&end=${end}` : ''}`;
+      const r = await ziskej(url);
+      const j = await r.json();
+      const radky = j?.data || [];
+      radky.forEach(([t, , coin]) => { if (Number(coin) > 0) body.set(Number(t), Number(coin)); });
+      if (radky.length < 100) break;
+      end = radky[radky.length - 1][0];
+    }
+    return [...body].map(([time, oi]) => ({ time, oi })).sort((a, b) => a.time - b.time);
   }
 
   /** `perm` v nastavení účtu: „read_only", „trade", „withdraw" (čárkou). */

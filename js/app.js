@@ -2490,14 +2490,26 @@ let dostupneZdroje = { odhad: false, skutecne: false };
  * vrstvou a zdrojem, který odhad ukazuje. Pár na Binance / Bybitu: na grafu
  * těchto burz týž pár, jinak coin + USDT.
  */
+/*
+ * Z jakých burz se kalkulovaná mapa počítá (v0.76.0, rozhodnutí uživatele
+ * po srovnání s Coinglassem): výchozí jen burza grafu (Binance graf = OI
+ * Binance, jako Coinglass u jedné burzy), volba „All exchanges“ = součet
+ * Binance + Bybit + OKX. Graf burzy bez historie OI (Hyperliquid, Gate…)
+ * počítá ze všech. `perpdesk.liqBurzy`: 'graf' | 'vse'.
+ */
+const BURZY_ODHADU = ['binance', 'bybit', 'okx'];
+const rezimBurzMapy = () => (store.loadJson('perpdesk.liqBurzy', 'graf') === 'vse' ? 'vse' : 'graf');
+const burzyOdhadu = (burza) => (rezimBurzMapy() === 'graf' && BURZY_ODHADU.includes(burza) ? [burza] : BURZY_ODHADU);
+const NAZVY_BURZ_ODHADU = { binance: 'Binance', bybit: 'Bybit', okx: 'OKX' };
+
 const odhadyMapy = new Map();   // coin → { cas, slib }
 function odhadMapy(symbol, burza, nasobek = 1) {
-  const par = ['binance', 'bybit'].includes(burza) ? symbol : symbol.replace(/USDC$/, 'USDT');
-  const klic = `${par}|${nasobek}`;
+  const zdroje = burzyOdhadu(burza);
+  const par = zdroje.length === 1 ? symbol : symbol.replace(/USDC$/, 'USDT');
+  const klic = `${par}|${nasobek}|${zdroje.join('+')}`;
   const ulozeny = odhadyMapy.get(klic);
   if (ulozeny && Date.now() - ulozeny.cas < 10 * 60000) return ulozeny.slib;
   const slib = (async () => {
-    const zdroje = ['binance', 'bybit'];
     const vysledky = await Promise.all(zdroje.map(async (b) => {
       try {
         const k = verejnyKlient(b);
@@ -2548,14 +2560,15 @@ async function nactiMapu() {
     casti.push(popis);
   }
   if (zdroj !== 'skutecne' && dostupneZdroje.odhad) {
-    const popis = t('liq.labelEst');
+    const popis = t('liq.labelEst', { burzy: odhad.burzy.map((b) => NAZVY_BURZ_ODHADU[b] || b).join(' + ') });
     const od = oknoMapy.od;
     const ted = Date.now();
-    pasy.push(...posun(odhad.pasy.filter((p) => p.do >= od), odhad.mark, burza === 'binance' || burza === 'bybit')
+    pasy.push(...posun(odhad.pasy.filter((p) => p.do >= od), odhad.mark, odhad.burzy.length === 1 && odhad.burzy[0] === burza)
       .map((p) => ({ ...p, popis, zdroj: 'odhad', ...(p.ziva ? { do: ted } : {}) })));
     casti.push(popis);
   }
   mapaMaData = pasy.length > 0;
+  globalThis.__mapaInfo = { popis: casti.join(' | '), prubehu: pasy.filter((p) => p.prubeh?.length > 1).length };   // pro test
   chart.setLiquidations(pasy.length ? { pasy, popis: casti.length > 1 ? t('liq.labelBoth') : casti[0] } : null);
   ukazPosuvnikMapy();
   if (!casovacMapy) casovacMapy = setInterval(nactiMapu, 60000);
@@ -2969,6 +2982,28 @@ function otevriVrstvy() {
   });
   jednotka.append(jText, volba);
 
+  // Z jakých burz kalkulovaná mapa (v0.76.0): burza grafu / všechny.
+  const burzyMapy = document.createElement('div');
+  burzyMapy.className = 'nabidka-radek';
+  const bText = document.createElement('span');
+  bText.textContent = t('layers.liqExchanges');
+  const bVolba = document.createElement('div');
+  bVolba.className = 'nabidka-volba';
+  [['graf', t('layers.liqExChart')], ['vse', t('layers.liqExAll')]].forEach(([rezim, popis]) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.dataset.liqBurzy = rezim;
+    b.textContent = popis;
+    b.classList.toggle('active', rezimBurzMapy() === rezim);
+    b.addEventListener('click', () => {
+      store.saveJson('perpdesk.liqBurzy', rezim);
+      bVolba.querySelectorAll('button').forEach((x) => x.classList.toggle('active', x.dataset.liqBurzy === rezim));
+      nactiMapu();
+    });
+    bVolba.append(b);
+  });
+  burzyMapy.append(bText, bVolba);
+
   const smazat = document.createElement('button');
   smazat.type = 'button';
   smazat.className = 'nabidka-radek nebezpecne';
@@ -2981,7 +3016,7 @@ function otevriVrstvy() {
     if (smazKresby()) zavriNabidky();
   });
 
-  el('layersBody').replaceChildren(...radky, jednotka, smazat);
+  el('layersBody').replaceChildren(...radky, burzyMapy, jednotka, smazat);
   popisVsechVrstev();
   otevriNabidku('sheetLayers');
 }

@@ -71,7 +71,8 @@ export const BURZY = {
    * nejde připojit (ověří se na skutečném účtu). `jenVApk` = API bez CORS,
    * v prohlížeči nejde vůbec (nativní HTTP jen v APK).
    */
-  okx: verejna('okx', 'OKX', (h, v) => new OkxClient(h, v), 'https://www.okx.com'),
+  // OKX: historie OI veřejně (rubik, CORS ✓) — pro kalkulovanou mapu (v0.76.0).
+  okx: (() => { const b = verejna('okx', 'OKX', (h, v) => new OkxClient(h, v), 'https://www.okx.com'); b.schopnosti.openInterest = true; return b; })(),
   bitget: verejna('bitget', 'Bitget', (h, v) => new BitgetClient(h, v), 'https://api.bitget.com'),
   gate: verejna('gate', 'Gate', (h, v) => new GateClient(h, v), 'https://api.gateio.ws'),
   mexc: { ...verejna('mexc', 'MEXC', (h, v) => new MexcClient(h, v), 'https://contract.mexc.com'), jenVApk: true },

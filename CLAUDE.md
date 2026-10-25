@@ -3492,6 +3492,18 @@ https://claude.ai/artifact/BHAHkgLcFuhiFkUPLreNi3, vybraná varianta B):**
   vzniku pruhu). Hyperliquid likviduje podle mark ceny, knot ji nemusí
   dosáhnout — ale hladina je „vybraná“ (jako Coinglass). Přepínač zdroje
   na středu plochy svíček.
+- **v0.76.0 — rozsvěcování v čase a burzy odhadu** (náhled schválený
+  uživatelem https://claude.ai/artifact/S6MeKNFVoiT78NPYtb2Jd2, jako Coinglass):
+  pruh nese `prubeh` = [[čas, usd, odKdyZmena]] (bod jen při změně o 3 %;
+  odhad po hodinách, reálná po snímcích). `kresliPrubeh` v chart.js: jas
+  stojí, dokud se objem nemění, plynulý přechod jen v úseku změny
+  (uživatel: „pouze tam, kde opravdu objem narůstá"). Barva / filtr / detail
+  dál z `hodnotaPasu`. Kalkulovaná mapa výchozí **jen z burzy grafu**
+  (Binance / Bybit / OKX), v nabídce oka „All exchanges“ = Binance + Bybit
+  + OKX (`perpdesk.liqBurzy`); graf jiné burzy počítá ze všech. ⚠ OKX OI
+  (`/rubik/…open-interest-history`, 100 řádků na stránku) **nemá CORS** →
+  jen v APK přes nativní HTTP, v prohlížeči se OKX tiše vynechá.
+  Test: bod 5 `test-likvidace-graf.py` (`__mapaInfo`).
 - Tmavý svislý pruh po prudkém pohybu není chyba: cena vybrala pásma
   a OI zároveň klesal → nové pozice nevznikly.
 - Test: `test-likvidace-graf.py` (Binance na 4h, bod 4: SPCX bez HL má

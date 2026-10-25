@@ -187,6 +187,31 @@ if not odhad:
     over(mapa() > 0, f'Estimate: SPCX má odhad z Binance + Bybit ({mapa()})')
 zdroj('oboje')
 ev("history.back()")
+time.sleep(1)
+
+print('5) kalkulovaná mapa: burza grafu / všechny burzy, rozsvěcování v čase (v0.76.0)')
+ev("document.querySelector('#watchList .tile[data-klic=\"binance:BTCUSDT\"]').click()")
+time.sleep(8)
+zdroj('odhad')
+time.sleep(3)
+info = ev('window.__mapaInfo') or {}
+print('  ', info)
+over('Binance' in info.get('popis', '') and 'Bybit' not in info.get('popis', ''), 'výchozí: jen burza grafu (Binance)')
+over(info.get('prubehu', 0) > 0, f"pruhy mají průběh hodnoty ({info.get('prubehu')})")
+snimek('mapa-v-case-binance.png')
+ev("document.getElementById('layersBtn').click()")
+time.sleep(1)
+over(ev("Boolean(document.querySelector('[data-liq-burzy=vse]'))"), 'v nabídce oka volba All exchanges')
+ev("document.querySelector('[data-liq-burzy=vse]').click()")
+time.sleep(8)
+info = ev('window.__mapaInfo') or {}
+print('  ', info)
+over('Bybit' in info.get('popis', ''), 'All exchanges: i Bybit')
+over(ev("localStorage.getItem('perpdesk.liqBurzy')") == '"vse"', 'volba se uložila')
+ev("document.querySelector('[data-liq-burzy=graf]').click()")
+ev("document.querySelector('[data-close=sheetLayers]').click()")
+zdroj('oboje')
+ev("history.back()")
 
 konzole = ev('(window.__chyby||[]).join(" | ")') or ''
 over(not konzole, f'bez chyb v konzoli ({konzole[:200]})')

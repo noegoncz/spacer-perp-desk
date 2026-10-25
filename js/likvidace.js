@@ -184,13 +184,17 @@ export async function pasy({ symbol, burza, od, doKdy, delkaSvicky }) {
         const k = `${long}|${cena}`;
         const p = otevrene.get(k);
         if (p) {
+          // Průběh (v0.76.0): bod jen při změně o 3 % — jas v grafu přechází
+          // od předchozího snímku pásma k tomuto, jinak stojí.
+          const b = p.prubeh[p.prubeh.length - 1];
+          if (Math.abs(usd - b[1]) > b[1] * 0.03) p.prubeh.push([snimek.t, usd, p.videno]);
           p.do = dalsi;
           p.videno = snimek.t;
           p.usd = Math.max(p.usd, usd);
           p.min = Math.min(p.min, usd);
           p.posledni = usd;
         } else {
-          otevrene.set(k, { od: snimek.t, do: dalsi, cena, vyska: snimek.krok, usd, min: usd, posledni: usd, long, videno: snimek.t });
+          otevrene.set(k, { od: snimek.t, do: dalsi, cena, vyska: snimek.krok, usd, min: usd, posledni: usd, long, videno: snimek.t, prubeh: [[snimek.t, usd, snimek.t]] });
         }
       }
     }

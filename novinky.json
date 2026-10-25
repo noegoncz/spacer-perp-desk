@@ -1,27 +1,14 @@
 {
-  "verze": "0.75.2",
+  "verze": "0.76.0",
   "novinky": [
     {
-      "en": "Binance charts open much faster right after starting the app.",
-      "cs": "Grafy Binance se hned po spuštění aplikace otevírají mnohem rychleji."
+      "en": "Liquidation map levels now brighten over time as positions build up and fade as they close, like Coinglass.",
+      "cs": "Hladiny likvidační mapy se v čase rozsvěcují, jak přibývají pozice, a slábnou, když se zavírají, jako na Coinglassu."
     },
     {
-      "en": "Liquidation map: source switch moved to the top, wider filter slider, open interest fades in smoothly.",
-      "cs": "Likvidační mapa: přepínač zdroje nahoře, širší posuvník filtru, open interest se zobrazí plynule."
+      "en": "Calculated map uses the chart's exchange by default; switch to All exchanges (Binance + Bybit + OKX) in Layers.",
+      "cs": "Kalkulovaná mapa se počítá z burzy grafu; ve Vrstvách jde přepnout na Všechny burzy (Binance + Bybit + OKX)."
     }
   ],
-  "opravy": [
-    {
-      "en": "Liquidation levels the price has run through end at that candle; the source switch is centred.",
-      "cs": "Likvidační hladiny, kterými cena prošla, u té svíčky končí; přepínač zdroje je na středu."
-    },
-    {
-      "en": "The liquidation filter in millions now matches the values in the level details.",
-      "cs": "Filtr likvidací v milionech teď odpovídá hodnotám v detailu hladiny."
-    },
-    {
-      "en": "Liquidation map: smoother on every timeframe.",
-      "cs": "Likvidační mapa: plynulejší na všech timeframech."
-    }
-  ]
+  "opravy": []
 }
