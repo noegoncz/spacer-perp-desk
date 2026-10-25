@@ -1,19 +1,14 @@
 {
-  "verze": "0.78.0",
+  "verze": "0.79.0",
   "novinky": [
     {
-      "en": "Liquidation map switch at the very top: this exchange, All CEX (Binance + Bybit + OKX), Real (Hyperliquid) or Mix.",
-      "cs": "Přepínač likvidační mapy úplně nahoře: tato burza, Všechny CEX (Binance + Bybit + OKX), Reálná (Hyperliquid) nebo Mix."
+      "en": "New Match view on the liquidation map: only real Hyperliquid levels that the calculated map (all CEX) confirms.",
+      "cs": "Nový pohled Shoda na likvidační mapě: jen reálné hladiny Hyperliquidu, které potvrzuje i kalkulovaná mapa (všechny CEX)."
     },
     {
-      "en": "Real Hyperliquid levels the price has passed stay visible as a dashed line — the positions are still there.",
-      "cs": "Reálné hladiny Hyperliquidu, kterými cena prošla, zůstávají jako čárkovaná čára — pozice tam pořád jsou."
+      "en": "Each map source shows its exchanges right under the button.",
+      "cs": "Každý zdroj mapy ukazuje své burzy přímo pod tlačítkem."
     }
   ],
-  "opravy": [
-    {
-      "en": "Calculated map: only the truly largest levels are yellow; short data jumps on real levels are smoothed out.",
-      "cs": "Kalkulovaná mapa: žlutě jen opravdu největší hladiny; krátké skoky v datech reálných hladin jsou vyhlazené."
-    }
-  ]
+  "opravy": []
 }

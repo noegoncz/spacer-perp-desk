@@ -924,6 +924,9 @@ export const en = {
   "liq.srcBoth": "Both",
   "liq.srcBothSub": "sum",
   "liq.srcAll": "All CEX",
-  "liq.srcMix": "Mix",
+  "liq.srcMatch": "Match",
+  "liq.subMatch": "calc. ∩ real",
+  "liq.subOi": "open interest",
+  "liq.labelMatch": "Real liquidations confirmed by the calculated map (all CEX)",
   "liq.srcActual": "Real",
 };

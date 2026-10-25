@@ -3348,7 +3348,7 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
   line-height: 1.1; cursor: pointer; padding: 2px 4px;
 }
 .liq-zdroj button b { font-size: 0.7rem; font-weight: 700; }
-.liq-zdroj button small { display: none; }
+.liq-zdroj button small { font-size: 0.55rem; font-weight: 500; opacity: 0.7; white-space: nowrap; }
 .liq-zdroj button.active { background: rgba(255,255,255,0.9); color: #0b0f14; }
 .liq-zdroj button.bez-dat { opacity: 0.4; }
 

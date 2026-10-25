@@ -919,6 +919,9 @@ export const cs = {
   "liq.srcBoth": "Obojí",
   "liq.srcBothSub": "součet",
   "liq.srcAll": "Všechny CEX",
-  "liq.srcMix": "Mix",
+  "liq.srcMatch": "Shoda",
+  "liq.subMatch": "kalk. ∩ reálná",
+  "liq.subOi": "open interest",
+  "liq.labelMatch": "Reálné likvidace potvrzené kalkulovanou mapou (všechny CEX)",
   "liq.srcActual": "Reálná",
 };

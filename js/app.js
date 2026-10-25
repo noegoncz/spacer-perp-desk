@@ -2483,12 +2483,17 @@ async function nactiOi() {
  * (Hyperliquid) a mix (všechny CEX + reálná). Volba burz z nabídky oka
  * zmizela. Staré hodnoty: 'odhad' → burza, 'oboje' → mix.
  */
-const ZDROJE_MAPY = ['burza', 'vse', 'skutecne', 'mix'];
+/*
+ * v0.79.0 (uživatel: mix spíš průnik než součet): místo „Mix" je „Shoda" —
+ * jen reálné hladiny Hyperliquidu, které potvrzuje i kalkulovaná mapa ze
+ * všech CEX (`shodaMap`). Hodnoty zůstávají skutečné.
+ */
+const ZDROJE_MAPY = ['burza', 'vse', 'skutecne', 'shoda'];
 const zdrojMapy = () => {
-  let z = store.loadJson('perpdesk.liqZdroj', 'mix');
+  let z = store.loadJson('perpdesk.liqZdroj', 'vse');
   if (z === 'odhad') z = store.loadJson('perpdesk.liqBurzy', 'graf') === 'vse' ? 'vse' : 'burza';
-  if (z === 'oboje') z = 'mix';
-  if (!ZDROJE_MAPY.includes(z)) z = 'mix';
+  if (z === 'oboje' || z === 'mix') z = 'vse';
+  if (!ZDROJE_MAPY.includes(z)) z = 'vse';
   // Graf burzy bez historie OI nemá volbu „burza grafu“ — počítá ze všech.
   if (z === 'burza' && !BURZY_ODHADU.includes(burzaGrafuMapy())) z = 'vse';
   return z;
@@ -2552,7 +2557,7 @@ async function nactiMapu() {
   if (dostupneProGraf !== `${burza}:${symbol}`) { dostupneZdroje = {}; dostupneProGraf = `${burza}:${symbol}`; }
   const zdroj = zdrojMapy();
   const nasobek = likvidace.nasobekPasma(DELKA_INTERVALU[chartInterval] || 3600e3);
-  const chceReal = zdroj === 'skutecne' || zdroj === 'mix';
+  const chceReal = zdroj === 'skutecne' || zdroj === 'shoda';
   const chceOdhad = zdroj !== 'skutecne';
   const [skutecne, odhad] = await Promise.all([
     chceReal ? likvidace.pasy({
@@ -2571,13 +2576,20 @@ async function nactiMapu() {
   };
   const pasy = [];
   const casti = [];
-  if (chceReal && skutecne?.pasy?.length) {
+  if (zdroj === 'shoda') {
+    const shoda = skutecne?.pasy?.length && odhad?.pasy?.length
+      ? shodaMap(posun(skutecne.pasy, skutecne.mark, burza === 'hyperliquid'), posun(odhad.pasy, odhad.mark, false), Date.now())
+      : [];
+    const popis = t('liq.labelMatch');
+    pasy.push(...shoda.map((p) => ({ ...p, popis, zdroj: 'realna' })));
+    casti.push(popis);
+  } else if (chceReal && skutecne?.pasy?.length) {
     const minut = Math.max(0, Math.round((Date.now() - skutecne.cas) / 60000));
     const popis = t(burza === 'hyperliquid' ? 'liq.label' : 'liq.labelOther', { min: minut });
     pasy.push(...posun(skutecne.pasy, skutecne.mark, burza === 'hyperliquid').map((p) => ({ ...p, popis, zdroj: 'realna' })));
     casti.push(popis);
   }
-  if (chceOdhad && odhad?.pasy?.length) {
+  if (chceOdhad && zdroj !== 'shoda' && odhad?.pasy?.length) {
     const popis = t('liq.labelEst', { burzy: odhad.burzy.map((b) => NAZVY_BURZ_ODHADU[b] || b).join(' + ') });
     const od = oknoMapy.od;
     const ted = Date.now();
@@ -2592,6 +2604,30 @@ async function nactiMapu() {
   if (!casovacMapy) casovacMapy = setInterval(nactiMapu, 60000);
 }
 
+/*
+ * Shoda (v0.79.0): reálná hladina zůstane, když kalkulovaná mapa má na téže
+ * straně hladinu do ±0,15 % ceny, která se s ní v čase překrývá a není
+ * zanedbatelná (≥ 10 % 97. percentilu kalkulovaných).
+ */
+function shodaMap(realne, kalkulovane, ted) {
+  const hodnota = (p) => p.posledni ?? p.usd;
+  const serazene = kalkulovane.map(hodnota).sort((a, b) => a - b);
+  const prah = (serazene[Math.floor(serazene.length * 0.97)] || 0) * 0.1;
+  const kandidati = kalkulovane.filter((q) => hodnota(q) >= prah).sort((a, b) => a.cena - b.cena);
+  return realne.filter((p) => {
+    const tol = p.cena * 0.0015 + p.vyska;
+    let lo = 0;
+    let hi = kandidati.length;
+    while (lo < hi) { const m = (lo + hi) >> 1; if (kandidati[m].cena < p.cena - tol) lo = m + 1; else hi = m; }
+    for (let i = lo; i < kandidati.length && kandidati[i].cena <= p.cena + tol; i += 1) {
+      const q = kandidati[i];
+      const qDo = q.ziva ? ted : q.do;
+      if (q.long === p.long && q.od < p.do && p.od < qDo) return true;
+    }
+    return false;
+  });
+}
+
 function kresliPrepinacZdroje() {
   const box = el('liqZdroj');
   if (!box) return;
@@ -2604,7 +2640,7 @@ function kresliPrepinacZdroje() {
     if (z === 'burza') b.hidden = !BURZY_ODHADU.includes(burza);
     b.classList.toggle('active', z === zdroj);
     // Zašedlá jen volba, o které víme, že data nemá (ještě nenačtená ne).
-    b.classList.toggle('bez-dat', z !== 'mix' && dostupneZdroje[z] === false);
+    b.classList.toggle('bez-dat', z === 'shoda' ? dostupneZdroje.skutecne === false : dostupneZdroje[z] === false);
   });
 }
 

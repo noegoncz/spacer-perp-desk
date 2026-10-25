@@ -3533,6 +3533,13 @@ https://claude.ai/artifact/BHAHkgLcFuhiFkUPLreNi3, vybraná varianta B):**
   dál. Reálná: hodnota trvající < 30 min se nekreslí (`KRATKY_SKOK`).
   Barva z maxima zdroje (√), práh filtru dál z p97. ⚠ Uživatel používá
   jen APK — OKX (bez CORS) jde přes nativní HTTP, v prohlížeči neřešit.
+- **v0.79.0 — Shoda místo Mixu** (uživatel: „spíš průnik než společný"):
+  `shoda` = reálné hladiny HL, ke kterým má kalkulovaná mapa (všechny CEX)
+  na téže straně hladinu do ±0,15 % ceny (+ šířka pásma), překrývající se
+  v čase a ≥ 10 % p97 kalkulovaných (`shodaMap` v app.js). Hodnoty zůstávají
+  reálné. Výchozí zdroj `vse`; staré `mix`/`oboje` → `vse`. Pod tlačítky
+  podtitulky (open interest / Binance + Bybit + OKX / Hyperliquid /
+  kalk. ∩ reálná). Test začíná se zdrojem `skutecne` (localStorage).
 - Tmavý svislý pruh po prudkém pohybu není chyba: cena vybrala pásma
   a OI zároveň klesal → nové pozice nevznikly.
 - Test: `test-likvidace-graf.py` (Binance na 4h, bod 4: SPCX bez HL má

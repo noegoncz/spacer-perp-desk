@@ -25,6 +25,8 @@ mock = open(os.path.join(KOREN, 'tools', 'mock-bybit.js'), encoding='utf-8').rea
 mock = "sessionStorage.setItem('__mapaNaostro', '1');" + mock + """
 localStorage.setItem('perpdesk.lists', JSON.stringify({ verze: 1, aktivni: 'a',
   seznamy: [{ id: 'a', nazev: 'Main', polozky: %s }] }));
+// Výchozí zdroj je od v0.79.0 All CEX — test začíná na reálné mapě.
+localStorage.setItem('perpdesk.liqZdroj', JSON.stringify('skutecne'));
 localStorage.setItem('perpdesk.chartView', JSON.stringify({ 'hyperliquid:BTCUSDC': { interval: '1' }, 'binance:BTCUSDT': { interval: '30' } }));
 // Kdy dorazily svíčky a kdy se začala stahovat mapa.
 window.__casy = {};
@@ -186,11 +188,11 @@ over(ev("localStorage.getItem('perpdesk.liqZdroj')") == '"skutecne"', 'zdroj se 
 if not odhad:
     zdroj('burza')
     over(mapa() > 0, f'Estimate: SPCX má odhad z Binance + Bybit ({mapa()})')
-zdroj('mix')
+zdroj('shoda')
 ev("history.back()")
 time.sleep(1)
 
-print('5) přepínač: burza grafu / všechny CEX / mix (v0.78.0)')
+print('5) přepínač: burza grafu / všechny CEX / shoda (v0.79.0)')
 ev("document.querySelector('#watchList .tile[data-klic=\"binance:BTCUSDT\"]').click()")
 time.sleep(8)
 over(ev("document.getElementById('liqZdrojBurza').textContent") == 'Binance', 'první volba nese název burzy grafu')
@@ -206,11 +208,12 @@ info = ev('window.__mapaInfo') or {}
 print('  ', info)
 over('Bybit' in info.get('popis', '') and 'Hyperliquid' not in info.get('popis', ''), 'All CEX: i Bybit, bez reálné')
 over(ev("localStorage.getItem('perpdesk.liqZdroj')") == '"vse"', 'volba se uložila')
-zdroj('mix')
+zdroj('shoda')
 time.sleep(6)
 info = ev('window.__mapaInfo') or {}
-over('Hyperliquid' in info.get('popis', '') and 'Bybit' in info.get('popis', ''), 'Mix: všechny CEX + reálná')
-snimek('mapa-mix.png')
+print('  ', info)
+over('confirmed' in info.get('popis', ''), 'Shoda: reálné potvrzené kalkulovanou')
+snimek('mapa-shoda.png')
 zdroj_y = ev("document.getElementById('liqZdroj').getBoundingClientRect().top - document.getElementById('drawLayer').getBoundingClientRect().top")
 over(zdroj_y is not None and zdroj_y < 12, f'přepínač úplně nahoře v grafu ({zdroj_y})')
 ev("history.back()")
