@@ -925,5 +925,8 @@ export const cs = {
   "liq.subMatch": "kalk. ∩ reálná",
   "liq.subOi": "open interest",
   "liq.labelMatch": "Reálné likvidace, zvýrazněné hladiny potvrzuje i kalkulovaná mapa (všechny CEX)",
+  "liq.subReal": "pozice Hyperliquid",
+  "liq.happened": "Proběhlé likvidace",
+  "liq.happenedOff": "vypnuto",
   "liq.srcActual": "Reálná",
 };

@@ -16,7 +16,11 @@
  *   OKX     — `liquidation-orders` instType SWAP; sz v kontraktech
  *             (× ctVal z /public/instruments), posSide long / side sell
  *             = long. Po přihlášení přehraje staré události → jen čerstvé.
- * (Hyperliquid zatím ne — veřejný proud likvidace neoznačuje.)
+ *   Hyperliquid — veřejný proud likvidace neoznačuje; likvidace.mjs volá
+ *             `zapisHl` pro obchod sledovaného účtu za cenu na jeho
+ *             likvidační ceně nebo za ní (tolerance 0,3 %, nejvýš velikost
+ *             pozice). Zachytí jen účty, které sběr mapy zná (~většinu
+ *             objemu), ne všechny.
  *
  * Coin = základ páru bez násobku (1000PEPE → PEPE, cena na 1 coin), všechny
  * burzy v jednom řádku coinu. Události se slučují po minutách: stejná
@@ -30,7 +34,7 @@ import { appendFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const MIN = 60000, HOD = 3600000, DEN = 86400000;
-const BURZY = ['binance', 'bybit', 'okx'];
+const BURZY = ['binance', 'bybit', 'okx', 'hyperliquid'];
 const BINANCE_WS = 'wss://fstream.binance.com/market/ws/!forceOrder@arr';
 const MAX_TED = 1.5e6;            // strop řádku „teď“ v bajtech (krach trhu)
 
@@ -40,6 +44,9 @@ export function coinParu(zaklad) {
   if (m) return { coin: m[2], nasobek: +m[1] };
   m = /^([A-Z].*?)(1000+)$/.exec(zaklad);
   if (m) return { coin: m[1], nasobek: +m[2] };
+  // Hyperliquid: kPEPE = 1000 PEPE.
+  m = /^k([A-Z]{2,})$/.exec(zaklad);
+  if (m) return { coin: m[1], nasobek: 1000 };
   return { coin: zaklad, nasobek: 1 };
 }
 
@@ -47,7 +54,7 @@ const ctyriCislice = (c) => +c.toPrecision(4);
 
 export function spustLikvidovano({ log, API, TOKEN, ZKOUSKA, STAV }) {
   const davka = new Map();        // coin → Map(klíč → záznam), od poslední hodinové dávky
-  const stat = { binance: 0, bybit: 0, okx: 0, usd: [0, 0, 0], posledni: [0, 0, 0], spojeni: [0, 0, 0] };
+  const stat = { binance: 0, bybit: 0, okx: 0, hyperliquid: 0, usd: [0, 0, 0, 0], posledni: [0, 0, 0, 0], spojeni: [0, 0, 0, 0] };
   let posledniDavka = Date.now();
   let posledniUklid = 0;
   const okxKontrakty = new Map(); // instId → { ctVal, inverse }
@@ -207,7 +214,7 @@ export function spustLikvidovano({ log, API, TOKEN, ZKOUSKA, STAV }) {
   async function minuta() {
     const ted = Date.now();
     const info = {
-      udalosti: { binance: stat.binance, bybit: stat.bybit, okx: stat.okx },
+      udalosti: { binance: stat.binance, bybit: stat.bybit, okx: stat.okx, hyperliquid: stat.hyperliquid },
       usd: Object.fromEntries(BURZY.map((b, i) => [b, Math.round(stat.usd[i])])),
       ticho: Object.fromEntries(BURZY.map((b, i) => [b, stat.posledni[i] ? Math.round((ted - stat.posledni[i]) / 1000) : null])),
       spojeni: Object.fromEntries(BURZY.map((b, i) => [b, stat.spojeni[i]])),
@@ -261,4 +268,7 @@ export function spustLikvidovano({ log, API, TOKEN, ZKOUSKA, STAV }) {
     })();
     log(`likvidovano: start (Bybit ${bybitPary.length} párů, OKX ${okxKontrakty.size} kontraktů)`);
   })();
+
+  /** Likvidace na Hyperliquidu (z likvidace.mjs): coin HL, čas, cena, množství, long. */
+  return { zapisHl: (coin, cas, cena, mnozstvi, long) => zapis(3, coin, cas, cena, mnozstvi, long) };
 }

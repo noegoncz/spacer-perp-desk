@@ -225,18 +225,21 @@
       <!-- Vrstva pro zaměřovací kříž; sedne přesně na plochu se svíčkami. -->
       <div id="drawLayer" class="draw-layer"></div>
 
-      <!-- Filtr likvidační mapy tažením (v0.73.0): 0 dole, největší nahoře. -->
-      <div id="liqPosuvnik" class="liq-posuvnik" hidden role="slider" data-i18n-aria="layers.liqFilter">
-        <div id="liqPosuvnikPruh" class="liq-pruh"><div class="liq-zavoj"></div><div class="liq-uchyt"></div></div>
-        <span id="liqPosuvnikStitek" class="liq-stitek"></span>
-      </div>
-      <!-- Zdroj likvidační mapy (v0.79.0): kalkulovaná z burzy grafu / ze všech CEX,
-           skutečná z Hyperliquidu, shoda (reálné hladiny potvrzené kalkulovanou). -->
-      <div id="liqZdroj" class="liq-zdroj" hidden>
-        <button type="button" data-zdroj="burza"><b id="liqZdrojBurza">Binance</b><small data-i18n="liq.subOi">open interest</small></button>
-        <button type="button" data-zdroj="vse"><b data-i18n="liq.srcAll">All CEX</b><small>Binance + Bybit + OKX</small></button>
-        <button type="button" data-zdroj="skutecne"><b data-i18n="liq.srcActual">Real</b><small>Hyperliquid</small></button>
-        <button type="button" data-zdroj="shoda"><b data-i18n="liq.srcMatch">Match</b><small data-i18n="liq.subMatch">calc. ∩ real</small></button>
+      <!-- Ovládání likvidační mapy na levé stěně (v0.84.0, varianta E z plátna):
+           žebřík filtru s rozsahy, zdroj mapy, proběhlé likvidace podle zdroje. -->
+      <div id="liqLista" class="liq-lista" hidden>
+        <div id="liqZebrik" class="liq-zebrik" role="group" data-i18n-aria="layers.liqFilter"></div>
+        <div id="liqZdroj" class="liq-zdroj">
+          <button type="button" data-zdroj="burza"><b id="liqZdrojBurza">Binance</b><small data-i18n="liq.subOi">open interest</small></button>
+          <button type="button" data-zdroj="vse"><b data-i18n="liq.srcAll">All CEX</b><small>Binance+Bybit+OKX</small></button>
+          <button type="button" data-zdroj="skutecne"><b data-i18n="liq.srcActual">Real</b><small data-i18n="liq.subReal">Hyperliquid positions</small></button>
+          <button type="button" data-zdroj="shoda"><b data-i18n="liq.srcMatch">Match</b><small data-i18n="liq.subMatch">calc. ∩ real</small></button>
+        </div>
+        <button id="liqProbehle" class="liq-probehle" type="button" aria-pressed="true">
+          <span class="liq-bub" aria-hidden="true"><i></i><i></i></span>
+          <b data-i18n="liq.happened">Liquidations</b>
+          <small id="liqProbehleZdroj"></small>
+        </button>
       </div>
 
 

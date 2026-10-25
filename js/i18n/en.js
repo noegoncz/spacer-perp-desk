@@ -930,5 +930,8 @@ export const en = {
   "liq.subMatch": "calc. ∩ real",
   "liq.subOi": "open interest",
   "liq.labelMatch": "Real liquidations, levels confirmed by the calculated map (all CEX) highlighted",
+  "liq.subReal": "Hyperliquid positions",
+  "liq.happened": "Liquidations",
+  "liq.happenedOff": "off",
   "liq.srcActual": "Real",
 };

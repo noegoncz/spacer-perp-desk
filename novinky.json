@@ -1,15 +1,14 @@
 {
-  "verze": "0.83.1",
+  "verze": "0.84.0",
   "novinky": [
     {
-      "en": "New chart layer: liquidations that actually happened on Binance, Bybit and OKX, as bubbles on the candles.",
-      "cs": "Nová vrstva grafu: likvidace, které opravdu proběhly na Binance, Bybitu a OKX, jako bubliny na svíčkách."
+      "en": "Liquidation map controls moved to the left edge of the chart: filter steps with their USD range, map source and liquidations that happened.",
+      "cs": "Ovládání likvidační mapy je na levé straně grafu: stupně filtru s rozsahem v USD, zdroj mapy a proběhlé likvidace."
+    },
+    {
+      "en": "Liquidations that happened follow the selected source, now including Hyperliquid.",
+      "cs": "Proběhlé likvidace se řídí vybraným zdrojem, nově i z Hyperliquidu."
     }
   ],
-  "opravy": [
-    {
-      "en": "Liquidation map no longer covers the volume bars and chart labels; small liquidation bubbles stay small.",
-      "cs": "Likvidační mapa už nepřekrývá objem a popisky grafu; malé likvidace zůstávají malými bublinami."
-    }
-  ]
+  "opravy": []
 }

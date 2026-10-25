@@ -82,23 +82,19 @@ over(any('c=BTC&' in u for u in ev('window.__dotazyLikv') or []), 'dotaz na coin
 if SNIMKY:
     open(os.path.join(SNIMKY, 'likvidovano-btc.png'), 'wb').write(base64.b64decode(p.prikaz('Page.captureScreenshot', format='png')['data']))
 
-print('2) vrstva v nabídce oka')
-ev("document.getElementById('layersBtn').click()")
-time.sleep(0.5)
-najdi = "[...document.querySelectorAll('.nabidka-radek')].find((r) => /Liquidations that happened/.test(r.textContent))"
-over(bool(ev(f"Boolean({najdi})")), 'v nabídce je vrstva Liquidations that happened')
-ev(f"{najdi}.click()")
+print('2) tlačítko Proběhlé likvidace na liště mapy (v0.84.0)')
+over(ev("!document.getElementById('liqLista').hidden"), 'lišta mapy je vidět')
+ev("document.getElementById('liqProbehle').click()")
 time.sleep(0.5)
 over(vrstva() == 0, 'vypnutím bubliny zmizí')
-ev(f"{najdi}.click()")
+ev("document.getElementById('liqProbehle').click()")
 time.sleep(2)
 over(vrstva() == 1, 'zapnutím se vrátí')
+over(not ev("[...document.querySelectorAll('.nabidka-radek')].some((r) => /Liquidations that happened/.test(r.textContent))"), 'v nabídce oka už řádek není')
 ev("history.back()")
 time.sleep(1.5)
 
 print('3) 1000PEPE se ptá na coin PEPE')
-ev("document.querySelector('.tab[data-tab=watchlist]').click()")
-time.sleep(1)
 ev("document.querySelector('#watchList .tile[data-klic=\"binance:1000PEPEUSDT\"]').click()")
 time.sleep(5)
 over(any('c=PEPE&' in u for u in ev('window.__dotazyLikv') or []), 'dotaz na coin PEPE')

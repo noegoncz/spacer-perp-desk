@@ -757,8 +757,10 @@ function registrovatZnackuPlneni() {
  * hodnota (vypnutý objem se přestane kreslit).
  */
 let pasObjemu = { vyska: 0, t: 0 };
-/** Horní okraj plochy mapy: pod popiskem a šipkou ▲ (y 40–70). */
-const HORNI_OKRAJ_MAPY = 72;
+/** Horní okraj plochy mapy: pod popiskem a šipkou ▲ (y 8–38). */
+const HORNI_OKRAJ_MAPY = 40;
+/** Šířka lišty ovládání mapy vlevo (v0.84.0) — popisky mapy začínají za ní. */
+let levyOkrajMapy = 0;
 
 function registrovatObjem() {
   K().registerIndicator({
@@ -976,6 +978,13 @@ const NABEH_MAPY = 450;
 // (pro popisek u posuvníku).
 let filtrMapy = 0;
 let prahMapyUsd = 0;
+// Měřítko filtru (největší p97 zdrojů) a počet nakreslených hladin při
+// posledním kreslení — popisky schodů žebříku (v0.84.0). Změnu hlásí
+// `naMeritkoMapy` (mimo kreslení, nejvýš jednou za snímek).
+let p97Mapy = 0;
+let hladinMapy = 0;
+let naMeritkoMapy = null;
+let meritkoHlaseno = '';
 /*
  * Hodnota pruhu pro barvu, filtr i detail (v0.75.1, uživatel: posuvník
  * v milionech nesouhlasil s detailem): živý pruh = kolik na hladině leží
@@ -1117,6 +1126,7 @@ function registrovatLikvidace() {
       });
       if (!meritka.size) return true;
       prahMapyUsd = 0;
+      let p97Max = 0;
       for (const [k, hodnoty] of meritka) {
         hodnoty.sort((x, y) => x - y);
         // Práh filtru z 97. percentilu (v0.77.0 — z maxima schoval skoro
@@ -1125,7 +1135,9 @@ function registrovatLikvidace() {
         const p97 = hodnoty[Math.floor(hodnoty.length * 0.97)] || hodnoty[hodnoty.length - 1];
         meritka.set(k, { prah: p97 * filtrMapy, ref: hodnoty[hodnoty.length - 1] });
         prahMapyUsd = Math.max(prahMapyUsd, p97 * filtrMapy);
+        p97Max = Math.max(p97Max, p97);
       }
+      p97Mapy = p97Max;
       const pravy = bounding.width;
       /*
        * Živý pruh jen kousek za poslední svíčku (v0.76.1, přání uživatele):
@@ -1182,12 +1194,19 @@ function registrovatLikvidace() {
       }
       ctx.restore();   // konec ořezu
       globalThis.__pruhyMapy = nakresleno;   // pro test
+      hladinMapy = nakresleno;
+      const hlaseni = `${Math.round(p97Mapy)}|${nakresleno}`;
+      if (hlaseni !== meritkoHlaseno && naMeritkoMapy) {
+        meritkoHlaseno = hlaseni;
+        requestAnimationFrame(() => naMeritkoMapy?.());
+      }
       globalThis.__carMapy = viditelne.filter((p) => p.vrchol !== false && p.shoda !== false && hodnotaPasu(p) >= (meritka.get(p.zdroj || '')?.prah ?? 0)).map((p) => `${p.long}|${Math.round(p.cena)}`);   // pro test
       ctx.font = '11px -apple-system, "Segoe UI", Roboto, sans-serif';
       ctx.fillStyle = 'rgba(139,155,176,0.9)';
       ctx.textBaseline = 'top';
       // Pod přepínačem zdroje (ten je od v0.78.0 úplně nahoře).
-      if (likvidace.popis) ctx.fillText(likvidace.popis, 8, 40);
+      const xPopisu = levyOkrajMapy + 8;
+      if (likvidace.popis) ctx.fillText(likvidace.popis, xPopisu, 8);
       /*
        * Nejbližší velký shluk **mimo obraz** nahoře a dole (šipka u okraje):
        * skutečné likvidace velkých pozic bývají jednotky až desítky procent
@@ -1209,10 +1228,10 @@ function registrovatLikvidace() {
       const mil = (v) => (v >= 1e6 ? `${(v / 1e6).toFixed(v >= 1e8 ? 0 : 1)} M` : `${Math.round(v / 1e3)} k`);
       const cenaText = (c) => (c >= 1000 ? Math.round(c).toLocaleString('en-US') : String(+c.toPrecision(5)));
       ctx.fillStyle = `rgba(${BARVA_SHORTU},0.95)`;
-      if (nad) ctx.fillText(`▲ ${cenaText(nad.cena)} · ${mil(nad.usd)}`, 8, 56);
+      if (nad) ctx.fillText(`▲ ${cenaText(nad.cena)} · ${mil(nad.usd)}`, xPopisu, 24);
       ctx.textBaseline = 'bottom';
       ctx.fillStyle = `rgba(${BARVA_LONGU},0.95)`;
-      if (pod) ctx.fillText(`▼ ${cenaText(pod.cena)} · ${mil(pod.usd)}`, 8, bounding.height - 6);
+      if (pod) ctx.fillText(`▼ ${cenaText(pod.cena)} · ${mil(pod.usd)}`, xPopisu, bounding.height - 6);
       ctx.restore();
       return true;
     },
@@ -3900,6 +3919,19 @@ export function createPriceChart(container, layer, handlers = {}) {
 
     /** Práh filtru v USD při posledním vykreslení (0 = bez filtru / bez mapy). */
     getLiquidationThreshold: () => prahMapyUsd,
+
+    /** Výška plochy svíček (hlavní panel) v px. */
+    getCandleAreaHeight: () => chart.getSize(HLAVNI_PANEL, 'main')?.height || 0,
+
+    /** Měřítko filtru (p97 v USD) a počet nakreslených hladin — popisky žebříku. */
+    getLiquidationScale: () => ({ p97: p97Mapy, hladin: hladinMapy }),
+    /** Volá se, když se po kreslení změní měřítko nebo počet hladin. */
+    onLiquidationScale(fn) { naMeritkoMapy = fn; meritkoHlaseno = ''; },
+    /** Šířka lišty ovládání mapy vlevo (popisky mapy začnou za ní). */
+    setMapInset(px) {
+      levyOkrajMapy = Math.max(0, Number(px) || 0);
+      try { chart.overrideIndicator({ name: 'LIQMAP', extendData: performance.now() }); } catch { /* mapa není v grafu */ }
+    },
 
     /** Likvidační mapa: `{ pasy, popis }`, null = žádná (jiný pár, bez dat). */
     setLiquidations(data) {

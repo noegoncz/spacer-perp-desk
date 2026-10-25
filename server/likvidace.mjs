@@ -32,7 +32,7 @@ import { spustLikvidovano } from './likvidovano.mjs';
 // Zdi v knize příkazů běží v této službě (server/zdi.mjs). Aktualizace
 // restartuje službu jen při změně tohoto souboru → při změně zdi.mjs nebo
 // js/zdi-format.js zvedni tuto verzi.
-const VERZE_ZDI = 4;
+const VERZE_ZDI = 5;
 
 const API = (process.env.API || 'https://perpyx.com').replace(/\/$/, '');
 const TOKEN = process.env.WATCHER_TOKEN || '';
@@ -172,7 +172,7 @@ async function nactiUcet(adresa, u) {
       const liq = p.liquidationPx == null ? null : +p.liquidationPx;
       const n = Math.abs(+p.positionValue) || 0;
       ntl += n;
-      pozice.push({ c: p.coin, liq, v: liq ? Math.abs(szi) * liq : 0, l: szi > 0, ntl: n });
+      pozice.push({ c: p.coin, liq, v: liq ? Math.abs(szi) * liq : 0, l: szi > 0, ntl: n, s: Math.abs(szi), zl: 0 });
     }
     u.pozice = pozice;
     u.ntl = ntl;
@@ -244,9 +244,33 @@ function prihlasObchody(seznam) {
   for (const c of seznam) ws.send(JSON.stringify({ method: 'subscribe', subscription: { type: 'trades', coin: c } }));
 }
 
+/*
+ * Likvidace na Hyperliquidu (v0.84.0): veřejný proud ji neoznačuje. Obchod
+ * sledovaného účtu, který jeho pozici zavírá za cenu na likvidační ceně
+ * nebo za ní (0,3 % tolerance — likviduje se podle mark ceny), se počítá
+ * jako likvidace; nejvýš do velikosti pozice ze posledního čtení účtu.
+ */
+let likvidovano = null;
+function hlidejLikvidaci(t) {
+  const px = +t.px;
+  const sz = +t.sz;
+  if (!likvidovano || !(px > 0) || !(sz > 0)) return;
+  (t.users || []).forEach((a, i) => {
+    const p = ucty.get(a)?.pozice.find((x) => x.c === t.coin);
+    if (!p?.liq) return;
+    const zasah = p.l ? i === 1 && px <= p.liq * 1.003 : i === 0 && px >= p.liq * 0.997;
+    if (!zasah) return;
+    const q = Math.min(sz, p.s - p.zl);
+    if (!(q > 0)) return;
+    p.zl += q;
+    likvidovano.zapisHl(t.coin, +t.time || Date.now(), px, q, p.l);
+  });
+}
+
 function obchod(t) {
   const ted = Date.now();
   posledniObchod = ted;
+  hlidejLikvidaci(t);
   for (const a of t.users || []) {
     const u = ucty.get(a);
     if (!u) {
@@ -444,7 +468,7 @@ if (process.env.ZDI !== '0') {
   spustZdi({ log, API, TOKEN, ZKOUSKA, STAV, limitTrhu: +process.env.ZDI_LIMIT || Infinity });
 }
 // Skutečné likvidace z CEX (server/likvidovano.mjs) — taky v této službě.
-if (process.env.LIKVIDOVANO !== '0') spustLikvidovano({ log, API, TOKEN, ZKOUSKA, STAV });
+if (process.env.LIKVIDOVANO !== '0') likvidovano = spustLikvidovano({ log, API, TOKEN, ZKOUSKA, STAV });
 
 // Snímek 5 s po celé minutě (mark ceny jsou nejvýš 30 s staré).
 (function planuj() {

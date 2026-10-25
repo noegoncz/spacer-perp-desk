@@ -3613,6 +3613,21 @@ hlouposti) a ukázat proběhlé likvidace v grafu. Pořadí: sběr → vrstva �
   5 k na ETH bylo obří). Čáry mapy jen mezi popisky (`HORNI_OKRAJ_MAPY`
   72 px) a pruhem objemu (`pasObjemu`, je-li VOL v hlavním panelu) —
   uživatel: „nesmí to překrývat". Test: bod 3 `test-likvidace-graf.py`.
+- **v0.84.0 — ovládání na levé stěně** (varianta E z plátna
+  https://claude.ai/artifact/QwaesLPuyoDhDhR4awTF6P, volba uživatele):
+  `#liqLista` = žebřík filtru `#liqZebrik` (schody s rozsahem ≥ USD =
+  p97 × stupeň, vybraný i s počtem hladin; počet 3–8 podle výšky plochy
+  svíček, `STUPNE_FILTRU`; popisky obnovuje `chart.onLiquidationScale`),
+  zdroje `#liqZdroj` pod sebou (Real = „pozice Hyperliquid“), tlačítko
+  `#liqProbehle` (vrstva `likvidovano`, z nabídky oka zmizela). Posuvník
+  (v0.73.0) a horní přepínač (v0.78.0) zrušené. Popisky mapy za lištou
+  (`setMapInset`), nahoře od y 8, ořez čar od 40 px. ⚠ Polohu brát z
+  `chartBox` + `getCandleAreaHeight()`, ne z `drawLayer` (umí mít výšku 0).
+  **Proběhlé podle zdroje** (`burzyProbehlych`): burza grafu = jen ona,
+  All CEX = 0–2, Real / Shoda = Hyperliquid (index 3).
+  **Hyperliquid na serveru:** `hlidejLikvidaci` v likvidace.mjs — obchod
+  sledovaného účtu za cenu na jeho likvidační ceně nebo za ní (0,3 %),
+  nejvýš do velikosti pozice → `zapisHl`. Jen účty, které sběr mapy zná.
 
 ## Zdi v knize příkazů — sběr na serveru (2026-10-22, v0.72.0)
 
