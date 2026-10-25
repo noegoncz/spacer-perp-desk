@@ -1,19 +1,19 @@
 {
-  "verze": "0.79.3",
+  "verze": "0.80.0",
   "novinky": [
     {
-      "en": "New Match view on the liquidation map: all real Hyperliquid levels, those confirmed by the calculated map (all CEX) are highlighted.",
-      "cs": "Nový pohled Shoda na likvidační mapě: všechny reálné hladiny Hyperliquidu, zvýrazněné jsou ty, které potvrzuje i kalkulovaná mapa (všechny CEX)."
+      "en": "Liquidation map switch shows how much is at stake: live liquidations within ±10 % of the price for each source.",
+      "cs": "Přepínač likvidační mapy ukazuje, o kolik jde: živé likvidace do ±10 % od ceny u každého zdroje."
     },
     {
-      "en": "Each map source shows its exchanges right under the button.",
-      "cs": "Každý zdroj mapy ukazuje své burzy přímo pod tlačítkem."
+      "en": "Match shows the whole real Hyperliquid map with confirmed levels highlighted.",
+      "cs": "Shoda ukazuje celou reálnou mapu Hyperliquidu a zvýrazní potvrzené hladiny."
     }
   ],
   "opravy": [
     {
-      "en": "Match on the liquidation map now really filters: only levels confirmed by the strongest calculated clusters.",
-      "cs": "Shoda na likvidační mapě teď opravdu filtruje: jen hladiny potvrzené nejsilnějšími kalkulovanými shluky."
+      "en": "All CEX now adds new positions from each exchange separately (it could come out smaller than a single exchange).",
+      "cs": "Všechny CEX teď sčítají nové pozice každé burzy zvlášť (mohly vyjít menší než jedna burza)."
     }
   ]
 }

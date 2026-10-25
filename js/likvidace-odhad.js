@@ -34,7 +34,10 @@ export function odhadPasu(svicky, rady, krok, ted = Date.now()) {
       const h = Math.floor(s.time / 3600e3);
       const a = podle.get(h - 1);
       const b = podle.get(h);
-      if (a > 0 && b > 0) pres.set(s.time, (pres.get(s.time) || 0) + (b - a) * s.close);
+      // Jen přírůstek každé burzy zvlášť (v0.80.0): úbytek pruhy nemění, a kdyby
+      // se rozdíly nejdřív sečetly, úbytek na Bybitu by smazal nové pozice
+      // na Binance (All CEX pak vycházel menší než samotná Binance).
+      if (a > 0 && b > a) pres.set(s.time, (pres.get(s.time) || 0) + (b - a) * s.close);
     }
   }
   const zive = new Map();   // `${long}|${i}` → pruh

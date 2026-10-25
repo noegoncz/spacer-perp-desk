@@ -2501,6 +2501,7 @@ const zdrojMapy = () => {
 const burzaGrafuMapy = () => chartBurza || client?.burza?.id || 'bybit';
 // Které zdroje mají na tomto grafu data (undefined = ještě nevíme).
 let dostupneZdroje = {};
+let objemyZdroju = {};   // zdroj → USD živých likvidací do ±10 % (pro tlačítka)
 let dostupneProGraf = '';
 
 /*
@@ -2554,7 +2555,7 @@ async function nactiMapu() {
   const zadost = ++zadostMapy;
   const symbol = chartSymbol;
   const burza = burzaGrafuMapy();
-  if (dostupneProGraf !== `${burza}:${symbol}`) { dostupneZdroje = {}; dostupneProGraf = `${burza}:${symbol}`; }
+  if (dostupneProGraf !== `${burza}:${symbol}`) { dostupneZdroje = {}; objemyZdroju = {}; dostupneProGraf = `${burza}:${symbol}`; }
   const zdroj = zdrojMapy();
   const nasobek = likvidace.nasobekPasma(DELKA_INTERVALU[chartInterval] || 3600e3);
   const chceReal = zdroj === 'skutecne' || zdroj === 'shoda';
@@ -2576,6 +2577,12 @@ async function nactiMapu() {
   };
   const pasy = [];
   const casti = [];
+  // Objem u tlačítek (v0.80.0): živé likvidace do ±10 % od ceny.
+  const ted0 = Date.now() - 120000;
+  const objemZivych = (seznam) => seznam.reduce((sum, p) => (
+    (p.ziva || p.do >= ted0) && cena > 0 && Math.abs(p.cena / cena - 1) <= 0.1 ? sum + (p.posledni ?? p.usd) : sum), 0);
+  if (chceReal && skutecne?.pasy?.length) objemyZdroju.skutecne = objemZivych(posun(skutecne.pasy, skutecne.mark, burza === 'hyperliquid'));
+  if (chceOdhad && odhad?.pasy?.length) objemyZdroju[zdroj === 'burza' ? 'burza' : 'vse'] = objemZivych(posun(odhad.pasy, odhad.mark, odhad.burzy.length === 1 && odhad.burzy[0] === burza));
   if (zdroj === 'shoda') {
     // Shoda (v0.79.3): celá reálná mapa jako v Real, potvrzené hladiny
     // `shoda: true` (zvýrazněné), ostatní `shoda: false` (ztlumené) — nic se
@@ -2585,6 +2592,7 @@ async function nactiMapu() {
       ? shodaMap(realne, posun(odhad.pasy, odhad.mark, false), Date.now()) : []);
     const popis = t('liq.labelMatch');
     pasy.push(...realne.map((p) => ({ ...p, popis, zdroj: 'realna', shoda: potvrzene.has(p) })));
+    objemyZdroju.shoda = objemZivych([...potvrzene]);
     casti.push(popis);
   } else if (chceReal && skutecne?.pasy?.length) {
     const minut = Math.max(0, Math.round((Date.now() - skutecne.cas) / 60000));
@@ -2604,6 +2612,7 @@ async function nactiMapu() {
   globalThis.__mapaInfo = { popis: casti.join(' | '), prubehu: pasy.filter((p) => p.prubeh?.length > 1).length };   // pro test
   chart.setLiquidations(pasy.length ? { pasy, popis: casti.length > 1 ? t('liq.labelBoth') : casti[0] } : null);
   ukazPosuvnikMapy();
+  kresliPrepinacZdroje();
   if (!casovacMapy) casovacMapy = setInterval(nactiMapu, 60000);
 }
 
@@ -2647,6 +2656,8 @@ function shodaMap(realne, kalkulovane, ted) {
   });
 }
 
+const formatObjemMapy = (v) => (v >= 1e9 ? `${(v / 1e9).toFixed(1)} B` : v >= 1e6 ? `${(v / 1e6).toFixed(v >= 1e8 ? 0 : 1)} M` : `${Math.round(v / 1e3)} k`);
+
 function kresliPrepinacZdroje() {
   const box = el('liqZdroj');
   if (!box) return;
@@ -2658,6 +2669,9 @@ function kresliPrepinacZdroje() {
     const z = b.dataset.zdroj;
     if (z === 'burza') b.hidden = !BURZY_ODHADU.includes(burza);
     b.classList.toggle('active', z === zdroj);
+    let o = b.querySelector('.liq-objem');
+    if (!o) { o = document.createElement('i'); o.className = 'liq-objem'; b.append(o); }
+    o.textContent = objemyZdroju[z] != null ? formatObjemMapy(objemyZdroju[z]) : '–';
     // Zašedlá jen volba, o které víme, že data nemá (ještě nenačtená ne).
     b.classList.toggle('bez-dat', z === 'shoda' ? dostupneZdroje.skutecne === false : dostupneZdroje[z] === false);
   });

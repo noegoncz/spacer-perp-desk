@@ -3553,6 +3553,14 @@ https://claude.ai/artifact/BHAHkgLcFuhiFkUPLreNi3, vybraná varianta B):**
   **v0.79.3 (uživatel: reálná mapa je pravda, nemazat):** Shoda = celá
   reálná mapa, `shoda: true` se světlým lemem (8 px, bílá 0,22), `shoda:
   false` ztlumené (alfa × 0,3). Šipky a detail berou všechny hladiny.
+- **v0.80.0 — objem u tlačítek** (volba A uživatele): třetí řádek
+  `.liq-objem` = součet živých likvidací do ±10 % od ceny (`objemyZdroju`,
+  plní se jen u načtených zdrojů, jinak „–"; Shoda = součet potvrzených).
+  Shoda se počítá vždy proti všem CEX. ⚠ **Model: přírůstek OI po burzách
+  zvlášť** (`b > a` v odhadPasu) — dřív se rozdíly nejdřív sečetly a úbytek
+  na Bybitu smazal nové pozice na Binance (All CEX < Binance). Naostro BTC:
+  Binance 2,36 B + Bybit 2,39 B = 4,75 B. ⚠ V testech s mock-bybit.js je
+  Bybit podstrčený (OI konstantní) — součty ověřovat na `/tools/`.
 - Tmavý svislý pruh po prudkém pohybu není chyba: cena vybrala pásma
   a OI zároveň klesal → nové pozice nevznikly.
 - Test: `test-likvidace-graf.py` (Binance na 4h, bod 4: SPCX bez HL má
