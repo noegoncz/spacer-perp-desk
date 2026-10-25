@@ -927,6 +927,6 @@ export const en = {
   "liq.srcMatch": "Match",
   "liq.subMatch": "calc. ∩ real",
   "liq.subOi": "open interest",
-  "liq.labelMatch": "Real liquidations confirmed by the calculated map (all CEX)",
+  "liq.labelMatch": "Real liquidations, levels confirmed by the calculated map (all CEX) highlighted",
   "liq.srcActual": "Real",
 };

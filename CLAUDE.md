@@ -3550,6 +3550,9 @@ https://claude.ai/artifact/BHAHkgLcFuhiFkUPLreNi3, vybraná varianta B):**
   celá reálná mapa a nepotvrzené mají `skryta` (počítají se do vrcholů
   a měřítka, nekreslí se, nejsou v šipkách ani v detailu) → Shoda ⊆ Real
   (ověřeno: 72 → 20, nic navíc; `__carMapy` pro test).
+  **v0.79.3 (uživatel: reálná mapa je pravda, nemazat):** Shoda = celá
+  reálná mapa, `shoda: true` se světlým lemem (8 px, bílá 0,22), `shoda:
+  false` ztlumené (alfa × 0,3). Šipky a detail berou všechny hladiny.
 - Tmavý svislý pruh po prudkém pohybu není chyba: cena vybrala pásma
   a OI zároveň klesal → nové pozice nevznikly.
 - Test: `test-likvidace-graf.py` (Binance na 4h, bod 4: SPCX bez HL má

@@ -1,9 +1,9 @@
 {
-  "verze": "0.79.2",
+  "verze": "0.79.3",
   "novinky": [
     {
-      "en": "New Match view on the liquidation map: only real Hyperliquid levels that the calculated map (all CEX) confirms.",
-      "cs": "Nový pohled Shoda na likvidační mapě: jen reálné hladiny Hyperliquidu, které potvrzuje i kalkulovaná mapa (všechny CEX)."
+      "en": "New Match view on the liquidation map: all real Hyperliquid levels, those confirmed by the calculated map (all CEX) are highlighted.",
+      "cs": "Nový pohled Shoda na likvidační mapě: všechny reálné hladiny Hyperliquidu, zvýrazněné jsou ty, které potvrzuje i kalkulovaná mapa (všechny CEX)."
     },
     {
       "en": "Each map source shows its exchanges right under the button.",
@@ -14,10 +14,6 @@
     {
       "en": "Match on the liquidation map now really filters: only levels confirmed by the strongest calculated clusters.",
       "cs": "Shoda na likvidační mapě teď opravdu filtruje: jen hladiny potvrzené nejsilnějšími kalkulovanými shluky."
-    },
-    {
-      "en": "Match shows only lines you also see in Real.",
-      "cs": "Shoda ukazuje jen čáry, které vidíš i v pohledu Real."
     }
   ]
 }

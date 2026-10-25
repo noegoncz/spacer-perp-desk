@@ -2577,14 +2577,14 @@ async function nactiMapu() {
   const pasy = [];
   const casti = [];
   if (zdroj === 'shoda') {
-    // Shoda = podmnožina toho, co ukazuje Real (v0.79.2): předává se celá
-    // reálná mapa, nepotvrzené hladiny jen `skryta` — vrcholy shluků i práh
-    // filtru se tak počítají stejně jako v Real.
+    // Shoda (v0.79.3): celá reálná mapa jako v Real, potvrzené hladiny
+    // `shoda: true` (zvýrazněné), ostatní `shoda: false` (ztlumené) — nic se
+    // nemaže, reálné pozice jsou pravda.
     const realne = skutecne?.pasy?.length ? posun(skutecne.pasy, skutecne.mark, burza === 'hyperliquid') : [];
     const potvrzene = new Set(realne.length && odhad?.pasy?.length
       ? shodaMap(realne, posun(odhad.pasy, odhad.mark, false), Date.now()) : []);
     const popis = t('liq.labelMatch');
-    pasy.push(...realne.map((p) => ({ ...p, popis, zdroj: 'realna', ...(potvrzene.has(p) ? {} : { skryta: true }) })));
+    pasy.push(...realne.map((p) => ({ ...p, popis, zdroj: 'realna', shoda: potvrzene.has(p) })));
     casti.push(popis);
   } else if (chceReal && skutecne?.pasy?.length) {
     const minut = Math.max(0, Math.round((Date.now() - skutecne.cas) / 60000));

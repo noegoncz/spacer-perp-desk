@@ -922,6 +922,6 @@ export const cs = {
   "liq.srcMatch": "Shoda",
   "liq.subMatch": "kalk. ∩ reálná",
   "liq.subOi": "open interest",
-  "liq.labelMatch": "Reálné likvidace potvrzené kalkulovanou mapou (všechny CEX)",
+  "liq.labelMatch": "Reálné likvidace, zvýrazněné hladiny potvrzuje i kalkulovaná mapa (všechny CEX)",
   "liq.srcActual": "Reálná",
 };

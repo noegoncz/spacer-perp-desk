@@ -1130,9 +1130,7 @@ function registrovatLikvidace() {
       globalThis.__nabehMapy?.push(ctx.globalAlpha);   // pro test
       let nakresleno = 0;
       for (const p of viditelne) {
-        // `skryta` = Shoda: hladina se počítá do vrcholů i měřítka (jako v Real),
-        // ale nekreslí se (v0.79.2 — dřív Shoda ukázala čáry, které Real neměl).
-        if (p.vrchol === false || p.skryta) continue;
+        if (p.vrchol === false) continue;
         const m = meritka.get(p.zdroj || '') || { prah: prahMapyUsd, ref: 1 };
         const h = hodnotaPasu(p);
         if (h < m.prah || !(m.ref > 0)) continue;
@@ -1143,11 +1141,22 @@ function registrovatLikvidace() {
         const x1 = Math.max(0, a.x);
         const x2 = p.do >= Date.now() - 120000 ? Math.min(pravy, budouci) : Math.min(pravy, b.x);
         if (x2 <= x1) continue;
+        /*
+         * Shoda (v0.79.3, uživatel: reálná mapa je pravda, nic nemazat): celá
+         * reálná mapa, potvrzené hladiny se světlým lemem, nepotvrzené ztlumené.
+         */
+        if (p.shoda === true) {
+          ctx.fillStyle = 'rgba(255,255,255,0.22)';
+          ctx.fillRect(x1, a.y - 4, x2 - x1, 8);
+        }
+        const alfa = ctx.globalAlpha;
+        if (p.shoda === false) ctx.globalAlpha = alfa * 0.3;
         kresliCaru(ctx, p, m.ref, x1, x2, a.y, (ts) => px(ts, p.cena)?.x);
+        ctx.globalAlpha = alfa;
         nakresleno += 1;
       }
       globalThis.__pruhyMapy = nakresleno;   // pro test
-      globalThis.__carMapy = viditelne.filter((p) => p.vrchol !== false && !p.skryta && hodnotaPasu(p) >= (meritka.get(p.zdroj || '')?.prah ?? 0)).map((p) => `${p.long}|${Math.round(p.cena)}`);   // pro test
+      globalThis.__carMapy = viditelne.filter((p) => p.vrchol !== false && p.shoda !== false && hodnotaPasu(p) >= (meritka.get(p.zdroj || '')?.prah ?? 0)).map((p) => `${p.long}|${Math.round(p.cena)}`);   // pro test
       ctx.font = '11px -apple-system, "Segoe UI", Roboto, sans-serif';
       ctx.fillStyle = 'rgba(139,155,176,0.9)';
       ctx.textBaseline = 'top';
@@ -1159,7 +1168,7 @@ function registrovatLikvidace() {
        * od ceny a na krátkém timeframu by mapa vypadala prázdná.
        */
       const ted = Date.now() - 120000;
-      const ziva = pasy.filter((p) => p.do >= ted && !p.skryta);
+      const ziva = pasy.filter((p) => p.do >= ted);
       const maxZiva = Math.max(0, ...ziva.map((p) => p.posledni || p.usd));
       let nad = null;
       let pod = null;
@@ -2677,7 +2686,7 @@ export function createPriceChart(container, layer, handlers = {}) {
     if (vrstvy.likvidace && mapaZapnuta) {
       const ted = Date.now() - 120000;
       for (const p of likvidace?.pasy || []) {
-        if (p.skryta || hodnotaPasu(p) < prahMapyUsd) continue;
+        if (hodnotaPasu(p) < prahMapyUsd) continue;
         zkus('likvidace', p, p.do >= ted ? Infinity : p.do);
       }
     }
@@ -2787,7 +2796,7 @@ export function createPriceChart(container, layer, handlers = {}) {
     const lik = { long: { odhad: 0, realna: 0 }, short: { odhad: 0, realna: 0 } };
     if (vrstvy.likvidace && mapaZapnuta) {
       for (const p of likvidace?.pasy || []) {
-        if (p.skryta || p.do < ted || Math.abs(p.cena - cena) > p.vyska / 2) continue;
+        if (p.do < ted || Math.abs(p.cena - cena) > p.vyska / 2) continue;
         lik[p.long ? 'long' : 'short'][p.zdroj === 'odhad' ? 'odhad' : 'realna'] += p.posledni ?? p.usd;
       }
     }
