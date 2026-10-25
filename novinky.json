@@ -1,13 +1,13 @@
 {
-  "verze": "0.76.0",
+  "verze": "0.76.1",
   "novinky": [
     {
-      "en": "Liquidation map levels now brighten over time as positions build up and fade as they close, like Coinglass.",
-      "cs": "Hladiny likvidační mapy se v čase rozsvěcují, jak přibývají pozice, a slábnou, když se zavírají, jako na Coinglassu."
+      "en": "Calculated liquidation levels only grow with new positions and end when the price reaches them — no more vertical seams.",
+      "cs": "Kalkulované likvidační hladiny jen sílí s novými pozicemi a končí, když k nim dojde cena — bez svislých předělů."
     },
     {
-      "en": "Calculated map uses the chart's exchange by default; switch to All exchanges (Binance + Bybit + OKX) in Layers.",
-      "cs": "Kalkulovaná mapa se počítá z burzy grafu; ve Vrstvách jde přepnout na Všechny burzy (Binance + Bybit + OKX)."
+      "en": "Live liquidation levels reach only a few candles past the price instead of across the whole chart.",
+      "cs": "Živé likvidační hladiny sahají jen pár svíček za cenu, ne přes celý graf."
     }
   ],
   "opravy": []

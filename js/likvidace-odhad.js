@@ -6,7 +6,7 @@
  * hodiny. Nevíme páku ani směr, takže se přírůstek rozdělí podle typického
  * rozložení pák (PAKY) a napůl long / short (zelená svíčka trochu víc
  * longů). Každá část má likvidační cenu cena × (1 ∓ 1/páka + udržovací
- * marže). Úbytek OI zmenší všechny živé pozice poměrně (nevíme, kdo zavřel).
+ * marže). Úbytek OI pruhy nemění (v0.76.1, viz níž).
  * Pozice zanikne, když ji cena dojde (long: low ≤ likvidace, short: high ≥).
  *
  * Je to ODHAD — skutečné pozice jsou jen na Hyperliquidu (likvidace.js).
@@ -58,16 +58,13 @@ export function odhadPasu(svicky, rady, krok, ted = Date.now()) {
       }
     }
     const d = pres.get(s.time) || 0;
-    if (d < 0) {
-      let celkem = 0;
-      for (const p of zive.values()) celkem += p.posledni;
-      const pomer = celkem > 0 ? Math.max(0, 1 + d / celkem) : 1;
-      for (const p of zive.values()) {
-        p.posledni *= pomer;
-        p.min = Math.min(p.min, p.posledni);
-        zapis(p, s, konec);
-      }
-    } else if (d > 0) {
+    /*
+     * Úbytek OI pruhy nezmenšuje (v0.76.1, snímky uživatele: poměrné
+     * zmenšení všech živých pásů v jedné hodině dělalo přes celý graf svislé
+     * předěly — „rozsvítí se a zhasne"). Nevíme, kdo zavřel; pás tedy jen
+     * sílí s novým objemem a končí, když ho cena dojde (jako Coinglass).
+     */
+    if (d > 0) {
       const podilLong = s.close >= s.open ? 0.55 : 0.45;
       const cena = (s.high + s.low + s.close) / 3;
       for (const [paka, vaha] of PAKY) {

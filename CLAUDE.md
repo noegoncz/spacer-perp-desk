@@ -3504,6 +3504,12 @@ https://claude.ai/artifact/BHAHkgLcFuhiFkUPLreNi3, vybraná varianta B):**
   (`/rubik/…open-interest-history`, 100 řádků na stránku) **nemá CORS** →
   jen v APK přes nativní HTTP, v prohlížeči se OKX tiše vynechá.
   Test: bod 5 `test-likvidace-graf.py` (`__mapaInfo`).
+  **v0.76.1 (snímky uživatele):** úbytek OI kalkulované pruhy už nezmenšuje
+  — poměrné zmenšení všech živých pásů v jedné hodině dělalo přes graf
+  svislé předěly. Pás jen sílí a končí cenou (jako Coinglass). Živé pruhy
+  obou map jen 3 svíčky (≥ 16 px) za poslední svíčku, ne k pravému okraji.
+  Reálná mapa je „bloková" z podstaty dat: účet se čte jednou za 1–30 min
+  podle priority, hodnota pásma skočí až při dalším čtení.
 - Tmavý svislý pruh po prudkém pohybu není chyba: cena vybrala pásma
   a OI zároveň klesal → nové pozice nevznikly.
 - Test: `test-likvidace-graf.py` (Binance na 4h, bod 4: SPCX bez HL má

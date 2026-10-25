@@ -1065,6 +1065,14 @@ function registrovatLikvidace() {
       const serazene = vObraze.map(hodnotaPasu).sort((x, y) => x - y);
       const ref = serazene[Math.floor(serazene.length * 0.97)] || max;
       const pravy = bounding.width;
+      /*
+       * Živý pruh jen kousek za poslední svíčku (v0.76.1, přání uživatele):
+       * budoucí objem neznáme — stačí vidět aktuální sílu, ne čáru přes
+       * celou volnou plochu vpravo. 3 svíčky, aspoň 16 px.
+       */
+      const xPosledni = px(data[data.length - 1].timestamp, 0)?.x;
+      const sirkaSvicky = chart.getBarSpace?.()?.bar ?? 8;
+      const budouci = Number.isFinite(xPosledni) ? xPosledni + Math.max(16, 3 * (Number(sirkaSvicky) || 8)) : pravy;
       ctx.save();
       ctx.globalAlpha = pruhlednostNabehu();
       globalThis.__nabehMapy?.push(ctx.globalAlpha);   // pro test
@@ -1077,7 +1085,7 @@ function registrovatLikvidace() {
         if (!a || !b || !Number.isFinite(a.y) || !Number.isFinite(b.y)) continue;
         // Pruh, který dál trvá, vede až k pravému okraji (budoucnost).
         const x1 = Math.max(0, a.x);
-        const x2 = p.do >= Date.now() - 120000 ? pravy : Math.min(pravy, b.x);
+        const x2 = p.do >= Date.now() - 120000 ? Math.min(pravy, budouci) : Math.min(pravy, b.x);
         if (x2 <= x1) continue;
         // v0.74.1 (uživatel: spektrum nešlo číst — všechno svítilo): malé
         // hodnoty skoro průhledné, svítí jen velké shluky (jako Coinglass).
