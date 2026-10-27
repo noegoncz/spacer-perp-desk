@@ -1918,6 +1918,23 @@ svíček). Hyperliquid historii nedává → panel s textem. OI má nejjemněji
 zapnutým indikátorem, obnova po 2 min. Karta pozice: u sazby fundingu
 „longs pay / shorts pay“ (`.fp-kdo`). Test: `tools/test-open-interest.py`.
 
+**Funding (v0.86.0, přání uživatele — jako „Funding Sazba burzy 8h"
+v TradingView, Maverick na X):** indikátor `FUND` ve vlastním panelu
+(`registrovatFunding` v chart.js, `setFunding({ body: [{ time, rate }],
+ted, popis })`): sloupce sazby v % za interval, kladné zeleně (longy
+platí), záporné červeně (barvy v nastavení). Svíčka delší než interval =
+průměr vyúčtovaných sazeb, kratší drží poslední (schody), živá svíčka =
+aktuální sazba (`getFunding`). Legenda „8h · Binance · %“ (interval
+z rozestupu dat). Data `getFundingRates(pár, od)`: Bybit
+`/v5/market/funding/history` (200 / strana dozadu), Binance přímo
+`/fapi/v1/fundingRate` (+ aktuální sazba z `premiumIndex` bez CCXT),
+ostatní CCXT `fetchFundingRateHistory` (OKX drží ~3 měsíce). ⚠ Stránky jdou
+od `od` dopředu → app.js (`nactiFunding`) bere nejvýš ~3 500 vyúčtování
+zpět, jinak by Hyperliquid (funding po 1 h) na 1D skončil před měsíci
+a novější svíčky držely starou sazbu. Obnova po 5 min. Hyperliquid ukazuje
+sazbu za 1 h (≈ 1/8 sazby 8h burz). Test: `tools/test-funding.py`
+(Bybit mock, Binance / OKX / Hyperliquid naostro).
+
 Schémata nastavení jsou v **`js/indikatory.js`**. Obrazovka nastavení se z nich
 generuje sama, takže přidat volbu (nebo celý indikátor) znamená sáhnout jen do
 toho souboru. Pole s `param: n` jde do `calcParams[n]`, tedy do výpočtu;

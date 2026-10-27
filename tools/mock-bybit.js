@@ -116,6 +116,16 @@ window.fetch = function (vstup, volby) {
     const l = []; for (let i=0;i<200;i++) l.push({ openInterest: String(5e6 + i*1e4), timestamp: String(t0 - i*krok) });
     return ok({retCode:0, result:{list:l, nextPageCursor:''}});
   }
+  // Historie fundingu (v0.86.0): po 8 h od endTime dozadu, střídavě + a −
+  // (každé čtvrté vyúčtování záporné), jako Bybit od nejnovějšího.
+  if (u.includes('/v5/market/funding/history')) {
+    (window.__fundingDotazy = window.__fundingDotazy || []).push(u);
+    const krok = 8 * 3600e3;
+    const konec = Number(/endTime=(\d+)/.exec(u)?.[1]) || Date.now();
+    const t0 = Math.floor(konec / krok) * krok;
+    const l = []; for (let i=0;i<200;i++) { const t = t0 - i*krok; l.push({ symbol:'JUPUSDT', fundingRate: String((t / krok) % 4 === 0 ? -0.0002 : 0.0001), fundingRateTimestamp: String(t) }); }
+    return ok({retCode:0, result:{list:l}});
+  }
   // Prehled uctu (checkpoint 7). window.__bezPenezenky simuluje klic bez
   // opravneni Wallet — Bybit na nej odpovida chybou, ne prazdnym seznamem.
   if (u.includes('/v5/account/wallet-balance')) {

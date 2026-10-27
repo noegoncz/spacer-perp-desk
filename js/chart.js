@@ -134,6 +134,8 @@ export const INDIKATORY = [
   { id: 'VPROFILE', vlastniPanel: false },
   // Open interest z burzy grafu (v0.66.0), data dodává app.js.
   { id: 'OI', vlastniPanel: true },
+  // Sazba fundingu z burzy grafu (v0.86.0), data dodává app.js.
+  { id: 'FUND', vlastniPanel: true },
 ];
 
 export const nazevIndikatoru = (id) => t(`indicator.${id}`);
@@ -151,6 +153,7 @@ export const IKONY_INDIKATORU = {
   SAR: '<path d="M3 16c4-6 8 2 12-5"/><circle cx="6" cy="19" r="1.3"/><circle cx="11" cy="17" r="1.3"/><circle cx="16" cy="8" r="1.3"/><circle cx="21" cy="6" r="1.3"/>',
   VPROFILE: '<path d="M3 5h11M3 9h6M3 13h14M3 17h8M3 21h4"/>',
   OI: '<path d="M3 18c3-1 5-5 8-5s4 3 7 0 2-6 3-8"/><path d="M3 21h18" opacity=".4"/>',
+  FUND: '<path d="M3 12h18" opacity=".4"/><path d="M5 12V7M9 12V5M13 12V9M17 12v5M21 12v3"/>',
 };
 
 const HLAVNI_PANEL = 'candle_pane';
@@ -1832,6 +1835,66 @@ function registrovatMereni() {
 }
 
 /*
+ * Funding (v0.86.0, přání uživatele — jako „Funding Sazba burzy 8h"
+ * v TradingView): sloupce sazby v % za interval, kladné zeleně (longy
+ * platí), záporné červeně. Data `funding` ({ body: [{ time, rate }],
+ * ted, popis }) dodává app.js. Svíčka delší než interval = průměr sazeb
+ * vyúčtovaných v ní; kratší drží poslední vyúčtovanou (schody). Živá
+ * svíčka ukazuje aktuální odhad příští sazby (`ted`).
+ */
+let funding = null;
+let verzeFundingu = 0;
+let barvyFundingu = null;
+
+function registrovatFunding() {
+  K().registerIndicator({
+    name: 'FUND',
+    shortName: 'Funding',
+    series: 'normal',
+    precision: 4,
+    calcParams: [0],
+    figures: [{
+      key: 'rate',
+      title: '',
+      type: 'bar',
+      baseValue: 0,
+      styles: ({ data }) => {
+        const v = data.current?.rate ?? 0;
+        barvyFundingu ??= nactiNastaveni('FUND');
+        return { style: 'fill', color: v >= 0 ? barvyFundingu.barvaPlus : barvyFundingu.barvaMinus };
+      },
+    }],
+    createTooltipDataSource: () => ({ calcParamsText: funding?.popis ? ` ${funding.popis}` : '' }),
+    calc: (data) => {
+      const body = funding?.body || [];
+      let j = 0;
+      let posledni = null;
+      return data.map((d, i) => {
+        const delka = (data[i + 1]?.timestamp ?? d.timestamp + (d.timestamp - (data[i - 1]?.timestamp ?? d.timestamp))) - d.timestamp;
+        while (j < body.length && body[j].time < d.timestamp) posledni = body[j++].rate;
+        let soucet = 0;
+        let n = 0;
+        while (j < body.length && body[j].time < d.timestamp + delka) { soucet += body[j].rate; n += 1; posledni = body[j++].rate; }
+        let rate = n ? soucet / n : posledni;
+        if (i === data.length - 1 && Number.isFinite(funding?.ted)) rate = funding.ted;
+        return Number.isFinite(rate) && body.length ? { rate: rate * 100 } : {};
+      });
+    },
+    draw: ({ ctx, bounding }) => {
+      if (funding?.body?.length || !funding) return false;
+      ctx.save();
+      ctx.font = '11px -apple-system, "Segoe UI", Roboto, sans-serif';
+      ctx.fillStyle = 'rgba(139,155,176,0.9)';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(t('fundingInd.none'), bounding.width / 2, bounding.height / 2);
+      ctx.restore();
+      return false;
+    },
+  });
+}
+
+/*
  * Open interest (v0.66.0): součet otevřených pozic na perpu, z burzy grafu.
  * Data nese `openInterest` ({ body: [{ time, oi }] v coinu, popis }), app.js
  * je stahuje po svíčkách. Kreslí se v USD (oi × close svíčky), aby šlo
@@ -2178,6 +2241,7 @@ export function createPriceChart(container, layer, handlers = {}) {
   registrovatMereni();
   registrovatRsi();
   registrovatOi();
+  registrovatFunding();
   registrovatLikvidace();
   registrovatZdi();
   registrovatLikvidovano();
@@ -3087,6 +3151,12 @@ export function createPriceChart(container, layer, handlers = {}) {
     if (nazev === 'OI') {
       zmena.styles = { lines: [{ color: nactiNastaveni('OI').barvaOi, size: 1.5 }] };
     }
+    if (nazev === 'FUND') {
+      // Barvy čte `styles` sloupců; nové calcParams = překreslení.
+      barvyFundingu = nactiNastaveni('FUND');
+      verzeFundingu += 1;
+      zmena.calcParams = [verzeFundingu];
+    }
 
     try {
       chart.overrideIndicator(zmena);
@@ -3853,6 +3923,13 @@ export function createPriceChart(container, layer, handlers = {}) {
 
     getLayers() {
       return { ...vrstvy };
+    },
+
+    /** Funding: `{ body: [{ time, rate }], ted, popis }`, null = načítá se. */
+    setFunding(data) {
+      funding = data;
+      verzeFundingu += 1;
+      try { chart.overrideIndicator({ name: 'FUND', calcParams: [verzeFundingu] }); } catch { /* není v grafu */ }
     },
 
     /** Open interest: `{ body: [{ time, oi }], popis }`, null = načítá se. */

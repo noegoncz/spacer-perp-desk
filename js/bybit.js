@@ -682,6 +682,27 @@ export class BybitClient {
   }
 
   /**
+   * Historie sazeb fundingu (v0.86.0, indikátor FUND) vzestupně:
+   * [{ time, rate }], rate jako podíl, čas = vyúčtování. Bybit dává 200
+   * bodů na stránku od `endTime` dozadu; jde se k `od`, nejvýš 10 stran.
+   */
+  async getFundingRates(symbol, od) {
+    const body = [];
+    let konec = Date.now();
+    for (let strana = 0; strana < 10; strana += 1) {
+      const result = await this.publicGet('/v5/market/funding/history', {
+        category: 'linear', symbol, endTime: String(konec), limit: '200',
+      });
+      const list = result?.list ?? [];
+      list.forEach((r) => body.push({ time: Number(r.fundingRateTimestamp), rate: num(r.fundingRate) }));
+      const nejstarsi = Math.min(...list.map((r) => Number(r.fundingRateTimestamp)));
+      if (list.length < 200 || !(nejstarsi > od)) break;
+      konec = nejstarsi - 1;
+    }
+    return body.filter((b) => b.time >= od - 864e5).sort((a, b) => a.time - b.time);
+  }
+
+  /**
    * Všechny linear USDT páry se základními čísly, seřazené podle obratu.
    * Veřejné, nepotřebuje klíče — seznam jde ukázat i před přihlášením.
    */

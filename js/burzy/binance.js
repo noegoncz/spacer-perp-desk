@@ -99,6 +99,41 @@ export class BinanceClient extends CcxtAdapter {
     }
   }
 
+  /**
+   * Aktuální sazba rovnou z fapi (indikátor Funding i karta pozice) — bez
+   * načítání CCXT kvůli jednomu číslu. `lastFundingRate` = sazba příštího
+   * vyúčtování; interval z `fundingInfo` (jen páry mimo 8 h).
+   */
+  async getFunding(symbol) {
+    if (!this.primoFapi()) return super.getFunding(symbol);
+    try {
+      const [pi, info] = await Promise.all([
+        this.fapi('/fapi/v1/premiumIndex', { symbol }),
+        this.intervalyPrimo ??= this.fapi('/fapi/v1/fundingInfo', {})
+          .then((seznam) => new Map(seznam.map((x) => [x.symbol, Number(x.fundingIntervalHours) * 60])))
+          .catch((e) => { this.intervalyPrimo = null; throw e; }),
+      ]);
+      const dalsi = Number(pi.nextFundingTime);
+      return { rate: Number(pi.lastFundingRate), nextAt: dalsi > Date.now() ? dalsi : null, minut: info.get(symbol) || 480 };
+    } catch {
+      return super.getFunding(symbol);
+    }
+  }
+
+  /** Historie fundingu rovnou z fapi (1000 bodů na dotaz, dopředu od `od`). */
+  async getFundingRates(symbol, od) {
+    if (!this.primoFapi()) return super.getFundingRates(symbol, od);
+    const body = [];
+    let start = Math.floor(od);
+    for (let strana = 0; strana < 4; strana += 1) {
+      const radky = await this.fapi('/fapi/v1/fundingRate', { symbol, startTime: String(start), limit: '1000' });
+      radky.forEach((r) => body.push({ time: Number(r.fundingTime), rate: Number(r.fundingRate) }));
+      if (radky.length < 1000) break;
+      start = body[body.length - 1].time + 1;
+    }
+    return body;
+  }
+
   /* ---------- živý proud: cena (@miniTicker) a svíčka (@kline) ---------- */
 
   /*

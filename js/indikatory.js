@@ -204,6 +204,14 @@ export const SCHEMATA = {
     vyskaPanelu(),
     barva('barvaOi', '#f0b90b'),
   ],
+
+  /* Funding — data z burzy (chart.js registrovatFunding). */
+  FUND: [
+    { sekce: 'style' },
+    vyskaPanelu(),
+    barva('barvaPlus', '#16c784'),
+    barva('barvaMinus', '#ea3943'),
+  ],
 };
 
 /** Jen skutečná pole, bez oddělovačů sekcí. */

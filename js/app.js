@@ -2321,6 +2321,7 @@ function zastavMapu() {
   ukazPosuvnikMapy();
   chart?.setLiquidations(null);
   zastavOi();
+  zastavFunding();
   zastavZdi();
   zastavLikvidovano();
 }
@@ -2506,6 +2507,57 @@ function zastavOi() {
   zadostOi += 1;
   oiNacteno = false;
   chart?.setOpenInterest(null);
+}
+
+/*
+ * Funding (v0.86.0) — panel indikátoru FUND, sazby z burzy grafu od
+ * začátku načtených svíček + aktuální odhad příští sazby. Stejně jako OI:
+ * jen se zapnutým indikátorem, po svíčkách, obnova po 5 min.
+ */
+let casovacFundingu = null;
+let zadostFundingu = 0;
+let fundingNacten = false;
+
+function zastavFunding() {
+  clearInterval(casovacFundingu);
+  casovacFundingu = null;
+  zadostFundingu += 1;
+  fundingNacten = false;
+  chart?.setFunding(null);
+}
+
+const popisIntervalu = (minut) => (minut >= 60 ? `${Math.round(minut / 60)}h` : `${minut}m`);
+
+async function nactiFunding() {
+  if (!chart || !chartSymbol || !chart.activeIndicators().includes('FUND')) return;
+  const k = grafKlient();
+  const zadost = ++zadostFundingu;
+  const symbol = chartSymbol;
+  let data = { body: [], ted: null, popis: '' };
+  if (k?.getFundingRates) {
+    try {
+      const ted = k.getFunding ? await k.getFunding(symbol).catch(() => null) : null;
+      // Historie vždy až po dnešek: stránky burz jdou od `od` dopředu, takže
+      // u fundingu po hodině (Hyperliquid) by 1D graf skončil před měsíci
+      // a novější svíčky držely starou sazbu. Nejvýš ~3 500 vyúčtování zpět.
+      const od = Math.max(oknoMapy?.od || Date.now() - 30 * 864e5, Date.now() - 3500 * (ted?.minut || 480) * 60e3);
+      const body = await k.getFundingRates(symbol, od);
+      // Interval z dat (nejčastější rozestup), jinak od burzy.
+      const rozestupy = body.slice(1).map((b, i) => Math.round((b.time - body[i].time) / 60e3));
+      const minut = rozestupy.length ? rozestupy.sort((a, b) => a - b)[Math.floor(rozestupy.length / 2)] : ted?.minut;
+      data = {
+        body,
+        ted: Number.isFinite(ted?.rate) ? ted.rate : null,
+        popis: t('fundingInd.label', { burza: k.burza.nazev, interval: minut ? popisIntervalu(minut) : '' }),
+      };
+    } catch {
+      if (fundingNacten) return; // síť — nechat poslední data
+    }
+  }
+  if (zadost !== zadostFundingu || symbol !== chartSymbol || !chart) return;
+  fundingNacten = true;
+  chart.setFunding(data);
+  if (!casovacFundingu && data.body.length) casovacFundingu = setInterval(nactiFunding, 300000);
 }
 
 async function nactiOi() {
@@ -2860,6 +2912,9 @@ async function nactiSvice() {
     zadostOi += 1;
     oiNacteno = false;
     setTimeout(nactiOi, 80);
+    zadostFundingu += 1;
+    fundingNacten = false;
+    setTimeout(nactiFunding, 90);
   }
   return bars;
 }
@@ -2974,6 +3029,7 @@ function ulozIndikatory() {
   store.saveIndicators(chart.activeIndicators());
   oznacAktivniIndikatory();
   if (chart.activeIndicators().includes('OI') && !oiNacteno) nactiOi();
+  if (chart.activeIndicators().includes('FUND') && !fundingNacten) nactiFunding();
 }
 
 const maVlastniPanel = (nazev) =>

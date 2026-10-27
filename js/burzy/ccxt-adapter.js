@@ -527,6 +527,33 @@ export class CcxtAdapter {
     };
   }
 
+  /**
+   * Historie sazeb fundingu (v0.86.0, indikátor FUND) vzestupně:
+   * [{ time, rate }] od `od`. CCXT `fetchFundingRateHistory` po stránkách
+   * dopředu (veřejná fronta), nejvýš 8 stran — na 1D grafu s fundingem
+   * po hodině (Hyperliquid) nejstarší svíčky zůstanou prázdné.
+   */
+  async getFundingRates(symbol, od) {
+    const ex = await this.burzaVerejna();
+    if (!ex.has?.fetchFundingRateHistory) return [];
+    const s = await this.symbolCcxt(symbol, true);
+    const body = new Map();
+    let od_ = Math.floor(od);
+    for (let strana = 0; strana < 8; strana += 1) {
+      const radky = await ex.fetchFundingRateHistory(s, od_, 1000);
+      let posledni = 0;
+      (radky || []).forEach((r) => {
+        const time = cislo(r.timestamp);
+        const rate = cislo(r.fundingRate);
+        if (time && Number.isFinite(rate)) body.set(time, rate);
+        posledni = Math.max(posledni, time || 0);
+      });
+      if (!radky?.length || posledni <= od_ || posledni > Date.now() - 3600e3) break;
+      od_ = posledni + 1;
+    }
+    return [...body].map(([time, rate]) => ({ time, rate })).sort((a, b) => a.time - b.time);
+  }
+
   /** Interval stržení v minutách, když ho CCXT nedá — burza může přepsat. */
   async fundingMinut() {
     return 480;
