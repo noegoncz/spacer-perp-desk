@@ -482,19 +482,25 @@ export function otevriDenik(o) {
     zalozka('review', t('journal.reviewTab'), hotovaReview(), Boolean(o.uzavreny)));
 
   // Nepočítat do statistik: platí pro celý obchod, proto nad částmi.
+  // Přepínač kreslí stav třídou `on` (jako v nastavení); klepnout jde na celý řádek.
   const radekVynechani = el('div', 'denik-vynechat');
-  const prepVynechani = tlacitko('', 'nastaveni-prepinac', () => {
-    vynechani.ano = !vynechani.ano;
-    vynechani.zmena = true;
+  const prepVynechani = el('button', 'nastaveni-prepinac');
+  prepVynechani.type = 'button';
+  prepVynechani.setAttribute('aria-label', t('journal.exclude'));
+  const ukazVynechani = () => {
+    prepVynechani.classList.toggle('on', vynechani.ano);
     prepVynechani.setAttribute('aria-pressed', String(vynechani.ano));
     radekVynechani.classList.toggle('on', vynechani.ano);
+  };
+  radekVynechani.addEventListener('click', () => {
+    vynechani.ano = !vynechani.ano;
+    vynechani.zmena = true;
+    ukazVynechani();
   });
-  prepVynechani.setAttribute('aria-pressed', String(vynechani.ano));
-  prepVynechani.setAttribute('aria-label', t('journal.exclude'));
   const textVynechani = el('div', 'denik-vynechat-text');
   textVynechani.append(el('span', '', t('journal.exclude')), el('small', 'hint', t('journal.excludeHint')));
   radekVynechani.append(textVynechani, prepVynechani);
-  radekVynechani.classList.toggle('on', vynechani.ano);
+  ukazVynechani();
 
   const vykresliTelo = () => {
     const nove = el('div', 'denik-telo');

@@ -681,6 +681,10 @@ statistiky a shrnutí v lidské řeči — „co mi to o mně jako traderovi ř�
   karta má štítek „Not counted“ místo žlutého Review, filtr Review →
   „Not counted“. Kalendář a Historie je dál ukazují (skutečné peníze).
   Test: `test-denik-edge.py` A4 + C.
+  **v0.87.2 (uživatel: „nejde kliknout“):** přepínač měnil jen
+  `aria-pressed`, ale `.nastaveni-prepinac` kreslí stav třídou `on` →
+  klepnutí se zapsalo, přepínač zůstal vizuálně vypnutý. Teď třída `on`
+  a klepnout jde na celý řádek. Test C kontroluje i posun kolečka.
   - **Fáze 2 deníku hotová.** Další: zdi z order booku (server), detail
     klepnutím u zdí i likvidací, denní volume profile, RSI divergence +
     skener; pak světlejší vzhled appky (návrh na plátně).

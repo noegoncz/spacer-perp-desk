@@ -3024,7 +3024,8 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 
 /* okno: přepínač Plan | Review */
 /* Nepočítat do statistik (v0.85.0): řádek pod přepínačem Plan / Review. */
-.denik-vynechat { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; flex-shrink: 0; }
+.denik-vynechat { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; flex-shrink: 0; cursor: pointer; }
+.denik-vynechat .nastaveni-prepinac { flex: none; }
 .denik-vynechat.on { border-color: rgba(139, 155, 176, 0.6); background: rgba(139, 155, 176, 0.1); }
 .denik-vynechat-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 0.88rem; }
 .denik-vynechat-text small { font-size: 0.72rem; line-height: 1.3; }

@@ -1,5 +1,5 @@
 {
-  "verze": "0.87.1",
+  "verze": "0.87.2",
   "novinky": [
     {
       "en": "Funding indicator now shows the predicted rate for every candle (like TradingView), computed from the premium index on Binance and Bybit. Settled rates stay one tap away in the indicator settings.",
@@ -18,6 +18,10 @@
     {
       "en": "Funding indicator: steadier values on daily and weekly candles, no leftover bars when switching timeframes.",
       "cs": "Indikátor Funding: klidnější hodnoty na denních a týdenních svíčkách, po přepnutí timeframu žádné zbytky starých sloupců."
+    },
+    {
+      "en": "Journal: the \"Don't count in stats\" switch now visibly turns on and off; tapping its text works too.",
+      "cs": "Deník: přepínač „Nepočítat do statistik“ se viditelně zapne i vypne, klepnout jde i na jeho text."
     }
   ]
 }
