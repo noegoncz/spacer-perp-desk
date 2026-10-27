@@ -116,6 +116,16 @@ window.fetch = function (vstup, volby) {
     const l = []; for (let i=0;i<200;i++) l.push({ openInterest: String(5e6 + i*1e4), timestamp: String(t0 - i*krok) });
     return ok({retCode:0, result:{list:l, nextPageCursor:''}});
   }
+  // Premium index po svíčkách (v0.87.0): střídavě 0 a −0,08 % (každá třetí)
+  // → odhad fundingu 0,01 % a −0,03 %.
+  if (u.includes('/v5/market/premium-index-price-kline')) {
+    (window.__premiumDotazy = window.__premiumDotazy || []).push(u);
+    const iv = /interval=([^&]+)/.exec(u)?.[1];
+    const krok = {1:60e3,5:300e3,15:900e3,30:1800e3,60:3600e3,240:14400e3,D:86400e3,W:604800e3}[iv] || 14400e3;
+    const t0 = Math.floor(Date.now() / krok) * krok;
+    const l = []; for (let i=0;i<300;i++) { const p = String(i % 3 === 0 ? -0.0008 : 0); l.push([String(t0 - i*krok), p, p, p, p]); }
+    return ok({retCode:0, result:{list:l}});
+  }
   // Historie fundingu (v0.86.0): po 8 h od endTime dozadu, střídavě + a −
   // (každé čtvrté vyúčtování záporné), jako Bybit od nejnovějšího.
   if (u.includes('/v5/market/funding/history')) {

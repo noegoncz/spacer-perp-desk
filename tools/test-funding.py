@@ -72,7 +72,7 @@ def cekej(nejmene=1, s=12):
     return ev(FUND)
 
 
-print('1) Funding na grafu Bybitu (mock, 4h)')
+print('1) Funding na grafu Bybitu (mock, 4h) — výchozí odhad po svíčkách')
 ev("document.querySelector('.position').click()")
 time.sleep(3)
 ev("document.getElementById('indicatorBtn').click()")
@@ -83,14 +83,35 @@ v = cekej(100)
 print('   ', v)
 over(v and v[0] >= 100, f'panel má hodnoty ({v and v[0]} svíček)')
 over(v and v[5] and v[5] != 'candle_pane', f'vlastní panel ({v and v[5]})')
-over(v and v[2] > 0 and v[3] > 0, f'kladné i záporné sazby ({v and v[2]} / {v and v[3]})')
-over(v and set(v[4]) <= {0.01, -0.02}, f'4h svíčky drží vyúčtovanou sazbu v % ({v and v[4]})')
-over(v and abs(v[1] - 0.01) < 1e-9, f'živá svíčka = aktuální sazba z tickeru 0.01 % ({v and v[1]})')
+over(v and set(v[4]) == {0.01, -0.03}, f'odhad z premia: 0 → 0.01 %, −0.08 % → −0.03 % ({v and v[4]})')
+over(v and v[6] > 1, f'každá svíčka svou hodnotu, ne schody po 8 h ({v and v[6]} různých z 9)')
+over(bool(ev("(window.__premiumDotazy || []).some((u) => u.includes('interval=240'))")), 'premium index na timeframu grafu (4h)')
 popis = ev(POPIS)
-over('8h' in popis and 'Bybit' in popis, f'legenda s intervalem a burzou ({popis!r})')
+over('Predicted' in popis and '8h' in popis and 'Bybit' in popis, f'legenda „Predicted 8h · Bybit" ({popis!r})')
 barvy = ev("""(() => { const i = window.__graf.getIndicators({ name: 'FUND' })[0]; const f = i.figures[0];
   return [f.styles({ data: { current: { rate: 0.01 } } }).color, f.styles({ data: { current: { rate: -0.02 } } }).color]; })()""")
 over(barvy and barvy[0] != barvy[1] and barvy[0].lower() == '#16c784', f'kladné zeleně, záporné červeně ({barvy})')
+
+print('1b) nastavení → Settled (vyúčtované sazby)')
+ev("document.getElementById('indicatorBtn').click()")
+time.sleep(0.5)
+ev("document.querySelector('#indicatorList [data-indicator=FUND]').parentElement.querySelector('.sheet-ozubene').click()")
+time.sleep(0.6)
+ok_ = ev("""(() => { const b = [...document.querySelectorAll('.nastaveni-volba')].find((x) => x.textContent.trim() === 'Settled');
+  if (!b) return false; b.click(); return true; })()""")
+over(ok_, 'v nastavení volba Predicted / Settled')
+ev("document.querySelectorAll('.sheet.open, .sheet:not([hidden])').forEach(() => {}); history.back && 0")
+v = None
+for _ in range(40):
+    v = ev(FUND)
+    if v and set(v[4]) <= {0.01, -0.02} and v[0] >= 100:
+        break
+    time.sleep(0.25)
+print('   ', v)
+over(v and set(v[4]) <= {0.01, -0.02}, f'Settled: 4h svíčky drží vyúčtovanou sazbu ({v and v[4]})')
+over(v and abs(v[1] - 0.01) < 1e-9, f'Settled: živá svíčka = aktuální sazba 0.01 % ({v and v[1]})')
+popis = ev(POPIS)
+over('Predicted' not in popis and '8h' in popis, f'Settled: legenda {popis!r}')
 
 print('2) 1D = průměr sazeb za den')
 ev("document.querySelector('.interval-btn[data-interval=D]').click()")
@@ -105,7 +126,12 @@ time.sleep(2)
 ev("history.back()")
 time.sleep(1.5)
 
-for klic, burza, interval in (('binance:BTCUSDT', 'Binance', '8h'), ('okx:BTCUSDT', 'OKX', '8h'), ('hyperliquid:BTCUSDC', 'Hyperliquid', '1h')):
+# Zpátky na výchozí odhad (uloží se jako uživatelova volba → přenačíst).
+ev("localStorage.setItem('perpdesk.ind.FUND', JSON.stringify({ rezim: 'predicted' }))")
+p.prikaz('Page.reload')
+time.sleep(7)
+# Binance odhad z premia, OKX a Hyperliquid premium po svíčkách nemají → vyúčtované.
+for klic, burza, interval, odhad in (('binance:BTCUSDT', 'Binance', '8h', True), ('okx:BTCUSDT', 'OKX', '8h', False), ('hyperliquid:BTCUSDC', 'Hyperliquid', '1h', False)):
     print(f'3) {burza} naostro')
     ev("document.querySelector('.tab[data-tab=watchlist]').click()")
     time.sleep(2)
@@ -114,7 +140,7 @@ for klic, burza, interval in (('binance:BTCUSDT', 'Binance', '8h'), ('okx:BTCUSD
     print('   ', v and v[:5])
     over(v and v[0] >= 30 and all(abs(x) < 1 for x in v[4]), f'{burza}: sazby ze skutečné burzy ({v and v[0]} svíček)')
     popis = ev(POPIS)
-    over(burza in popis and interval in popis, f'{burza}: legenda {popis!r}')
+    over(burza in popis and interval in popis and (('Predicted' in popis) == odhad), f'{burza}: legenda {popis!r}')
     over(v and v[6] > 1, f'{burza}: poslední svíčky mají čerstvé sazby, ne jednu starou ({v and v[6]} různých z 9)')
     ev("history.back()")
     time.sleep(1.5)

@@ -2527,6 +2527,26 @@ function zastavFunding() {
 }
 
 const popisIntervalu = (minut) => (minut >= 60 ? `${Math.round(minut / 60)}h` : `${minut}m`);
+let rezimFundingu = null;
+
+/*
+ * Odhad fundingu po svíčkách (v0.87.0, přání uživatele — jako TradingView):
+ * F = P + omez(I − P, ±0,05 %), P = premium svíčky, I = úrok 0,01 % za 8 h
+ * (poměrně podle intervalu). Vzorec Binance i Bybitu; vyúčtovaná sazba
+ * je zhruba průměr těchto hodnot za interval (burza bere minutová data).
+ */
+function odhadFundingu(premium, minut) {
+  const urok = 0.0001 * (minut || 480) / 480;
+  return premium.map(({ time, p }) => ({ time, rate: p + Math.max(-0.0005, Math.min(0.0005, urok - p)) }));
+}
+
+/** Změna režimu v nastavení indikátoru → nová data. */
+function poZmeneNastaveniFundingu(id) {
+  if (id !== 'FUND' || nactiNastaveni('FUND').rezim === rezimFundingu) return;
+  zadostFundingu += 1;
+  fundingNacten = false;
+  nactiFunding();
+}
 
 async function nactiFunding() {
   if (!chart || !chartSymbol || !chart.activeIndicators().includes('FUND')) return;
@@ -2540,6 +2560,23 @@ async function nactiFunding() {
       // Historie vždy až po dnešek: stránky burz jdou od `od` dopředu, takže
       // u fundingu po hodině (Hyperliquid) by 1D graf skončil před měsíci
       // a novější svíčky držely starou sazbu. Nejvýš ~3 500 vyúčtování zpět.
+      const rezim = nactiNastaveni('FUND').rezim || 'predicted';
+      rezimFundingu = rezim;
+      // Odhad jen u burz s premium indexem po svíčkách (Binance, Bybit);
+      // ostatní — a Hyperliquid, kde je funding po hodině — vyúčtované.
+      const premium = rezim === 'predicted' && k.getPremiumIndex
+        ? await k.getPremiumIndex(symbol, chartInterval, oknoMapy?.od || Date.now() - 30 * 864e5).catch(() => null) : null;
+      if (premium?.length) {
+        if (zadost !== zadostFundingu || symbol !== chartSymbol || !chart) return;
+        fundingNacten = true;
+        chart.setFunding({
+          body: odhadFundingu(premium, ted?.minut),
+          ted: null,
+          popis: t('fundingInd.labelPred', { burza: k.burza.nazev, interval: popisIntervalu(ted?.minut || 480) }),
+        });
+        if (!casovacFundingu) casovacFundingu = setInterval(nactiFunding, 60000);
+        return;
+      }
       const od = Math.max(oknoMapy?.od || Date.now() - 30 * 864e5, Date.now() - 3500 * (ted?.minut || 480) * 60e3);
       const body = await k.getFundingRates(symbol, od);
       // Interval z dat (nejčastější rozestup), jinak od burzy.
@@ -3490,6 +3527,7 @@ function otevriNastaveniIndikatoru(id) {
     hodnoty[klic] = hodnota;
     ulozNastaveni(id, hodnoty);
     chart?.applyIndicatorSettings(id);
+    poZmeneNastaveniFundingu(id);
     prekresliDostupnost();
   };
 
@@ -3611,6 +3649,7 @@ function vratVychoziNastaveni() {
   if (!nastavovanyIndikator) return;
   resetNastaveni(nastavovanyIndikator);
   chart?.applyIndicatorSettings(nastavovanyIndikator);
+  poZmeneNastaveniFundingu(nastavovanyIndikator);
   otevriNastaveniIndikatoru(nastavovanyIndikator); // překreslit s výchozími
 }
 

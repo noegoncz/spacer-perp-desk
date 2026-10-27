@@ -120,6 +120,21 @@ export class BinanceClient extends CcxtAdapter {
     }
   }
 
+  /** Premium index po svíčkách (odhad fundingu), 1500 na dotaz od `endTime` dozadu. */
+  async getPremiumIndex(symbol, interval, od) {
+    const tf = TIMEFRAME[interval];
+    if (!this.primoFapi() || !tf) return null;
+    const body = [];
+    let konec = Date.now();
+    for (let strana = 0; strana < 2; strana += 1) {
+      const radky = await this.fapi('/fapi/v1/premiumIndexKlines', { symbol, interval: tf, endTime: String(konec), limit: '1500' });
+      radky.forEach(([t, o, h, l, c]) => body.push({ time: Number(t), p: (Number(o) + Number(h) + Number(l) + Number(c)) / 4 }));
+      if (radky.length < 1500 || !(radky[0][0] > od)) break;
+      konec = radky[0][0] - 1;
+    }
+    return body.sort((a, b) => a.time - b.time);
+  }
+
   /** Historie fundingu rovnou z fapi (1000 bodů na dotaz, dopředu od `od`). */
   async getFundingRates(symbol, od) {
     if (!this.primoFapi()) return super.getFundingRates(symbol, od);

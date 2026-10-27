@@ -1934,6 +1934,16 @@ zpět, jinak by Hyperliquid (funding po 1 h) na 1D skončil před měsíci
 a novější svíčky držely starou sazbu. Obnova po 5 min. Hyperliquid ukazuje
 sazbu za 1 h (≈ 1/8 sazby 8h burz). Test: `tools/test-funding.py`
 (Bybit mock, Binance / OKX / Hyperliquid naostro).
+**v0.87.0 — odhad po svíčkách (výchozí, přání uživatele podle TradingView):**
+nastavení `rezim` Predicted / Settled. Predicted = z premium indexu svíček
+grafu (`getPremiumIndex`: Bybit `/v5/market/premium-index-price-kline`,
+Binance `/fapi/v1/premiumIndexKlines`; P = průměr OHLC) vzorcem burzy
+F = P + omez(0,01 % × interval/8h − P, ±0,05 %) (`odhadFundingu` v app.js).
+Ověřeno proti vyúčtovaným sazbám BTC: směr a velikost sedí, přesně ne
+(burza bere minutová data, vážený průměr). Burzy bez premia po svíčkách
+(OKX, Hyperliquid — ten má funding po hodině) ukazují vyúčtované. Obnova
+odhadu po minutě. Změna režimu v nastavení načte data znovu
+(`poZmeneNastaveniFundingu`).
 
 Schémata nastavení jsou v **`js/indikatory.js`**. Obrazovka nastavení se z nich
 generuje sama, takže přidat volbu (nebo celý indikátor) znamená sáhnout jen do

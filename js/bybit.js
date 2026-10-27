@@ -703,6 +703,27 @@ export class BybitClient {
   }
 
   /**
+   * Premium index po svíčkách grafu (v0.87.0, odhad fundingu): [{ time, p }]
+   * vzestupně, p = průměr OHLC premia (podíl). Bybit dává 1000 svíček na
+   * stránku od `end` dozadu; k `od`, nejvýš 3 strany.
+   */
+  async getPremiumIndex(symbol, interval, od) {
+    const body = [];
+    let konec = Date.now();
+    for (let strana = 0; strana < 3; strana += 1) {
+      const result = await this.publicGet('/v5/market/premium-index-price-kline', {
+        category: 'linear', symbol, interval: String(interval), end: String(konec), limit: '1000',
+      });
+      const list = result?.list ?? [];
+      list.forEach(([t, o, h, l, c]) => body.push({ time: Number(t), p: (num(o) + num(h) + num(l) + num(c)) / 4 }));
+      const nejstarsi = Math.min(...list.map((r) => Number(r[0])));
+      if (list.length < 1000 || !(nejstarsi > od)) break;
+      konec = nejstarsi - 1;
+    }
+    return body.sort((a, b) => a.time - b.time);
+  }
+
+  /**
    * Všechny linear USDT páry se základními čísly, seřazené podle obratu.
    * Veřejné, nepotřebuje klíče — seznam jde ukázat i před přihlášením.
    */

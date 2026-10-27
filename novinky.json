@@ -1,9 +1,13 @@
 {
-  "verze": "0.86.0",
+  "verze": "0.87.0",
   "novinky": [
     {
-      "en": "New indicator: Funding rate. A panel under the chart (like OI or RSI) with the funding history of the chart's exchange — green when longs pay, red when shorts pay; the live candle shows the current rate.",
-      "cs": "Nový indikátor Funding: panel pod grafem (jako OI nebo RSI) s historií sazeb burzy grafu — zeleně platí longy, červeně shorty; živá svíčka ukazuje aktuální sazbu."
+      "en": "Funding indicator now shows the predicted rate for every candle (like TradingView), computed from the premium index on Binance and Bybit. Settled rates stay one tap away in the indicator settings.",
+      "cs": "Indikátor Funding ukazuje odhad sazby pro každou svíčku (jako TradingView), z premium indexu Binance a Bybitu. Vyúčtované sazby jsou v nastavení indikátoru."
+    },
+    {
+      "en": "New indicator: Funding rate. A panel under the chart (like OI or RSI) — green when longs pay, red when shorts pay.",
+      "cs": "Nový indikátor Funding: panel pod grafem (jako OI nebo RSI) — zeleně platí longy, červeně shorty."
     },
     {
       "en": "Journal: mark a trade as \"Don't count in stats\" — test trades or older ones from before you kept a plan stay in history, but Edge and summaries skip them.",

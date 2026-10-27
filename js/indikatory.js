@@ -207,6 +207,8 @@ export const SCHEMATA = {
 
   /* Funding — data z burzy (chart.js registrovatFunding). */
   FUND: [
+    // Odhad po svíčkách z premium indexu (jako TradingView) / vyúčtované sazby.
+    vyber('rezim', 'predicted', ['predicted', 'settled'].map((r) => ({ hodnota: r, popisek: r, klicPopisku: `fundingInd.${r}` }))),
     { sekce: 'style' },
     vyskaPanelu(),
     barva('barvaPlus', '#16c784'),
