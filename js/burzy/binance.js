@@ -128,7 +128,7 @@ export class BinanceClient extends CcxtAdapter {
     let konec = Date.now();
     for (let strana = 0; strana < 2; strana += 1) {
       const radky = await this.fapi('/fapi/v1/premiumIndexKlines', { symbol, interval: tf, endTime: String(konec), limit: '1500' });
-      radky.forEach(([t, o, h, l, c]) => body.push({ time: Number(t), p: (Number(o) + Number(h) + Number(l) + Number(c)) / 4 }));
+      radky.forEach(([t, o, , , c]) => body.push({ time: Number(t), p: (Number(o) + Number(c)) / 2 }));
       if (radky.length < 1500 || !(radky[0][0] > od)) break;
       konec = radky[0][0] - 1;
     }

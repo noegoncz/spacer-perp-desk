@@ -1944,6 +1944,12 @@ Ověřeno proti vyúčtovaným sazbám BTC: směr a velikost sedí, přesně ne
 (OKX, Hyperliquid — ten má funding po hodině) ukazují vyúčtované. Obnova
 odhadu po minutě. Změna režimu v nastavení načte data znovu
 (`poZmeneNastaveniFundingu`).
+**v0.87.1 (video uživatele: „celý to nějak blbne"):** (1) po změně timeframu
+visela data předchozího a rozpadla se do schodů → `zmenInterval` funding
+hned smaže; (2) na 1D / 1W odhad ujížděl do záporu (knoty premia) →
+odhad jen pro svíčky **kratší než interval fundingu**, delší = průměr
+vyúčtovaných (přesný); premium svíčky = (open + close) / 2 — měřeno na
+BTC/ETH/SOL/DOGE proti vyúčtovaným, OHLC/4 u altů na 4h výrazně horší.
 
 Schémata nastavení jsou v **`js/indikatory.js`**. Obrazovka nastavení se z nich
 generuje sama, takže přidat volbu (nebo celý indikátor) znamená sáhnout jen do

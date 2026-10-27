@@ -124,7 +124,9 @@ window.fetch = function (vstup, volby) {
     const krok = {1:60e3,5:300e3,15:900e3,30:1800e3,60:3600e3,240:14400e3,D:86400e3,W:604800e3}[iv] || 14400e3;
     const t0 = Math.floor(Date.now() / krok) * krok;
     const l = []; for (let i=0;i<300;i++) { const p = String(i % 3 === 0 ? -0.0008 : 0); l.push([String(t0 - i*krok), p, p, p, p]); }
-    return ok({retCode:0, result:{list:l}});
+    // 1h odpovídá pomalu: test ověří, že mezitím nevisí funding předchozího timeframu.
+    const odpoved = ok({retCode:0, result:{list:l}});
+    return iv === '60' ? new Promise((r) => setTimeout(() => r(odpoved), 2500)) : odpoved;
   }
   // Historie fundingu (v0.86.0): po 8 h od endTime dozadu, střídavě + a −
   // (každé čtvrté vyúčtování záporné), jako Bybit od nejnovějšího.

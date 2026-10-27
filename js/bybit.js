@@ -704,7 +704,8 @@ export class BybitClient {
 
   /**
    * Premium index po svíčkách grafu (v0.87.0, odhad fundingu): [{ time, p }]
-   * vzestupně, p = průměr OHLC premia (podíl). Bybit dává 1000 svíček na
+   * vzestupně, p = průměr otevření a zavření premia (podíl; knoty jsou
+   * krátké výkyvy a odhad kazily — měřeno proti vyúčtovaným sazbám). Bybit dává 1000 svíček na
    * stránku od `end` dozadu; k `od`, nejvýš 3 strany.
    */
   async getPremiumIndex(symbol, interval, od) {
@@ -715,7 +716,7 @@ export class BybitClient {
         category: 'linear', symbol, interval: String(interval), end: String(konec), limit: '1000',
       });
       const list = result?.list ?? [];
-      list.forEach(([t, o, h, l, c]) => body.push({ time: Number(t), p: (num(o) + num(h) + num(l) + num(c)) / 4 }));
+      list.forEach(([t, o, , , c]) => body.push({ time: Number(t), p: (num(o) + num(c)) / 2 }));
       const nejstarsi = Math.min(...list.map((r) => Number(r[0])));
       if (list.length < 1000 || !(nejstarsi > od)) break;
       konec = nejstarsi - 1;

@@ -1,5 +1,5 @@
 {
-  "verze": "0.87.0",
+  "verze": "0.87.1",
   "novinky": [
     {
       "en": "Funding indicator now shows the predicted rate for every candle (like TradingView), computed from the premium index on Binance and Bybit. Settled rates stay one tap away in the indicator settings.",
@@ -14,5 +14,10 @@
       "cs": "Deník: obchod jde označit „Nepočítat do statistik“ — testovací nebo starší obchody bez plánu zůstanou v historii, ale Edge a souhrny je vynechají."
     }
   ],
-  "opravy": []
+  "opravy": [
+    {
+      "en": "Funding indicator: steadier values on daily and weekly candles, no leftover bars when switching timeframes.",
+      "cs": "Indikátor Funding: klidnější hodnoty na denních a týdenních svíčkách, po přepnutí timeframu žádné zbytky starých sloupců."
+    }
+  ]
 }

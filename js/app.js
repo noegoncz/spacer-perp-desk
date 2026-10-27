@@ -2564,7 +2564,11 @@ async function nactiFunding() {
       rezimFundingu = rezim;
       // Odhad jen u burz s premium indexem po svíčkách (Binance, Bybit);
       // ostatní — a Hyperliquid, kde je funding po hodině — vyúčtované.
-      const premium = rezim === 'predicted' && k.getPremiumIndex
+      // Svíčka stejně dlouhá jako interval fundingu nebo delší (1D, 1W):
+      // průměr vyúčtovaných sazeb je přesný, odhad z premia by jen
+      // přidával chybu (výkyvy uvnitř dlouhé svíčky — video uživatele).
+      const kratsiSvicka = (DELKA_INTERVALU[chartInterval] || 0) < (ted?.minut || 480) * 60e3;
+      const premium = rezim === 'predicted' && kratsiSvicka && k.getPremiumIndex
         ? await k.getPremiumIndex(symbol, chartInterval, oknoMapy?.od || Date.now() - 30 * 864e5).catch(() => null) : null;
       if (premium?.length) {
         if (zadost !== zadostFundingu || symbol !== chartSymbol || !chart) return;
@@ -2973,6 +2977,9 @@ async function zmenInterval(interval) {
   if (interval === chartInterval && chartSymbol && chart) return;
 
   ui.setActiveInterval(interval); // odezva na klepnutí hned, ne až po síti
+  // Funding jiného timeframu je jiná řada — stará by se rozpadla do schodů
+  // na nových svíčkách (video uživatele), než dorazí nová.
+  if (chart) { zadostFundingu += 1; fundingNacten = false; chart.setFunding(null); }
   if (!chartSymbol || !chart) {
     chartInterval = interval;
     return;

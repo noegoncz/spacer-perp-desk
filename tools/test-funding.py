@@ -92,6 +92,28 @@ barvy = ev("""(() => { const i = window.__graf.getIndicators({ name: 'FUND' })[0
   return [f.styles({ data: { current: { rate: 0.01 } } }).color, f.styles({ data: { current: { rate: -0.02 } } }).color]; })()""")
 over(barvy and barvy[0] != barvy[1] and barvy[0].lower() == '#16c784', f'kladné zeleně, záporné červeně ({barvy})')
 
+print('1c) změna timeframu: stará data nezůstanou')
+ev("document.querySelector('.interval-btn[data-interval=\"60\"]').click()")
+time.sleep(1.2)
+v = ev(FUND)
+print('   ', v)
+over(v is not None and v[0] == 0, f'během načítání 1h panel prázdný, ne 4h data na 1h svíčkách ({v and v[0]})')
+v = None
+for _ in range(40):
+    v = ev(FUND)
+    if v and v[0] >= 100:
+        break
+    time.sleep(0.25)
+over(v and set(v[4]) == {0.01, -0.03} and v[6] > 1, f'1h: odhad po svíčkách ({v and v[4]})')
+ev("document.querySelector('.interval-btn[data-interval=D]').click()")
+v = cekej(50)
+popis = ev(POPIS)
+print('   ', v, popis)
+over('Predicted' not in popis and v and set(v[4]) <= {0, 0.01}, f'1D (delší než 8h): průměr vyúčtovaných sazeb ({v and v[4]}, {popis!r})')
+ev("document.querySelector('.interval-btn[data-interval=\"240\"]').click()")
+cekej(100)
+time.sleep(1)
+
 print('1b) nastavení → Settled (vyúčtované sazby)')
 ev("document.getElementById('indicatorBtn').click()")
 time.sleep(0.5)
