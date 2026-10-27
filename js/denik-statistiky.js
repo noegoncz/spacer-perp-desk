@@ -26,10 +26,11 @@ const vystup = (sk) => (sk.pocet ? {
 
 /**
  * obchody: [{ pnl, zavreno, poznamka }] — jen uzavřené, v období.
- * poznamka = výsledek denik.najdi (nebo null).
+ * poznamka = výsledek denik.najdi (nebo null). Obchody vynechané ze
+ * statistik (`poznamka.vynechano`) se nepočítají.
  */
 export function souhrn(obchody) {
-  const serazene = [...obchody].sort((a, b) => a.zavreno - b.zavreno);
+  const serazene = obchody.filter((o) => !o.poznamka?.vynechano).sort((a, b) => a.zavreno - b.zavreno);
   let zisky = 0;
   let ztraty = 0;
   let vyhranych = 0;
@@ -187,8 +188,9 @@ export function filtruj(obchody, f = {}, ted = Date.now()) {
       if (!f.chyby.some((c) => (c === 'none' ? z && !ch.length : ch.includes(c)))) return false;
     }
     if (f.emoce?.length && !f.emoce.includes(z?.emoce)) return false;
-    if (f.review === 'done' && !z) return false;
-    if (f.review === 'missing' && (z || g.otevrena)) return false;
+    if (f.review === 'done' && (!z || poznamka?.vynechano)) return false;
+    if (f.review === 'missing' && (z || g.otevrena || poznamka?.vynechano)) return false;
+    if (f.review === 'excluded' && !poznamka?.vynechano) return false;
     if (f.drzeni?.length) {
       const d = skupinaDrzeni((g.zavreno || ted) - (g.otevreno || NaN));
       if (!d || !f.drzeni.includes(d)) return false;

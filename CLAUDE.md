@@ -674,6 +674,13 @@ statistiky a shrnutí v lidské řeči — „co mi to o mně jako traderovi ř�
   s filtrem `den` (klíč `klicDne`, místní čas). Výpočet `kalendar()`
   v denik-statistiky.js, kreslení `ui.renderCalendar`.
   Test: `tools/test-denik-kalendar.py`.
+- **v0.85.0 — Nepočítat do statistik** (přání uživatele: testovací obchody
+  a starší z doby bez plánů): přepínač v okně deníku nad částmi Plan /
+  Review (`denik.nastavVynechani`, poznámka `vynechano` = čas). `souhrn`
+  takové obchody vynechá (Edge, souhrn v Trades, čekající zhodnocení),
+  karta má štítek „Not counted“ místo žlutého Review, filtr Review →
+  „Not counted“. Kalendář a Historie je dál ukazují (skutečné peníze).
+  Test: `test-denik-edge.py` A4 + C.
   - **Fáze 2 deníku hotová.** Další: zdi z order booku (server), detail
     klepnutím u zdí i likvidací, denní volume profile, RSI divergence +
     skener; pak světlejší vzhled appky (návrh na plátně).

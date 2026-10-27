@@ -132,6 +132,29 @@ else:
     over('mistakeCostR' in d['vety'], 'věta o nejdražší chybě')
     over(d['fFomo'] == '01' and d['fNone'] == '2' and d['fCalm'] == '23', 'filtry chyb (i „bez chyb“) a emocí')
 
+print('A4) obchody vynechané ze statistik (v0.85.0)')
+skript = r"""
+import { souhrn, filtruj } from './js/denik-statistiky.js';
+const o = [
+  { pnl: 10, zavreno: 1, poznamka: null },
+  { pnl: -50, zavreno: 2, poznamka: { vynechano: 5 } },
+  { pnl: 5, zavreno: 3, poznamka: { vstup: {}, vynechano: 6 } },
+];
+const s = souhrn(o);
+const g = (i) => ({ id: i, g: { pnl: o[i].pnl, zavreno: 1, posledni: 1 }, poznamka: o[i].poznamka });
+const f = (x) => filtruj([0, 1, 2].map(g), x).map((y) => y.id).join('');
+console.log(JSON.stringify({ pocet: s.pocet, pnl: s.pnl, bez: s.bezZhodnoceni, ex: f({ review: 'excluded' }), miss: f({ review: 'missing' }) }));
+"""
+r = subprocess.run([NODE, '--input-type=module', '-e', skript], cwd=KOREN, capture_output=True, text=True, encoding='utf-8')
+if r.returncode:
+    print(r.stderr[:500])
+    over(False, 'Node spustil vynechání')
+else:
+    d = json.loads(r.stdout)
+    print('   ', d)
+    over(d['pocet'] == 1 and d['pnl'] == 10 and d['bez'] == 1, 'souhrn počítá jen nevynechaný obchod (+10, 1 bez zhodnocení)')
+    over(d['ex'] == '12' and d['miss'] == '0', 'filtr „Not counted“ a vynechané nečekají na zhodnocení')
+
 print('B) aplikace')
 mock = open(os.path.join(KOREN, 'tools', 'mock-bybit.js'), encoding='utf-8').read()
 p = Prohlizec()
@@ -225,6 +248,36 @@ time.sleep(0.8)
 text = edge()
 over('••••' in text and '+14.04' not in text, 'skryté částky i v Edge')
 klepni('#hideBtn')
+
+print('C) nepočítat do statistik (v0.85.0)')
+vyber('journalPeriod', '30')
+time.sleep(1.5)
+over('2 trades' in edge(), 'Edge 30 dní: 2 obchody')
+klepni('#journalTabs .list-tab[data-id=trades]')
+time.sleep(1.5)
+cekaPred = ev("document.querySelectorAll('#historyList .denik-btn-review.ceka').length") or 0
+klepni('#historyList .denik-btn-review.ceka')
+time.sleep(1)
+over(ev("!!document.querySelector('.denik-vynechat .nastaveni-prepinac[aria-pressed=false]')"), 'v okně přepínač „Don’t count in stats“ (vypnutý)')
+klepni('.denik-vynechat .nastaveni-prepinac')
+time.sleep(0.3)
+klepni('.denik-ulozit')
+time.sleep(1)
+over(ev("document.querySelectorAll('#historyList .denik-vynechano').length") == 1, 'karta má štítek „Not counted“')
+over(ev("document.querySelectorAll('#historyList .denik-btn-review.ceka').length") == cekaPred - 1, 'vynechaný obchod nečeká na zhodnocení')
+klepni('#journalTabs .list-tab[data-id=edge]')
+time.sleep(1)
+text = edge()
+over('1 trade' in text and '2 trades' not in text, f'Edge 30 dní: vynechaný obchod se nepočítá ({text[:80]})')
+klepni('#journalTabs .list-tab[data-id=trades]')
+time.sleep(1)
+klepni('#historyList .denik-vynechano')
+time.sleep(1)
+over(ev("!!document.querySelector('.denik-vynechat .nastaveni-prepinac[aria-pressed=true]')"), 'štítek otevře okno se zapnutým přepínačem')
+klepni('.denik-vynechat .nastaveni-prepinac')
+klepni('.denik-ulozit')
+time.sleep(1)
+over(ev("document.querySelectorAll('#historyList .denik-vynechano').length") == 0, 'vynechání jde zrušit')
 
 konzole = ev('(window.__chyby||[]).join(" | ")') or ''
 over(not konzole, f'bez chyb v konzoli ({konzole[:200]})')

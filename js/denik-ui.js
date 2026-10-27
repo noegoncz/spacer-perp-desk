@@ -377,6 +377,7 @@ export function otevriDenik(o) {
     lekce: textPole(z.lekce, t('journal.lessonPh')),
     zmena: false,
   };
+  const vynechani = { ano: Boolean(o.poznamka?.vynechano), zmena: false };
   plan.text.addEventListener('input', () => { plan.zmena = true; });
   review.lekce.addEventListener('input', () => { review.zmena = true; });
   // Pořadí dlaždic jednou za otevření okna.
@@ -480,6 +481,21 @@ export function otevriDenik(o) {
   prepinac.append(zalozka('plan', t('journal.planTab'), hotovaPlan(), true),
     zalozka('review', t('journal.reviewTab'), hotovaReview(), Boolean(o.uzavreny)));
 
+  // Nepočítat do statistik: platí pro celý obchod, proto nad částmi.
+  const radekVynechani = el('div', 'denik-vynechat');
+  const prepVynechani = tlacitko('', 'nastaveni-prepinac', () => {
+    vynechani.ano = !vynechani.ano;
+    vynechani.zmena = true;
+    prepVynechani.setAttribute('aria-pressed', String(vynechani.ano));
+    radekVynechani.classList.toggle('on', vynechani.ano);
+  });
+  prepVynechani.setAttribute('aria-pressed', String(vynechani.ano));
+  prepVynechani.setAttribute('aria-label', t('journal.exclude'));
+  const textVynechani = el('div', 'denik-vynechat-text');
+  textVynechani.append(el('span', '', t('journal.exclude')), el('small', 'hint', t('journal.excludeHint')));
+  radekVynechani.append(textVynechani, prepVynechani);
+  radekVynechani.classList.toggle('on', vynechani.ano);
+
   const vykresliTelo = () => {
     const nove = el('div', 'denik-telo');
     nove.append(...(cast === 'plan' ? castPlan() : castReview()));
@@ -511,11 +527,12 @@ export function otevriDenik(o) {
         lekce: review.lekce.value.trim(),
       });
     }
+    if (vynechani.zmena) denik.nastavVynechani(o.klic, vynechani.ano);
     zavri();
-    if (plan.zmena || review.zmena) o.onUlozeno?.();
+    if (plan.zmena || review.zmena || vynechani.zmena) o.onUlozeno?.();
   });
 
-  otevri([hlavicka(o.nazev, t('journal.tradePlan')), prepinac, el('div', 'denik-telo'), ulozit]);
+  otevri([hlavicka(o.nazev, t('journal.tradePlan')), prepinac, radekVynechani, el('div', 'denik-telo'), ulozit]);
   telo = okno.querySelector('.denik-telo');
   vykresliTelo();
 }
@@ -595,6 +612,9 @@ export function tlacitka(poznamka, { review = false, uzavreny = false, cekaRevie
   const radek = el('div', 'denik-radek');
   const v = poznamka?.vstup;
   const z = poznamka?.zhodnoceni;
+  const vynechano = Boolean(poznamka?.vynechano);
+  // Vynechaný obchod na zhodnocení nečeká (žádné žluté tlačítko).
+  if (vynechano) cekaReview = false;
   const btn = (text, hotovo, akce, trida = '') => {
     const b = tlacitko(`${hotovo ? '✓' : '＋'} ${text}`, `denik-btn${hotovo ? ' hotovo' : ''} ${trida}`.trim(), akce);
     return b;
@@ -604,6 +624,10 @@ export function tlacitka(poznamka, { review = false, uzavreny = false, cekaRevie
     const b = btn(t('journal.reviewBtn'), Boolean(z), () => { if (uzavreny) onReview?.(); }, `denik-btn-review${uzavreny ? '' : ' zasedle'}${cekaReview && uzavreny && !z ? ' ceka' : ''}`);
     if (!uzavreny) b.setAttribute('aria-disabled', 'true');
     radek.append(b);
+  }
+  if (vynechano) {
+    // Klepnutí otevře okno, kde jde vynechání zrušit.
+    radek.append(tlacitko(t('journal.excluded'), 'denik-vynechano', () => onPlan?.()));
   }
   if (v) {
     const casti = [];
@@ -676,7 +700,7 @@ export function otevriFiltry(o) {
     skupina(t('journal.signals'), volby('signaly', signaly, true)),
     skupina(t('journal.f.conf'), volby('conf', [['0', '0'], ['1', '1'], ['2', '2'], ['3', '3+']], true)),
     skupina(t('journal.plan'), volby('plan', [['yes', t('journal.planAns.yes')], ['partly', t('journal.planAns.partly')], ['no', t('journal.planAns.no')], ['none', t('journal.f.planNone')]], true)),
-    skupina(t('journal.reviewTab'), volby('review', [['done', t('journal.f.reviewDone')], ['missing', t('journal.f.reviewMissing')]], false)),
+    skupina(t('journal.reviewTab'), volby('review', [['done', t('journal.f.reviewDone')], ['missing', t('journal.f.reviewMissing')], ['excluded', t('journal.excluded')]], false)),
     skupina(t('journal.mistakes'), volby('chyby', [['none', t('journal.f.noMistakes')], ...Object.values(CHYBY).flat().map((c) => [c, t(`journal.mistake.${c}`)])], true)),
     skupina(t('journal.emotion'), volby('emoce', EMOCE.map((e) => [e, t(`journal.emo.${e}`)]), true)),
     skupina(t('journal.f.held'), volby('drzeni', [['h', '< 1 h'], ['d', '1 h – 1 d'], ['w', '1–7 d'], ['m', '> 7 d']], true)),

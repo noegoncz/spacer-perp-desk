@@ -268,6 +268,23 @@ export function zapis(k, cast, data) {
   uloz();
 }
 
+/**
+ * Obchod mimo statistiky (v0.85.0, přání uživatele): testovací obchody
+ * a starší obchody z doby, kdy ještě nepsal plány. V Historii zůstává,
+ * Edge a souhrny ho vynechají a nečeká na zhodnocení.
+ */
+export function nastavVynechani(k, ano) {
+  const p = nacti().poznamky;
+  if (ano) {
+    p[k] = { ...(p[k] || { vytvoreno: Date.now(), behem: [] }), vynechano: Date.now() };
+  } else if (p[k]) {
+    delete p[k].vynechano;
+    // Prázdná poznámka (jen kvůli vynechání) zmizí celá.
+    if (!p[k].vstup && !p[k].zhodnoceni && !p[k].behem?.length && !p[k].metriky) delete p[k];
+  }
+  uloz();
+}
+
 export function smazPoznamkuBehem(k, cas) {
   const z = nacti().poznamky[k];
   if (!z) return;
