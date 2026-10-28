@@ -110,6 +110,37 @@ f = json.loads(ev(RSI))
 print('po přenačtení:', f)
 over(abs(f['vyska'] - e['vyska']) <= 4, f"výška přežila přenačtení ({e['vyska']} → {f['vyska']})")
 
+# v0.87.3 (video uživatele): se dvěma panely tažení spodního posouvá i panel
+# nad ním — jeho úchyt se musí hýbat s ním už během tažení, ne až po puštění.
+ev("localStorage.setItem('perpdesk.indicators', JSON.stringify(['RSI', 'MACD']))")
+p.prikaz('Page.reload')
+time.sleep(6)
+ev("document.querySelector('.position').click()")
+time.sleep(5)
+UCHYTY = """(() => { const g = window.__graf; const box = document.getElementById('chartBox').getBoundingClientRect();
+  return JSON.stringify([...document.querySelectorAll('.pane-uchyt')].map((u) => { const b = u.getBoundingClientRect();
+    const s = g.getSize(u.dataset.pane); return { pane: s ? Math.round(s.top) : null, uchyt: Math.round(b.top + b.height / 2 - box.top) }; })
+    .sort((a, b) => a.pane - b.pane)); })()"""
+pred = json.loads(ev(UCHYTY))
+print('dva panely:', pred)
+over(len(pred) == 2, 'dva úchyty (RSI, MACD)')
+spodni = json.loads(ev("""(() => { const u = [...document.querySelectorAll('.pane-uchyt')].sort((a, b) =>
+  b.getBoundingClientRect().top - a.getBoundingClientRect().top)[0].getBoundingClientRect();
+  return JSON.stringify({ x: u.left + u.width * 0.3, y: u.top + u.height / 2 }); })()"""))
+dotyk('touchStart', spodni['x'], spodni['y'])
+for i in range(1, 11):
+    dotyk('touchMove', spodni['x'], spodni['y'] - 8 * i); time.sleep(0.02)
+time.sleep(0.2)
+behem = json.loads(ev(UCHYTY))
+print('během tažení spodního o 80 px nahoru:', behem)
+dotyk('touchEnd', spodni['x'], spodni['y'] - 80)
+time.sleep(0.6)
+over(len(behem) == 2 and abs(behem[0]['pane'] - pred[0]['pane'] + 80) <= 3, 'horní panel se posunul s taženým')
+over(len(behem) == 2 and all(abs(x['uchyt'] - x['pane']) <= 2 for x in behem),
+     f'během tažení sedí na hranici oba úchyty ({behem})')
+po = json.loads(ev(UCHYTY))
+over(all(abs(x['uchyt'] - x['pane']) <= 2 for x in po), f'po puštění sedí oba úchyty ({po})')
+
 konzole = ev('(window.__chyby||[]).join(" | ")') or ''
 over(not konzole, f'bez chyb v konzoli ({konzole})')
 

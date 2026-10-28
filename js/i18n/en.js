@@ -680,6 +680,8 @@ export const en = {
   'fundingInd.label': '{interval} · {burza} · %',
   'fundingInd.none': 'This exchange does not provide funding history',
   'fundingInd.labelPred': 'Predicted {interval} · {burza} · %',
+  'fundingInd.longsPay': 'longs pay shorts',
+  'fundingInd.shortsPay': 'shorts pay longs',
   'fundingInd.predicted': 'Predicted (per candle)',
   'fundingInd.settled': 'Settled',
   'indSet.rezim': 'Show',

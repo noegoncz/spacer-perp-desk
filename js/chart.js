@@ -1864,7 +1864,23 @@ function registrovatFunding() {
         return { style: 'fill', color: v >= 0 ? barvyFundingu.barvaPlus : barvyFundingu.barvaMinus };
       },
     }],
-    createTooltipDataSource: () => ({ calcParamsText: funding?.popis ? ` ${funding.popis}` : '' }),
+    /*
+     * Za hodnotou krátce, kdo komu platí (v0.87.3, přání uživatele) — podle
+     * svíčky pod křížem, jinak poslední. Kladná sazba = longy platí shortům.
+     */
+    createTooltipDataSource: ({ indicator, crosshair } = {}) => {
+      const zdroj = { calcParamsText: funding?.popis ? ` ${funding.popis}` : '' };
+      const vysledek = indicator?.result || [];
+      const v = vysledek[crosshair?.dataIndex ?? vysledek.length - 1]?.rate;
+      if (!Number.isFinite(v)) return zdroj;
+      barvyFundingu ??= nactiNastaveni('FUND');
+      const barva = v >= 0 ? barvyFundingu.barvaPlus : barvyFundingu.barvaMinus;
+      zdroj.legends = [{ title: '', value: { text: v.toFixed(4), color: barva } }];
+      if (v !== 0) {
+        zdroj.legends.push({ title: '', value: { text: t(v > 0 ? 'fundingInd.longsPay' : 'fundingInd.shortsPay'), color: barva } });
+      }
+      return zdroj;
+    },
     calc: (data) => {
       const body = funding?.body || [];
       let j = 0;
@@ -2626,8 +2642,15 @@ export function createPriceChart(container, layer, handlers = {}) {
       e.preventDefault();
       const b = chart.getSize(paneId);
       if (!b) return;
+      // Panely nad taženým se posouvají s ním — jejich úchyty taky (v0.87.3,
+      // dřív stály na místě a srovnaly se až po puštění prstu).
+      const nad = [];
+      uchyty.forEach((jiny, id) => {
+        const bj = id !== paneId && chart.getSize(id);
+        if (bj && bj.top < b.top) nad.push({ prvek: jiny, top: bj.top });
+      });
       tahUchytu = { paneId, nazev: u.dataset.nazev, y: e.touches[0].clientY, vyska: b.height,
-                    plocha: container.clientHeight, top: b.top };
+                    plocha: container.clientHeight, top: b.top, nad };
       u.classList.add('tahne');
       chart.setScrollEnabled(false);
       chart.setZoomEnabled(false);
@@ -2645,6 +2668,7 @@ export function createPriceChart(container, layer, handlers = {}) {
       } catch { /* panel mezitím zmizel */ }
       if (tahUchytu.nazev === 'RSI') osaRsiBezOkraju();
       u.style.top = `${tahUchytu.top + (tahUchytu.vyska - vyska)}px`;
+      tahUchytu.nad.forEach(({ prvek, top }) => { prvek.style.top = `${top + (tahUchytu.vyska - vyska)}px`; });
       const b = chart.getSize(HLAVNI_PANEL, 'main');
       if (b) layer.style.height = `${b.height}px`;
     }, { passive: false });

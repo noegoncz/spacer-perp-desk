@@ -675,6 +675,8 @@ export const cs = {
   'fundingInd.label': '{interval} · {burza} · %',
   'fundingInd.none': 'Tahle burza historii fundingu nedává',
   'fundingInd.labelPred': 'Odhad {interval} · {burza} · %',
+  'fundingInd.longsPay': 'longy platí shortům',
+  'fundingInd.shortsPay': 'shorty platí longům',
   'fundingInd.predicted': 'Odhad (po svíčkách)',
   'fundingInd.settled': 'Vyúčtované',
   'indSet.rezim': 'Zobrazit',

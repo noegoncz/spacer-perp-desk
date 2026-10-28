@@ -1954,6 +1954,10 @@ hned smaže; (2) na 1D / 1W odhad ujížděl do záporu (knoty premia) →
 odhad jen pro svíčky **kratší než interval fundingu**, delší = průměr
 vyúčtovaných (přesný); premium svíčky = (open + close) / 2 — měřeno na
 BTC/ETH/SOL/DOGE proti vyúčtovaným, OHLC/4 u altů na 4h výrazně horší.
+**v0.87.3 (přání uživatele):** legenda za hodnotou krátce „longs pay shorts“ /
+„shorts pay longs“ (cs „longy platí shortům“) podle svíčky pod křížem
+(`createTooltipDataSource` vrací `legends`). ⚠ Bod „OKX: čerstvé sazby“
+v `test-funding.py` padá, když OKX vyúčtovává pořád přesně 0,01 % (data, ne kód).
 
 Schémata nastavení jsou v **`js/indikatory.js`**. Obrazovka nastavení se z nich
 generuje sama, takže přidat volbu (nebo celý indikátor) znamená sáhnout jen do
@@ -1990,6 +1994,10 @@ má na hranici vlastní 7px oddělovač se z-index 20, který by dotyk sebral.
 Úchyty se rozmisťují v `umistiVrstvu()` (běží po každé změně rozměrů,
 dat i indikátorů). Test: `tools/test-vyska-panelu-tazenim.py` (skutečné
 dotyky).
+⚠ **Víc panelů (v0.87.3, video uživatele):** tažení spodního panelu posouvá
+i panely nad ním (svíčky výšku vracejí) — jejich úchyty se posouvají
+během tažení (`tahUchytu.nad`), dřív se srovnaly až po puštění. Test:
+konec `test-vyska-panelu-tazenim.py` (RSI + MACD).
 
 **RSI nemá prázdné okraje nad 100 a pod 0.** Výchozí `gap` osy Y knihovny
 nechává nahoře 20 % a dole 10 % výšky panelu prázdných; u nízkého panelu

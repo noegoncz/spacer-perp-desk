@@ -88,6 +88,14 @@ over(v and v[6] > 1, f'každá svíčka svou hodnotu, ne schody po 8 h ({v and v
 over(bool(ev("(window.__premiumDotazy || []).some((u) => u.includes('interval=240'))")), 'premium index na timeframu grafu (4h)')
 popis = ev(POPIS)
 over('Predicted' in popis and '8h' in popis and 'Bybit' in popis, f'legenda „Predicted 8h · Bybit" ({popis!r})')
+# v0.87.3: za hodnotou krátce, kdo komu platí (podle svíčky pod křížem).
+kdo = ev("""(() => { const i = window.__graf.getIndicators({ name: 'FUND' })[0];
+  const z = i.createTooltipDataSource({ indicator: i, crosshair: { dataIndex: i.result.findIndex((x) => x && x.rate > 0) } });
+  const neg = i.result.findIndex((x) => x && x.rate < 0);
+  const z2 = i.createTooltipDataSource({ indicator: i, crosshair: { dataIndex: neg } });
+  return [(z.legends || []).map((l) => l.value.text), (z2.legends || []).map((l) => l.value.text)]; })()""")
+over(kdo and 'longs pay shorts' in kdo[0], f'legenda: kladná sazba „longs pay shorts" ({kdo and kdo[0]})')
+over(kdo and 'shorts pay longs' in kdo[1], f'legenda: záporná sazba „shorts pay longs" ({kdo and kdo[1]})')
 barvy = ev("""(() => { const i = window.__graf.getIndicators({ name: 'FUND' })[0]; const f = i.figures[0];
   return [f.styles({ data: { current: { rate: 0.01 } } }).color, f.styles({ data: { current: { rate: -0.02 } } }).color]; })()""")
 over(barvy and barvy[0] != barvy[1] and barvy[0].lower() == '#16c784', f'kladné zeleně, záporné červeně ({barvy})')

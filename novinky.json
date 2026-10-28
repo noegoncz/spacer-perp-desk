@@ -1,9 +1,9 @@
 {
-  "verze": "0.87.2",
+  "verze": "0.87.3",
   "novinky": [
     {
-      "en": "Funding indicator now shows the predicted rate for every candle (like TradingView), computed from the premium index on Binance and Bybit. Settled rates stay one tap away in the indicator settings.",
-      "cs": "Indikátor Funding ukazuje odhad sazby pro každou svíčku (jako TradingView), z premium indexu Binance a Bybitu. Vyúčtované sazby jsou v nastavení indikátoru."
+      "en": "Funding indicator now shows the predicted rate for every candle (like TradingView) and says in plain words who pays — \"longs pay shorts\" or \"shorts pay longs\".",
+      "cs": "Indikátor Funding ukazuje odhad sazby pro každou svíčku (jako TradingView) a lidsky říká, kdo platí — „longy platí shortům“ nebo „shorty platí longům“."
     },
     {
       "en": "New indicator: Funding rate. A panel under the chart (like OI or RSI) — green when longs pay, red when shorts pay.",
@@ -22,6 +22,10 @@
     {
       "en": "Journal: the \"Don't count in stats\" switch now visibly turns on and off; tapping its text works too.",
       "cs": "Deník: přepínač „Nepočítat do statistik“ se viditelně zapne i vypne, klepnout jde i na jeho text."
+    },
+    {
+      "en": "Chart: when resizing an indicator panel, the handles of the other panels move along.",
+      "cs": "Graf: při změně výšky panelu indikátoru se s ním posouvají i úchyty ostatních panelů."
     }
   ]
 }
