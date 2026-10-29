@@ -1,6 +1,10 @@
 {
-  "verze": "0.87.4",
+  "verze": "0.88.0",
   "novinky": [
+    {
+      "en": "Chart: indicator panels (RSI, MACD, OI, Funding…) have a label on the left — tap it to minimise the panel to a thin strip and tap again to bring it back. Remembered for next time.",
+      "cs": "Graf: panely indikátorů (RSI, MACD, OI, Funding…) mají vlevo popisek — klepnutím panel minimalizuješ na tenký proužek, dalším klepnutím ho vrátíš. Pamatuje se i příště."
+    },
     {
       "en": "Journal: new signal \"Liquidation zone\" — for entries placed into a cluster on the liquidation map.",
       "cs": "Deník: nový signál „Likvidační zóna“ — pro vstupy do shluku na likvidační mapě."
@@ -12,10 +16,6 @@
     {
       "en": "New indicator: Funding rate. A panel under the chart (like OI or RSI) — green when longs pay, red when shorts pay.",
       "cs": "Nový indikátor Funding: panel pod grafem (jako OI nebo RSI) — zeleně platí longy, červeně shorty."
-    },
-    {
-      "en": "Journal: mark a trade as \"Don't count in stats\" — test trades or older ones from before you kept a plan stay in history, but Edge and summaries skip them.",
-      "cs": "Deník: obchod jde označit „Nepočítat do statistik“ — testovací nebo starší obchody bez plánu zůstanou v historii, ale Edge a souhrny je vynechají."
     }
   ],
   "opravy": [

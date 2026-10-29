@@ -1669,6 +1669,50 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
 }
 .pane-uchyt.tahne .pane-madlo { background: var(--accent); }
 
+/* Popisek panelu indikátoru s minimalizací (v0.88.0): tlumený, neprůhledný. */
+.pane-legenda {
+  position: absolute;
+  z-index: 22;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 132px;
+  max-width: calc(100% - 80px);
+  height: 20px;
+  padding: 0 8px 0 4px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font: 11px/1 -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.pane-legenda::after {
+  /* větší dotyková plocha než samotný proužek */
+  content: '';
+  position: absolute;
+  inset: -8px -4px;
+}
+.pane-legenda .pl-sipka {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  transition: transform 0.15s;
+}
+.pane-legenda.sbaleno .pl-sipka { transform: rotate(180deg); }
+.pane-legenda .pl-nazev { color: var(--text); flex: none; }
+.pane-legenda .pl-hodnoty {
+  display: flex;
+  gap: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+.pane-legenda.sbaleno { border-radius: 0 0 4px 0; border-top: 0; border-left: 0; height: 21px; }
+
 /* Poslední známý stav při startu, než dorazí čerstvá data z burzy. */
 .zastarale { opacity: 0.6; transition: opacity 0.25s; }
 

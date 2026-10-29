@@ -158,6 +158,8 @@ export const en = {
 
   /* ---------- chart tools ---------- */
   'chart.indicators': 'Indicators',
+  'chart.paneCollapse': 'Minimise indicator',
+  'chart.paneExpand': 'Expand indicator',
   'chart.indicatorSettings': 'Indicator settings',
   'chart.resetSettings': 'Reset',
 

@@ -2006,6 +2006,19 @@ i panely nad ním (svíčky výšku vracejí) — jejich úchyty se posouvají
 během tažení (`tahUchytu.nad`), dřív se srovnaly až po puštění. Test:
 konec `test-vyska-panelu-tazenim.py` (RSI + MACD).
 
+**Popisek panelu a minimalizace (v0.88.0, přání uživatele):** legendu
+panelů pod grafem kreslí vlastní HTML popisek `.pane-legenda` (chart.js
+`umistiLegendy` / `obsahLegendy`, volá se z `umistiUchyty`): vlevo nahoře
+v panelu, tlumený neprůhledný podklad, min. 132 px, šipka ▾ (skrýt) / ▴
+(rozbalit), název + hodnoty pod křížem (jinak poslední svíčky; vlastní
+`createTooltipDataSource` indikátoru, jinak `figures` + `result`).
+Legenda knihovny v plátně je vypnutá (`indicator.tooltip.showRule: 'none'`).
+Klepnutí = panel na 22 px (`VYSKA_SBALENEHO`, `minHeight`), indikátor
+`visible: false` (počítá dál), úchyt výšky schovaný; stav `sbaleno`
+v nastavení indikátoru (pamatuje se, zálohuje se). Rozbalení vrátí
+výšku z `vyskaPanelu`. Indikátory v hlavním grafu se neminimalizují
+(na ně je oko / Vrstvy). Test: `tools/test-sbaleni-panelu.py`.
+
 **RSI nemá prázdné okraje nad 100 a pod 0.** Výchozí `gap` osy Y knihovny
 nechává nahoře 20 % a dole 10 % výšky panelu prázdných; u nízkého panelu
 to byla skoro třetina místa. `osaRsiBezOkraju()` ho přes `overrideYAxis`

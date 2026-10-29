@@ -2111,7 +2111,8 @@ function styly() {
       horizontal: { line: { color: BARVY.text }, text: { backgroundColor: BARVY.okraj } },
       vertical: { line: { color: BARVY.text }, text: { backgroundColor: BARVY.okraj } },
     },
-    indicator: { tooltip: { text: { color: BARVY.text, size: 11 } } },
+    // Legendu panelů kreslí vlastní popisek (`.pane-legenda`), knihovna žádnou.
+    indicator: { tooltip: { showRule: 'none', text: { color: BARVY.text, size: 11 } } },
     overlay: {
       line: { color: BARVY.kresba },
       point: { color: BARVY.kresba, borderColor: 'rgba(76,154,255,0.25)' },
@@ -2627,6 +2628,7 @@ export function createPriceChart(container, layer, handlers = {}) {
       u.dataset.nazev = nazev;
       u.style.top = `${b.top}px`;
     });
+    umistiLegendy(panely);
   }
 
   function vytvorUchyt(paneId) {
@@ -2693,6 +2695,166 @@ export function createPriceChart(container, layer, handlers = {}) {
     u.addEventListener('touchcancel', pust);
     return u;
   }
+
+  /*
+   * Popisek panelu indikátoru (v0.88.0, přání uživatele): vlevo nahoře
+   * v panelu, s neprůhledným tlumeným podkladem a minimální šířkou, ať se
+   * dá číst přes křivky. Klepnutí panel **minimalizuje** na proužek s
+   * popiskem (▴ = rozbalit), další klepnutí ho vrátí na jeho výšku (▾ =
+   * skrýt). Indikátor zůstává zapnutý, jen se nekreslí; stav se pamatuje
+   * v nastavení indikátoru (`sbaleno`). Legendu knihovny nahrazuje — ta
+   * se kreslí do plátna a nedá se na ni klepnout ani jí dát podklad.
+   */
+  const VYSKA_SBALENEHO = 22;
+  const legendy = new Map();   // paneId → prvek
+  let indexKrize = null;       // svíčka pod křížem; null = poslední
+  let legendyNaplanovany = false;
+
+  const jeSbaleny = (nazev) => Boolean(nactiNastaveni(nazev).sbaleno);
+
+  function sbalPanel(nazev, sbalit) {
+    ulozNastaveni(nazev, { ...nactiNastaveni(nazev), sbaleno: sbalit });
+    pouzijNastaveni(nazev);
+    setTimeout(() => {
+      umistiVrstvu();
+      kresleni.redraw();
+    }, 0);
+  }
+
+  function vytvorLegendu(paneId) {
+    const l = document.createElement('button');
+    l.type = 'button';
+    l.className = 'pane-legenda';
+    l.dataset.pane = paneId;
+    l.innerHTML = '<svg class="pl-sipka" viewBox="0 0 12 12" aria-hidden="true">'
+      + '<path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" '
+      + 'stroke-linecap="round" stroke-linejoin="round"/></svg>'
+      + '<span class="pl-nazev"></span><span class="pl-hodnoty"></span>';
+    l.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const nazev = l.dataset.nazev;
+      if (nazev) sbalPanel(nazev, !jeSbaleny(nazev));
+    });
+    return l;
+  }
+
+  function umistiLegendy(panely) {
+    const rodic = container.parentElement;
+    if (!rodic) return;
+    legendy.forEach((l, id) => {
+      if (!panely.has(id)) {
+        l.remove();
+        legendy.delete(id);
+      }
+    });
+    panely.forEach((nazev, paneId) => {
+      const b = chart.getSize(paneId);
+      if (!b || !b.height) return;
+      let l = legendy.get(paneId);
+      if (!l) {
+        l = vytvorLegendu(paneId);
+        legendy.set(paneId, l);
+        rodic.append(l);
+      }
+      const sbaleno = jeSbaleny(nazev);
+      l.dataset.nazev = nazev;
+      l.classList.toggle('sbaleno', sbaleno);
+      l.setAttribute('aria-expanded', String(!sbaleno));
+      l.setAttribute('aria-label', t(sbaleno ? 'chart.paneExpand' : 'chart.paneCollapse'));
+      l.style.top = `${b.top + (sbaleno ? 0 : 3)}px`;
+      l.style.left = `${b.left + 4}px`;
+      // Sbalený panel se tažením nemění; u rozbaleného úchyt začíná až za popiskem.
+      const u = uchyty.get(paneId);
+      if (u) u.hidden = sbaleno;
+    });
+    vyplnLegendy();
+    if (legendy.size) {
+      requestAnimationFrame(() => uchyty.forEach((u, id) => {
+        const l = legendy.get(id);
+        u.style.left = l ? `${l.offsetLeft + l.offsetWidth + 6}px` : '0px';
+      }));
+    }
+  }
+
+  const VELKE = [[1e9, 'B'], [1e6, 'M'], [1e3, 'K']];
+  function hodnotaLegendy(v, ind) {
+    if (!Number.isFinite(v)) return 'n/a';
+    if (ind.shouldFormatBigNumber) {
+      const [mez, znak] = VELKE.find(([m]) => Math.abs(v) >= m) || [1, ''];
+      return `${(v / mez).toFixed(mez > 1 ? 2 : 0)}${znak}`;
+    }
+    return v.toFixed(Number.isFinite(ind.precision) ? ind.precision : 2);
+  }
+
+  /** Název, parametry a hodnoty pod křížem (jinak poslední svíčky). */
+  function obsahLegendy(ind) {
+    const vysledek = ind.result || [];
+    const idx = Number.isInteger(indexKrize) && indexKrize < vysledek.length ? indexKrize : vysledek.length - 1;
+    let zdroj = null;
+    try {
+      zdroj = ind.createTooltipDataSource?.({ chart, indicator: ind, crosshair: { dataIndex: idx } }) || null;
+    } catch {
+      zdroj = null;
+    }
+    const parametry = zdroj?.calcParamsText ?? (ind.calcParams?.length ? `(${ind.calcParams.join(',')})` : '');
+    const nazev = `${ind.shortName || ind.name}${parametry}`;
+    if (zdroj?.legends?.length) {
+      return {
+        nazev,
+        hodnoty: zdroj.legends.map((x) => (typeof x.value === 'object' ? x.value : { text: String(x.value ?? '') })),
+      };
+    }
+    const styly = chart.getStyles().indicator;
+    const radek = vysledek[idx] || {};
+    let cara = 0;
+    const hodnoty = [];
+    (ind.figures || []).forEach((f) => {
+      const jeCara = f.type === 'line';
+      const poradi = jeCara ? cara++ : -1;
+      if (!f.title) {
+        if (f.key && ind.figures.length === 1) hodnoty.push({ text: hodnotaLegendy(radek[f.key], ind), color: ind.styles?.lines?.[0]?.color ?? styly.lines?.[0]?.color });
+        return;
+      }
+      const v = radek[f.key];
+      let barva;
+      if (jeCara) {
+        barva = ind.styles?.lines?.[poradi]?.color ?? styly.lines?.[poradi]?.color;
+        if (barva === 'transparent') return; // vypnutý průměr RSI
+      } else {
+        const sloupce = ind.styles?.bars?.[0] ?? styly.bars?.[0] ?? {};
+        barva = v >= 0 ? sloupce.upColor : sloupce.downColor;
+      }
+      hodnoty.push({ text: `${f.title}${hodnotaLegendy(v, ind)}`, color: barva });
+    });
+    return { nazev, hodnoty };
+  }
+
+  function vyplnLegendy() {
+    legendyNaplanovany = false;
+    legendy.forEach((l) => {
+      const ind = chart.getIndicators({ name: l.dataset.nazev })?.[0];
+      if (!ind) return;
+      const { nazev, hodnoty } = obsahLegendy(ind);
+      const n = l.querySelector('.pl-nazev');
+      if (n.textContent !== nazev) n.textContent = nazev;
+      const h = l.querySelector('.pl-hodnoty');
+      const html = hodnoty.map((x) => `<span${x.color ? ` style="color:${x.color}"` : ''}>${
+        String(x.text).replace(/[<>&]/g, '')}</span>`).join('');
+      if (h.innerHTML !== html) h.innerHTML = html;
+    });
+  }
+
+  function naplanujLegendy() {
+    if (legendyNaplanovany || !legendy.size) return;
+    legendyNaplanovany = true;
+    requestAnimationFrame(vyplnLegendy);
+  }
+
+  chart.subscribeAction('onCrosshairChange', (d) => {
+    const c = d?.crosshair || d;
+    indexKrize = Number.isInteger(c?.dataIndex) && Number.isFinite(c?.y) ? c.dataIndex : null;
+    naplanujLegendy();
+  });
 
   const toPixel = (bod) => {
     const c = chart.convertToPixel(
@@ -3182,12 +3344,16 @@ export function createPriceChart(container, layer, handlers = {}) {
       zmena.calcParams = [verzeFundingu];
     }
 
+    // Minimalizovaný panel: indikátor dál počítá (hodnota v popisku), nekreslí se.
+    if (vlastniPanelIndikatoru.get(nazev)) zmena.visible = !jeSbaleny(nazev);
+
     try {
       chart.overrideIndicator(zmena);
     } catch {
       /* neznámý indikátor — nastavení prostě nemá co přepsat */
     }
     pouzijVyskuPanelu(nazev);
+    naplanujLegendy();
   }
 
   /*
@@ -3199,10 +3365,17 @@ export function createPriceChart(container, layer, handlers = {}) {
 
   function pouzijVyskuPanelu(nazev) {
     const n = nactiNastaveni(nazev);
-    if (n.vyskaPanelu === undefined) return;
+    if (n.vyskaPanelu === undefined && !n.sbaleno) return;
     const indikator = chart.getIndicators({ name: nazev })?.[0];
     if (!indikator?.paneId || indikator.paneId === HLAVNI_PANEL) return;
 
+    if (n.sbaleno) {
+      try {
+        chart.setPaneOptions({ id: indikator.paneId, height: VYSKA_SBALENEHO, minHeight: VYSKA_SBALENEHO });
+      } catch { /* panel mezitím zmizel */ }
+      return;
+    }
+    if (n.vyskaPanelu === undefined) return;
     const plocha = container.clientHeight;
     if (!plocha) return;
     // Panely ostatních indikátorů si drží svoje; strop počítáme jen proti
@@ -3211,7 +3384,7 @@ export function createPriceChart(container, layer, handlers = {}) {
     const vyska = Math.round(Math.min(strop, plocha * n.vyskaPanelu / 100));
     if (vyska < 30) return;
     try {
-      chart.setPaneOptions({ id: indikator.paneId, height: vyska });
+      chart.setPaneOptions({ id: indikator.paneId, height: vyska, minHeight: 30 });
     } catch {
       /* panel mezitím zmizel */
     }
@@ -3571,7 +3744,12 @@ export function createPriceChart(container, layer, handlers = {}) {
     setTicking(zapnuto) {
       clearInterval(tikani);
       tikani = null;
-      if (zapnuto) tikani = setInterval(() => chart.resize(), 1000);
+      if (zapnuto) {
+        tikani = setInterval(() => {
+          chart.resize();
+          naplanujLegendy();
+        }, 1000);
+      }
     },
 
     /**
@@ -3593,6 +3771,7 @@ export function createPriceChart(container, layer, handlers = {}) {
         close: bar.close,
         volume: bar.volume,
       });
+      naplanujLegendy();
     },
 
     /* ---------- čáry pozice ---------- */
@@ -4111,6 +4290,8 @@ export function createPriceChart(container, layer, handlers = {}) {
 
     destroy() {
       clearInterval(tikani);
+      legendy.forEach((l) => l.remove());
+      uchyty.forEach((u) => u.remove());
       observer.disconnect();
       K().dispose(container);
     },

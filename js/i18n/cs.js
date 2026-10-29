@@ -154,6 +154,8 @@ export const cs = {
 
   /* ---------- nástroje grafu ---------- */
   'chart.indicators': 'Indikátory',
+  'chart.paneCollapse': 'Minimalizovat indikátor',
+  'chart.paneExpand': 'Rozbalit indikátor',
   'chart.indicatorSettings': 'Nastavení indikátoru',
   'chart.resetSettings': 'Výchozí',
 
