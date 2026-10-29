@@ -50,8 +50,15 @@ export const SIGNALY = [
   { id: 'rsiDiv', skupina: 'moment', kresba: cara('5,10 30,30 50,24 80,46 100,38 125,52 150,30') + `<line x1="80" y1="46" x2="125" y2="52" stroke="${R}"/><polyline fill="none" stroke="${F}" stroke-width="1.5" points="5,62 30,80 50,70 80,84 100,72 125,78 150,64"/><line x1="80" y1="84" x2="125" y2="78" stroke="${Z}"/>` },
   { id: 'funding', skupina: 'trh', kresba: `<line x1="0" y1="45" x2="160" y2="45" stroke="#223047"/><g fill="${Z}"><rect x="10" y="40" width="10" height="5"/><rect x="30" y="38" width="10" height="7"/><rect x="50" y="34" width="10" height="11"/><rect x="70" y="26" width="10" height="19"/><rect x="90" y="14" width="10" height="31" fill="${U}"/></g><g fill="${R}"><rect x="115" y="45" width="10" height="9"/><rect x="135" y="45" width="10" height="5"/></g>` },
   { id: 'orderBlock', skupina: 'trh', kresba: `<rect x="28" y="56" width="132" height="14" fill="${T}" opacity=".16"/><rect x="30" y="56" width="8" height="14" fill="#e05858"/><line x1="34" y1="52" x2="34" y2="74" stroke="#e05858"/>` + cara('5,40 34,66 50,30 70,12 95,30 112,58 130,32 155,16') + bod(112, 58) },
+  { id: 'liq', skupina: 'trh', kresba: `<g stroke="#22c55e" stroke-width="2"><line x1="40" y1="16" x2="160" y2="16" opacity=".55"/><line x1="25" y1="74" x2="160" y2="74" opacity=".55"/></g><line x1="55" y1="22" x2="160" y2="22" stroke="#facc15" stroke-width="4"/>` + cara('5,62 25,54 45,60 65,46 85,50 100,38 112,20 120,44 140,58 155,66') + bod(112, 20, R) },
   { id: 'news', skupina: 'udalost', kresba: `<line x1="110" y1="0" x2="110" y2="90" stroke="${T}" stroke-dasharray="3 3"/>` + cara('5,60 30,52 55,56 80,44 100,40 108,38') + `<polyline fill="none" stroke="${C}" stroke-width="2" stroke-dasharray="3 3" opacity=".5" points="108,38 155,14"/>` },
 ];
+
+/**
+ * Výchozí signály přidané po verzi 2 deníku: uloženému seznamu se doplní
+ * jednou (`doplneneVychozi`), jinak by vypadaly jako odebrané uživatelem.
+ */
+export const NOVE_SIGNALY = ['liq'];
 
 /** Kresba jako celé SVG (bez obalu se nedá vložit). */
 export const svg = (kresba) => `<svg viewBox="0 0 160 90" aria-hidden="true">${kresba}</svg>`;

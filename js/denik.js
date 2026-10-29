@@ -15,7 +15,7 @@
  */
 import * as store from './store.js';
 import { t } from './i18n.js';
-import { SETUPY, SIGNALY, STARE_NAZVY } from './denik-katalog.js';
+import { SETUPY, SIGNALY, STARE_NAZVY, NOVE_SIGNALY } from './denik-katalog.js';
 
 const KLIC = 'perpdesk.denik';
 /** Kolik ms smí být rozdíl mezi časem otevření z různých zdrojů. */
@@ -95,6 +95,12 @@ function nacti() {
   if (stav.verze !== 2) {
     prevedVerzi1(stav);
     stav.verze = 2;
+    if (s) uloz();
+  }
+  const doplnit = NOVE_SIGNALY.filter((id) => !(stav.doplneneVychozi || []).includes(id));
+  if (doplnit.length) {
+    doplnit.forEach((id) => { if (!stav.signaly.some((x) => x.id === id)) stav.signaly.push({ id }); });
+    stav.doplneneVychozi = [...(stav.doplneneVychozi || []), ...doplnit];
     if (s) uloz();
   }
   return stav;

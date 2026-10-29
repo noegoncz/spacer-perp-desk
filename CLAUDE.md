@@ -646,6 +646,13 @@ statistiky a shrnutí v lidské řeči — „co mi to o mně jako traderovi ř�
     od 3 obchodů v obou) a `noSetup(R)`.
   - Testy: `test-denik.py` (přepsaný, skutečné dotyky, převod verze 1),
     `test-denik-edge.py` (A2: confluence, bez setupu).
+  - **v0.87.4 — signál Likvidační zóna** (`liq`, skupina trh, přání
+    uživatele: vstup do shluku na likvidační mapě). ⚠ **Nový výchozí
+    signál se uloženému deníku verze 2 nedoplní sám** — chybějící výchozí
+    = odebraný uživatelem. Proto `NOVE_SIGNALY` v denik-katalog.js:
+    `nacti()` je doplní jednou a zapíše do `doplneneVychozi` (smazaný
+    uživatelem se pak nevrací). Další nový výchozí signál přidat i tam.
+    Test: bod 8 `test-denik.py`.
 - **v0.68.0 — Trades: filtry a tabulka.** Tlačítko „Filters · n"
   (`#journalFilterBtn`) otevře okno (`denikUi.otevriFiltry`): období,
   výsledek, stav, setup (i „No setup" = `'-'`), signály, confluence

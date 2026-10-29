@@ -1,6 +1,10 @@
 {
-  "verze": "0.87.3",
+  "verze": "0.87.4",
   "novinky": [
+    {
+      "en": "Journal: new signal \"Liquidation zone\" — for entries placed into a cluster on the liquidation map.",
+      "cs": "Deník: nový signál „Likvidační zóna“ — pro vstupy do shluku na likvidační mapě."
+    },
     {
       "en": "Funding indicator now shows the predicted rate for every candle (like TradingView) and says in plain words who pays — \"longs pay shorts\" or \"shorts pay longs\".",
       "cs": "Indikátor Funding ukazuje odhad sazby pro každou svíčku (jako TradingView) a lidsky říká, kdo platí — „longy platí shortům“ nebo „shorty platí longům“."

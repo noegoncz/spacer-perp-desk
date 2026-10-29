@@ -89,7 +89,7 @@ over(not ev("!document.getElementById('viewChart').hidden"), 'klepnutí na Plan 
 zal = json.loads(ev("JSON.stringify([...document.querySelectorAll('.denik-zalozka')].map((b) => [b.textContent, b.classList.contains('on'), b.disabled]))") or '[]')
 over(len(zal) == 2 and zal[0][1] and zal[1][2], f'přepínač Plan | Review, Review zašedlé u běžícího obchodu ({zal})')
 pocty = ev("[document.querySelectorAll('.denik-setupy .denik-tile[data-id]').length, document.querySelectorAll('.denik-signaly .denik-tile[data-id]').length, !!document.querySelector('.denik-setupy .denik-nic.on'), document.querySelectorAll('.denik-vlastni').length]")
-over(pocty == [6, 11, True, 2], f'6 setupů, 11 signálů, vybrané „No setup", dvakrát „+ Own" ({pocty})')
+over(pocty == [6, 12, True, 2], f'6 setupů, 12 signálů, vybrané „No setup", dvakrát „+ Own" ({pocty})')
 over(ev("document.querySelectorAll('.denik-setupy .denik-tile svg').length") == 6, 'setupy mají kresby')
 klepni(tile('setupy', 'retest'))
 klepni(tile('setupy', 'breakout'))
@@ -272,6 +272,24 @@ over(vlastni_setup and v2.get('setup') == vlastni_setup['id'], 'vlastní setup p
 over('sr' in v2.get('signaly', []) and len(v2.get('signaly', [])) == 2, 'vlastní signál i S/R v poznámce')
 ids = [x['id'] for x in d.get('setupy', [])]
 over('range' not in ids and 'sweep' in ids and 'breakout' in ids, f'dřív smazaný výchozí zůstal pryč, nový přibyl ({ids})')
+
+print('8) nový výchozí signál v uloženém deníku verze 2 (v0.87.4)')
+# Deník verze 2 bez signálu liq: liq se doplní jednou; po smazání uživatelem
+# se už nevrátí.
+v2 = {'verze': 2, 'nastaveni': {'stitekReview': True}, 'setupy': [{'id': 'breakout'}],
+      'signaly': [{'id': 'sr'}, {'id': 'orderBlock'}], 'poznamky': {}}
+ev(f"localStorage.setItem('perpdesk.denik', {json.dumps(json.dumps(v2))})")
+p.prikaz('Page.reload')
+time.sleep(8)
+d = denik()
+sig = [x['id'] for x in d.get('signaly', [])]
+over(sig == ['sr', 'orderBlock', 'liq'] and d.get('doplneneVychozi') == ['liq'], f'signál Likvidační zóna doplněný ({sig}, {d.get("doplneneVychozi")})')
+d['signaly'] = [{'id': 'sr'}, {'id': 'orderBlock'}]
+ev(f"localStorage.setItem('perpdesk.denik', {json.dumps(json.dumps(d))})")
+p.prikaz('Page.reload')
+time.sleep(8)
+sig = [x['id'] for x in denik().get('signaly', [])]
+over(sig == ['sr', 'orderBlock'], f'smazaný uživatelem se nevrací ({sig})')
 
 print()
 print('VÝSLEDEK:', 'VŠE V POŘÁDKU' if not chyby else f'!!! {len(chyby)} chyb')
