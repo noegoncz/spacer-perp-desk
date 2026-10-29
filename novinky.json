@@ -1,13 +1,13 @@
 {
-  "verze": "0.88.0",
+  "verze": "0.88.1",
   "novinky": [
     {
-      "en": "Chart: indicator panels (RSI, MACD, OI, Funding…) have a label on the left — tap it to minimise the panel to a thin strip and tap again to bring it back. Remembered for next time.",
-      "cs": "Graf: panely indikátorů (RSI, MACD, OI, Funding…) mají vlevo popisek — klepnutím panel minimalizuješ na tenký proužek, dalším klepnutím ho vrátíš. Pamatuje se i příště."
+      "en": "Chart: each indicator panel (RSI, MACD, OI, Funding…) has a label column on the left — tap it to minimise the panel to a thin strip with just its name, tap again to bring it back. Remembered for next time.",
+      "cs": "Graf: každý panel indikátoru (RSI, MACD, OI, Funding…) má vlevo sloupec s popisem — klepnutím panel minimalizuješ na tenký proužek jen s názvem, dalším klepnutím ho vrátíš. Pamatuje se i příště."
     },
     {
-      "en": "Journal: new signal \"Liquidation zone\" — for entries placed into a cluster on the liquidation map.",
-      "cs": "Deník: nový signál „Likvidační zóna“ — pro vstupy do shluku na likvidační mapě."
+      "en": "Funding indicator says clearly who pays: \"Long pays · Short receives\" (or the other way round).",
+      "cs": "Indikátor Funding jasně říká, kdo platí: „Long platí · Short dostává“ (nebo naopak)."
     },
     {
       "en": "Funding indicator now shows the predicted rate for every candle (like TradingView) and says in plain words who pays — \"longs pay shorts\" or \"shorts pay longs\".",

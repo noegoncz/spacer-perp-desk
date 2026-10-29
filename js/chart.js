@@ -1876,8 +1876,13 @@ function registrovatFunding() {
       barvyFundingu ??= nactiNastaveni('FUND');
       const barva = v >= 0 ? barvyFundingu.barvaPlus : barvyFundingu.barvaMinus;
       zdroj.legends = [{ title: '', value: { text: v.toFixed(4), color: barva } }];
+      // Kdo platí (v0.88.1, uživatel: „longy platí shortům" nebylo jasné):
+      // dva řádky, long vždy první — platí červeně, dostává zeleně.
       if (v !== 0) {
-        zdroj.legends.push({ title: '', value: { text: t(v > 0 ? 'fundingInd.longsPay' : 'fundingInd.shortsPay'), color: barva } });
+        zdroj.legends.push(
+          { title: '', value: { text: t(v > 0 ? 'fundingInd.longPays' : 'fundingInd.longGets'), color: v > 0 ? R_PLATI : Z_DOSTAVA } },
+          { title: '', value: { text: t(v > 0 ? 'fundingInd.shortGets' : 'fundingInd.shortPays'), color: v > 0 ? Z_DOSTAVA : R_PLATI } },
+        );
       }
       return zdroj;
     },
@@ -1919,6 +1924,8 @@ function registrovatFunding() {
  */
 let openInterest = null;
 let verzeOi = 0;
+const R_PLATI = '#f6465d';
+const Z_DOSTAVA = '#3ee6a4';
 
 function registrovatOi() {
   K().registerIndicator({
@@ -2646,13 +2653,17 @@ export function createPriceChart(container, layer, handlers = {}) {
       if (!b) return;
       // Panely nad taženým se posouvají s ním — jejich úchyty taky (v0.87.3,
       // dřív stály na místě a srovnaly se až po puštění prstu).
+      // Popisky panelů (v0.88.1) jedou s nimi, tažený i mění výšku.
       const nad = [];
       uchyty.forEach((jiny, id) => {
         const bj = id !== paneId && chart.getSize(id);
-        if (bj && bj.top < b.top) nad.push({ prvek: jiny, top: bj.top });
+        if (bj && bj.top < b.top) {
+          nad.push({ prvek: jiny, top: bj.top });
+          if (legendy.has(id)) nad.push({ prvek: legendy.get(id), top: bj.top });
+        }
       });
       tahUchytu = { paneId, nazev: u.dataset.nazev, y: e.touches[0].clientY, vyska: b.height,
-                    plocha: container.clientHeight, top: b.top, nad };
+                    plocha: container.clientHeight, top: b.top, nad, legenda: legendy.get(paneId) };
       u.classList.add('tahne');
       chart.setScrollEnabled(false);
       chart.setZoomEnabled(false);
@@ -2671,6 +2682,10 @@ export function createPriceChart(container, layer, handlers = {}) {
       if (tahUchytu.nazev === 'RSI') osaRsiBezOkraju();
       u.style.top = `${tahUchytu.top + (tahUchytu.vyska - vyska)}px`;
       tahUchytu.nad.forEach(({ prvek, top }) => { prvek.style.top = `${top + (tahUchytu.vyska - vyska)}px`; });
+      if (tahUchytu.legenda) {
+        tahUchytu.legenda.style.top = `${tahUchytu.top + (tahUchytu.vyska - vyska)}px`;
+        tahUchytu.legenda.style.height = `${vyska}px`;
+      }
       const b = chart.getSize(HLAVNI_PANEL, 'main');
       if (b) layer.style.height = `${b.height}px`;
     }, { passive: false });
@@ -2697,11 +2712,12 @@ export function createPriceChart(container, layer, handlers = {}) {
   }
 
   /*
-   * Popisek panelu indikátoru (v0.88.0, přání uživatele): vlevo nahoře
-   * v panelu, s neprůhledným tlumeným podkladem a minimální šířkou, ať se
-   * dá číst přes křivky. Klepnutí panel **minimalizuje** na proužek s
-   * popiskem (▴ = rozbalit), další klepnutí ho vrátí na jeho výšku (▾ =
-   * skrýt). Indikátor zůstává zapnutý, jen se nekreslí; stav se pamatuje
+   * Popisek panelu indikátoru (v0.88.0, přání uživatele): sloupec vlevo
+   * přes celou výšku panelu (v0.88.1), stejně široký u všech panelů,
+   * s neprůhledným tlumeným podkladem — nahoře šipka a krátký název, pod
+   * ním parametry a hodnoty. Klepnutí panel **minimalizuje** na proužek
+   * jen s krátkým názvem (▴ = rozbalit), další klepnutí ho vrátí na jeho
+   * výšku (▾ = skrýt). Indikátor zůstává zapnutý, jen se nekreslí; stav se pamatuje
    * v nastavení indikátoru (`sbaleno`). Legendu knihovny nahrazuje — ta
    * se kreslí do plátna a nedá se na ni klepnout ani jí dát podklad.
    */
@@ -2728,8 +2744,13 @@ export function createPriceChart(container, layer, handlers = {}) {
     l.dataset.pane = paneId;
     l.innerHTML = '<svg class="pl-sipka" viewBox="0 0 12 12" aria-hidden="true">'
       + '<path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" '
-      + 'stroke-linecap="round" stroke-linejoin="round"/></svg>'
-      + '<span class="pl-nazev"></span><span class="pl-hodnoty"></span>';
+      + 'stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const hlava = document.createElement('span');
+    hlava.className = 'pl-hlava';
+    hlava.append(l.firstChild);
+    hlava.insertAdjacentHTML('beforeend', '<span class="pl-nazev"></span>');
+    l.append(hlava);
+    l.insertAdjacentHTML('beforeend', '<span class="pl-param"></span><span class="pl-hodnoty"></span>');
     l.addEventListener('click', (e) => {
       e.stopPropagation();
       const nazev = l.dataset.nazev;
@@ -2761,19 +2782,14 @@ export function createPriceChart(container, layer, handlers = {}) {
       l.classList.toggle('sbaleno', sbaleno);
       l.setAttribute('aria-expanded', String(!sbaleno));
       l.setAttribute('aria-label', t(sbaleno ? 'chart.paneExpand' : 'chart.paneCollapse'));
-      l.style.top = `${b.top + (sbaleno ? 0 : 3)}px`;
-      l.style.left = `${b.left + 4}px`;
-      // Sbalený panel se tažením nemění; u rozbaleného úchyt začíná až za popiskem.
+      l.style.top = `${b.top}px`;
+      l.style.left = `${b.left}px`;
+      l.style.height = `${b.height}px`;
+      // Sbalený panel se tažením nemění.
       const u = uchyty.get(paneId);
       if (u) u.hidden = sbaleno;
     });
     vyplnLegendy();
-    if (legendy.size) {
-      requestAnimationFrame(() => uchyty.forEach((u, id) => {
-        const l = legendy.get(id);
-        u.style.left = l ? `${l.offsetLeft + l.offsetWidth + 6}px` : '0px';
-      }));
-    }
   }
 
   const VELKE = [[1e9, 'B'], [1e6, 'M'], [1e3, 'K']];
@@ -2796,11 +2812,12 @@ export function createPriceChart(container, layer, handlers = {}) {
     } catch {
       zdroj = null;
     }
-    const parametry = zdroj?.calcParamsText ?? (ind.calcParams?.length ? `(${ind.calcParams.join(',')})` : '');
-    const nazev = `${ind.shortName || ind.name}${parametry}`;
+    const nazev = ind.shortName || ind.name;
+    const parametry = (zdroj?.calcParamsText ?? (ind.calcParams || []).join(', ')).trim();
     if (zdroj?.legends?.length) {
       return {
         nazev,
+        parametry,
         hodnoty: zdroj.legends.map((x) => (typeof x.value === 'object' ? x.value : { text: String(x.value ?? '') })),
       };
     }
@@ -2824,9 +2841,12 @@ export function createPriceChart(container, layer, handlers = {}) {
         const sloupce = ind.styles?.bars?.[0] ?? styly.bars?.[0] ?? {};
         barva = v >= 0 ? sloupce.upColor : sloupce.downColor;
       }
-      hodnoty.push({ text: `${f.title}${hodnotaLegendy(v, ind)}`, color: barva });
+      // „RSI: 47.83" pod názvem RSI je zbytečně dvakrát.
+      const titulek = f.title.replace(/:\s*$/, '');
+      const bezTitulku = titulek === nazev && f === ind.figures[0];
+      hodnoty.push({ text: `${bezTitulku ? '' : `${titulek} `}${hodnotaLegendy(v, ind)}`, color: barva });
     });
-    return { nazev, hodnoty };
+    return { nazev, parametry, hodnoty };
   }
 
   function vyplnLegendy() {
@@ -2834,9 +2854,11 @@ export function createPriceChart(container, layer, handlers = {}) {
     legendy.forEach((l) => {
       const ind = chart.getIndicators({ name: l.dataset.nazev })?.[0];
       if (!ind) return;
-      const { nazev, hodnoty } = obsahLegendy(ind);
+      const { nazev, parametry, hodnoty } = obsahLegendy(ind);
       const n = l.querySelector('.pl-nazev');
       if (n.textContent !== nazev) n.textContent = nazev;
+      const pa = l.querySelector('.pl-param');
+      if (pa.textContent !== parametry) pa.textContent = parametry;
       const h = l.querySelector('.pl-hodnoty');
       const html = hodnoty.map((x) => `<span${x.color ? ` style="color:${x.color}"` : ''}>${
         String(x.text).replace(/[<>&]/g, '')}</span>`).join('');

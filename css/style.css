@@ -1669,32 +1669,39 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
 }
 .pane-uchyt.tahne .pane-madlo { background: var(--accent); }
 
-/* Popisek panelu indikátoru s minimalizací (v0.88.0): tlumený, neprůhledný. */
+/* Popisek panelu indikátoru (v0.88.0): sloupec vlevo přes celou výšku
+   panelu (v0.88.1), stejně široký u všech, tlumený a neprůhledný. */
 .pane-legenda {
   position: absolute;
   z-index: 22;
   display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 132px;
-  max-width: calc(100% - 80px);
-  height: 20px;
-  padding: 0 8px 0 4px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  width: 92px;
+  padding: 4px 6px 4px 4px;
+  border: 0;
+  border-right: 1px solid var(--border);
   background: var(--surface-2);
   color: var(--text-dim);
-  font: 11px/1 -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
-  white-space: nowrap;
+  font: 10px/1.25 -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
+  text-align: left;
   overflow: hidden;
   cursor: pointer;
   touch-action: manipulation;
 }
-.pane-legenda::after {
-  /* větší dotyková plocha než samotný proužek */
-  content: '';
-  position: absolute;
-  inset: -8px -4px;
+@media (min-width: 560px) {
+  .pane-legenda { width: 116px; font-size: 11px; }
+}
+.pane-legenda .pl-hlava {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 14px;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 .pane-legenda .pl-sipka {
   flex: none;
@@ -1703,15 +1710,19 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
   transition: transform 0.15s;
 }
 .pane-legenda.sbaleno .pl-sipka { transform: rotate(180deg); }
-.pane-legenda .pl-nazev { color: var(--text); flex: none; }
+.pane-legenda .pl-nazev { overflow: hidden; text-overflow: ellipsis; }
+.pane-legenda .pl-param { overflow-wrap: anywhere; }
+.pane-legenda .pl-param:empty { display: none; }
 .pane-legenda .pl-hodnoty {
   display: flex;
-  gap: 6px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex-direction: column;
+  gap: 1px;
   font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
-.pane-legenda.sbaleno { border-radius: 0 0 4px 0; border-top: 0; border-left: 0; height: 21px; }
+.pane-legenda.sbaleno { padding-block: 0; justify-content: center; }
+.pane-legenda.sbaleno .pl-param,
+.pane-legenda.sbaleno .pl-hodnoty { display: none; }
 
 /* Poslední známý stav při startu, než dorazí čerstvá data z burzy. */
 .zastarale { opacity: 0.6; transition: opacity 0.25s; }

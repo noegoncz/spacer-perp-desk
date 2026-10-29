@@ -2008,9 +2008,15 @@ konec `test-vyska-panelu-tazenim.py` (RSI + MACD).
 
 **Popisek panelu a minimalizace (v0.88.0, přání uživatele):** legendu
 panelů pod grafem kreslí vlastní HTML popisek `.pane-legenda` (chart.js
-`umistiLegendy` / `obsahLegendy`, volá se z `umistiUchyty`): vlevo nahoře
-v panelu, tlumený neprůhledný podklad, min. 132 px, šipka ▾ (skrýt) / ▴
-(rozbalit), název + hodnoty pod křížem (jinak poslední svíčky; vlastní
+`umistiLegendy` / `obsahLegendy`, volá se z `umistiUchyty`). **v0.88.1
+(video uživatele):** sloupec vlevo přes celou výšku panelu, u všech stejně
+široký (92 px, od 560 px 116 px) — část křivky zakryje, uživateli to
+nevadí; nahoře šipka ▾ (skrýt) / ▴ (rozbalit) a krátký název, pod ním
+parametry a hodnoty (sbalený jen krátký název); při tažení úchytu jede
+s panelem (`tahUchytu.legenda`, popisky panelů nad v `nad`); úchyt zase
+přes celou šířku (madlo uprostřed). Funding: „Long pays / Short receives“
+(cs „Long platí / Short dostává“), long vždy první, platí červeně, dostává
+zeleně. Tlumený neprůhledný podklad, hodnoty pod křížem (jinak poslední svíčky; vlastní
 `createTooltipDataSource` indikátoru, jinak `figures` + `result`).
 Legenda knihovny v plátně je vypnutá (`indicator.tooltip.showRule: 'none'`).
 Klepnutí = panel na 22 px (`VYSKA_SBALENEHO`, `minHeight`), indikátor
