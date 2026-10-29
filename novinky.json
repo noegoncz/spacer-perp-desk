@@ -1,5 +1,5 @@
 {
-  "verze": "0.88.2",
+  "verze": "0.88.3",
   "novinky": [
     {
       "en": "Chart: indicator panels can be reordered — the small ▲ ▼ arrows next to the label move a panel up or down. The order is remembered.",
@@ -19,6 +19,18 @@
     }
   ],
   "opravy": [
+    {
+      "en": "Chart: swapping indicator panels with ▲ ▼ now always works and the label moves with the panel; the arrows are wider.",
+      "cs": "Graf: prohození panelů indikátorů šipkami ▲ ▼ teď funguje vždy a popisek jede s panelem; šipky jsou širší."
+    },
+    {
+      "en": "Chart: an indicator panel can no longer be made lower than its label; labels stay on their panels when the screen size changes.",
+      "cs": "Graf: panel indikátoru už nejde zmenšit pod výšku jeho popisku; popisky zůstanou u panelů i při změně velikosti obrazovky."
+    },
+    {
+      "en": "Connection drop-outs no longer show an error bar — the status at the top is enough.",
+      "cs": "Výpadky spojení už neukazují lištu s chybou — stačí stav nahoře."
+    },
     {
       "en": "Chart: the panel label moves along while resizing, the resize handle is centred again.",
       "cs": "Graf: popisek panelu se při změně výšky posouvá s ním, úchyt je zase uprostřed."

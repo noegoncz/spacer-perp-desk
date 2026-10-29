@@ -2034,10 +2034,20 @@ nebo „Short pays“ **v barvě sloupce** (kladná sazba = platí longy;
 je nad grafem). `calcParamsText` zůstává (testy). **Pořadí panelů:**
 průsvitné šipky ▲ ▼ vedle popisku nahoře (`.pane-poradi`,
 `presunPanel`) — pořadí = pořadí v `aktivniIndikatory` (uloží se do
-`perpdesk.indicators`), do grafu přes volbu panelu `order`
-(`seradPanely`, i po přidání indikátoru — nový panel má výchozí 0
-a skočil by nahoru). Popisky se po přesunu umisťují až po dvou snímcích
-(knihovna přeskládá při vykreslení). Test: bod 5b `test-sbaleni-panelu.py`.
+`perpdesk.indicators`). Test: bod 5b `test-sbaleni-panelu.py`.
+**v0.88.3 (video uživatele):** ⚠ volba panelu `order` se na telefonu
+projevovala nespolehlivě (panely se prohodily napůl, popisky zůstaly) →
+`presunPanel` panely vyndá a vloží znovu v novém pořadí (knihovna je
+skládá v pořadí vložení), výška se přenese. ⚠ **Knihovna přepočítává
+rozložení až v mikroúloze** (`layout` → `Promise.resolve().then(_layout)`)
+— `getSize` hned po resize / změně výšky / vložení panelu vrací staré
+rozměry. `umistiVrstvu` proto umístí hned a ještě jednou v dalším snímku
+(`umistiVrstvuTed`); dřív po vyskočení lišty dole zůstaly popisky
+i úchyty o kus vedle panelů. Rozbalený panel nejde pod výšku popisku
+(`vyskaPopisku`: tažení, `pouzijVyskuPanelu`, `umistiLegendy` panel
+zvedne). **Výpadek sítě se v lištách chyb nikdy neukazuje**
+(`ui.jeVypadekSite` přímo ve `showError` i `showChartError` — dřív
+filtr jen u některých volání, graf ho ukazoval). Test: body 6–7.
 
 **RSI nemá prázdné okraje nad 100 a pod 0.** Výchozí `gap` osy Y knihovny
 nechává nahoře 20 % a dole 10 % výšky panelu prázdných; u nízkého panelu

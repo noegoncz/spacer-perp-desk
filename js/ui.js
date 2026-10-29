@@ -809,7 +809,19 @@ export function renderStatus(status) {
     : '';
 }
 
+/*
+ * Výpadek sítě (síť, časový limit, nedostupná burza) se v lištách chyb
+ * nikdy neukazuje (v0.88.3, uživatel: „tyhle informace nechci nikdy
+ * vidět, od toho máme indikátor nahoře") — stav spojení je v hlavičce
+ * a spojení se obnoví samo. Platí pro každé volání, i z grafu.
+ */
+export function jeVypadekSite(message) {
+  const m = String(message || '');
+  return ['error.network', 'error.timeout', 'error.offline'].some((k) => m.endsWith(t(k)));
+}
+
 export function showError(message) {
+  if (jeVypadekSite(message)) return;
   dom.errorBar.className = 'error-bar';
   dom.errorBar.textContent = message;
   dom.errorBar.hidden = false;
@@ -1668,6 +1680,7 @@ export function renderChartInfo(position, hide, burza = '', obrat24h = null) {
 }
 
 export function showChartError(message) {
+  if (jeVypadekSite(message)) return;
   dom.chartError.hidden = !message;
   if (message) dom.chartError.textContent = message;
 }

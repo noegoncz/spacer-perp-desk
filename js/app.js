@@ -254,10 +254,7 @@ const HANDLERY = {
   },
 };
 
-function jePrechodnaChyba(message) {
-  const m = String(message || '');
-  return ['error.network', 'error.timeout', 'error.offline'].some((k) => m.endsWith(t(k)));
-}
+const jePrechodnaChyba = (message) => ui.jeVypadekSite(message);
 
 /*
  * Všechny připojené účty najednou (v0.59.0, přání uživatele: „chceme mít

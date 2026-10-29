@@ -207,7 +207,33 @@ time.sleep(1.5)
 f = stav()
 over(f['RSI']['legenda'] and 70 <= f['RSI']['legenda']['w'] <= 80, f'užší sloupec na 344 px ({f["RSI"]["legenda"] and f["RSI"]["legenda"]["w"]} px)')
 over(abs(f['RSI']['madlo'] - f['sirka'] / 2) <= 3, f'344 px: madlo uprostřed ({f["RSI"]["madlo"]} vs {f["sirka"] / 2})')
+for n in ('RSI', 'MACD'):
+    if f[n]['legenda'] and f[n]['vyska'] > 30:
+        over(abs(f[n]['legenda']['y'] - f[n]['top']) <= 2, f'344 px: popisek {n} u panelu po změně rozměrů ({f[n]["legenda"]["y"]} vs {f[n]["top"]})')
 snimek('sbaleni-4-344.png')
+
+print('7) rozbalený panel nejde stáhnout pod výšku popisku')
+p.prikaz('Emulation.setDeviceMetricsOverride', width=673, height=841, deviceScaleFactor=1, mobile=True)
+time.sleep(1.5)
+ev("localStorage.setItem('__x','1')")
+for n in ('MACD',):
+    i7 = stav()
+    if i7[n]['legenda']['sbaleno']:
+        klepni(i7[n]['legenda']['cx'], i7[n]['legenda']['cy'])
+U = json.loads(ev("""(() => { const i = window.__graf.getIndicators({ name: 'RSI' })[0];
+  const b = document.querySelector(`.pane-uchyt[data-pane="${i.paneId}"] .pane-madlo`).getBoundingClientRect();
+  return JSON.stringify({ x: b.left + b.width / 2, y: b.top + b.height / 2 }); })()"""))
+dotyk('touchStart', U['x'], U['y'])
+for k in range(1, 13):
+    dotyk('touchMove', U['x'], U['y'] + 400 * k / 12); time.sleep(0.03)
+dotyk('touchEnd', U['x'], U['y'] + 400)
+time.sleep(0.8)
+g7 = stav()
+potreba = ev("""(() => { const i = window.__graf.getIndicators({ name: 'RSI' })[0];
+  const l = document.querySelector(`.pane-legenda[data-pane="${i.paneId}"]`);
+  const c = [...l.children].reverse().find((x) => x.offsetHeight > 0); return c.offsetTop + c.offsetHeight; })()""")
+over(g7['RSI']['vyska'] >= potreba, f'RSI stažené na {g7["RSI"]["vyska"]} px, popisek potřebuje {potreba} px')
+over(abs(g7['RSI']['legenda']['y'] - g7['RSI']['top']) <= 2, 'popisek RSI u panelu po tažení')
 
 chyby_app = ev('JSON.stringify(window.__chyby || [])')
 over(chyby_app in ('[]', None), f'bez chyb v aplikaci ({chyby_app})')

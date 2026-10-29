@@ -2599,7 +2599,26 @@ export function createPriceChart(container, layer, handlers = {}) {
    * a bez panelů indikátorů). Díky tomu jsou její pixely totožné s těmi,
    * se kterými počítá knihovna, a netřeba nic přepočítávat.
    */
+  /*
+   * ⚠ Knihovna přepočítává rozložení až v mikroúloze (`layout` →
+   * `Promise.resolve().then(_layout)`), takže `getSize` hned po změně
+   * (resize, výška či vložení panelu) vrací staré rozměry. Proto se vše
+   * umístí hned a ještě jednou v dalším snímku (v0.88.3 — po vyskočení
+   * lišty dole nebo prohození panelů zůstávaly popisky a úchyty
+   * o kus vedle panelů).
+   */
+  let dorovnaniVrstvy = false;
   function umistiVrstvu() {
+    umistiVrstvuTed();
+    if (dorovnaniVrstvy) return;
+    dorovnaniVrstvy = true;
+    requestAnimationFrame(() => {
+      dorovnaniVrstvy = false;
+      umistiVrstvuTed();
+    });
+  }
+
+  function umistiVrstvuTed() {
     const b = chart.getSize(HLAVNI_PANEL, 'main');
     if (!b) return;
     layer.style.left = `${b.left}px`;
@@ -2687,7 +2706,7 @@ export function createPriceChart(container, layer, handlers = {}) {
       e.preventDefault();
       const posun = e.touches[0].clientY - tahUchytu.y;
       const strop = tahUchytu.plocha * (1 - NEJMENE_PRO_SVICKY);
-      const vyska = Math.round(Math.min(strop, Math.max(40, tahUchytu.vyska - posun)));
+      const vyska = Math.round(Math.min(strop, Math.max(40, vyskaPopisku.get(tahUchytu.nazev) || 0, tahUchytu.vyska - posun)));
       tahUchytu.nova = vyska;
       try {
         chart.setPaneOptions({ id: paneId, height: vyska });
@@ -2744,6 +2763,15 @@ export function createPriceChart(container, layer, handlers = {}) {
    * se promítá volbou panelu `order` — indikátory se nevytvářejí znovu.
    */
   const sipkyPoradi = new Map();   // paneId → prvek
+  /*
+   * Rozbalený panel nesmí být nižší než jeho popisek (v0.88.3, uživatel:
+   * text zalezl pod spodní hranu) — název indikátoru → potřebné px.
+   */
+  const vyskaPopisku = new Map();
+  const potrebaPopisku = (l) => {
+    const posledni = [...l.children].reverse().find((c) => c.offsetHeight > 0);
+    return posledni ? Math.ceil(posledni.offsetTop + posledni.offsetHeight + 4) : 0;
+  };
   const ODSAZENI_SIPEK = 1;
   let indexKrize = null;       // svíčka pod křížem; null = poslední
   let legendyNaplanovany = false;
@@ -2801,36 +2829,40 @@ export function createPriceChart(container, layer, handlers = {}) {
     return s;
   }
 
-  /** Promítne pořadí z `aktivniIndikatory` do panelů grafu. */
-  function seradPanely() {
-    let poradi = 1;
-    aktivniIndikatory.forEach((nazev) => {
-      if (!vlastniPanelIndikatoru.get(nazev)) return;
-      const id = chart.getIndicators({ name: nazev })?.[0]?.paneId;
-      if (!id || id === HLAVNI_PANEL) return;
-      try {
-        chart.setPaneOptions({ id, order: poradi++ });
-      } catch { /* panel mezitím zmizel */ }
-    });
-  }
-
+  /*
+   * Přesun panelu (v0.88.3): panely se z grafu vyndají a vloží znovu
+   * v novém pořadí — knihovna je skládá v pořadí vložení. Volba panelu
+   * `order` (v0.88.2) se na telefonu projevovala nespolehlivě: někdy se
+   * panely prohodily jen napůl a popisky zůstaly u starých míst. Výška
+   * se přenese (uložené procento, jinak současné pixely).
+   */
   function presunPanel(nazev, smer) {
     const vse = [...aktivniIndikatory];
     const panely = vse.filter((n) => vlastniPanelIndikatoru.get(n));
     const i = panely.indexOf(nazev);
     const j = i + smer;
-    if (i < 0 || j < 0 || j >= panely.length) return;
+    if (i < 0 || j < 0 || j >= panely.length || !vrstvy.indikatory) return;
+    const vysky = new Map(panely.map((n) => {
+      const id = chart.getIndicators({ name: n })?.[0]?.paneId;
+      return [n, id ? chart.getSize(id)?.height : null];
+    }));
     [panely[i], panely[j]] = [panely[j], panely[i]];
     aktivniIndikatory.clear();
     [...vse.filter((n) => !vlastniPanelIndikatoru.get(n)), ...panely].forEach((n) => aktivniIndikatory.add(n));
-    seradPanely();
+    panely.forEach((n) => chart.removeIndicator({ name: n }));
+    panely.forEach((n) => {
+      if (!vlozIndikator(n)) return;
+      const nast = nactiNastaveni(n);
+      const id = chart.getIndicators({ name: n })?.[0]?.paneId;
+      if (id && nast.vyskaPanelu === undefined && !nast.sbaleno && vysky.get(n)) {
+        try {
+          chart.setPaneOptions({ id, height: vysky.get(n) });
+        } catch { /* panel mezitím zmizel */ }
+      }
+    });
     handlers.onIndicatorsChanged?.();
-    // Knihovna panely přeskládá až při dalším vykreslení — popisky a úchyty
-    // se umístí po něm, jinak by zůstaly na starých místech.
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      umistiVrstvu();
-      kresleni.redraw();
-    }));
+    umistiVrstvu();
+    kresleni.redraw();
   }
 
   function umistiLegendy(panely) {
@@ -2887,6 +2919,23 @@ export function createPriceChart(container, layer, handlers = {}) {
       s.style.left = `${b.left + l.offsetWidth + 2}px`;
     });
     vyplnLegendy();
+    // Panel nižší než jeho popisek se zvedne (jen rozbalený, ne při tažení).
+    let zvednuto = false;
+    legendy.forEach((l, paneId) => {
+      const nazev = l.dataset.nazev;
+      if (!nazev || l.classList.contains('sbaleno')) return;
+      const potreba = potrebaPopisku(l);
+      if (!potreba) return;
+      vyskaPopisku.set(nazev, potreba);
+      const b = chart.getSize(paneId);
+      if (!tahUchytu && b && b.height + 1 < potreba) {
+        try {
+          chart.setPaneOptions({ id: paneId, height: potreba, minHeight: potreba });
+          zvednuto = true;
+        } catch { /* panel mezitím zmizel */ }
+      }
+    });
+    if (zvednuto) requestAnimationFrame(umistiVrstvuTed);
   }
 
   const VELKE = [[1e9, 'B'], [1e6, 'M'], [1e3, 'K']];
@@ -3504,10 +3553,11 @@ export function createPriceChart(container, layer, handlers = {}) {
     // Panely ostatních indikátorů si drží svoje; strop počítáme jen proti
     // tomu, co je k dispozici, aby svíčky nikdy nezmizely úplně.
     const strop = plocha * (1 - NEJMENE_PRO_SVICKY);
-    const vyska = Math.round(Math.min(strop, plocha * n.vyskaPanelu / 100));
+    const minimum = Math.max(30, vyskaPopisku.get(nazev) || 0);
+    const vyska = Math.round(Math.min(strop, Math.max(minimum, plocha * n.vyskaPanelu / 100)));
     if (vyska < 30) return;
     try {
-      chart.setPaneOptions({ id: indikator.paneId, height: vyska, minHeight: 30 });
+      chart.setPaneOptions({ id: indikator.paneId, height: vyska, minHeight: minimum });
     } catch {
       /* panel mezitím zmizel */
     }
@@ -4220,7 +4270,6 @@ export function createPriceChart(container, layer, handlers = {}) {
       vlastniPanelIndikatoru.set(nazev, Boolean(vlastniPanel));
       if (vrstvy.indikatory && !vlozIndikator(nazev)) return false;
       aktivniIndikatory.add(nazev);
-      seradPanely();
       handlers.onIndicatorsChanged?.();
       setTimeout(umistiVrstvu, 0);
       return true;
@@ -4233,7 +4282,6 @@ export function createPriceChart(container, layer, handlers = {}) {
         if (vrstvy.indikatory && !vlozIndikator(nazev)) return;
         aktivniIndikatory.add(nazev);
       });
-      seradPanely();
       setTimeout(umistiVrstvu, 0);
     },
 
@@ -4409,7 +4457,6 @@ export function createPriceChart(container, layer, handlers = {}) {
           if (vrstvy.indikatory) vlozIndikator(nazev);
           else chart.removeIndicator({ name: nazev });
         });
-        if (vrstvy.indikatory) seradPanely();
         setTimeout(umistiVrstvu, 0);
       }
     },

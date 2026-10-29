@@ -1735,7 +1735,7 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
 .pane-poradi button {
   display: grid;
   place-items: center;
-  width: 26px;
+  width: 34px;
   height: 20px;
   padding: 0;
   border: 0;
