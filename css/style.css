@@ -1671,7 +1671,8 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
 
 /* Popisek panelu indikátoru (v0.88.0): sloupec vlevo přes celou výšku
    panelu (v0.88.1), stejně široký u všech, tlumený. v0.88.2 (uživatel:
-   moc široký, rovná hrana divná): užší a vpravo do ztracena. */
+   moc široký, rovná hrana divná): užší. v0.88.4: přechod do ztracena
+   vypadal divně → plný podklad se stínem vpravo (varianta B). */
 .pane-legenda {
   position: absolute;
   z-index: 22;
@@ -1680,9 +1681,10 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
   align-items: stretch;
   gap: 2px;
   width: 76px;
-  padding: 4px 12px 4px 5px;
+  padding: 4px 6px 4px 5px;
   border: 0;
-  background: linear-gradient(to right, var(--surface-2) calc(100% - 16px), transparent);
+  background: var(--surface-2);
+  box-shadow: 6px 0 12px rgba(0, 0, 0, 0.55);
   color: var(--text-dim);
   font: 10px/1.25 -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
   text-align: left;

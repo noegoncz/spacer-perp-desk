@@ -2025,8 +2025,9 @@ v nastavení indikátoru (pamatuje se, zálohuje se). Rozbalení vrátí
 výšku z `vyskaPanelu`. Indikátory v hlavním grafu se neminimalizují
 (na ně je oko / Vrstvy). Test: `tools/test-sbaleni-panelu.py`.
 **v0.88.2 (snímek uživatele: moc široké, rovná hrana divná):** sloupec
-76 px (od 560 px 96 px), vpravo přechod do ztracena (gradient, bez
-okraje). Kratší texty přes `popisek` z `createTooltipDataSource`
+76 px (od 560 px 96 px), vpravo přechod do ztracena — **v0.88.4**
+uživatel vybral z variant (plný / stín / sklo / jen text / kartička)
+plný podklad `--surface-2` se stínem vpravo (`box-shadow 6px 0 12px`). Kratší texty přes `popisek` z `createTooltipDataSource`
 (`{ parametry, hodnoty: [{ text, color, pred, za }] }`, `pred`/`za`
 tlumeně): Funding „(predicted)“ / „8h · 0.0100“ / jedna věta „Long pays“
 nebo „Short pays“ **v barvě sloupce** (kladná sazba = platí longy;

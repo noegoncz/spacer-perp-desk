@@ -80,7 +80,7 @@ STAV = """(() => { const g = window.__graf; const box = document.getElementById(
         text: l.textContent, sbaleno: l.classList.contains('sbaleno'),
         nazev: l.querySelector('.pl-nazev').textContent,
         viditelnyText: [...l.querySelectorAll('.pl-param, .pl-hodnoty')].some((x) => x.offsetHeight > 0),
-        pozadi: getComputedStyle(l).backgroundImage } : null,
+        pozadi: getComputedStyle(l).backgroundColor, stin: getComputedStyle(l).boxShadow } : null,
       uchyt: u ? !u.hidden : null,
       madlo: m && m.width ? Math.round(m.left + m.width / 2 - box.left) : null,
       sipky: (() => { const s = document.querySelector(`.pane-poradi[data-pane="${i.paneId}"]`);
@@ -111,7 +111,7 @@ for n in ('RSI', 'MACD'):
     over(abs(l['y'] - a[n]['top']) <= 2 and l['x'] <= 2, f'{n}: sloupec vlevo nahoře v panelu ({l["x"]}, {l["y"]} vs top {a[n]["top"]})')
     over(abs(l['h'] - a[n]['vyska']) <= 2, f'{n}: přes celou výšku panelu ({l["h"]} vs {a[n]["vyska"]} px)')
     over(abs(a[n]['madlo'] - a['sirka'] / 2) <= 3, f'{n}: madlo úchytu uprostřed ({a[n]["madlo"]} vs {a["sirka"] / 2})')
-    over('linear-gradient' in (l['pozadi'] or '') and 'rgba(0, 0, 0, 0)' in l['pozadi'], f'{n}: podklad vpravo do ztracena ({l["pozadi"]})')
+    over(l['pozadi'] not in ('rgba(0, 0, 0, 0)', 'transparent') and l['stin'] not in ('none', ''), f'{n}: plný podklad se stínem ({l["pozadi"]}, {l["stin"]})')
     over(not l['sbaleno'] and a[n]['uchyt'], f'{n}: rozbalený, úchyt výšky vidět')
 over(a['RSI']['legenda']['w'] == a['MACD']['legenda']['w'] and 90 <= a['RSI']['legenda']['w'] <= 100,
      f'oba sloupce stejně široké ({a["RSI"]["legenda"]["w"]}, {a["MACD"]["legenda"]["w"]})')
