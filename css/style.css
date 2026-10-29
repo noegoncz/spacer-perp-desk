@@ -1670,7 +1670,8 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
 .pane-uchyt.tahne .pane-madlo { background: var(--accent); }
 
 /* Popisek panelu indikátoru (v0.88.0): sloupec vlevo přes celou výšku
-   panelu (v0.88.1), stejně široký u všech, tlumený a neprůhledný. */
+   panelu (v0.88.1), stejně široký u všech, tlumený. v0.88.2 (uživatel:
+   moc široký, rovná hrana divná): užší a vpravo do ztracena. */
 .pane-legenda {
   position: absolute;
   z-index: 22;
@@ -1678,11 +1679,10 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
   flex-direction: column;
   align-items: stretch;
   gap: 2px;
-  width: 92px;
-  padding: 4px 6px 4px 4px;
+  width: 76px;
+  padding: 4px 12px 4px 5px;
   border: 0;
-  border-right: 1px solid var(--border);
-  background: var(--surface-2);
+  background: linear-gradient(to right, var(--surface-2) calc(100% - 16px), transparent);
   color: var(--text-dim);
   font: 10px/1.25 -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
   text-align: left;
@@ -1691,7 +1691,7 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
   touch-action: manipulation;
 }
 @media (min-width: 560px) {
-  .pane-legenda { width: 116px; font-size: 11px; }
+  .pane-legenda { width: 96px; font-size: 11px; }
 }
 .pane-legenda .pl-hlava {
   display: flex;
@@ -1720,9 +1720,33 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
+.pane-legenda .pl-hodnoty b { font-weight: 400; }
 .pane-legenda.sbaleno { padding-block: 0; justify-content: center; }
 .pane-legenda.sbaleno .pl-param,
 .pane-legenda.sbaleno .pl-hodnoty { display: none; }
+
+/* Šipky pořadí panelů (v0.88.2): průsvitné, vedle popisku nahoře. */
+.pane-poradi {
+  position: absolute;
+  z-index: 22;
+  display: flex;
+  gap: 2px;
+}
+.pane-poradi button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: rgba(30, 38, 52, 0.45);
+  color: var(--text-dim);
+  opacity: 0.7;
+  touch-action: manipulation;
+}
+.pane-poradi button:active { opacity: 1; background: rgba(30, 38, 52, 0.8); }
+.pane-poradi svg { width: 12px; height: 12px; }
 
 /* Poslední známý stav při startu, než dorazí čerstvá data z burzy. */
 .zastarale { opacity: 0.6; transition: opacity 0.25s; }

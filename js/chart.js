@@ -1876,14 +1876,14 @@ function registrovatFunding() {
       barvyFundingu ??= nactiNastaveni('FUND');
       const barva = v >= 0 ? barvyFundingu.barvaPlus : barvyFundingu.barvaMinus;
       zdroj.legends = [{ title: '', value: { text: v.toFixed(4), color: barva } }];
-      // Kdo platí (v0.88.1, uživatel: „longy platí shortům" nebylo jasné):
-      // dva řádky, long vždy první — platí červeně, dostává zeleně.
-      if (v !== 0) {
-        zdroj.legends.push(
-          { title: '', value: { text: t(v > 0 ? 'fundingInd.longPays' : 'fundingInd.longGets'), color: v > 0 ? R_PLATI : Z_DOSTAVA } },
-          { title: '', value: { text: t(v > 0 ? 'fundingInd.shortGets' : 'fundingInd.shortPays'), color: v > 0 ? Z_DOSTAVA : R_PLATI } },
-        );
-      }
+      // Kdo platí (v0.88.2, uživatel): jen jedna věta, ve stejné barvě jako
+      // sloupec — kladná sazba (sloupec nahoru) = platí longy, záporná shorty.
+      if (v !== 0) zdroj.legends.push({ title: '', value: { text: t(v > 0 ? 'fundingInd.longPays' : 'fundingInd.shortPays'), color: barva } });
+      // Popisek panelu krátce: „(predicted)" / „8h · 0.0100" / „Long pays".
+      zdroj.popisek = {
+        parametry: funding?.odhad ? t('fundingInd.predShort') : '',
+        hodnoty: zdroj.legends.map((l, i) => ({ ...l.value, pred: i === 0 && funding?.interval ? `${funding.interval} · ` : '' })),
+      };
       return zdroj;
     },
     calc: (data) => {
@@ -1924,8 +1924,6 @@ function registrovatFunding() {
  */
 let openInterest = null;
 let verzeOi = 0;
-const R_PLATI = '#f6465d';
-const Z_DOSTAVA = '#3ee6a4';
 
 function registrovatOi() {
   K().registerIndicator({
@@ -1936,7 +1934,20 @@ function registrovatOi() {
     shouldFormatBigNumber: true,
     calcParams: [0],
     figures: [{ key: 'oi', title: '', type: 'line' }],
-    createTooltipDataSource: () => ({ calcParamsText: openInterest?.popis ? ` ${openInterest.popis}` : '' }),
+    createTooltipDataSource: ({ indicator, crosshair } = {}) => {
+      const zdroj = { calcParamsText: openInterest?.popis ? ` ${openInterest.popis}` : '' };
+      const vysledek = indicator?.result || [];
+      const v = vysledek[crosshair?.dataIndex ?? vysledek.length - 1]?.oi;
+      // Popisek panelu krátce (v0.88.2): „7.81B (USD)", burza je vidět nad grafem.
+      if (Number.isFinite(v)) {
+        const [mez, znak] = [[1e9, 'B'], [1e6, 'M'], [1e3, 'K']].find(([m]) => Math.abs(v) >= m) || [1, ''];
+        zdroj.popisek = {
+          parametry: '',
+          hodnoty: [{ text: `${(v / mez).toFixed(mez > 1 ? 2 : 0)}${znak}`, color: indicator.styles?.lines?.[0]?.color, za: ' (USD)' }],
+        };
+      }
+      return zdroj;
+    },
     calc: (data) => {
       const body = openInterest?.body || [];
       let j = 0;
@@ -2660,10 +2671,12 @@ export function createPriceChart(container, layer, handlers = {}) {
         if (bj && bj.top < b.top) {
           nad.push({ prvek: jiny, top: bj.top });
           if (legendy.has(id)) nad.push({ prvek: legendy.get(id), top: bj.top });
+          if (sipkyPoradi.has(id)) nad.push({ prvek: sipkyPoradi.get(id), top: bj.top + ODSAZENI_SIPEK });
         }
       });
       tahUchytu = { paneId, nazev: u.dataset.nazev, y: e.touches[0].clientY, vyska: b.height,
-                    plocha: container.clientHeight, top: b.top, nad, legenda: legendy.get(paneId) };
+                    plocha: container.clientHeight, top: b.top, nad, legenda: legendy.get(paneId),
+                    sipky: sipkyPoradi.get(paneId) };
       u.classList.add('tahne');
       chart.setScrollEnabled(false);
       chart.setZoomEnabled(false);
@@ -2686,6 +2699,7 @@ export function createPriceChart(container, layer, handlers = {}) {
         tahUchytu.legenda.style.top = `${tahUchytu.top + (tahUchytu.vyska - vyska)}px`;
         tahUchytu.legenda.style.height = `${vyska}px`;
       }
+      if (tahUchytu.sipky) tahUchytu.sipky.style.top = `${tahUchytu.top + (tahUchytu.vyska - vyska) + ODSAZENI_SIPEK}px`;
       const b = chart.getSize(HLAVNI_PANEL, 'main');
       if (b) layer.style.height = `${b.height}px`;
     }, { passive: false });
@@ -2723,6 +2737,14 @@ export function createPriceChart(container, layer, handlers = {}) {
    */
   const VYSKA_SBALENEHO = 22;
   const legendy = new Map();   // paneId → prvek
+  /*
+   * Pořadí panelů (v0.88.2, přání uživatele): vedle popisku průsvitné
+   * šipky ▲ ▼, panel si vymění místo se sousedem. Pořadí = pořadí v
+   * `aktivniIndikatory` (ukládá se jako `perpdesk.indicators`), do grafu
+   * se promítá volbou panelu `order` — indikátory se nevytvářejí znovu.
+   */
+  const sipkyPoradi = new Map();   // paneId → prvek
+  const ODSAZENI_SIPEK = 1;
   let indexKrize = null;       // svíčka pod křížem; null = poslední
   let legendyNaplanovany = false;
 
@@ -2759,6 +2781,58 @@ export function createPriceChart(container, layer, handlers = {}) {
     return l;
   }
 
+  function vytvorSipkyPoradi(paneId) {
+    const s = document.createElement('div');
+    s.className = 'pane-poradi';
+    s.dataset.pane = paneId;
+    [[-1, 'M3 8 6 4.5 9 8', 'chart.paneUp'], [1, 'M3 4.5 6 8 9 4.5', 'chart.paneDown']].forEach(([smer, d, klic]) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.dataset.smer = String(smer);
+      b.setAttribute('aria-label', t(klic));
+      b.innerHTML = `<svg viewBox="0 0 12 12" aria-hidden="true"><path d="${d}" fill="none" stroke="currentColor" `
+        + 'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (s.dataset.nazev) presunPanel(s.dataset.nazev, smer);
+      });
+      s.append(b);
+    });
+    return s;
+  }
+
+  /** Promítne pořadí z `aktivniIndikatory` do panelů grafu. */
+  function seradPanely() {
+    let poradi = 1;
+    aktivniIndikatory.forEach((nazev) => {
+      if (!vlastniPanelIndikatoru.get(nazev)) return;
+      const id = chart.getIndicators({ name: nazev })?.[0]?.paneId;
+      if (!id || id === HLAVNI_PANEL) return;
+      try {
+        chart.setPaneOptions({ id, order: poradi++ });
+      } catch { /* panel mezitím zmizel */ }
+    });
+  }
+
+  function presunPanel(nazev, smer) {
+    const vse = [...aktivniIndikatory];
+    const panely = vse.filter((n) => vlastniPanelIndikatoru.get(n));
+    const i = panely.indexOf(nazev);
+    const j = i + smer;
+    if (i < 0 || j < 0 || j >= panely.length) return;
+    [panely[i], panely[j]] = [panely[j], panely[i]];
+    aktivniIndikatory.clear();
+    [...vse.filter((n) => !vlastniPanelIndikatoru.get(n)), ...panely].forEach((n) => aktivniIndikatory.add(n));
+    seradPanely();
+    handlers.onIndicatorsChanged?.();
+    // Knihovna panely přeskládá až při dalším vykreslení — popisky a úchyty
+    // se umístí po něm, jinak by zůstaly na starých místech.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      umistiVrstvu();
+      kresleni.redraw();
+    }));
+  }
+
   function umistiLegendy(panely) {
     const rodic = container.parentElement;
     if (!rodic) return;
@@ -2768,6 +2842,15 @@ export function createPriceChart(container, layer, handlers = {}) {
         legendy.delete(id);
       }
     });
+    sipkyPoradi.forEach((s, id) => {
+      if (!panely.has(id)) {
+        s.remove();
+        sipkyPoradi.delete(id);
+      }
+    });
+    // Šipky jen tam, kam jde panel posunout (první nemá ▲, poslední ▼).
+    const poradi = [...panely.keys()].map((id) => [id, chart.getSize(id)?.top ?? 0])
+      .sort((a, b) => a[1] - b[1]).map(([id]) => id);
     panely.forEach((nazev, paneId) => {
       const b = chart.getSize(paneId);
       if (!b || !b.height) return;
@@ -2788,6 +2871,20 @@ export function createPriceChart(container, layer, handlers = {}) {
       // Sbalený panel se tažením nemění.
       const u = uchyty.get(paneId);
       if (u) u.hidden = sbaleno;
+
+      let s = sipkyPoradi.get(paneId);
+      if (!s) {
+        s = vytvorSipkyPoradi(paneId);
+        sipkyPoradi.set(paneId, s);
+        rodic.append(s);
+      }
+      const kde = poradi.indexOf(paneId);
+      s.dataset.nazev = nazev;
+      s.hidden = poradi.length < 2;
+      s.firstChild.hidden = kde <= 0;
+      s.lastChild.hidden = kde === poradi.length - 1;
+      s.style.top = `${b.top + ODSAZENI_SIPEK}px`;
+      s.style.left = `${b.left + l.offsetWidth + 2}px`;
     });
     vyplnLegendy();
   }
@@ -2813,7 +2910,8 @@ export function createPriceChart(container, layer, handlers = {}) {
       zdroj = null;
     }
     const nazev = ind.shortName || ind.name;
-    const parametry = (zdroj?.calcParamsText ?? (ind.calcParams || []).join(', ')).trim();
+    const parametry = (zdroj?.popisek?.parametry ?? zdroj?.calcParamsText ?? (ind.calcParams || []).join(', ')).trim();
+    if (zdroj?.popisek?.hodnoty) return { nazev, parametry, hodnoty: zdroj.popisek.hodnoty };
     if (zdroj?.legends?.length) {
       return {
         nazev,
@@ -2860,8 +2958,11 @@ export function createPriceChart(container, layer, handlers = {}) {
       const pa = l.querySelector('.pl-param');
       if (pa.textContent !== parametry) pa.textContent = parametry;
       const h = l.querySelector('.pl-hodnoty');
-      const html = hodnoty.map((x) => `<span${x.color ? ` style="color:${x.color}"` : ''}>${
-        String(x.text).replace(/[<>&]/g, '')}</span>`).join('');
+      const cisty = (x) => String(x ?? '').replace(/[<>&]/g, '');
+      // `pred` / `za` = tlumený začátek a konec řádku („8h · " před sazbou
+      // fundingu, „ (USD)" za open interestem), barvu má jen hodnota.
+      const html = hodnoty.map((x) => `<span>${cisty(x.pred)}<b${
+        x.color ? ` style="color:${x.color}"` : ''}>${cisty(x.text)}</b>${cisty(x.za)}</span>`).join('');
       if (h.innerHTML !== html) h.innerHTML = html;
     });
   }
@@ -4119,6 +4220,7 @@ export function createPriceChart(container, layer, handlers = {}) {
       vlastniPanelIndikatoru.set(nazev, Boolean(vlastniPanel));
       if (vrstvy.indikatory && !vlozIndikator(nazev)) return false;
       aktivniIndikatory.add(nazev);
+      seradPanely();
       handlers.onIndicatorsChanged?.();
       setTimeout(umistiVrstvu, 0);
       return true;
@@ -4131,6 +4233,7 @@ export function createPriceChart(container, layer, handlers = {}) {
         if (vrstvy.indikatory && !vlozIndikator(nazev)) return;
         aktivniIndikatory.add(nazev);
       });
+      seradPanely();
       setTimeout(umistiVrstvu, 0);
     },
 
@@ -4306,6 +4409,7 @@ export function createPriceChart(container, layer, handlers = {}) {
           if (vrstvy.indikatory) vlozIndikator(nazev);
           else chart.removeIndicator({ name: nazev });
         });
+        if (vrstvy.indikatory) seradPanely();
         setTimeout(umistiVrstvu, 0);
       }
     },
@@ -4313,6 +4417,7 @@ export function createPriceChart(container, layer, handlers = {}) {
     destroy() {
       clearInterval(tikani);
       legendy.forEach((l) => l.remove());
+      sipkyPoradi.forEach((s) => s.remove());
       uchyty.forEach((u) => u.remove());
       observer.disconnect();
       K().dispose(container);

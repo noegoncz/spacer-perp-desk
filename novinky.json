@@ -1,35 +1,27 @@
 {
-  "verze": "0.88.1",
+  "verze": "0.88.2",
   "novinky": [
     {
-      "en": "Chart: each indicator panel (RSI, MACD, OI, Funding…) has a label column on the left — tap it to minimise the panel to a thin strip with just its name, tap again to bring it back. Remembered for next time.",
-      "cs": "Graf: každý panel indikátoru (RSI, MACD, OI, Funding…) má vlevo sloupec s popisem — klepnutím panel minimalizuješ na tenký proužek jen s názvem, dalším klepnutím ho vrátíš. Pamatuje se i příště."
+      "en": "Chart: indicator panels can be reordered — the small ▲ ▼ arrows next to the label move a panel up or down. The order is remembered.",
+      "cs": "Graf: panely indikátorů jde přeskládat — malé šipky ▲ ▼ vedle popisku posunou panel výš nebo níž. Pořadí se pamatuje."
     },
     {
-      "en": "Funding indicator says clearly who pays: \"Long pays · Short receives\" (or the other way round).",
-      "cs": "Indikátor Funding jasně říká, kdo platí: „Long platí · Short dostává“ (nebo naopak)."
+      "en": "Indicator labels are narrower, fade out to the right and say less: e.g. \"Funding (predicted) · 8h · 0.0100 · Long pays\" or \"OI 7.81B (USD)\".",
+      "cs": "Popisky indikátorů jsou užší, vpravo se ztrácejí do grafu a říkají méně: např. „Funding (odhad) · 8h · 0.0100 · Long platí“ nebo „OI 7.81B (USD)“."
     },
     {
-      "en": "Funding indicator now shows the predicted rate for every candle (like TradingView) and says in plain words who pays — \"longs pay shorts\" or \"shorts pay longs\".",
-      "cs": "Indikátor Funding ukazuje odhad sazby pro každou svíčku (jako TradingView) a lidsky říká, kdo platí — „longy platí shortům“ nebo „shorty platí longům“."
+      "en": "Funding shows just one sentence, in the colour of the bar: \"Long pays\" when the rate is positive, \"Short pays\" when it is negative.",
+      "cs": "Funding ukazuje jen jednu větu, v barvě sloupce: „Long platí“ při kladné sazbě, „Short platí“ při záporné."
     },
     {
-      "en": "New indicator: Funding rate. A panel under the chart (like OI or RSI) — green when longs pay, red when shorts pay.",
-      "cs": "Nový indikátor Funding: panel pod grafem (jako OI nebo RSI) — zeleně platí longy, červeně shorty."
+      "en": "Each indicator panel can be minimised to a thin strip by tapping its label.",
+      "cs": "Každý panel indikátoru jde klepnutím na popisek minimalizovat na tenký proužek."
     }
   ],
   "opravy": [
     {
-      "en": "Funding indicator: steadier values on daily and weekly candles, no leftover bars when switching timeframes.",
-      "cs": "Indikátor Funding: klidnější hodnoty na denních a týdenních svíčkách, po přepnutí timeframu žádné zbytky starých sloupců."
-    },
-    {
-      "en": "Journal: the \"Don't count in stats\" switch now visibly turns on and off; tapping its text works too.",
-      "cs": "Deník: přepínač „Nepočítat do statistik“ se viditelně zapne i vypne, klepnout jde i na jeho text."
-    },
-    {
-      "en": "Chart: when resizing an indicator panel, the handles of the other panels move along.",
-      "cs": "Graf: při změně výšky panelu indikátoru se s ním posouvají i úchyty ostatních panelů."
+      "en": "Chart: the panel label moves along while resizing, the resize handle is centred again.",
+      "cs": "Graf: popisek panelu se při změně výšky posouvá s ním, úchyt je zase uprostřed."
     }
   ]
 }

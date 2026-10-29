@@ -80,9 +80,14 @@ STAV = """(() => { const g = window.__graf; const box = document.getElementById(
         text: l.textContent, sbaleno: l.classList.contains('sbaleno'),
         nazev: l.querySelector('.pl-nazev').textContent,
         viditelnyText: [...l.querySelectorAll('.pl-param, .pl-hodnoty')].some((x) => x.offsetHeight > 0),
-        pozadi: getComputedStyle(l).backgroundColor } : null,
+        pozadi: getComputedStyle(l).backgroundImage } : null,
       uchyt: u ? !u.hidden : null,
       madlo: m && m.width ? Math.round(m.left + m.width / 2 - box.left) : null,
+      sipky: (() => { const s = document.querySelector(`.pane-poradi[data-pane="${i.paneId}"]`);
+        if (!s || s.hidden) return null; const r = s.getBoundingClientRect();
+        return { x: Math.round(r.left - box.left), y: Math.round(r.top - box.top),
+          nahoru: !s.firstChild.hidden, dolu: !s.lastChild.hidden,
+          dx: s.lastChild.getBoundingClientRect().left + 13, dy: r.top + 10 }; })(),
       ulozeno: JSON.parse(localStorage.getItem('perpdesk.ind.' + n) || '{}').sbaleno ?? null }; };
   return JSON.stringify({ RSI: panel('RSI'), MACD: panel('MACD'),
     svicky: Math.round(g.getSize('candle_pane', 'main').height), sirka: Math.round(box.width),
@@ -106,13 +111,18 @@ for n in ('RSI', 'MACD'):
     over(abs(l['y'] - a[n]['top']) <= 2 and l['x'] <= 2, f'{n}: sloupec vlevo nahoře v panelu ({l["x"]}, {l["y"]} vs top {a[n]["top"]})')
     over(abs(l['h'] - a[n]['vyska']) <= 2, f'{n}: přes celou výšku panelu ({l["h"]} vs {a[n]["vyska"]} px)')
     over(abs(a[n]['madlo'] - a['sirka'] / 2) <= 3, f'{n}: madlo úchytu uprostřed ({a[n]["madlo"]} vs {a["sirka"] / 2})')
-    over(l['pozadi'] not in ('rgba(0, 0, 0, 0)', 'transparent'), f'{n}: neprůhledný podklad ({l["pozadi"]})')
+    over('linear-gradient' in (l['pozadi'] or '') and 'rgba(0, 0, 0, 0)' in l['pozadi'], f'{n}: podklad vpravo do ztracena ({l["pozadi"]})')
     over(not l['sbaleno'] and a[n]['uchyt'], f'{n}: rozbalený, úchyt výšky vidět')
-over(a['RSI']['legenda']['w'] == a['MACD']['legenda']['w'] and a['RSI']['legenda']['w'] >= 90,
+over(a['RSI']['legenda']['w'] == a['MACD']['legenda']['w'] and 90 <= a['RSI']['legenda']['w'] <= 100,
      f'oba sloupce stejně široké ({a["RSI"]["legenda"]["w"]}, {a["MACD"]["legenda"]["w"]})')
 over('14' in a['RSI']['legenda']['text'] and any(ch.isdigit() for ch in a['RSI']['legenda']['text'].split('Close')[-1]),
      f'RSI: název i hodnota ({a["RSI"]["legenda"]["text"]!r})')
 over('DIF' in a['MACD']['legenda']['text'] and 'MACD -' in a['MACD']['legenda']['text'] or 'MACD 0' in a['MACD']['legenda']['text'], f'MACD: hodnoty čar ({a["MACD"]["legenda"]["text"]!r})')
+# v0.88.2: šipky pořadí vedle sloupce, první panel nemá ▲, poslední ▼.
+s1, s2 = a['RSI']['sipky'], a['MACD']['sipky']
+over(s1 and s2 and abs(s1['x'] - a['RSI']['legenda']['w']) <= 4 and abs(s1['y'] - a['RSI']['top']) <= 3,
+     f'šipky pořadí vedle popisku nahoře ({s1})')
+over(s1 and s2 and not s1['nahoru'] and s1['dolu'] and s2['nahoru'] and not s2['dolu'], 'RSI jen ▼, MACD jen ▲')
 legenda_knihovny = ev("window.__graf.getStyles().indicator.tooltip.showRule")
 over(legenda_knihovny == 'none', 'legenda knihovny v plátně vypnutá (nekreslí se dvakrát)')
 snimek('sbaleni-1-rozbaleno.png')
@@ -173,11 +183,29 @@ over(abs(e['RSI']['vyska'] - a['RSI']['vyska']) <= 3, f'RSI zpět na {e["RSI"]["
 over(e['RSI']['viditelny'] is True and e['RSI']['uchyt'] and not e['RSI']['legenda']['sbaleno'], 'RSI se kreslí, úchyt vidět, šipka dolů')
 over(e['RSI']['ulozeno'] is False, 'uloženo rozbalené')
 
+print('5b) šipka ▼ u RSI prohodí panely, pořadí přežije přenačtení')
+klepni(e['RSI']['sipky']['dx'], e['RSI']['sipky']['dy'])
+time.sleep(0.5)
+g5 = stav()
+over(g5['RSI']['top'] > g5['MACD']['top'], f'RSI pod MACD ({g5["RSI"]["top"]} vs {g5["MACD"]["top"]})')
+over(abs(g5['RSI']['vyska'] - e['RSI']['vyska']) <= 3, f'výška RSI zůstala ({g5["RSI"]["vyska"]})')
+over(abs(g5['RSI']['legenda']['y'] - g5['RSI']['top']) <= 2, 'popisek RSI se přesunul s panelem')
+over(g5['RSI']['sipky'] and g5['RSI']['sipky']['nahoru'] and not g5['RSI']['sipky']['dolu'], 'RSI teď jen ▲')
+poradi = ev("localStorage.getItem('perpdesk.indicators')")
+over(poradi == '["MACD","RSI"]', f'pořadí uložené ({poradi})')
+p.prikaz('Page.reload')
+time.sleep(6)
+ev("document.querySelector('.position').click()")
+time.sleep(5)
+h5 = stav()
+over(h5['RSI']['top'] > h5['MACD']['top'], f'po přenačtení RSI dál pod MACD ({h5["RSI"]["top"]} vs {h5["MACD"]["top"]})')
+snimek('sbaleni-5-poradi.png')
+
 print('6) zavřený displej 344 px')
 p.prikaz('Emulation.setDeviceMetricsOverride', width=344, height=882, deviceScaleFactor=2, mobile=True)
 time.sleep(1.5)
 f = stav()
-over(f['RSI']['legenda'] and f['RSI']['legenda']['w'] >= 90, f'sloupec i na 344 px ({f["RSI"]["legenda"] and f["RSI"]["legenda"]["w"]} px)')
+over(f['RSI']['legenda'] and 70 <= f['RSI']['legenda']['w'] <= 80, f'užší sloupec na 344 px ({f["RSI"]["legenda"] and f["RSI"]["legenda"]["w"]} px)')
 over(abs(f['RSI']['madlo'] - f['sirka'] / 2) <= 3, f'344 px: madlo uprostřed ({f["RSI"]["madlo"]} vs {f["sirka"] / 2})')
 snimek('sbaleni-4-344.png')
 

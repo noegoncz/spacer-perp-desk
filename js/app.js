@@ -2577,6 +2577,8 @@ async function nactiFunding() {
           body: odhadFundingu(premium, ted?.minut),
           ted: null,
           popis: t('fundingInd.labelPred', { burza: k.burza.nazev, interval: popisIntervalu(ted?.minut || 480) }),
+          interval: popisIntervalu(ted?.minut || 480),
+          odhad: true,
         });
         if (!casovacFundingu) casovacFundingu = setInterval(nactiFunding, 60000);
         return;
@@ -2590,6 +2592,7 @@ async function nactiFunding() {
         body,
         ted: Number.isFinite(ted?.rate) ? ted.rate : null,
         popis: t('fundingInd.label', { burza: k.burza.nazev, interval: minut ? popisIntervalu(minut) : '' }),
+        interval: minut ? popisIntervalu(minut) : '',
       };
     } catch {
       if (fundingNacten) return; // síť — nechat poslední data

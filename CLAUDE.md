@@ -2024,6 +2024,20 @@ Klepnutí = panel na 22 px (`VYSKA_SBALENEHO`, `minHeight`), indikátor
 v nastavení indikátoru (pamatuje se, zálohuje se). Rozbalení vrátí
 výšku z `vyskaPanelu`. Indikátory v hlavním grafu se neminimalizují
 (na ně je oko / Vrstvy). Test: `tools/test-sbaleni-panelu.py`.
+**v0.88.2 (snímek uživatele: moc široké, rovná hrana divná):** sloupec
+76 px (od 560 px 96 px), vpravo přechod do ztracena (gradient, bez
+okraje). Kratší texty přes `popisek` z `createTooltipDataSource`
+(`{ parametry, hodnoty: [{ text, color, pred, za }] }`, `pred`/`za`
+tlumeně): Funding „(predicted)“ / „8h · 0.0100“ / jedna věta „Long pays“
+nebo „Short pays“ **v barvě sloupce** (kladná sazba = platí longy;
+`funding.interval`, `funding.odhad` z app.js), OI „7.81B (USD)“ (burza
+je nad grafem). `calcParamsText` zůstává (testy). **Pořadí panelů:**
+průsvitné šipky ▲ ▼ vedle popisku nahoře (`.pane-poradi`,
+`presunPanel`) — pořadí = pořadí v `aktivniIndikatory` (uloží se do
+`perpdesk.indicators`), do grafu přes volbu panelu `order`
+(`seradPanely`, i po přidání indikátoru — nový panel má výchozí 0
+a skočil by nahoru). Popisky se po přesunu umisťují až po dvou snímcích
+(knihovna přeskládá při vykreslení). Test: bod 5b `test-sbaleni-panelu.py`.
 
 **RSI nemá prázdné okraje nad 100 a pod 0.** Výchozí `gap` osy Y knihovny
 nechává nahoře 20 % a dole 10 % výšky panelu prázdných; u nízkého panelu

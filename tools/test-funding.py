@@ -94,9 +94,14 @@ kdo = ev("""(() => { const i = window.__graf.getIndicators({ name: 'FUND' })[0];
   const neg = i.result.findIndex((x) => x && x.rate < 0);
   const z2 = i.createTooltipDataSource({ indicator: i, crosshair: { dataIndex: neg } });
   return [(z.legends || []).map((l) => l.value.text), (z2.legends || []).map((l) => l.value.text)]; })()""")
-# v0.88.1: dva řádky, long vždy první.
-over(kdo and kdo[0][1:] == ['Long pays', 'Short receives'], f'legenda: kladná sazba „Long pays / Short receives" ({kdo and kdo[0]})')
-over(kdo and kdo[1][1:] == ['Long receives', 'Short pays'], f'legenda: záporná sazba „Long receives / Short pays" ({kdo and kdo[1]})')
+# v0.88.2: jen jedna věta, v barvě sloupce.
+over(kdo and kdo[0][1:] == ['Long pays'], f'legenda: kladná sazba „Long pays" ({kdo and kdo[0]})')
+over(kdo and kdo[1][1:] == ['Short pays'], f'legenda: záporná sazba „Short pays" ({kdo and kdo[1]})')
+pop = ev("""(() => { const i = window.__graf.getIndicators({ name: 'FUND' })[0];
+  const z = i.createTooltipDataSource({ indicator: i, crosshair: { dataIndex: i.result.findIndex((x) => x && x.rate > 0) } });
+  return [z.popisek.parametry, z.popisek.hodnoty.map((h) => (h.pred || '') + h.text), z.popisek.hodnoty.map((h) => h.color)]; })()""")
+over(pop and pop[0] == '(predicted)' and pop[1] == ['8h · 0.0100', 'Long pays'] and pop[2][0] == pop[2][1],
+     f'popisek panelu krátce „(predicted) / 8h · 0.0100 / Long pays" v barvě sloupce ({pop})')
 barvy = ev("""(() => { const i = window.__graf.getIndicators({ name: 'FUND' })[0]; const f = i.figures[0];
   return [f.styles({ data: { current: { rate: 0.01 } } }).color, f.styles({ data: { current: { rate: -0.02 } } }).color]; })()""")
 over(barvy and barvy[0] != barvy[1] and barvy[0].lower() == '#16c784', f'kladné zeleně, záporné červeně ({barvy})')
