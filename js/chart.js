@@ -2110,6 +2110,13 @@ function kresliDivergence(ctx, chart, indicator, n, bod) {
       ctx.moveTo(a.x, a.y);
       ctx.lineTo(b.x, b.y);
       ctx.stroke();
+      // Tečky na obou pivotech RSI (v0.89.1, přání uživatele) — odkud kam.
+      ctx.fillStyle = barva;
+      for (const tecka of [a, b]) {
+        ctx.beginPath();
+        ctx.arc(tecka.x, tecka.y, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
       // Štítek: pod dnem (býčí), nad vrcholem (medvědí).
       const text = t(byci ? 'rsiDiv.bull' : 'rsiDiv.bear');
       const sirka = ctx.measureText(text).width + 8;

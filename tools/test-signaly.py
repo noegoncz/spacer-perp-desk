@@ -162,9 +162,19 @@ time.sleep(2)
 tf = ev("document.querySelector('.interval-btn[data-interval].active')?.dataset.interval")
 over(tf == '240', f'otevřený graf téhož páru přepne timeframe ({tf})')
 time.sleep(3)
-print('5. RSI divergence na skutečném grafu (Binance ETH 4h)')
-r = json.loads(ev(KONTROLA_RSI) or '{}')
-over(r.get('svicek', 0) > 100 and r.get('shoda') and r.get('vGrafu', 0) > 0, f'divergence v grafu = výpočet modulu ({r})')
+print('5. RSI divergence na skutečných grafech Binance (první pár, kde nějaká je)')
+# Přísná pravidla (v0.89.1) jich najdou málo — zkouší se páry, dokud se nějaká neukáže.
+nalezeno = None
+for par, tf in [('binance:ETHUSDT', '240'), ('binance:ADAUSDT', '60'), ('binance:SOLUSDT', '60'),
+                ('binance:DOGEUSDT', '60'), ('binance:BTCUSDT', '60'), ('binance:XRPUSDT', '240')]:
+    ev(f"window.__klepni({{ symbol: '{par}', interval: '{tf}', typ: 'divergence', alarmId: 'sig:{par}' }})")
+    time.sleep(5)
+    r = json.loads(ev(KONTROLA_RSI) or '{}')
+    over(r.get('svicek', 0) > 100 and r.get('shoda'), f'{par} {tf}: v grafu = výpočet modulu ({r})')
+    if r.get('vGrafu', 0) > 0:
+        nalezeno = par
+        break
+over(nalezeno, f'aspoň jeden graf s divergencí ({nalezeno})')
 ev("window.__graf.scrollToRealTime?.(); window.__graf.resize?.()")
 time.sleep(0.5)
 # ⚠ „ResizeObserver loop…" je hláška prohlížeče, ne chyba aplikace.

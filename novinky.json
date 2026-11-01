@@ -1,14 +1,19 @@
 {
-  "verze": "0.89.0",
+  "verze": "0.89.1",
   "novinky": [
     {
       "en": "Chart signals: PerpyX now watches RSI divergence on 1h and 4h for the pairs in your watchlists and open positions (Bybit, Binance) and sends a notification, even with the screen off. Settings → Chart signals.",
       "cs": "Signály v grafech: PerpyX hlídá RSI divergenci na 1h a 4h u párů z tvých seznamů a otevřených pozic (Bybit, Binance) a pošle notifikaci, i se zhasnutým displejem. Nastavení → Signály v grafech."
     },
     {
-      "en": "RSI shows bullish and bearish divergences right in its panel; tapping a signal notification opens the chart on the signal's timeframe.",
-      "cs": "RSI ukazuje býčí a medvědí divergence přímo ve svém panelu; klepnutí na notifikaci signálu otevře graf na timeframu signálu."
+      "en": "RSI shows bullish and bearish divergences right in its panel, with dots on both points; tapping a signal notification opens the chart on the signal's timeframe.",
+      "cs": "RSI ukazuje býčí a medvědí divergence přímo ve svém panelu, s tečkami na obou bodech; klepnutí na notifikaci signálu otevře graf na timeframu signálu."
     }
   ],
-  "opravy": []
+  "opravy": [
+    {
+      "en": "Stricter divergence rules — fewer weak signals.",
+      "cs": "Přísnější pravidla divergence — méně slabých signálů."
+    }
+  ]
 }

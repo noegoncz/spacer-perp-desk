@@ -3441,6 +3441,13 @@ Volby: **RSI divergence**, **rovnou push ze serveru**, timeframy **1h a 4h**.
   s **předchozím** pivotem téhož druhu 5–60 svíček zpět; býčí = RSI vyšší
   dno + low nižší, medvědí = RSI nižší vrchol + high vyšší. Potvrzená
   `vpravo` svíček po pivotu. Naostro (BTC 1h, ~8 dní): 4 divergence.
+  **v0.89.1 (uživatel: „v grafu divergence často vůbec není"):** odstup
+  pivotů 5–**40** svíček (1h ≈ 1,7 dne, 4h ≈ 7 dní), RSI rozdíl ≥ 3 body,
+  první pivot z pásma (býčí ≤ 40, medvědí ≥ 60), cena v obou bodech
+  skutečný swing (extrém ±2 svíčky = extrém okna pivotu), druhý bod
+  nejnižší / nejvyšší cena od prvního, RSI mezi pivoty neprotne spojnici.
+  Měřeno na 8 párech × 1h/4h (199 svíček): 23 → 9. Graf kreslí tečky na
+  obou pivotech.
 - **Server** `server/signaly.mjs` uvnitř hlídače alarmů: po uzavření svíčky
   1h / 4h (+20 s) stáhne REST svíčky hlídaných párů (Bybit
   `/v5/market/kline`, Binance `/fapi/v1/klines`, 200 kusů, 120 ms mezi
