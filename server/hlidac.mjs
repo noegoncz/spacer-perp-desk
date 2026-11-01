@@ -29,7 +29,7 @@ import { spustSignaly } from './signaly.mjs';
  * (cloud-init.yaml, běžící server). Po změně signaly.mjs nebo
  * js/divergence.js zvedni tohle číslo, ať se změna projeví.
  */
-const VERZE_SIGNALU = 2;   // v0.89.1: přísnější pravidla divergence
+const VERZE_SIGNALU = 3;   // v0.90.0: pravidla po párech, fáze, všechny timeframy
 
 const API = (process.env.API || 'https://perpyx.com').replace(/\/$/, '');
 const TOKEN = process.env.WATCHER_TOKEN || '';
@@ -393,16 +393,20 @@ function pripojBinance() {
 
 let signaly = null;
 
-async function posliSignal(account, { titulek, text, smer, data }) {
+async function posliSignal(account, { titulek, text, smer, data }, pravidlo = null) {
   const s = SMER[smer];
   const neplatne = [];
   for (const t of tokeny[account] || []) {
     const v = await posliPush(t, { titulek, text, data, ...(s ? { ikona: s.ikona, barva: s.barva } : {}) });
     if (v === 'neplatny') neplatne.push(t);
   }
-  if (neplatne.length) {
+  // Kdy pravidlo naposledy poslalo signál (přehled v aplikaci); zůstává zapnuté.
+  if (neplatne.length || pravidlo?.id) {
     try {
-      await watcherApi('/api/watcher/fired', { invalidTokens: neplatne });
+      await watcherApi('/api/watcher/fired', {
+        ...(pravidlo?.id ? { account, id: pravidlo.id, at: Date.now(), repeat: true } : {}),
+        invalidTokens: neplatne,
+      });
     } catch (e) {
       log('hlášení neplatných tokenů selhalo:', e.message);
     }

@@ -1,17 +1,17 @@
 {
-  "verze": "0.89.2",
+  "verze": "0.90.0",
   "novinky": [
     {
-      "en": "Chart signals: PerpyX now watches RSI divergence on 1h and 4h for the pairs in your watchlists and open positions (Bybit, Binance) and sends a notification, even with the screen off. Settings → Chart signals.",
-      "cs": "Signály v grafech: PerpyX hlídá RSI divergenci na 1h a 4h u párů z tvých seznamů a otevřených pozic (Bybit, Binance) a pošle notifikaci, i se zhasnutým displejem. Nastavení → Signály v grafech."
+      "en": "RSI divergence notifications per pair: tap the bell in the RSI panel, pick any timeframes and when to be notified — early (1/3, 2/3) or once confirmed. Only the pairs you choose, not your whole watchlist.",
+      "cs": "Notifikace RSI divergence po párech: klepni na zvonek v panelu RSI, vyber libovolné timeframy a kdy upozornit — předem (1/3, 2/3) nebo až potvrzenou. Jen páry, které si vybereš, ne celé seznamy."
     },
     {
-      "en": "RSI also shows divergences that are still forming — a dashed line with a hollow dot and “Bull?” / “Bear?”. It fills in once the divergence is confirmed.",
-      "cs": "RSI ukazuje i divergence, které se teprve rýsují — čárkovaná čára s dutou tečkou a „Býk?“ / „Medvěd?“. Po potvrzení se vyplní."
+      "en": "The Alerts tab is now Notifications: Alerts (active / inactive) and RSI divergence, each with an overview to switch off or delete.",
+      "cs": "Záložka Alarmy je teď Notifikace: Alarmy (aktivní / neaktivní) a RSI divergence, každé s přehledem k vypnutí a smazání."
     },
     {
-      "en": "RSI shows bullish and bearish divergences right in its panel, with dots on both points; tapping a signal notification opens the chart on the signal's timeframe.",
-      "cs": "RSI ukazuje býčí a medvědí divergence přímo ve svém panelu, s tečkami na obou bodech; klepnutí na notifikaci signálu otevře graf na timeframu signálu."
+      "en": "RSI also shows divergences that are still forming — a dashed line with a hollow dot and “Bull?” / “Bear?”.",
+      "cs": "RSI ukazuje i divergence, které se teprve rýsují — čárkovaná čára s dutou tečkou a „Býk?“ / „Medvěd?“."
     }
   ],
   "opravy": [

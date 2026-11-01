@@ -86,8 +86,8 @@ STAV = """(() => { const g = window.__graf; const box = document.getElementById(
       sipky: (() => { const s = document.querySelector(`.pane-poradi[data-pane="${i.paneId}"]`);
         if (!s || s.hidden) return null; const r = s.getBoundingClientRect();
         return { x: Math.round(r.left - box.left), y: Math.round(r.top - box.top),
-          nahoru: !s.firstChild.hidden, dolu: !s.lastChild.hidden,
-          dx: s.lastChild.getBoundingClientRect().left + 13, dy: r.top + 10 }; })(),
+          nahoru: !s.children[0].hidden, dolu: !s.children[1].hidden,
+          dx: s.children[1].getBoundingClientRect().left + 13, dy: r.top + 10 }; })(),
       ulozeno: JSON.parse(localStorage.getItem('perpdesk.ind.' + n) || '{}').sbaleno ?? null }; };
   return JSON.stringify({ RSI: panel('RSI'), MACD: panel('MACD'),
     svicky: Math.round(g.getSize('candle_pane', 'main').height), sirka: Math.round(box.width),

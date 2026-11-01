@@ -3454,8 +3454,32 @@ Volby: **RSI divergence**, **rovnou push ze serveru**, timeframy **1h a 4h**.
   čárkovaně, dutá tečka, „Bull?“. Zmizí-li, nic se nehlásí. Měřeno na
   100 párech Bybitu (1h ~33 dní, 4h ~133 dní): potvrzené 1h 9,7 / den,
   4h 2,3 / den na 100 párů; rozpracovaná 2/3 se potvrdí v 84 % (1/3 v
-  72 %), 11,5 + 2,8 / den na 100 párů. Push na rozpracovanou zatím ne
-  (rozhodnutí o rozsahu — seznamy vs. jen zapnuté grafy — čeká).
+  72 %), 11,5 + 2,8 / den na 100 párů.
+  **v0.90.0 — pravidla po párech (rozhodnutí uživatele: u 100+ coinů ve
+  seznamech by chodilo ~25 notifikací denně; „nechci všude"):** plošné
+  hlídání seznamů a pozic i karta v Nastavení **zrušené**. Zvonek v panelu
+  RSI (`.pane-zvonek` v `.pane-poradi`, `PANELY_SE_ZVONKEM`,
+  `setPaneBell`, `handlers.onPaneBell`) → okno `#sheetSignal`: **všechny
+  timeframy** (1m, 5m, 15m, 30m, 1h, 4h, 1D, 1W; předvybraný timeframe
+  grafu) a kdy upozornit: Předem 1/3, **Předem 2/3 (výchozí)**, Potvrzenou
+  (`faze` 1 / 2 / 3). Jen Bybit a Binance. Model `js/signaly.js`
+  (`perpdesk.signals` verze 2, `{ pravidla: [...] }`, zálohuje se;
+  `proServer()` → záznam `sig-<id>` na pravidlo, `symbol` = klíč grafu).
+  Server: jedna notifikace na divergenci a účet (`odeslano` s účtem),
+  text rozpracované „Bullish RSI divergence forming (2/3) · 4h", hlásí
+  `fired` s id pravidla (zůstává zapnuté) → přehled „Last signal 2 h
+  ago" (`signaly.oznacSignal` ve `stahniStav`). Týdenní svíčky od pondělí
+  (`posledniUzavrena`, `posun`). Timeframe bez pravidla se nestahuje.
+  **Záložka Notifikace** (dřív Alarmy, `data-tab="alerts"` zůstal):
+  podzáložky Alarmy | RSI divergence (`#alertsTabs`; další druhy signálů
+  = další podzáložka), pod Alarmy přepínač Active / Inactive
+  (`#alertsRezim`, `data-rezim-alarmu`). `REZIMY_ALARMU` = active →
+  inactive → rsi (pořadí přejíždění). Řádek signálu přes `renderAlerts`
+  s `detaily`. **Do budoucna:** počet pravidel může mít strop podle
+  předplatného (`signaly.pocet`), zatím neomezeně (paměť
+  `predplatne-limity`).
+  ⚠ `test-zalozka-alarmy.py` padal už před v0.90.0 (přejetí z Deníku
+  nejdřív projde podzáložky) — opraveno spolu s přestavbou.
 - **Server** `server/signaly.mjs` uvnitř hlídače alarmů: po uzavření svíčky
   1h / 4h (+20 s) stáhne REST svíčky hlídaných párů (Bybit
   `/v5/market/kline`, Binance `/fapi/v1/klines`, 200 kusů, 120 ms mezi
@@ -3476,9 +3500,8 @@ Volby: **RSI divergence**, **rovnou push ze serveru**, timeframy **1h a 4h**.
   (app.js, `alarmyServer.nastavSignaly`); posílá se při změně
   `perpdesk.lists`, `perpdesk.signals` i sady pozic (`hlidejParySignalu`).
   Hlídač je od cenových odděluje podle `typ` (ticker je neodebírá).
-- **Nastavení → Signály v grafech** (`#signalsCard`): přepínač, čipy 1h / 4h,
-  počet hlídaných párů nebo výzva zapnout push. `perpdesk.signals`
-  (zálohuje se), výchozí zapnuto s 1h + 4h.
+- ~~Nastavení → Signály v grafech (`#signalsCard`)~~ — v0.90.0 nahrazeno
+  zvonkem v panelu RSI (viz výš).
 - **Graf:** RSI kreslí divergence ve svém panelu (`kresliDivergence`
   v chart.js, výpočet v `calc` → `result[i].div`), úsečka mezi pivoty
   a štítek Bull / Bear; v nastavení RSI sekce Divergence (přepínač, barvy).

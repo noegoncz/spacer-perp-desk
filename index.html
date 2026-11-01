@@ -497,6 +497,29 @@
                 data-i18n="alarm.save">Save alert</button>
       </div>
     </div>
+    <!-- Notifikace RSI divergence pro otevřený pár (v0.90.0, zvonek v panelu RSI). -->
+    <div id="sheetSignal" class="sheet" hidden>
+      <div class="sheet-head">
+        <span id="signalTitle" data-i18n="signals.sheetTitle">RSI divergence notifications</span>
+        <div class="sheet-head-akce">
+          <button type="button" id="signalDeleteBtn" class="text-btn danger" hidden
+                  data-i18n="signals.delete">Delete</button>
+          <button type="button" class="icon-btn" data-close="sheetSignal" data-i18n-aria="action.close">✕</button>
+        </div>
+      </div>
+      <div class="sheet-body nastaveni">
+        <p class="signal-par" id="signalPair"></p>
+        <label data-i18n="signals.timeframes">Timeframes</label>
+        <div class="chip-row wrap" id="signalTf"></div>
+        <label data-i18n="signals.when">Notify me</label>
+        <div class="chip-row wrap" id="signalFaze"></div>
+        <p class="hint" id="signalFazeHint"></p>
+        <p class="hint signal-varovani" id="signalNote" hidden></p>
+      </div>
+      <div class="sheet-akce">
+        <button type="button" id="signalSaveBtn" class="primary-btn" data-i18n="signals.save">Notify me</button>
+      </div>
+    </div>
     <!-- Text poznámky v grafu (nástroj Note). -->
     <div id="sheetNote" class="sheet" hidden>
       <div class="sheet-head">
@@ -642,7 +665,13 @@
        v TabTraderu): všechny alarmy napříč páry a burzami, aktivní
        a neaktivní, hromadné smazání neaktivních. ===== -->
   <section id="viewAlerts" hidden>
+    <!-- Notifikace (v0.90.0): podzáložky Alarmy | RSI divergence (další
+         signály přibudou jako další podzáložky), u Alarmů Aktivní / Neaktivní. -->
     <div id="alertsTabs" class="watch-lists" role="tablist"></div>
+    <div id="alertsRezim" class="chip-row alerts-rezim" role="tablist">
+      <button type="button" class="chip" data-rezim-alarmu="active"></button>
+      <button type="button" class="chip" data-rezim-alarmu="inactive"></button>
+    </div>
     <!-- Nahoře, ať je po ruce i u dlouhého seznamu (přání uživatele). -->
     <button type="button" id="alertsClear" class="secondary-btn alerts-clear" hidden></button>
     <div id="alertsList" class="alerts-list"></div>
@@ -717,27 +746,9 @@
       <div id="exchangeList"></div>
     </div>
 
-    <!-- Signály v grafech (v0.89.0): RSI divergence hlídá server a pošle
-         push (server/signaly.mjs). Páry ze seznamů a pozic. -->
-    <div class="card" id="signalsCard">
-      <h2 data-i18n="signals.title">Chart signals</h2>
-      <div class="switch-row">
-        <span data-i18n="signals.divergence">RSI divergence alerts</span>
-        <button type="button" id="signalsDivBtn" class="nastaveni-prepinac" aria-pressed="true"
-                data-i18n-aria="signals.divergence"></button>
-      </div>
-      <div class="chip-row signaly-tf">
-        <button type="button" class="chip" data-interval-signalu="60" aria-pressed="true">1h</button>
-        <button type="button" class="chip" data-interval-signalu="240" aria-pressed="true">4h</button>
-      </div>
-      <p class="hint" id="signalsState"></p>
-      <p class="hint" data-i18n="signals.hint">A notification when a bullish or bearish RSI
-        divergence is confirmed on a closed candle — for pairs in your watchlists and open
-        positions on Bybit and Binance. Informational only, not a trade signal to rely on.</p>
-    </div>
-
     <div class="card">
       <h2 data-i18n="settings.general">General</h2>
+
 
       <hr>
 

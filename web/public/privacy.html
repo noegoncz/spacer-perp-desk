@@ -124,13 +124,13 @@
     crossed, sends a notification through Firebase Cloud Messaging; Google receives the push
     token and the notification text (the pair, the price and your message). We record when
     an alert fired, so the app can show it.</p>
-  <p><strong>Chart signals.</strong> If chart signals are on (Settings → Chart signals), the
-    app also sends the list of pairs to watch — the pairs in your watchlists and the pairs
-    where you have an open position (only the pair name) — and the chosen timeframes. Our
+  <p><strong>Chart signals.</strong> If you turn on chart signals for a pair (the bell in the
+    RSI panel), the app also sends that pair (only the pair name), the
+    chosen timeframes and when to notify you. Our
     alert server downloads <strong>public</strong> candles for these pairs from Bybit and
-    Binance and, when a signal such as an RSI divergence is confirmed, sends a notification
-    the same way as a price alert (the pair, the signal and the timeframe). Turning chart
-    signals off removes the list from the server.</p>
+    Binance and, when a signal such as an RSI divergence appears, sends a notification
+    the same way as a price alert (the pair, the signal and the timeframe). Deleting a
+    signal in the app removes it from the server too.</p>
   <p>Your API keys and the details of your positions (size, side, prices), orders and
     balances are never sent to the alert server. The legal basis is the performance of the service you asked for (Art. 6(1)(b) GDPR). An alert
     you delete in the app is deleted on the server too; signing out removes the push token of

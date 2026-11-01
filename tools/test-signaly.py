@@ -107,39 +107,66 @@ KONTROLA_RSI = """(async () => {
 p.prikaz('Page.navigate', url=sys.argv[1])
 time.sleep(7)
 
-print('1. signálový alarm na serveru')
+print('1. bez zapnutí nic na server')
 sig = posledniSignaly()
-over(sig is not None and len(sig) == 1, f'jeden záznam typ divergence ({sig and len(sig)})')
-if sig:
-    s = sig[0]
-    over(set(s['symboly']) == {'BTCUSDT', 'binance:ETHUSDT', 'JUPUSDT'},
-         f'páry seznamu + pozice, bez OKX (hlídač ho nezná): {s["symboly"]}')
-    over(s['intervaly'] == ['60', '240'] and s['aktivni'] and s['symbol'] == 'signaly', f'1h + 4h, aktivní: {s["intervaly"]}')
+over(sig is not None and sig == [], f'žádná pravidla, žádný signál (už ne plošně seznamy) ({sig})')
 
-print('2. nastavení')
-ev("document.getElementById('settingsBtn').click()")
+print('2. zvonek v panelu RSI → okno → uložit')
+ev("document.querySelector('.position').click()")
+time.sleep(4)
+zv = json.loads(ev("""JSON.stringify((() => { const z = [...document.querySelectorAll('.pane-poradi')]
+  .find((s) => s.dataset.nazev === 'RSI')?.querySelector('.pane-zvonek');
+  return z ? { videt: !z.hidden && !z.closest('.pane-poradi').hidden && z.offsetWidth > 0, on: z.classList.contains('on') } : null; })())""") or 'null')
+over(zv and zv['videt'] and not zv['on'], f'zvonek v panelu RSI vidět, nesvítí ({zv})')
+ev("[...document.querySelectorAll('.pane-poradi')].find((s) => s.dataset.nazev === 'RSI').querySelector('.pane-zvonek').click()")
 time.sleep(0.6)
-stav = json.loads(ev("""JSON.stringify({ videt: !document.getElementById('signalsCard').hidden
-  && document.getElementById('signalsCard').offsetHeight > 0,
-  zapnuto: document.getElementById('signalsDivBtn').classList.contains('on'),
-  tf: [...document.querySelectorAll('[data-interval-signalu]')].map((b) => b.classList.contains('active')),
-  text: document.getElementById('signalsState').textContent })""") or '{}')
-over(stav.get('videt') and stav.get('zapnuto') and stav.get('tf') == [True, True], f'karta vidět, zapnuto, 1h i 4h: {stav}')
-over('3' in stav.get('text', ''), f'počet hlídaných párů: {stav.get("text")}')
-ev("document.querySelector('[data-interval-signalu=\"60\"]').click()")
+okno = json.loads(ev("""JSON.stringify({ videt: !document.getElementById('sheetSignal').hidden,
+  par: document.getElementById('signalPair').textContent,
+  tf: [...document.querySelectorAll('#signalTf .chip')].map((b) => [b.textContent, b.classList.contains('active')]),
+  faze: [...document.querySelectorAll('#signalFaze .chip')].map((b) => b.classList.contains('active')),
+  smazat: !document.getElementById('signalDeleteBtn').hidden })""") or '{}')
+over(okno.get('videt') and 'JUPUSDT' in okno.get('par', ''), f'okno pro pár: {okno.get("par")}')
+over(len(okno.get('tf', [])) == 8 and [x[0] for x in okno['tf'] if x[1]] == ['4h'],
+     f'všech 8 timeframů, předvybraný timeframe grafu: {okno.get("tf")}')
+over(okno.get('faze') == [False, True, False] and not okno.get('smazat'), 'výchozí „Předem 2/3", bez Smazat')
+ev("[...document.querySelectorAll('#signalTf .chip')].find((b) => b.textContent === '1h').click()")
+ev("[...document.querySelectorAll('#signalTf .chip')].find((b) => b.textContent === '1D').click()")
+ev("document.getElementById('signalSaveBtn').click()")
 time.sleep(2.8)
 sig = posledniSignaly()
-over(sig and sig[0]['intervaly'] == ['240'], f'bez 1h jde jen 4h: {sig and sig[0]["intervaly"]}')
-ev("document.getElementById('signalsDivBtn').click()")
+over(sig and len(sig) == 1 and sig[0]['symbol'] == 'JUPUSDT' and sig[0]['intervaly'] == ['60', '240', 'D']
+     and sig[0]['faze'] == 2 and sig[0]['aktivni'] and sig[0]['id'].startswith('sig-'),
+     f'na server jde pravidlo páru: {sig}')
+over(ev("[...document.querySelectorAll('.pane-poradi')].find((s) => s.dataset.nazev === 'RSI').querySelector('.pane-zvonek').classList.contains('on')"),
+     'zvonek po uložení svítí')
+ev("history.back()")
+time.sleep(1)
+
+print('2b. záložka Notifikace')
+ev("document.querySelector('.tab[data-tab=\"alerts\"]').click()")
+time.sleep(0.8)
+z = json.loads(ev("""JSON.stringify({ tab: document.querySelector('.tab[data-tab="alerts"]').textContent.trim(),
+  pod: [...document.querySelectorAll('#alertsTabs [data-id]')].map((b) => b.dataset.id),
+  rezim: !document.getElementById('alertsRezim').hidden })""") or '{}')
+over(z.get('tab') == 'Notifications' and z.get('pod', [])[:2] == ['alarmy', 'rsi'] and z.get('rezim'),
+     f'záložka Notifications, podzáložky Alerts | RSI, Active/Inactive vidět: {z}')
+ev("document.querySelector('#alertsTabs [data-id=\"rsi\"]').click()")
+time.sleep(0.6)
+r = json.loads(ev("""JSON.stringify({ rezim: !document.getElementById('alertsRezim').hidden,
+  radky: [...document.querySelectorAll('#alertsList .alert-row')].map((x) => x.textContent) })""") or '{}')
+over(not r.get('rezim') and len(r.get('radky', [])) == 1 and 'JUPUSDT' in r['radky'][0] and '1h · 4h · 1D' in r['radky'][0],
+     f'RSI: řádek páru s timeframy, Active/Inactive schované: {r}')
+ev("document.querySelector('#alertsList .alert-row .nastaveni-prepinac').click()")
 time.sleep(2.8)
 sig = posledniSignaly()
-over(sig == [], f'vypnuto → žádný signálový alarm ({sig})')
-over(ev("document.querySelector('[data-interval-signalu=\"240\"]').disabled") is True, 'timeframy vypnutého signálu zašedlé')
-ev("document.getElementById('signalsDivBtn').click(); document.querySelector('[data-interval-signalu=\"60\"]').click()")
+over(sig and sig[0]['aktivni'] is False, f'vypnutí → na serveru neaktivní ({sig and sig[0]["aktivni"]})')
+ev("document.querySelector('#alertsList .alert-row .alert-smazat').click()")
+time.sleep(0.3)
+ev("document.querySelector('#alertsList .alert-row .alert-smazat').click()")
 time.sleep(2.8)
 sig = posledniSignaly()
-over(sig and sig[0]['intervaly'] == ['60', '240'], 'zapnuto zpátky s 1h i 4h')
-ev("document.getElementById('backBtn').click()")
+over(sig == [] and not ev("document.querySelectorAll('#alertsList .alert-row').length"), f'smazáno dvěma klepnutími ({sig})')
+ev("document.querySelector('.tab[data-tab=\"positions\"]').click()")
 time.sleep(0.5)
 
 print('3. RSI divergence v grafu')

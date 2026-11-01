@@ -856,7 +856,7 @@ export function showView(name) {
 /* ---------- přehled alarmů (v0.63.0) ---------- */
 
 /** „5 m", „3 h", „2 d" — jak dávno alarm zazněl. */
-function predChvili(ms) {
+export function predChvili(ms) {
   const minuty = Math.max(1, Math.round(ms / 60000));
   if (minuty < 60) return `${minuty} m`;
   if (minuty < 2880) return `${Math.round(minuty / 60)} h`;
@@ -945,6 +945,10 @@ export function renderAlerts({ rezim, polozky, onOpen, onToggle, onDelete, onCle
       s.textContent = text;
       detail.append(s);
     };
+    // Signál (v0.90.0) má vlastní údaje (timeframy, kdy upozornit, poslední).
+    if (a.detaily) {
+      a.detaily.forEach(([text, trida]) => kus(text, trida));
+    } else {
     if (a.podminka) kus(a.podminka);
     if (a.typ !== 'cas') kus(a.opakovat ? t('alerts.repeat') : t('alerts.once'));
     if (a.aktivni && Number.isFinite(a.vzdalenost)) {
@@ -952,6 +956,7 @@ export function renderAlerts({ rezim, polozky, onOpen, onToggle, onDelete, onCle
     }
     if (!a.aktivni) {
       kus(a.spusteno ? t('alerts.fired', { ago: t('alerts.ago', { kdy: predChvili(ted - a.spusteno) }) }) : t('alerts.off'));
+    }
     }
     radek.append(hlava, akce, detail);
     if (a.zprava) {
@@ -966,7 +971,7 @@ export function renderAlerts({ rezim, polozky, onOpen, onToggle, onDelete, onCle
 
   if (prazdno) {
     prazdno.hidden = polozky.length > 0;
-    prazdno.textContent = t(rezim === 'active' ? 'alerts.emptyActive' : 'alerts.emptyInactive');
+    prazdno.textContent = t(rezim === 'active' ? 'alerts.emptyActive' : rezim === 'rsi' ? 'signals.empty' : 'alerts.emptyInactive');
   }
   if (smazatVse) {
     smazatVse.hidden = rezim !== 'inactive' || !polozky.length;

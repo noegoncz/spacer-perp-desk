@@ -30,6 +30,7 @@ import { krokCeny as krokPasma } from './likvidace-format.js';
 import * as zdiKnihy from './zdi.js';
 import * as skutecneLikvidace from './likvidovano.js';
 import * as alarmyServer from './alarmy-server.js';
+import * as signaly from './signaly.js';
 import * as push from './push.js';
 import * as hlaseni from './hlaseni.js';
 import { zapojDlazdice } from './dlazdice.js';
@@ -188,7 +189,6 @@ const HANDLERY = {
     ulozSnimek();
     naplanujPredneceniTrhu();
     if (grafZNotifikace) dokonciGrafZNotifikace();
-    hlidejParySignalu();
     syncOpenChart(list);
     /*
      * Alarmy na párech s otevřenou pozicí se hlídají i se zavřeným grafem —
@@ -1233,7 +1233,6 @@ function boot() {
     onKlepnuti: (data) => otevriGrafZNotifikace(data?.symbol, data?.interval),
     onZmena: () => vykresliAlarmy(),
   });
-  alarmyServer.nastavSignaly(signaloveAlarmy);
   zapojPrejeti();
   zapojTlacitkoZpet();
   zapojPosuvnikMapy();
@@ -1654,16 +1653,11 @@ function wireEvents() {
     vykresliPrepinacDeniku();
     prekresliHistorii();
   });
-  naUdalost('signalsDivBtn', 'click', () => {
-    nastavSignalu({ divergence: !nastaveniSignalu().divergence });
-  });
-  document.querySelectorAll('[data-interval-signalu]').forEach((b) => b.addEventListener('click', () => {
-    const iv = b.dataset.intervalSignalu;
-    const n = nastaveniSignalu();
-    const intervaly = n.intervaly.includes(iv) ? n.intervaly.filter((x) => x !== iv) : [...n.intervaly, iv];
-    nastavSignalu({ intervaly: INTERVALY_SIGNALU.filter((x) => intervaly.includes(x)) });
+  naUdalost('signalSaveBtn', 'click', ulozSignal);
+  naUdalost('signalDeleteBtn', 'click', smazSignalZOkna);
+  document.querySelectorAll('[data-rezim-alarmu]').forEach((b) => b.addEventListener('click', () => {
+    vyberRezimAlarmu(b.dataset.rezimAlarmu);
   }));
-  alarmyServer.naZmenu(() => vykresliSignaly());
   naUdalost('sltpAlertsBtn', 'click', () => {
     sltpUpozorneni = !sltpUpozorneni;
     store.saveSltpAlerts(sltpUpozorneni);
@@ -1725,84 +1719,7 @@ function vykresliPrepinacSltp() {
   btn.setAttribute('aria-pressed', String(sltpUpozorneni));
 }
 
-/*
- * Signály v grafech (v0.89.0, přání uživatele: hlídat RSI divergenci a
- * poslat push ze serveru, timeframy 1h a 4h). Hlídají se páry ze všech
- * seznamů a otevřených pozic na burzách, které hlídač zná (Bybit, Binance).
- * Nastavení `perpdesk.signals` se zálohuje s účtem.
- */
-const KLIC_SIGNALU = 'perpdesk.signals';
-const INTERVALY_SIGNALU = ['60', '240'];
-const MAX_PARU_SIGNALU = 400;
-const PARU_NA_ZAZNAM = 120;   // záznam alarmu na serveru má strop 4 000 znaků
-
-function nastaveniSignalu() {
-  const n = store.loadJson(KLIC_SIGNALU, null) || {};
-  return {
-    divergence: n.divergence !== false,
-    intervaly: Array.isArray(n.intervaly) ? n.intervaly.filter((x) => INTERVALY_SIGNALU.includes(x)) : [...INTERVALY_SIGNALU],
-  };
-}
-
-function nastavSignalu(zmena) {
-  store.saveJson(KLIC_SIGNALU, { ...nastaveniSignalu(), ...zmena });
-  vykresliSignaly();
-}
-
-function paryProSignaly() {
-  const klice = new Set();
-  for (const id of sestavy.poradi()) {
-    for (const p of sestavy.polozkyVPoradi(id)) klice.add(klicGrafu(p.burza, p.symbol));
-  }
-  for (const p of lastPositions) klice.add(klicGrafu(p.burza || 'bybit', p.symbol));
-  return [...klice].filter((k) => alarmyServer.serverHlidaSymbol(k)).sort().slice(0, MAX_PARU_SIGNALU);
-}
-
-/** Signálové alarmy pro server: páry po dávkách (strop velikosti záznamu). */
-function signaloveAlarmy() {
-  const n = nastaveniSignalu();
-  if (!n.divergence || !n.intervaly.length) return [];
-  const pary = paryProSignaly();
-  const zaznamy = [];
-  for (let i = 0; i < pary.length; i += PARU_NA_ZAZNAM) {
-    zaznamy.push({
-      id: `sig-${zaznamy.length + 1}`, typ: 'divergence', symbol: 'signaly',
-      symboly: pary.slice(i, i + PARU_NA_ZAZNAM), intervaly: n.intervaly,
-      aktivni: true, opakovat: true, zmeneno: 0,
-    });
-  }
-  return zaznamy;
-}
-
-let otiskParuSignalu = '';
-function hlidejParySignalu() {
-  const otisk = lastPositions.map((p) => klicGrafu(p.burza || 'bybit', p.symbol)).sort().join(',');
-  if (otisk === otiskParuSignalu) return;
-  otiskParuSignalu = otisk;
-  alarmyServer.zmenaSignalu();
-}
-
-function vykresliSignaly() {
-  const btn = el('signalsDivBtn');
-  if (!btn) return;
-  const n = nastaveniSignalu();
-  btn.classList.toggle('on', n.divergence);
-  btn.setAttribute('aria-pressed', String(n.divergence));
-  document.querySelectorAll('[data-interval-signalu]').forEach((b) => {
-    const zvoleny = n.intervaly.includes(b.dataset.intervalSignalu);
-    b.classList.toggle('active', zvoleny);
-    b.setAttribute('aria-pressed', String(zvoleny));
-    b.disabled = !n.divergence;
-  });
-  const stav = el('signalsState');
-  if (!stav) return;
-  if (!n.divergence) stav.textContent = '';
-  else if (!ucet.prihlasen() || alarmyServer.stavServeru().push !== 'on') stav.textContent = t('signals.needsPush');
-  else stav.textContent = t('signals.watching', { n: paryProSignaly().length });
-}
-
 function openSettings() {
-  vykresliSignaly();
   vykresliBurzy();
   const prah = el('liqThreshold');
   if (prah) prah.value = String(prahLikvidace);
@@ -2157,6 +2074,7 @@ async function otevriGraf(symbol, position, trh) {
   ui.setActiveInterval(chartInterval);
   ui.showChartError('');
   ui.showChart(true);
+  oznacZvonekRsi();
   ui.vycentrujInterval();
   requestAnimationFrame(oznacPreteceniListy);
   oznacJednotku();
@@ -2172,6 +2090,7 @@ async function otevriGraf(symbol, position, trh) {
       onDrawingsChanged: ulozKresby,
       onDrawEnd: () => vyberNastroj(''), // po dokreslení zpět na kurzor
       onIndicatorsChanged: ulozIndikatory,
+      onPaneBell: (nazev) => { if (nazev === 'RSI') otevriSignal(); },
       onSelectionChanged: zobrazPaletu,
       onNoteEdit: otevriPoznamku,
       onAlarmTapped: (id) => otevriAlarm(alarmy.najdi(id)),
@@ -4569,7 +4488,7 @@ function zapojPrejeti() {
  * zaznění. Jednorázový alarm po zaznění zešedne a dřív se nedal hromadně
  * uklidit — „Smazat všechny neaktivní".
  */
-const REZIMY_ALARMU = ['active', 'inactive'];
+const REZIMY_ALARMU = ['active', 'inactive', 'rsi'];
 let rezimAlarmu = 'active';
 /** Ceny párů s alarmem, které aplikace jinak nemá (pár mimo pozice a seznamy). */
 const cenyAlarmu = new Map();   // klíč grafu → { cena, cas }
@@ -4644,19 +4563,64 @@ function polozkaAlarmu(a) {
   };
 }
 
+/*
+ * Záložka Notifikace (v0.90.0, přání uživatele — dřív Alarmy): podzáložky
+ * Alarmy | RSI divergence (další druhy signálů přibudou jako další
+ * podzáložky), pod Alarmy přepínač Aktivní / Neaktivní. Přejíždění jde
+ * po řadě Aktivní → Neaktivní → RSI → sousední záložka.
+ */
+let posledniRezimAlarmu = 'active';
+
 function vykresliPrehledAlarmu() {
   const vse = alarmy.vsechny();
   const aktivni = vse.filter((a) => a.aktivni);
   const neaktivni = vse.filter((a) => !a.aktivni);
+  const pravidla = signaly.vsechna();
+  const naSignalech = rezimAlarmu === 'rsi';
+  if (!naSignalech) posledniRezimAlarmu = rezimAlarmu;
   ui.renderListBar({
     misto: 'alertsTabs',
     polozky: [
-      { id: 'active', nazev: t('alerts.active'), pocet: aktivni.length },
-      { id: 'inactive', nazev: t('alerts.inactive'), pocet: neaktivni.length },
+      { id: 'alarmy', nazev: t('alerts.alarms'), pocet: aktivni.length },
+      { id: 'rsi', nazev: t('signals.rsiDiv'), pocet: pravidla.filter((p) => p.aktivni).length },
     ],
-    aktivni: rezimAlarmu,
-    onSelect: vyberRezimAlarmu,
+    aktivni: naSignalech ? 'rsi' : 'alarmy',
+    onSelect: (id) => vyberRezimAlarmu(id === 'rsi' ? 'rsi' : posledniRezimAlarmu),
   });
+  const rezimy = el('alertsRezim');
+  if (rezimy) {
+    rezimy.hidden = naSignalech;
+    rezimy.querySelectorAll('[data-rezim-alarmu]').forEach((b) => {
+      const r = b.dataset.rezimAlarmu;
+      b.textContent = `${t(r === 'active' ? 'alerts.active' : 'alerts.inactive')} ${r === 'active' ? aktivni.length : neaktivni.length}`;
+      b.classList.toggle('active', r === rezimAlarmu);
+      b.setAttribute('aria-selected', String(r === rezimAlarmu));
+    });
+  }
+  if (naSignalech) {
+    const polozky = pravidla.map(polozkaSignalu)
+      .sort((a, b) => Number(b.aktivni) - Number(a.aktivni) || a.par.localeCompare(b.par));
+    ui.renderAlerts({
+      rezim: 'rsi',
+      polozky,
+      onOpen: (id) => {
+        const p = signaly.najdi(id);
+        if (p) otevriGrafZNotifikace(p.klic);
+      },
+      onToggle: (id) => {
+        const p = signaly.najdi(id);
+        if (!p) return;
+        signaly.uloz({ ...p, aktivni: !p.aktivni });
+        zmenaSignalu();
+      },
+      onDelete: (id) => {
+        signaly.smaz(id);
+        zmenaSignalu();
+      },
+      onClearAll: () => {},
+    });
+    return;
+  }
   const polozky = (rezimAlarmu === 'active' ? aktivni : neaktivni).map(polozkaAlarmu);
   if (rezimAlarmu === 'active') polozky.sort((a, b) => a.razeni - b.razeni);
   else polozky.sort((a, b) => (b.spusteno || 0) - (a.spusteno || 0));
@@ -5646,7 +5610,7 @@ function otevriGrafZNotifikace(symbol, interval = null) {
   if (!symbol) return;
   // Signál (v0.89.0) nese timeframe, na kterém vznikl — graf páru se otevře
   // na něm (a zůstane mu, jako by ho uživatel přepnul sám).
-  const tf = interval && INTERVALY_SIGNALU.includes(String(interval)) ? String(interval) : null;
+  const tf = interval && signaly.INTERVALY.includes(String(interval)) ? String(interval) : null;
   if (tf) store.saveChartView(symbol, { interval: tf });
   grafZNotifikace = { symbol, od: Date.now(), interval: tf };
   dokonciGrafZNotifikace();
@@ -6233,7 +6197,118 @@ function zobrazPaletu(styl) {
   oznac('styleOpacity', 'opacity', styl.opacity);
 }
 
-const NABIDKY = ['sheetIndicators', 'sheetSettings', 'sheetAlarm', 'sheetLayers', 'sheetTools', 'sheetNote'];
+const NABIDKY = ['sheetIndicators', 'sheetSettings', 'sheetAlarm', 'sheetLayers', 'sheetTools', 'sheetNote', 'sheetSignal'];
+
+/* ---------- notifikace RSI divergence pro pár (v0.90.0) ---------- */
+
+/*
+ * Přání uživatele: notifikace jen tam, kde si je zapne — zvonkem v panelu
+ * RSI otevřeného grafu. Timeframy libovolné, kdy upozornit (rozpracovaná
+ * 1/3, 2/3 = výchozí, potvrzená). Přehled v Notifikace → RSI divergence.
+ */
+const POPIS_TF = { 1: '1m', 5: '5m', 15: '15m', 30: '30m', 60: '1h', 240: '4h', D: '1D', W: '1W' };
+let vybraneTfSignalu = new Set();
+let fazeSignalu = signaly.VYCHOZI_FAZE;
+
+function oznacZvonekRsi() {
+  const p = chartSymbol ? signaly.proGraf(grafKlic()) : null;
+  chart?.setPaneBell?.('RSI', Boolean(p?.aktivni && p.intervaly?.length));
+}
+
+function otevriSignal() {
+  if (!chartSymbol || prohlizenyObchod) return;
+  const klic = grafKlic();
+  const p = signaly.proGraf(klic);
+  vybraneTfSignalu = new Set(p ? p.intervaly : [chartInterval].filter((x) => signaly.INTERVALY.includes(x)));
+  fazeSignalu = p?.faze || signaly.VYCHOZI_FAZE;
+  const { burza, symbol } = rozdelKlic(klic);
+  el('signalPair').textContent = `${symbol} · ${BURZY[burza]?.nazev || burza}`;
+  ukazPrvek('signalDeleteBtn', Boolean(p));
+  vykresliOknoSignalu();
+  otevriNabidku('sheetSignal');
+}
+
+function vykresliOknoSignalu() {
+  const podporovano = signaly.burzaPodporovana(grafKlic());
+  const tf = el('signalTf');
+  tf.replaceChildren(...signaly.INTERVALY.map((iv) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `chip${vybraneTfSignalu.has(iv) ? ' active' : ''}`;
+    b.textContent = POPIS_TF[iv];
+    b.setAttribute('aria-pressed', String(vybraneTfSignalu.has(iv)));
+    b.disabled = !podporovano;
+    b.addEventListener('click', () => {
+      if (vybraneTfSignalu.has(iv)) vybraneTfSignalu.delete(iv);
+      else vybraneTfSignalu.add(iv);
+      vykresliOknoSignalu();
+    });
+    return b;
+  }));
+  const fz = el('signalFaze');
+  fz.replaceChildren(...signaly.FAZE.map((f) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `chip${fazeSignalu === f ? ' active' : ''}`;
+    b.textContent = t(`signals.faze${f}`);
+    b.setAttribute('aria-pressed', String(fazeSignalu === f));
+    b.disabled = !podporovano;
+    b.addEventListener('click', () => { fazeSignalu = f; vykresliOknoSignalu(); });
+    return b;
+  }));
+  el('signalFazeHint').textContent = t(`signals.faze${fazeSignalu}Hint`);
+  const pozn = el('signalNote');
+  let text = '';
+  if (!podporovano) text = t('signals.unsupported');
+  else if (!ucet.prihlasen() || alarmyServer.stavServeru().push !== 'on') text = t('signals.needsPush');
+  pozn.textContent = text;
+  pozn.hidden = !text;
+  const ulozit = el('signalSaveBtn');
+  ulozit.disabled = !podporovano || !vybraneTfSignalu.size;
+}
+
+function ulozSignal() {
+  const klic = grafKlic();
+  if (!vybraneTfSignalu.size || !signaly.burzaPodporovana(klic)) return;
+  const p = signaly.proGraf(klic);
+  signaly.uloz({ id: p?.id || signaly.noveId(), klic, intervaly: [...vybraneTfSignalu], faze: fazeSignalu, aktivni: true });
+  zavriNabidky();
+  zmenaSignalu();
+  ui.showNotice(t('signals.saved'));
+}
+
+function smazSignalZOkna() {
+  const p = signaly.proGraf(grafKlic());
+  if (p) signaly.smaz(p.id);
+  zavriNabidky();
+  zmenaSignalu();
+}
+
+/** Po každé změně pravidel: zvonek v grafu, přehled, odeslání na server. */
+function zmenaSignalu() {
+  oznacZvonekRsi();
+  if (aktivniZalozka === 'alerts') vykresliPrehledAlarmu();
+}
+
+function polozkaSignalu(p) {
+  const { burza, symbol } = rozdelKlic(p.klic);
+  const detaily = [
+    [p.intervaly.map((iv) => POPIS_TF[iv] || iv).join(' · ')],
+    [t(`signals.faze${p.faze}`)],
+  ];
+  if (!signaly.burzaPodporovana(p.klic)) detaily.push([t('signals.unsupportedShort'), 'dolu']);
+  detaily.push([p.posledni ? t('signals.last', { ago: t('alerts.ago', { kdy: ui.predChvili(Date.now() - p.posledni) }) })
+    : t('signals.none')]);
+  return {
+    id: p.id,
+    typ: 'signal',
+    par: symbol,
+    burza: BURZY[burza]?.nazev || burza,
+    hladina: t('signals.rsiDiv'),
+    aktivni: Boolean(p.aktivni),
+    detaily,
+  };
+}
 
 /** Okno s textem vybrané poznámky (po založení i z tužky v paletě). */
 function otevriPoznamku() {

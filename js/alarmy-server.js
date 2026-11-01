@@ -16,6 +16,7 @@ import * as alarmy from './alarmy.js';
 import * as push from './push.js';
 import { naZmenuDat } from './store.js';
 import { getLanguage } from './i18n.js';
+import * as signaly from './signaly.js';
 
 const KLIC_TOKENU = 'perpdesk.pushToken';
 const ODKLAD = 2000;
@@ -52,21 +53,13 @@ export function serverHlidaSymbol(symbol) {
 }
 
 /*
- * Signálové alarmy (v0.89.0, RSI divergence): aplikace dodá funkci, která
- * je složí z nastavení, seznamů a pozic (`signaloveAlarmy` v app.js).
- * Jdou na server stejnou cestou jako cenové; hlídač je pozná podle
+ * Signály (v0.90.0, RSI divergence po párech, js/signaly.js) jdou na server
+ * stejnou cestou jako cenové alarmy; hlídač je pozná podle
  * `typ: 'divergence'` (server/signaly.mjs).
  */
-let zdrojSignalu = () => [];
-export function nastavSignaly(fn) {
-  zdrojSignalu = fn;
-  naplanuj();
-}
-export const zmenaSignalu = () => naplanuj();
-
 async function odesli() {
   if (!ucet.prihlasen()) return;
-  const seznam = [...alarmy.vsechny().filter((a) => serverHlidaSymbol(a.symbol)), ...zdrojSignalu()];
+  const seznam = [...alarmy.vsechny().filter((a) => serverHlidaSymbol(a.symbol)), ...signaly.proServer()];
   const otisk = JSON.stringify(seznam);
   if (otisk === posledniOdeslane) return;
   try {
@@ -93,7 +86,11 @@ export async function stahniStav() {
     stav = { ...stav, hlidacVidet: d.watcherSeen || null };
     let zmena = false;
     for (const a of d.alarms || []) {
-      if (a.firedAt && alarmy.oznacZaznelo(a.id, a.firedAt)) zmena = true;
+      if (!a.firedAt) continue;
+      // Signál: jen čas posledního (pravidlo zůstává zapnuté).
+      if (String(a.id).startsWith('sig-')) {
+        if (signaly.oznacSignal(a.id.slice(4), a.firedAt)) zmena = true;
+      } else if (alarmy.oznacZaznelo(a.id, a.firedAt)) zmena = true;
     }
     ohlas();
     return zmena;

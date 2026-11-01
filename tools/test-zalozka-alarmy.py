@@ -87,8 +87,12 @@ over(zalozky['vyska'] < 50, 'lišta záložek zůstala jednořádková')
 # ---- přejetí z Historie → Alarmy (Aktivní) ----
 klepni("[data-tab=history]")
 time.sleep(1.5)
-p.prejed(300, 500, 60, 505)
-time.sleep(1)
+# Deník má podzáložky (Edge, Trades, Calendar) — přejetí nejdřív projde je.
+for _ in range(4):
+    p.prejed(300, 500, 60, 505)
+    time.sleep(1)
+    if ev("!document.getElementById('viewAlerts').hidden"):
+        break
 over(ev("!document.getElementById('viewAlerts').hidden"), 'přejetí z Historie otevře Alarmy')
 r = radky()
 print('aktivní:', [x['id'] for x in r])
@@ -96,9 +100,11 @@ over([x['id'] for x in r] == ['blizko', 'daleko', 'cas'],
      'aktivní seřazené podle vzdálenosti od ceny (nejbližší nahoře)')
 over(any('Breakout' in x['text'] for x in r), 'u alarmu je vidět jeho zpráva')
 over(any('from price' in x['text'] for x in r), 'u aktivního alarmu je vzdálenost od ceny')
-pocty = ev("[...document.querySelectorAll('#alertsTabs .list-tab')].map((b) => b.textContent).join(' | ')")
-print('podzáložky:', pocty)
-over(pocty and '3' in pocty and '2' in pocty, 'podzáložky ukazují počty (3 aktivní, 2 neaktivní)')
+pocty = ev("[...document.querySelectorAll('#alertsRezim .chip')].map((b) => b.textContent).join(' | ')")
+print('Aktivní / Neaktivní:', pocty)
+over(pocty and '3' in pocty and '2' in pocty, 'přepínač ukazuje počty (3 aktivní, 2 neaktivní)')
+pod = ev("[...document.querySelectorAll('#alertsTabs .list-tab')].map((b) => b.textContent).join(' | ')")
+over(pod and 'Alerts' in pod and 'RSI' in pod, f'podzáložky Notifikací: Alerts | RSI divergence ({pod})')
 over(ev("document.getElementById('alertsClear').hidden"), 'v Aktivních není „smazat všechny"')
 snimek('perpyx-alarmy-aktivni.png')
 
@@ -140,7 +146,7 @@ over(zbyle == 'blizko,cas', 'smazány všechny neaktivní, aktivní zůstaly')
 over(not ev("document.getElementById('alertsEmpty').hidden"), 'prázdné Neaktivní mají text')
 
 # ---- klepnutí otevře graf páru, zpět vrátí do Alarmů ----
-klepni("#alertsTabs .list-tab")
+klepni("#alertsRezim [data-rezim-alarmu=active]")
 time.sleep(0.5)
 klepni(".alert-row[data-id=blizko]")
 time.sleep(4)

@@ -49,6 +49,7 @@ const SHELL = [
   './js/alarmy.js',
   './js/alarmy-logika.js',
   './js/divergence.js',
+  './js/signaly.js',
   './js/sestavy.js',
   './js/zaloha.js',
   './js/ucet.js',

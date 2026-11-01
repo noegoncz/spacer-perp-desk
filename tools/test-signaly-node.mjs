@@ -2,7 +2,7 @@
 // tools/test-signaly.py přenosným Node: node tools/test-signaly-node.mjs <kořen repa>
 const koren = process.argv[2].replace(/\\/g, '/');
 const { divergence, novaDivergence, rozpracovane, novaRozpracovana, rsi, VYCHOZI } = await import(`file:///${koren}/js/divergence.js`);
-const { svicky, spustSignaly } = await import(`file:///${koren}/server/signaly.mjs`);
+const { svicky, spustSignaly, posledniUzavrena } = await import(`file:///${koren}/server/signaly.mjs`);
 
 const chyby = [];
 const over = (podminka, popis) => {
@@ -58,35 +58,55 @@ for (const s of ['BTCUSDT', 'binance:BTCUSDT']) {
 const poslane = [];
 const hlidac = spustSignaly({
   alarmy: () => [
-    { account: 'a1', jazyk: 'cs', typ: 'divergence', symboly: ['BTCUSDT', 'binance:BTCUSDT'], intervaly: ['60'] },
-    { account: 'a1', jazyk: 'cs', typ: 'divergence', symboly: ['BTCUSDT'], intervaly: ['60'] },
-    { account: 'a2', jazyk: 'en', typ: 'divergence', symboly: ['BTCUSDT'], intervaly: ['240'] },
+    { id: 'sig-1', account: 'a1', jazyk: 'cs', typ: 'divergence', symboly: ['BTCUSDT', 'binance:BTCUSDT'], intervaly: ['60'], faze: 3 },
+    { id: 'sig-2', account: 'a1', jazyk: 'cs', typ: 'divergence', symboly: ['BTCUSDT'], intervaly: ['60'], faze: 3 },
+    { id: 'sig-3', account: 'a2', jazyk: 'en', typ: 'divergence', symboly: ['BTCUSDT'], intervaly: ['240'], faze: 3 },
+    { id: 'sig-4', account: 'a3', jazyk: 'en', typ: 'divergence', symboly: ['BTCUSDT'], intervaly: ['60'], faze: 2 },
   ],
-  posli: async (ucet, z) => { poslane.push({ ucet, ...z }); },
+  posli: async (ucet, z, pravidlo) => { poslane.push({ ucet, ...z, pravidlo: pravidlo?.id }); },
   log: () => {},
 });
 const puvodniFetch = globalThis.fetch;
 const otevreni = Math.floor(Date.now() / 3600e3) * 3600e3 - 3600e3;
-const posun = otevreni - rada.at(-1).timestamp;
+let vstup = rada;    // svíčky, které podstrčená burza vrátí
 globalThis.fetch = async (url) => {
   const u = String(url);
   if (u.includes('api.bybit.com')) {
-    const list = rada.map((s) => [String(s.timestamp + posun), s.open, s.high, s.low, s.close, '1', '1']).reverse();
+    const posun = otevreni - vstup.at(-1).timestamp;
+    const list = vstup.map((s) => [String(s.timestamp + posun), s.open, s.high, s.low, s.close, '1', '1']).reverse();
     return new Response(JSON.stringify({ retCode: 0, result: { list } }));
   }
   return new Response(JSON.stringify([]));   // Binance bez svíček → přeskočí se
 };
 await new Promise((r) => setTimeout(r, 300));    // první kontrola po startu doběhne
 poslane.length = 0;
+// Fáze 2/3 (výchozí): o svíčku dřív, než se divergence potvrdí.
+vstup = rada.slice(0, -1);
+await hlidac.zpracuj('60', otevreni);
+const pred = poslane.filter((x) => x.ucet === 'a3');
+over(pred.length === 1 && /Rýsuje|forming/.test(pred[0].text) && pred[0].text.includes('(2/3)') && pred[0].data.faze === '2',
+  `fáze 2/3: „${pred[0]?.text}"`);
+over(!poslane.some((x) => x.ucet === 'a1'), 'účet s potvrzenou fází o svíčku dřív nic');
+poslane.length = 0;
+vstup = rada;
 await hlidac.zpracuj(60, otevreni);
 await hlidac.zpracuj(60, otevreni);              // podruhé už nic (odesláno)
 globalThis.fetch = puvodniFetch;
-over(poslane.length === 1 && poslane[0].ucet === 'a1', `jedna zpráva účtu a1, ne a2 (4h) (${poslane.length})`);
+over(poslane.length === 1 && poslane[0].ucet === 'a1', `potvrzená: jedna zpráva účtu a1, ne a2 (4h) ani a3 (už měl 2/3) (${poslane.length})`);
+over(poslane[0]?.pravidlo === 'sig-1', 'hlídač ví, které pravidlo signál poslalo (poslední signál v přehledu)');
 const z = poslane[0] || {};
 over(z.text === 'Býčí RSI divergence · 1h' && z.titulek === 'PerpyX · BTCUSDT', `text: ${z.titulek} / ${z.text}`);
 over(z.data?.symbol === 'BTCUSDT' && z.data?.interval === '60' && z.data?.typ === 'divergence'
   && Object.values(z.data).every((v) => typeof v === 'string'), 'data pushe: symbol, interval, jen řetězce (FCM)');
 over(z.smer === 'nahoru', 'býčí = ikonka nahoru');
+
+// Týdenní svíčka začíná v pondělí 00:00 UTC.
+const tyden = posledniUzavrena('W', Date.UTC(2026, 10, 4, 12));   // středa 4. 11. 2026
+over(new Date(tyden).toISOString() === '2026-10-26T00:00:00.000Z', `poslední uzavřený týden od pondělí (${new Date(tyden).toISOString()})`);
+const r1d = await svicky('binance:BTCUSDT', 'W');
+over(r1d.at(-1)?.timestamp === posledniUzavrena('W'), 'Binance 1W: poslední uzavřená svíčka sedí');
+const r5 = await svicky('BTCUSDT', '5');
+over(r5.at(-1)?.timestamp === posledniUzavrena('5'), 'Bybit 5m: poslední uzavřená svíčka sedí');
 
 console.log(chyby.length ? `VÝSLEDEK: !!! ${chyby.length} chyb` : 'VÝSLEDEK: VŠE V POŘÁDKU');
 process.exit(chyby.length ? 1 : 0);

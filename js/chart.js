@@ -2900,6 +2900,10 @@ export function createPriceChart(container, layer, handlers = {}) {
     return l;
   }
 
+  // Panely se zvonkem notifikací a ty, kde je pro otevřený pár zapnutý.
+  const PANELY_SE_ZVONKEM = ['RSI'];
+  const zvonkyPanelu = new Set();
+
   function vytvorSipkyPoradi(paneId) {
     const s = document.createElement('div');
     s.className = 'pane-poradi';
@@ -2917,6 +2921,23 @@ export function createPriceChart(container, layer, handlers = {}) {
       });
       s.append(b);
     });
+    /*
+     * Zvonek notifikací (v0.90.0, přání uživatele): u panelu, který umí
+     * signály (zatím RSI — divergence), otevře nastavení notifikací pro
+     * tenhle pár. Svítí, když je pro pár zapnuté.
+     */
+    const zv = document.createElement('button');
+    zv.type = 'button';
+    zv.className = 'pane-zvonek';
+    zv.setAttribute('aria-label', t('signals.bell'));
+    zv.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.5h-15z" '
+      + 'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>'
+      + '<path d="M10 20.5a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+    zv.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (s.dataset.nazev) handlers.onPaneBell?.(s.dataset.nazev);
+    });
+    s.append(zv);
     return s;
   }
 
@@ -3002,10 +3023,15 @@ export function createPriceChart(container, layer, handlers = {}) {
         rodic.append(s);
       }
       const kde = poradi.indexOf(paneId);
+      const [nahoru, dolu, zv] = s.children;
+      const maZvonek = PANELY_SE_ZVONKEM.includes(nazev);
       s.dataset.nazev = nazev;
-      s.hidden = poradi.length < 2;
-      s.firstChild.hidden = kde <= 0;
-      s.lastChild.hidden = kde === poradi.length - 1;
+      s.hidden = poradi.length < 2 && !maZvonek;
+      nahoru.hidden = poradi.length < 2 || kde <= 0;
+      dolu.hidden = poradi.length < 2 || kde === poradi.length - 1;
+      zv.hidden = !maZvonek;
+      zv.classList.toggle('on', zvonkyPanelu.has(nazev));
+      zv.setAttribute('aria-pressed', String(zvonkyPanelu.has(nazev)));
       s.style.top = `${b.top + ODSAZENI_SIPEK}px`;
       s.style.left = `${b.left + l.offsetWidth + 2}px`;
     });
@@ -4400,6 +4426,19 @@ export function createPriceChart(container, layer, handlers = {}) {
     },
 
     /** Open interest: `{ body: [{ time, oi }], popis }`, null = načítá se. */
+    /** Zvonek v panelu indikátoru svítí (notifikace pro otevřený pár zapnuté). */
+    setPaneBell(nazev, zapnuto) {
+      if (zapnuto) zvonkyPanelu.add(nazev);
+      else zvonkyPanelu.delete(nazev);
+      sipkyPoradi.forEach((s) => {
+        const zv = s.querySelector('.pane-zvonek');
+        if (zv && s.dataset.nazev === nazev) {
+          zv.classList.toggle('on', Boolean(zapnuto));
+          zv.setAttribute('aria-pressed', String(Boolean(zapnuto)));
+        }
+      });
+    },
+
     setOpenInterest(data) {
       const nova = !openInterest?.body?.length && data?.body?.length;
       openInterest = data;

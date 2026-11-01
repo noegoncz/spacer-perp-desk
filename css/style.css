@@ -432,9 +432,13 @@ main {
 }
 .chip:active { background: var(--surface-2); }
 .chip.active { border-color: var(--accent); color: var(--text); background: rgba(76, 154, 255, 0.14); }
-/* Timeframy signálů v nastavení (v0.89.0). */
-.signaly-tf { margin: 2px 0 8px; }
-.signaly-tf .chip:disabled { opacity: 0.4; }
+/* Notifikace (v0.90.0): Aktivní / Neaktivní pod podzáložkou Alarmy,
+   okno RSI divergence pro pár. */
+.alerts-rezim { padding: 8px 12px 10px; gap: 6px; }
+#sheetSignal .chip-row { margin: 4px 0 10px; gap: 6px; }
+#sheetSignal .chip:disabled { opacity: 0.4; }
+.signal-par { margin: 0 0 8px; font-weight: 600; }
+.signal-varovani { color: var(--warn, #f0b90b); }
 .chip-count { font-size: 0.7rem; color: var(--text-dim); font-variant-numeric: tabular-nums; }
 .chip.active .chip-count { color: var(--accent); }
 
@@ -1751,6 +1755,9 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
   touch-action: manipulation;
 }
 .pane-poradi button:active { opacity: 1; background: rgba(30, 38, 52, 0.8); }
+/* Zvonek notifikací v panelu (v0.90.0): zapnutý svítí barvou akcentu. */
+.pane-poradi .pane-zvonek svg { width: 14px; height: 14px; }
+.pane-poradi .pane-zvonek.on { opacity: 1; color: var(--accent); background: rgba(76, 154, 255, 0.18); }
 .pane-poradi svg { width: 12px; height: 12px; }
 
 /* Poslední známý stav při startu, než dorazí čerstvá data z burzy. */
