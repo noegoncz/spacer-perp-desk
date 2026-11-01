@@ -59,10 +59,14 @@ export function rsi(svice, delka = VYCHOZI.delka, zdroj = 'close') {
   return rada;
 }
 
-function jePivot(rada, p, vlevo, vpravo, dno) {
+/**
+ * Pivot RSI. `castecne`: vpravo je zatím méně než `vpravo` svíček (rozpracovaná
+ * divergence) — porovná se jen s tím, co už je.
+ */
+function jePivot(rada, p, vlevo, vpravo, dno, castecne = false) {
   const v = rada[p];
-  if (!Number.isFinite(v) || p - vlevo < 0 || p + vpravo >= rada.length) return false;
-  for (let j = p - vlevo; j <= p + vpravo; j += 1) {
+  if (!Number.isFinite(v) || p - vlevo < 0 || (!castecne && p + vpravo >= rada.length)) return false;
+  for (let j = p - vlevo; j <= Math.min(p + vpravo, rada.length - 1); j += 1) {
     if (j === p) continue;
     const x = rada[j];
     if (!Number.isFinite(x)) return false;
@@ -71,18 +75,9 @@ function jePivot(rada, p, vlevo, vpravo, dno) {
   return true;
 }
 
-/**
- * Všechny divergence v řadě svíček (`{ timestamp, high, low, close }`).
- * Vrací `[{ typ: 'byci'|'medvedi', od, do, potvrzeno }]`, kde `od` / `do`
- * jsou body `{ i, cas, cena, rsi }` a `potvrzeno` index svíčky, kdy je
- * druhý pivot jistý.
- */
-export function divergence(svice, rsiRada = rsi(svice), volby = {}) {
-  const v = { ...VYCHOZI, ...volby };
+/** Pravidla platné divergence mezi pivoty `a` a `p` (viz hlavička souboru). */
+function pravidla(svice, rsiRada, v) {
   const { vlevo, vpravo, odstupMin, odstupMax } = v;
-  const vysledek = [];
-  let predDno = -1;
-  let predVrchol = -1;
   const low = (i) => Number(svice[i].low);
   const high = (i) => Number(svice[i].high);
   const bod = (i, cena, iCeny) => ({ i, cas: svice[i].timestamp, cena, rsi: rsiRada[i], iCeny });
@@ -101,7 +96,7 @@ export function divergence(svice, rsiRada = rsi(svice), volby = {}) {
     return k;
   }
 
-  function platna(a, p, dno) {
+  return function platna(a, p, dno) {
     if (a < 0 || p - a < odstupMin || p - a > odstupMax) return null;
     const ra = rsiRada[a];
     const rp = rsiRada[p];
@@ -121,8 +116,22 @@ export function divergence(svice, rsiRada = rsi(svice), volby = {}) {
       if (dno ? rsiRada[j] < cara : rsiRada[j] > cara) return null;
     }
     return { od: bod(a, cena(ka), ka), do: bod(p, cena(kp), kp), potvrzeno: p + vpravo };
-  }
+  };
+}
 
+/**
+ * Všechny divergence v řadě svíček (`{ timestamp, high, low, close }`).
+ * Vrací `[{ typ: 'byci'|'medvedi', od, do, potvrzeno }]`, kde `od` / `do`
+ * jsou body `{ i, cas, cena, rsi }` a `potvrzeno` index svíčky, kdy je
+ * druhý pivot jistý.
+ */
+export function divergence(svice, rsiRada = rsi(svice), volby = {}) {
+  const v = { ...VYCHOZI, ...volby };
+  const { vlevo, vpravo } = v;
+  const platna = pravidla(svice, rsiRada, v);
+  const vysledek = [];
+  let predDno = -1;
+  let predVrchol = -1;
   for (let p = vlevo; p + vpravo < svice.length; p += 1) {
     if (jePivot(rsiRada, p, vlevo, vpravo, true)) {
       const d = platna(predDno, p, true);
@@ -138,9 +147,45 @@ export function divergence(svice, rsiRada = rsi(svice), volby = {}) {
   return vysledek;
 }
 
+/**
+ * Rozpracované divergence (v0.89.2, přání uživatele — „blížící se"):
+ * druhý pivot RSI je mezi posledními `vpravo` svíčkami, takže ještě není
+ * jistý, ale všechna ostatní pravidla už platí. `svicekPo` = kolik svíček
+ * za ním už je (0 = pivot je poslední svíčka). Nejvýš jedna na typ;
+ * zmizí, jakmile RSI půjde dál (pak to už divergence není nebo se posune).
+ */
+export function rozpracovane(svice, rsiRada = rsi(svice), volby = {}) {
+  const v = { ...VYCHOZI, ...volby };
+  const { vlevo, vpravo } = v;
+  const n = svice.length;
+  const platna = pravidla(svice, rsiRada, v);
+  const vysledek = [];
+  for (const dno of [true, false]) {
+    // Poslední jistý pivot téhož druhu = první bod.
+    let a = -1;
+    for (let p = n - vpravo - 1; p >= vlevo; p -= 1) {
+      if (jePivot(rsiRada, p, vlevo, vpravo, dno)) { a = p; break; }
+    }
+    if (a < 0) continue;
+    for (let p = Math.max(a + 1, n - vpravo); p < n; p += 1) {
+      if (!jePivot(rsiRada, p, vlevo, vpravo, dno, true)) continue;
+      const d = platna(a, p, dno);
+      if (d) vysledek.push({ typ: dno ? 'byci' : 'medvedi', ...d, svicekPo: n - 1 - p, rozpracovana: true });
+      break;
+    }
+  }
+  return vysledek;
+}
+
 /** Divergence potvrzené právě poslední svíčkou řady (ta musí být uzavřená). */
 export function novaDivergence(svice, volby = {}) {
   const posledni = svice.length - 1;
   return divergence(svice, rsi(svice, volby.delka ?? VYCHOZI.delka), volby)
     .filter((d) => d.potvrzeno === posledni);
+}
+
+/** Rozpracované divergence, za jejichž pivotem je právě `svicek` uzavřených svíček. */
+export function novaRozpracovana(svice, svicek, volby = {}) {
+  return rozpracovane(svice, rsi(svice, volby.delka ?? VYCHOZI.delka), volby)
+    .filter((d) => d.svicekPo === svicek);
 }

@@ -15,7 +15,7 @@ import { createTouchDrawing } from './draw.js';
 import { formatPrice } from './format.js';
 import { t, getLocale } from './i18n.js';
 import { nactiNastaveni, ulozNastaveni, parametryVypoctu, ZDROJE, TYPY_MA, vyhladit } from './indikatory.js';
-import { divergence as najdiDivergence, VYCHOZI as DIVERGENCE } from './divergence.js';
+import { divergence as najdiDivergence, rozpracovane as rozpracovaneDivergence, VYCHOZI as DIVERGENCE } from './divergence.js';
 
 /**
  * Datum a čas pro cenovku u kříže — stejné pásmo jako osa grafu. Volá se při
@@ -2044,6 +2044,8 @@ function registrovatRsi() {
        * Divergence visí u svíčky svého druhého pivotu (`div`).
        */
       for (const d of najdiDivergence(data, rada)) (vysledek[d.do.i].div ||= []).push(d);
+      // Rozpracované (v0.89.2): druhý pivot ještě není jistý, hýbe se s živou svíčkou.
+      for (const d of rozpracovaneDivergence(data, rada)) (vysledek[d.do.i].div ||= []).push(d);
       return vysledek;
     },
     draw: ({ ctx, chart, indicator, bounding }) => {
@@ -2084,6 +2086,8 @@ function registrovatRsi() {
 /**
  * Úsečky divergence mezi dvěma pivoty RSI a štítek u druhého (jako
  * TradingView): býčí zeleně pod křivkou, medvědí červeně nad ní.
+ * Rozpracovaná (v0.89.2, varianta A uživatele): čárkovaná, ztlumená, druhá
+ * tečka dutá a štítek s otazníkem; po potvrzení se „vyplní".
  */
 function kresliDivergence(ctx, chart, indicator, n, bod) {
   const rozsah = chart.getVisibleRange();
@@ -2103,32 +2107,55 @@ function kresliDivergence(ctx, chart, indicator, n, bod) {
       const a = bod(d.od.i, d.od.rsi);
       const b = bod(d.do.i, d.do.rsi);
       if (![a.x, a.y, b.x, b.y].every(Number.isFinite)) continue;
-      ctx.globalAlpha = 0.95;
+      const rozpr = Boolean(d.rozpracovana);
+      ctx.globalAlpha = rozpr ? 0.7 : 0.95;
       ctx.strokeStyle = barva;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = rozpr ? 1.5 : 2;
+      ctx.setLineDash(rozpr ? [5, 4] : []);
       ctx.beginPath();
       ctx.moveTo(a.x, a.y);
       ctx.lineTo(b.x, b.y);
       ctx.stroke();
-      // Tečky na obou pivotech RSI (v0.89.1, přání uživatele) — odkud kam.
+      ctx.setLineDash([]);
+      // Tečky na obou pivotech RSI (v0.89.1, přání uživatele) — odkud kam;
+      // u rozpracované je druhá dutá (ještě se může posunout).
       ctx.fillStyle = barva;
-      for (const tecka of [a, b]) {
-        ctx.beginPath();
-        ctx.arc(tecka.x, tecka.y, 3.5, 0, Math.PI * 2);
+      ctx.beginPath();
+      ctx.arc(a.x, a.y, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, 3.5, 0, Math.PI * 2);
+      if (rozpr) {
+        ctx.fillStyle = '#0b0f14';
+        ctx.fill();
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.fillStyle = barva;
+      } else {
         ctx.fill();
       }
       // Štítek: pod dnem (býčí), nad vrcholem (medvědí).
-      const text = t(byci ? 'rsiDiv.bull' : 'rsiDiv.bear');
+      const text = t(byci ? 'rsiDiv.bull' : 'rsiDiv.bear') + (rozpr ? '?' : '');
       const sirka = ctx.measureText(text).width + 8;
       const y = b.y + (byci ? 11 : -11);
-      ctx.globalAlpha = 0.85;
-      ctx.fillStyle = barva;
       ctx.beginPath();
       ctx.roundRect?.(b.x - sirka / 2, y - 6.5, sirka, 13, 3);
       if (!ctx.roundRect) ctx.rect(b.x - sirka / 2, y - 6.5, sirka, 13);
-      ctx.fill();
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = '#0b0f14';
+      if (rozpr) {
+        // Obrys místo výplně — „ještě to není hotové".
+        ctx.globalAlpha = 0.85;
+        ctx.fillStyle = 'rgba(11,15,20,0.85)';
+        ctx.fill();
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = barva;
+      } else {
+        ctx.globalAlpha = 0.85;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = '#0b0f14';
+      }
       ctx.fillText(text, b.x, y + 0.5);
     }
   }

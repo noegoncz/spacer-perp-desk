@@ -97,7 +97,8 @@ KONTROLA_RSI = """(async () => {
   const vysl = ind.result || [];
   const vGrafu = vysl.flatMap((x) => x.div || []);
   const data = g.getDataList();
-  const ocekavane = m.divergence(data, vysl.map((x) => x.rsi));
+  const rada = vysl.map((x) => x.rsi);
+  const ocekavane = [...m.divergence(data, rada), ...m.rozpracovane(data, rada)];
   return JSON.stringify({ svicek: data.length, vGrafu: vGrafu.length, ocekavane: ocekavane.length,
     shoda: JSON.stringify(vGrafu.map((d) => [d.typ, d.od.i, d.do.i]).sort()) === JSON.stringify(ocekavane.map((d) => [d.typ, d.od.i, d.do.i]).sort()),
     chyby: (window.__chyby || []).length });

@@ -3448,6 +3448,14 @@ Volby: **RSI divergence**, **rovnou push ze serveru**, timeframy **1h a 4h**.
   nejnižší / nejvyšší cena od prvního, RSI mezi pivoty neprotne spojnici.
   Měřeno na 8 párech × 1h/4h (199 svíček): 23 → 9. Graf kreslí tečky na
   obou pivotech.
+  **v0.89.2 — rozpracovaná divergence** (varianta A uživatele):
+  `rozpracovane()` = druhý pivot mezi posledními `vpravo` svíčkami
+  (částečný pivot, ostatní pravidla platí), `svicekPo` 0–2; v grafu
+  čárkovaně, dutá tečka, „Bull?“. Zmizí-li, nic se nehlásí. Měřeno na
+  100 párech Bybitu (1h ~33 dní, 4h ~133 dní): potvrzené 1h 9,7 / den,
+  4h 2,3 / den na 100 párů; rozpracovaná 2/3 se potvrdí v 84 % (1/3 v
+  72 %), 11,5 + 2,8 / den na 100 párů. Push na rozpracovanou zatím ne
+  (rozhodnutí o rozsahu — seznamy vs. jen zapnuté grafy — čeká).
 - **Server** `server/signaly.mjs` uvnitř hlídače alarmů: po uzavření svíčky
   1h / 4h (+20 s) stáhne REST svíčky hlídaných párů (Bybit
   `/v5/market/kline`, Binance `/fapi/v1/klines`, 200 kusů, 120 ms mezi

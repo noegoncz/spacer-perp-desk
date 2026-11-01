@@ -1,7 +1,7 @@
 // Výpočet RSI divergence a hlídání na serveru (v0.89.0) — spouští
 // tools/test-signaly.py přenosným Node: node tools/test-signaly-node.mjs <kořen repa>
 const koren = process.argv[2].replace(/\\/g, '/');
-const { divergence, novaDivergence, rsi, VYCHOZI } = await import(`file:///${koren}/js/divergence.js`);
+const { divergence, novaDivergence, rozpracovane, novaRozpracovana, rsi, VYCHOZI } = await import(`file:///${koren}/js/divergence.js`);
 const { svicky, spustSignaly } = await import(`file:///${koren}/server/signaly.mjs`);
 
 const chyby = [];
@@ -30,6 +30,14 @@ if (d) {
 }
 over(novaDivergence(rada).some((x) => x.typ === 'byci'), 'poslední svíčka divergenci potvrzuje (push)');
 over(novaDivergence(rada.slice(0, -1)).every((x) => x.typ !== 'byci'), 'o svíčku dřív ještě ne');
+// Rozpracovaná (v0.89.2): před potvrzením se tatáž divergence ukáže s počtem svíček za pivotem.
+for (const k of [0, 1, 2]) {
+  const pref = rada.slice(0, rada.length - VYCHOZI.vpravo + k);
+  const r = rozpracovane(pref).filter((x) => x.typ === 'byci');
+  over(r.length === 1 && r[0].svicekPo === k && d && r[0].do.i === d.do.i, `rozpracovaná ${k}/${VYCHOZI.vpravo}: týž pivot jako potvrzená`);
+}
+over(novaRozpracovana(rada.slice(0, rada.length - 1), 2).length === 1, 'novaRozpracovana(2) = signál 2/3');
+over(!rozpracovane(rada).some((x) => x.typ === 'byci'), 'po potvrzení už není rozpracovaná');
 // Medvědí: zrcadlo ceny.
 const zrcadlo = rada.map((s) => ({ ...s, open: 300 - s.open, high: 300 - s.low, low: 300 - s.high, close: 300 - s.close }));
 over(divergence(zrcadlo, rsi(zrcadlo)).some((x) => x.typ === 'medvedi'), 'medvědí divergence na zrcadlené ceně');
