@@ -129,6 +129,11 @@ export const SCHEMATA = {
     podle(cislo('dolniPasmo', 30, 1, 99), 'zobrazitPasma'),
     podle(prepinac('vypln', true), 'zobrazitPasma'),
     prepinac('pevnaStupnice', true),
+    // Divergence (v0.89.0): stejný výpočet jako upozornění ze serveru.
+    { sekce: 'divergence' },
+    prepinac('divergence', true),
+    podle(barva('barvaByci', '#3ee6a4'), 'divergence'),
+    podle(barva('barvaMedvedi', '#ff6b78'), 'divergence'),
     { sekce: 'style' },
     vyskaPanelu(),
     barva('barvaRsi', '#a78bfa'),

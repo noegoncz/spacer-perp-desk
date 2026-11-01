@@ -51,9 +51,22 @@ export function serverHlidaSymbol(symbol) {
   return i < 0 || BURZY_HLIDACE.includes(s.slice(0, i));
 }
 
+/*
+ * Signálové alarmy (v0.89.0, RSI divergence): aplikace dodá funkci, která
+ * je složí z nastavení, seznamů a pozic (`signaloveAlarmy` v app.js).
+ * Jdou na server stejnou cestou jako cenové; hlídač je pozná podle
+ * `typ: 'divergence'` (server/signaly.mjs).
+ */
+let zdrojSignalu = () => [];
+export function nastavSignaly(fn) {
+  zdrojSignalu = fn;
+  naplanuj();
+}
+export const zmenaSignalu = () => naplanuj();
+
 async function odesli() {
   if (!ucet.prihlasen()) return;
-  const seznam = alarmy.vsechny().filter((a) => serverHlidaSymbol(a.symbol));
+  const seznam = [...alarmy.vsechny().filter((a) => serverHlidaSymbol(a.symbol)), ...zdrojSignalu()];
   const otisk = JSON.stringify(seznam);
   if (otisk === posledniOdeslane) return;
   try {
@@ -141,7 +154,7 @@ export async function odhlasZarizeni() {
 export function spust(h = {}) {
   handlery = h;
   naZmenuDat((klic) => {
-    if (klic === 'perpdesk.alarms') naplanuj();
+    if (klic === 'perpdesk.alarms' || klic === 'perpdesk.lists' || klic === 'perpdesk.signals') naplanuj();
   });
   document.addEventListener('visibilitychange', async () => {
     if (document.visibilityState === 'visible' && await stahniStav()) handlery.onZmena?.();

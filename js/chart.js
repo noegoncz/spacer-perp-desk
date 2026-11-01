@@ -15,6 +15,7 @@ import { createTouchDrawing } from './draw.js';
 import { formatPrice } from './format.js';
 import { t, getLocale } from './i18n.js';
 import { nactiNastaveni, ulozNastaveni, parametryVypoctu, ZDROJE, TYPY_MA, vyhladit } from './indikatory.js';
+import { divergence as najdiDivergence, VYCHOZI as DIVERGENCE } from './divergence.js';
 
 /**
  * Datum a čas pro cenovku u kříže — stejné pásmo jako osa grafu. Volá se při
@@ -2036,15 +2037,24 @@ function registrovatRsi() {
       // Průměr RSI se počítá vždy, i vypnutý — je to jen barva. Tím je
       // přepnutí zobrazení okamžité a nevyžaduje přepočet.
       const prumer = vyhladit(rada, delkaMa, typMa);
-      return rada.map((rsi, i) => (rsi === undefined ? {} : { rsi, ma: prumer[i] }));
+      const vysledek = rada.map((rsi, i) => (rsi === undefined ? {} : { rsi, ma: prumer[i] }));
+      /*
+       * RSI divergence (v0.89.0) — stejný výpočet jako hlídač na serveru
+       * (js/divergence.js), ať je signál z notifikace v grafu na svém místě.
+       * Divergence visí u svíčky svého druhého pivotu (`div`).
+       */
+      for (const d of najdiDivergence(data, rada)) (vysledek[d.do.i].div ||= []).push(d);
+      return vysledek;
     },
     draw: ({ ctx, chart, indicator, bounding }) => {
       const n = nactiNastaveni('RSI');
-      if (!n.zobrazitPasma) return false;
-      const naY = (hodnota) => {
-        const b = chart.convertToPixel({ value: hodnota }, { paneId: indicator.paneId });
-        return Array.isArray(b) ? b[0].y : b.y;
+      const bod = (dataIndex, hodnota) => {
+        const b = chart.convertToPixel({ dataIndex, value: hodnota }, { paneId: indicator.paneId });
+        return Array.isArray(b) ? b[0] : b;
       };
+      const naY = (hodnota) => bod(0, hodnota).y;
+      if (n.divergence !== false) kresliDivergence(ctx, chart, indicator, n, bod);
+      if (!n.zobrazitPasma) return false;
       const horni = naY(Number(n.horniPasmo));
       const dolni = naY(Number(n.dolniPasmo));
       if (!Number.isFinite(horni) || !Number.isFinite(dolni)) return false;
@@ -2069,6 +2079,53 @@ function registrovatRsi() {
       return false; // křivky nad pásmy dokreslí knihovna
     },
   });
+}
+
+/**
+ * Úsečky divergence mezi dvěma pivoty RSI a štítek u druhého (jako
+ * TradingView): býčí zeleně pod křivkou, medvědí červeně nad ní.
+ */
+function kresliDivergence(ctx, chart, indicator, n, bod) {
+  const rozsah = chart.getVisibleRange();
+  const vysledek = indicator.result || [];
+  if (!rozsah) return;
+  ctx.save();
+  ctx.font = '600 9px -apple-system, "Segoe UI", Roboto, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  // Úsečka sahá až 60 svíček dozadu — i divergence končící za pravým
+  // okrajem může mít začátek v obraze.
+  const do_ = Math.min(vysledek.length, rozsah.to + DIVERGENCE.odstupMax);
+  for (let i = Math.max(0, rozsah.from); i < do_; i += 1) {
+    for (const d of vysledek[i]?.div || []) {
+      const byci = d.typ === 'byci';
+      const barva = byci ? n.barvaByci || '#3ee6a4' : n.barvaMedvedi || '#ff6b78';
+      const a = bod(d.od.i, d.od.rsi);
+      const b = bod(d.do.i, d.do.rsi);
+      if (![a.x, a.y, b.x, b.y].every(Number.isFinite)) continue;
+      ctx.globalAlpha = 0.95;
+      ctx.strokeStyle = barva;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+      // Štítek: pod dnem (býčí), nad vrcholem (medvědí).
+      const text = t(byci ? 'rsiDiv.bull' : 'rsiDiv.bear');
+      const sirka = ctx.measureText(text).width + 8;
+      const y = b.y + (byci ? 11 : -11);
+      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = barva;
+      ctx.beginPath();
+      ctx.roundRect?.(b.x - sirka / 2, y - 6.5, sirka, 13, 3);
+      if (!ctx.roundRect) ctx.rect(b.x - sirka / 2, y - 6.5, sirka, 13);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#0b0f14';
+      ctx.fillText(text, b.x, y + 0.5);
+    }
+  }
+  ctx.restore();
 }
 
 function styly() {

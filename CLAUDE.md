@@ -3430,6 +3430,55 @@ telefon (účet, alarmy) ──PUT /api/account/alarms──▶ perpyx.com (D1)
   (aplikace → perpyx.com → hlídač na Hetzneru → Firebase; alarm těsně
   u ceny BTC, vymyšlený token musí Firebase odmítnout a hlídač smazat).
 
+## Signály v grafech — RSI divergence (v0.89.0, 2026-11-01)
+
+Přání uživatele: hlídání signálů na grafech má přednost před ostatním.
+Volby: **RSI divergence**, **rovnou push ze serveru**, timeframy **1h a 4h**.
+
+- **Výpočet** `js/divergence.js` (sdílený jako alarmy-logika.js — nic, co
+  v Node není): RSI Wilder 14 z close, pivoty RSI 5 vlevo / **3 vpravo**
+  (TradingView 5 — na 4h by signál chodil o 20 h později), porovnání
+  s **předchozím** pivotem téhož druhu 5–60 svíček zpět; býčí = RSI vyšší
+  dno + low nižší, medvědí = RSI nižší vrchol + high vyšší. Potvrzená
+  `vpravo` svíček po pivotu. Naostro (BTC 1h, ~8 dní): 4 divergence.
+- **Server** `server/signaly.mjs` uvnitř hlídače alarmů: po uzavření svíčky
+  1h / 4h (+20 s) stáhne REST svíčky hlídaných párů (Bybit
+  `/v5/market/kline`, Binance `/fapi/v1/klines`, 200 kusů, 120 ms mezi
+  dotazy), jen uzavřené; když burza ještě nemá čekanou svíčku, pár
+  přeskočí. Push každému účtu jednou (`odeslano` symbol|tf|pivot|typ),
+  text v jazyce účtu „Býčí RSI divergence · 1h", ikonka nahoru / dolů,
+  data `{ typ: 'divergence', symbol, interval, titulek, text }`. Po
+  restartu se svíčka zavřená před > 10 min nehlásí. Stav v `info`
+  hlídače (`sig:…`). ⚠ **Server restartuje hlídač jen při změně
+  hlidac.mjs / alarmy-logika.js** → po změně signaly.mjs nebo
+  divergence.js zvedni `VERZE_SIGNALU` v hlidac.mjs (cloud-init už oba
+  soubory má, platí až pro nový server).
+- **Aplikace → server stejnou cestou jako alarmy** (`PUT /api/account/alarms`,
+  bez migrace): záznamy `{ id: 'sig-N', typ: 'divergence', symbol:
+  'signaly', symboly: [...], intervaly: ['60','240'] }`, páry ze **všech
+  seznamů + otevřených pozic**, jen burzy hlídače (Bybit, Binance), po
+  120 v záznamu (strop 4 000 znaků), nejvýš 400. Skládá `signaloveAlarmy`
+  (app.js, `alarmyServer.nastavSignaly`); posílá se při změně
+  `perpdesk.lists`, `perpdesk.signals` i sady pozic (`hlidejParySignalu`).
+  Hlídač je od cenových odděluje podle `typ` (ticker je neodebírá).
+- **Nastavení → Signály v grafech** (`#signalsCard`): přepínač, čipy 1h / 4h,
+  počet hlídaných párů nebo výzva zapnout push. `perpdesk.signals`
+  (zálohuje se), výchozí zapnuto s 1h + 4h.
+- **Graf:** RSI kreslí divergence ve svém panelu (`kresliDivergence`
+  v chart.js, výpočet v `calc` → `result[i].div`), úsečka mezi pivoty
+  a štítek Bull / Bear; v nastavení RSI sekce Divergence (přepínač, barvy).
+  Graf počítá z RSI uživatele (délka, zdroj), server vždy 14 / close.
+- **Notifikace:** klepnutí otevře graf páru **na timeframu signálu**
+  (`otevriGrafZNotifikace(symbol, interval)` uloží interval do vzhledu
+  grafu páru; otevřený graf jen přepne timeframe). Push do otevřené
+  aplikace → místní notifikace s textem z dat.
+- Testy: `tools/test-signaly.py <url> [node.exe]` (aplikace + volitelně
+  `test-signaly-node.mjs`: výpočet, svíčky naostro, zpracování svíčky),
+  `test-hlidac.py`.
+- **Zbývá:** ověřit na telefonu (push přijde, graf na 1h / 4h); případně
+  další signály (překoupeno/přeprodáno, skrytá divergence) a výběr
+  seznamů, které se hlídají.
+
 ## Likvidační mapa Hyperliquidu — sběr na serveru (2026-10-21)
 
 Rozhodnutí uživatele: **přesnost, ne odhad** (Coinglass / Coinee počítají

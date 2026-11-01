@@ -432,6 +432,9 @@ main {
 }
 .chip:active { background: var(--surface-2); }
 .chip.active { border-color: var(--accent); color: var(--text); background: rgba(76, 154, 255, 0.14); }
+/* Timeframy signálů v nastavení (v0.89.0). */
+.signaly-tf { margin: 2px 0 8px; }
+.signaly-tf .chip:disabled { opacity: 0.4; }
 .chip-count { font-size: 0.7rem; color: var(--text-dim); font-variant-numeric: tabular-nums; }
 .chip.active .chip-count { color: var(--accent); }
 

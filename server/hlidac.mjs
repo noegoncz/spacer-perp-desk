@@ -22,6 +22,14 @@
 import { readFileSync } from 'node:fs';
 import { createSign } from 'node:crypto';
 import { uroven, protnuto, dobehla, vyprsel, smerPruniku } from '../js/alarmy-logika.js';
+import { spustSignaly } from './signaly.mjs';
+
+/*
+ * ⚠ Server restartuje hlídač jen při změně hlidac.mjs / alarmy-logika.js
+ * (cloud-init.yaml, běžící server). Po změně signaly.mjs nebo
+ * js/divergence.js zvedni tohle číslo, ať se změna projeví.
+ */
+const VERZE_SIGNALU = 1;
 
 const API = (process.env.API || 'https://perpyx.com').replace(/\/$/, '');
 const TOKEN = process.env.WATCHER_TOKEN || '';
@@ -124,6 +132,7 @@ let stavFcm = 'zatím nic';
 /* ---------- alarmy z perpyx.com ---------- */
 
 let alarmy = [];            // zapnuté alarmy všech účtů
+let signalove = [];         // signálové alarmy (typ 'divergence', server/signaly.mjs)
 let tokeny = {};            // účet → [push tokeny]
 const spusteneTed = new Set();   // jednorázové, které už zazněly (do další obnovy)
 
@@ -140,9 +149,11 @@ async function watcherApi(cesta, telo) {
 
 async function obnovAlarmy() {
   try {
-    const info = `par:${ceny.size} ws:${stavWs} bn:${stavBn} alarmu:${alarmy.length} fcm:${stavFcm}`;
+    const info = `par:${ceny.size} ws:${stavWs} bn:${stavBn} alarmu:${alarmy.length} sig:${signalove.length}/${signaly?.stav() || '-'} v${VERZE_SIGNALU} fcm:${stavFcm}`;
     const d = await watcherApi(`/api/watcher/alarms?info=${encodeURIComponent(info)}`);
-    alarmy = (d.alarms || []).filter((a) => !spusteneTed.has(`${a.account}:${a.id}`));
+    const vse = d.alarms || [];
+    signalove = vse.filter((a) => a.typ === 'divergence');
+    alarmy = vse.filter((a) => a.typ !== 'divergence' && !spusteneTed.has(`${a.account}:${a.id}`));
     tokeny = d.tokens || {};
     spusteneTed.clear();
     prihlasOdbery();
@@ -378,6 +389,26 @@ function pripojBinance() {
   spojeni.addEventListener('error', () => { /* zavření řeší 'close' */ });
 }
 
+/* ---------- signály (RSI divergence) ---------- */
+
+let signaly = null;
+
+async function posliSignal(account, { titulek, text, smer, data }) {
+  const s = SMER[smer];
+  const neplatne = [];
+  for (const t of tokeny[account] || []) {
+    const v = await posliPush(t, { titulek, text, data, ...(s ? { ikona: s.ikona, barva: s.barva } : {}) });
+    if (v === 'neplatny') neplatne.push(t);
+  }
+  if (neplatne.length) {
+    try {
+      await watcherApi('/api/watcher/fired', { invalidTokens: neplatne });
+    } catch (e) {
+      log('hlášení neplatných tokenů selhalo:', e.message);
+    }
+  }
+}
+
 /* ---------- start ---------- */
 
 if (!TOKEN) {
@@ -388,5 +419,6 @@ if (!ZKOUSKA) nactiFcm();
 log(`hlídač startuje (API ${API}${ZKOUSKA ? ', ZKOUŠKA' : ''})`);
 await obnovAlarmy();
 pripoj();
+signaly = spustSignaly({ alarmy: () => signalove, posli: posliSignal, log });
 setInterval(obnovAlarmy, OBNOVA_ALARMU);
 setInterval(zkontrolujCasove, CASOVE_ALARMY);

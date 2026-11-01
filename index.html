@@ -717,6 +717,25 @@
       <div id="exchangeList"></div>
     </div>
 
+    <!-- Signály v grafech (v0.89.0): RSI divergence hlídá server a pošle
+         push (server/signaly.mjs). Páry ze seznamů a pozic. -->
+    <div class="card" id="signalsCard">
+      <h2 data-i18n="signals.title">Chart signals</h2>
+      <div class="switch-row">
+        <span data-i18n="signals.divergence">RSI divergence alerts</span>
+        <button type="button" id="signalsDivBtn" class="nastaveni-prepinac" aria-pressed="true"
+                data-i18n-aria="signals.divergence"></button>
+      </div>
+      <div class="chip-row signaly-tf">
+        <button type="button" class="chip" data-interval-signalu="60" aria-pressed="true">1h</button>
+        <button type="button" class="chip" data-interval-signalu="240" aria-pressed="true">4h</button>
+      </div>
+      <p class="hint" id="signalsState"></p>
+      <p class="hint" data-i18n="signals.hint">A notification when a bullish or bearish RSI
+        divergence is confirmed on a closed candle — for pairs in your watchlists and open
+        positions on Bybit and Binance. Informational only, not a trade signal to rely on.</p>
+    </div>
+
     <div class="card">
       <h2 data-i18n="settings.general">General</h2>
 
