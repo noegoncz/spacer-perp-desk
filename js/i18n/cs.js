@@ -172,6 +172,7 @@ export const cs = {
   'rsiDiv.bull': 'Býk',
   'rsiDiv.bear': 'Medvěd',
   'signals.bell': 'Notifikace RSI divergence',
+  'signals.bellLabel': 'RSI signál',
   'signals.sheetTitle': 'Notifikace RSI divergence',
   'signals.rsiDiv': 'RSI divergence',
   'signals.timeframes': 'Timeframy',

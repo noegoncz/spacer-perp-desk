@@ -2108,10 +2108,22 @@ function kresliDivergence(ctx, chart, indicator, n, bod) {
       const b = bod(d.do.i, d.do.rsi);
       if (![a.x, a.y, b.x, b.y].every(Number.isFinite)) continue;
       const rozpr = Boolean(d.rozpracovana);
-      ctx.globalAlpha = rozpr ? 0.7 : 0.95;
+      // Svislé čárky od bodů nahoru (v0.90.1) — navazují na čárky v ploše
+      // svíček (indikátor DIVCARY), ať je vidět, ke kterým svíčkám patří.
+      ctx.globalAlpha = 0.28;
       ctx.strokeStyle = barva;
-      ctx.lineWidth = rozpr ? 1.5 : 2;
-      ctx.setLineDash(rozpr ? [5, 4] : []);
+      ctx.lineWidth = 1;
+      ctx.setLineDash([2, 4]);
+      for (const tecka of [a, b]) {
+        ctx.beginPath();
+        ctx.moveTo(Math.round(tecka.x) + 0.5, tecka.y);
+        ctx.lineTo(Math.round(tecka.x) + 0.5, 0);
+        ctx.stroke();
+      }
+      // Jemněji (v0.90.1, uživatel: „ať to není tak dominantní").
+      ctx.globalAlpha = rozpr ? 0.5 : 0.75;
+      ctx.lineWidth = rozpr ? 1 : 1.25;
+      ctx.setLineDash(rozpr ? [4, 4] : []);
       ctx.beginPath();
       ctx.moveTo(a.x, a.y);
       ctx.lineTo(b.x, b.y);
@@ -2121,14 +2133,14 @@ function kresliDivergence(ctx, chart, indicator, n, bod) {
       // u rozpracované je druhá dutá (ještě se může posunout).
       ctx.fillStyle = barva;
       ctx.beginPath();
-      ctx.arc(a.x, a.y, 3.5, 0, Math.PI * 2);
+      ctx.arc(a.x, a.y, 2.5, 0, Math.PI * 2);
       ctx.fill();
       ctx.beginPath();
-      ctx.arc(b.x, b.y, 3.5, 0, Math.PI * 2);
+      ctx.arc(b.x, b.y, 2.5, 0, Math.PI * 2);
       if (rozpr) {
         ctx.fillStyle = '#0b0f14';
         ctx.fill();
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 1;
         ctx.stroke();
         ctx.fillStyle = barva;
       } else {
@@ -2137,13 +2149,14 @@ function kresliDivergence(ctx, chart, indicator, n, bod) {
       // Štítek: pod dnem (býčí), nad vrcholem (medvědí).
       const text = t(byci ? 'rsiDiv.bull' : 'rsiDiv.bear') + (rozpr ? '?' : '');
       const sirka = ctx.measureText(text).width + 8;
-      const y = b.y + (byci ? 11 : -11);
+      const y = b.y + (byci ? 10 : -10);
+      ctx.globalAlpha = 0.75;
       ctx.beginPath();
       ctx.roundRect?.(b.x - sirka / 2, y - 6.5, sirka, 13, 3);
       if (!ctx.roundRect) ctx.rect(b.x - sirka / 2, y - 6.5, sirka, 13);
       if (rozpr) {
         // Obrys místo výplně — „ještě to není hotové".
-        ctx.globalAlpha = 0.85;
+        ctx.globalAlpha = 0.6;
         ctx.fillStyle = 'rgba(11,15,20,0.85)';
         ctx.fill();
         ctx.lineWidth = 1;
@@ -2151,9 +2164,9 @@ function kresliDivergence(ctx, chart, indicator, n, bod) {
         ctx.globalAlpha = 1;
         ctx.fillStyle = barva;
       } else {
-        ctx.globalAlpha = 0.85;
+        ctx.globalAlpha = 0.6;
         ctx.fill();
-        ctx.globalAlpha = 1;
+        ctx.globalAlpha = 0.9;
         ctx.fillStyle = '#0b0f14';
       }
       ctx.fillText(text, b.x, y + 0.5);
@@ -2584,6 +2597,58 @@ export function createPriceChart(container, layer, handlers = {}) {
    * zůstává a s odkrytím se vrátí.
    */
   const vrstvy = { kresby: true, alarmy: true, indikatory: true, obchod: true, likvidace: true, zdi: true, likvidovano: true };
+
+  /*
+   * Svislé čárky divergence v ploše svíček (v0.90.1, přání uživatele):
+   * velmi jemné, čárkované, od spodního okraje ke knotu svíčky pivotu RSI
+   * (býčí k low, medvědí k high) — navazují na čárky z panelu RSI, ať je
+   * vidět, na kterých svíčkách divergence je. Indikátor bez figur je
+   * v hlavním panelu pořád; kreslí jen s RSI v grafu (a se zapnutou
+   * divergencí), data bere z výsledku RSI.
+   */
+  K().registerIndicator({
+    name: 'DIVCARY',
+    shortName: '',
+    series: 'price',
+    figures: [],
+    calc: (data) => data.map(() => ({})),
+    draw: ({ ctx, bounding }) => {
+      const n = nactiNastaveni('RSI');
+      if (!aktivniIndikatory.has('RSI') || !vrstvy.indikatory || n.divergence === false || jeSbaleny('RSI')) return true;
+      const rsi = chart.getIndicators({ name: 'RSI' })?.[0];
+      const vysledek = rsi?.result || [];
+      const data = chart.getDataList();
+      const rozsah = chart.getVisibleRange();
+      if (!rozsah || !vysledek.length) return true;
+      const px = (i, v) => chart.convertToPixel({ dataIndex: i, value: v }, { paneId: HLAVNI_PANEL });
+      ctx.save();
+      ctx.lineWidth = 1;
+      ctx.setLineDash([2, 4]);
+      const konec = Math.min(vysledek.length, rozsah.to + DIVERGENCE.odstupMax);
+      for (let i = Math.max(0, rozsah.from); i < konec; i += 1) {
+        for (const d of vysledek[i]?.div || []) {
+          const byci = d.typ === 'byci';
+          ctx.strokeStyle = byci ? n.barvaByci || '#3ee6a4' : n.barvaMedvedi || '#ff6b78';
+          ctx.globalAlpha = d.rozpracovana ? 0.16 : 0.24;
+          for (const j of [d.od.i, d.do.i]) {
+            const s = data[j];
+            if (!s) continue;
+            const p = px(j, byci ? s.low : s.high);
+            if (!Number.isFinite(p?.x) || !Number.isFinite(p?.y)) continue;
+            const x = Math.round(p.x) + 0.5;
+            // Od spodního okraje ke knotu (býčí kousek pod low, medvědí nad high).
+            ctx.beginPath();
+            ctx.moveTo(x, bounding.height);
+            ctx.lineTo(x, byci ? p.y + 6 : p.y - 6);
+            ctx.stroke();
+          }
+        }
+      }
+      ctx.restore();
+      return true;
+    },
+  });
+  chart.createIndicator({ name: 'DIVCARY', paneId: HLAVNI_PANEL, createTooltipDataSource: () => ({ name: '', calcParamsText: '', legends: [] }) }, true);
   let mapaZapnuta = false;
   let zdiZapnute = false;
   let bublinyZapnute = false;
@@ -2930,9 +2995,12 @@ export function createPriceChart(container, layer, handlers = {}) {
     zv.type = 'button';
     zv.className = 'pane-zvonek';
     zv.setAttribute('aria-label', t('signals.bell'));
+    // v0.90.1 (uživatel): štítek „RSI signal" se zvonkem, sám zvonek nebyl pochopitelný.
     zv.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.5h-15z" '
       + 'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>'
-      + '<path d="M10 20.5a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+      + '<path d="M10 20.5a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>'
+      + '<span class="pane-zvonek-text"></span>';
+    zv.lastChild.textContent = t('signals.bellLabel');
     zv.addEventListener('click', (e) => {
       e.stopPropagation();
       if (s.dataset.nazev) handlers.onPaneBell?.(s.dataset.nazev);
@@ -3030,6 +3098,7 @@ export function createPriceChart(container, layer, handlers = {}) {
       nahoru.hidden = poradi.length < 2 || kde <= 0;
       dolu.hidden = poradi.length < 2 || kde === poradi.length - 1;
       zv.hidden = !maZvonek;
+      zv.lastChild.textContent = t('signals.bellLabel');   // i po změně jazyka
       zv.classList.toggle('on', zvonkyPanelu.has(nazev));
       zv.setAttribute('aria-pressed', String(zvonkyPanelu.has(nazev)));
       s.style.top = `${b.top + ODSAZENI_SIPEK}px`;

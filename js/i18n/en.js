@@ -176,6 +176,7 @@ export const en = {
   'rsiDiv.bull': 'Bull',
   'rsiDiv.bear': 'Bear',
   'signals.bell': 'RSI divergence notifications',
+  'signals.bellLabel': 'RSI signal',
   'signals.sheetTitle': 'RSI divergence notifications',
   'signals.rsiDiv': 'RSI divergence',
   'signals.timeframes': 'Timeframes',

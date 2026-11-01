@@ -1756,7 +1756,8 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
 }
 .pane-poradi button:active { opacity: 1; background: rgba(30, 38, 52, 0.8); }
 /* Zvonek notifikací v panelu (v0.90.0): zapnutý svítí barvou akcentu. */
-.pane-poradi .pane-zvonek svg { width: 14px; height: 14px; }
+.pane-poradi .pane-zvonek { width: auto; padding: 0 7px; display: flex; gap: 4px; font-size: 10.5px; font-weight: 600; white-space: nowrap; }
+.pane-poradi .pane-zvonek svg { width: 12px; height: 12px; }
 .pane-poradi .pane-zvonek.on { opacity: 1; color: var(--accent); background: rgba(76, 154, 255, 0.18); }
 .pane-poradi svg { width: 12px; height: 12px; }
 

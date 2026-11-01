@@ -3478,6 +3478,13 @@ Volby: **RSI divergence**, **rovnou push ze serveru**, timeframy **1h a 4h**.
   s `detaily`. **Do budoucna:** počet pravidel může mít strop podle
   předplatného (`signaly.pocet`), zatím neomezeně (paměť
   `predplatne-limity`).
+  **v0.90.1 (uživatel):** místo holého zvonku štítek „🔔 RSI signal“
+  (`.pane-zvonek-text`, `signals.bellLabel`); divergence jemnější (čára
+  1,25 / rozpracovaná 1 px, tečky r 2,5, štítek průhlednější) a od bodů
+  vedou jemné tečkované svislé čáry nahoru — v RSI k hornímu okraji,
+  v ploše svíček od spodu ke knotu svíčky pivotu (indikátor `DIVCARY`
+  bez figur, v hlavním panelu pořád, kreslí jen s RSI v grafu; data
+  z `result` RSI).
   ⚠ `test-zalozka-alarmy.py` padal už před v0.90.0 (přejetí z Deníku
   nejdřív projde podzáložky) — opraveno spolu s přestavbou.
 - **Server** `server/signaly.mjs` uvnitř hlídače alarmů: po uzavření svíčky

@@ -64,7 +64,8 @@ def stav():
         kresby: vid('kresby'), kresbyVse: vse('kresby'),
         alarmy: vid('alarmy'), alarmyVse: vse('alarmy'),
         pozice: vid('pozice'), poziceVse: vse('pozice'), znacky: vid('znacky'),
-        ind: g.getIndicators().map((i) => i.name).sort(),
+        // DIVCARY (v0.90.1) je pomocná vrstva divergence bez dat — sama nic nekreslí.
+        ind: g.getIndicators().map((i) => i.name).filter((n) => n !== 'DIVCARY').sort(),
         svicky: g.getSize('candle_pane', 'main')?.height || 0,
         sviti: document.getElementById('layersBtn').classList.contains('active'),
       }); })()""") or '{}')
