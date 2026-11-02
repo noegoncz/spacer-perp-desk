@@ -1,17 +1,17 @@
 {
-  "verze": "0.90.2",
+  "verze": "0.90.3",
   "novinky": [
     {
-      "en": "RSI divergence notifications per pair: tap “RSI signal” in the RSI panel, pick any timeframes and when to be notified — early (1/3, 2/3) or once confirmed. Only the pairs you choose, not your whole watchlist.",
-      "cs": "Notifikace RSI divergence po párech: klepni na „RSI signál“ v panelu RSI, vyber libovolné timeframy a kdy upozornit — předem (1/3, 2/3) nebo až potvrzenou. Jen páry, které si vybereš, ne celé seznamy."
+      "en": "RSI divergence notifications per pair: tap “RSI signal” in the RSI panel, pick any timeframes and when to be notified — early 1/3, early 2/3, once confirmed, or any combination of them. Only the pairs you choose.",
+      "cs": "Notifikace RSI divergence po párech: klepni na „RSI signál“ v panelu RSI, vyber libovolné timeframy a kdy upozornit — předem 1/3, předem 2/3, potvrzenou, nebo jejich libovolnou kombinaci. Jen páry, které si vybereš."
     },
     {
       "en": "The Alerts tab is now Notifications: Alerts (active / inactive) and RSI divergence, each with an overview to switch off or delete.",
       "cs": "Záložka Alarmy je teď Notifikace: Alarmy (aktivní / neaktivní) a RSI divergence, každé s přehledem k vypnutí a smazání."
     },
     {
-      "en": "Divergences in RSI are subtler, and faint purple dotted lines (the colour of the RSI line) lead up to the candles they belong to. Divergences still forming show as a dashed line with “Bull?” / “Bear?”.",
-      "cs": "Divergence v RSI jsou jemnější a slabé fialové tečkované čáry (barvou křivky RSI) vedou nahoru ke svíčkám, ke kterým patří. Rýsující se divergence jsou čárkované s „Býk?“ / „Medvěd?“."
+      "en": "Divergences in RSI are subtler, and subtle purple dotted lines (the colour of the RSI line) lead up to the candles they belong to. Divergences still forming show as a dashed line with “Bull?” / “Bear?”.",
+      "cs": "Divergence v RSI jsou jemnější a jemné fialové tečkované čáry (barvou křivky RSI) vedou nahoru ke svíčkám, ke kterým patří. Rýsující se divergence jsou čárkované s „Býk?“ / „Medvěd?“."
     }
   ],
   "opravy": [

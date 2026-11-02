@@ -17,9 +17,19 @@ const KLIC = 'perpdesk.signals';
 /** Timeframy, které hlídač umí (Bybit / Binance). */
 export const INTERVALY = ['1', '5', '15', '30', '60', '240', 'D', 'W'];
 
-/** Kdy upozornit: 1 / 2 = rozpracovaná (svíček za pivotem), 3 = potvrzená. */
+/**
+ * Kdy upozornit: 1 / 2 = rozpracovaná (svíček za pivotem), 3 = potvrzená.
+ * v0.90.3 (uživatel): libovolná kombinace — pravidlo nese pole `faze`.
+ */
 export const FAZE = [1, 2, 3];
-export const VYCHOZI_FAZE = 2;
+export const VYCHOZI_FAZE = [2];
+
+/** Fáze pravidla jako seřazené pole (pravidla z v0.90.0–0.90.2 mají číslo). */
+export function fazePravidla(p) {
+  const f = Array.isArray(p?.faze) ? p.faze : [p?.faze];
+  const platne = FAZE.filter((x) => f.map(Number).includes(x));
+  return platne.length ? platne : [...VYCHOZI_FAZE];
+}
 
 /** Burzy, jejichž svíčky hlídač stahuje. */
 const BURZY = ['bybit', 'binance'];
@@ -37,6 +47,7 @@ function nacti() {
   // Verze 1 (v0.89.x) hlídala plošně páry seznamů — pravidla po párech
   // ji nahrazují, nic se nepřevádí (uživatel: „nechci všude").
   pamet = Array.isArray(d?.pravidla) ? d.pravidla.filter((p) => p && p.id && p.klic) : [];
+  for (const p of pamet) p.faze = fazePravidla(p);
   return pamet;
 }
 
@@ -60,6 +71,7 @@ export function uloz(pravidlo) {
     vytvoreno: Date.now(),
     ...(i >= 0 ? seznam[i] : {}),
     ...pravidlo,
+    faze: fazePravidla(pravidlo.faze ? pravidlo : (i >= 0 ? seznam[i] : null)),
     intervaly: INTERVALY.filter((x) => (pravidlo.intervaly || []).includes(x)),
     zmeneno: Date.now(),
   };
@@ -93,7 +105,7 @@ export function proServer() {
     symbol: p.klic,
     symboly: [p.klic],
     intervaly: p.intervaly,
-    faze: p.faze,
+    faze: fazePravidla(p),
     aktivni: Boolean(p.aktivni),
     opakovat: true,
     zmeneno: p.zmeneno || 0,

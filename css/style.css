@@ -3488,3 +3488,7 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 .map-detail-radky span.short { color: rgb(255,150,50); }
 .map-detail-radky span.nakup { color: #3ee6a4; }
 .map-detail-radky span.prodej { color: #f6465d; }
+
+/* Nápověda ke každé vybrané fázi signálu na vlastním řádku (v0.90.3). */
+.signal-faze-radek { display: block; }
+.signal-faze-radek + .signal-faze-radek { margin-top: 4px; }

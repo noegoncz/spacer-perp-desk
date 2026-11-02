@@ -131,11 +131,26 @@ over(len(okno.get('tf', [])) == 8 and [x[0] for x in okno['tf'] if x[1]] == ['4h
 over(okno.get('faze') == [False, True, False] and not okno.get('smazat'), 'výchozí „Předem 2/3", bez Smazat')
 ev("[...document.querySelectorAll('#signalTf .chip')].find((b) => b.textContent === '1h').click()")
 ev("[...document.querySelectorAll('#signalTf .chip')].find((b) => b.textContent === '1D').click()")
+# v0.90.3: fáze jdou kombinovat — přidat Potvrzenou, odebrat a vrátit 2/3.
+ev("document.querySelectorAll('#signalFaze .chip')[2].click()")
+ev("document.querySelectorAll('#signalFaze .chip')[1].click()")
+ev("document.querySelectorAll('#signalFaze .chip')[0].click()")
+ev("document.querySelectorAll('#signalFaze .chip')[0].click()")
+ev("document.querySelectorAll('#signalFaze .chip')[1].click()")
+kombinace = json.loads(ev("""JSON.stringify({ faze: [...document.querySelectorAll('#signalFaze .chip')].map((b) => b.classList.contains('active')),
+  napovedy: document.querySelectorAll('#signalFazeHint .signal-faze-radek').length })""") or '{}')
+over(kombinace.get('faze') == [False, True, True] and kombinace.get('napovedy') == 2,
+     f'víc fází naráz (2/3 + Potvrzená), nápověda ke každé: {kombinace}')
+ev("document.querySelectorAll('#signalFaze .chip')[1].click()")
+ev("document.querySelectorAll('#signalFaze .chip')[2].click()")
+over(ev("document.getElementById('signalSaveBtn').disabled"), 'bez vybrané fáze nejde uložit')
+ev("document.querySelectorAll('#signalFaze .chip')[1].click()")
+ev("document.querySelectorAll('#signalFaze .chip')[2].click()")
 ev("document.getElementById('signalSaveBtn').click()")
 time.sleep(2.8)
 sig = posledniSignaly()
 over(sig and len(sig) == 1 and sig[0]['symbol'] == 'JUPUSDT' and sig[0]['intervaly'] == ['60', '240', 'D']
-     and sig[0]['faze'] == 2 and sig[0]['aktivni'] and sig[0]['id'].startswith('sig-'),
+     and sig[0]['faze'] == [2, 3] and sig[0]['aktivni'] and sig[0]['id'].startswith('sig-'),
      f'na server jde pravidlo páru: {sig}')
 over(ev("[...document.querySelectorAll('.pane-poradi')].find((s) => s.dataset.nazev === 'RSI').querySelector('.pane-zvonek').classList.contains('on')"),
      'zvonek po uložení svítí')
@@ -154,7 +169,7 @@ ev("document.querySelector('#alertsTabs [data-id=\"rsi\"]').click()")
 time.sleep(0.6)
 r = json.loads(ev("""JSON.stringify({ rezim: !document.getElementById('alertsRezim').hidden,
   radky: [...document.querySelectorAll('#alertsList .alert-row')].map((x) => x.textContent) })""") or '{}')
-over(not r.get('rezim') and len(r.get('radky', [])) == 1 and 'JUPUSDT' in r['radky'][0] and '1h · 4h · 1D' in r['radky'][0],
+over(not r.get('rezim') and len(r.get('radky', [])) == 1 and 'JUPUSDT' in r['radky'][0] and '1h · 4h · 1D' in r['radky'][0] and '2/3 · ' in r['radky'][0],
      f'RSI: řádek páru s timeframy, Active/Inactive schované: {r}')
 ev("document.querySelector('#alertsList .alert-row .nastaveni-prepinac').click()")
 time.sleep(2.8)

@@ -2111,7 +2111,8 @@ function kresliDivergence(ctx, chart, indicator, n, bod) {
       // Svislé čárky od bodů nahoru (v0.90.1) — navazují na čárky v ploše
       // svíček (indikátor DIVCARY), ať je vidět, ke kterým svíčkám patří.
       // v0.90.2 (uživatel): fialově jako křivka RSI, ne barvou divergence.
-      ctx.globalAlpha = 0.22;
+      // v0.90.3: o kousek výraznější — 0,22 nebylo vidět.
+      ctx.globalAlpha = rozpr ? 0.3 : 0.4;
       ctx.strokeStyle = n.barvaRsi || '#a78bfa';
       ctx.lineWidth = 1;
       ctx.setLineDash([2, 4]);
@@ -2631,7 +2632,7 @@ export function createPriceChart(container, layer, handlers = {}) {
           const byci = d.typ === 'byci';
           // Fialově jako křivka RSI (v0.90.2) — červená / zelená mátla.
           ctx.strokeStyle = n.barvaRsi || '#a78bfa';
-          ctx.globalAlpha = d.rozpracovana ? 0.14 : 0.2;
+          ctx.globalAlpha = d.rozpracovana ? 0.26 : 0.36;
           for (const j of [d.od.i, d.do.i]) {
             const s = data[j];
             if (!s) continue;

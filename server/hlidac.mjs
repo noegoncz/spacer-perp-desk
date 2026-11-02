@@ -29,7 +29,7 @@ import { spustSignaly } from './signaly.mjs';
  * (cloud-init.yaml, běžící server). Po změně signaly.mjs nebo
  * js/divergence.js zvedni tohle číslo, ať se změna projeví.
  */
-const VERZE_SIGNALU = 3;   // v0.90.0: pravidla po párech, fáze, všechny timeframy
+const VERZE_SIGNALU = 4;   // v0.90.3: víc fází v jednom pravidle (v0.90.0: pravidla po párech)
 
 const API = (process.env.API || 'https://perpyx.com').replace(/\/$/, '');
 const TOKEN = process.env.WATCHER_TOKEN || '';

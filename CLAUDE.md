@@ -3492,6 +3492,11 @@ Volby: **RSI divergence**, **rovnou push ze serveru**, timeframy **1h a 4h**.
   táhnout výšku panelu; test na 673 px to nechytil. Řádek je teď pod
   zónou úchytu (`ODSAZENI_SIPEK = 14`). Test: konec
   `test-vyska-panelu-tazenim.py` (344 px, celé madlo patří úchytu).
+  **v0.90.3 (uživatel):** čárky výraznější (RSI 0,4 / rozpracovaná 0,3,
+  svíčky 0,36 / 0,26). **Fáze jdou kombinovat** — pravidlo nese pole
+  `faze` (`signaly.fazePravidla` převede staré číslo), každá vybraná fáze
+  přijde jako vlastní notifikace (klíč `odeslano` na serveru i s fází).
+  `VERZE_SIGNALU = 4`.
   ⚠ `test-zalozka-alarmy.py` padal už před v0.90.0 (přejetí z Deníku
   nejdřív projde podzáložky) — opraveno spolu s přestavbou.
 - **Server** `server/signaly.mjs` uvnitř hlídače alarmů: po uzavření svíčky

@@ -121,9 +121,10 @@ export function spustSignaly({ alarmy, posli, log }) {
           3: novaDivergence(rada),
         };
         for (const a of kdo) {
-          const faze = [1, 2, 3].includes(Number(a.faze)) ? Number(a.faze) : 2;
-          for (const d of podleFaze[faze]) {
-            const klic = `${a.account}|${symbol}|${interval}|${d.do.cas}|${d.typ}`;
+          // v0.90.3: `faze` je pole (libovolná kombinace), starší pravidla číslo.
+          const vybrane = (Array.isArray(a.faze) ? a.faze : [a.faze]).map(Number).filter((f) => [1, 2, 3].includes(f));
+          for (const faze of vybrane.length ? [...new Set(vybrane)] : [2]) for (const d of podleFaze[faze]) {
+            const klic = `${a.account}|${symbol}|${interval}|${d.do.cas}|${d.typ}|${faze}`;
             if (odeslano.has(klic)) continue;
             odeslano.add(klic);
             nalezeno += 1;

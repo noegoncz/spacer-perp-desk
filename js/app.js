@@ -6208,7 +6208,7 @@ const NABIDKY = ['sheetIndicators', 'sheetSettings', 'sheetAlarm', 'sheetLayers'
  */
 const POPIS_TF = { 1: '1m', 5: '5m', 15: '15m', 30: '30m', 60: '1h', 240: '4h', D: '1D', W: '1W' };
 let vybraneTfSignalu = new Set();
-let fazeSignalu = signaly.VYCHOZI_FAZE;
+let fazeSignalu = new Set(signaly.VYCHOZI_FAZE);
 
 function oznacZvonekRsi() {
   const p = chartSymbol ? signaly.proGraf(grafKlic()) : null;
@@ -6220,7 +6220,7 @@ function otevriSignal() {
   const klic = grafKlic();
   const p = signaly.proGraf(klic);
   vybraneTfSignalu = new Set(p ? p.intervaly : [chartInterval].filter((x) => signaly.INTERVALY.includes(x)));
-  fazeSignalu = p?.faze || signaly.VYCHOZI_FAZE;
+  fazeSignalu = new Set(p ? signaly.fazePravidla(p) : signaly.VYCHOZI_FAZE);
   const { burza, symbol } = rozdelKlic(klic);
   el('signalPair').textContent = `${symbol} · ${BURZY[burza]?.nazev || burza}`;
   ukazPrvek('signalDeleteBtn', Boolean(p));
@@ -6249,14 +6249,24 @@ function vykresliOknoSignalu() {
   fz.replaceChildren(...signaly.FAZE.map((f) => {
     const b = document.createElement('button');
     b.type = 'button';
-    b.className = `chip${fazeSignalu === f ? ' active' : ''}`;
+    b.className = `chip${fazeSignalu.has(f) ? ' active' : ''}`;
     b.textContent = t(`signals.faze${f}`);
-    b.setAttribute('aria-pressed', String(fazeSignalu === f));
+    b.setAttribute('aria-pressed', String(fazeSignalu.has(f)));
     b.disabled = !podporovano;
-    b.addEventListener('click', () => { fazeSignalu = f; vykresliOknoSignalu(); });
+    // v0.90.3 (uživatel): víc fází naráz — každá přijde jako vlastní notifikace.
+    b.addEventListener('click', () => {
+      if (fazeSignalu.has(f)) fazeSignalu.delete(f);
+      else fazeSignalu.add(f);
+      vykresliOknoSignalu();
+    });
     return b;
   }));
-  el('signalFazeHint').textContent = t(`signals.faze${fazeSignalu}Hint`);
+  el('signalFazeHint').replaceChildren(...signaly.FAZE.filter((f) => fazeSignalu.has(f)).map((f) => {
+    const r = document.createElement('span');
+    r.className = 'signal-faze-radek';
+    r.textContent = t(`signals.faze${f}Hint`);
+    return r;
+  }));
   const pozn = el('signalNote');
   let text = '';
   if (!podporovano) text = t('signals.unsupported');
@@ -6264,14 +6274,14 @@ function vykresliOknoSignalu() {
   pozn.textContent = text;
   pozn.hidden = !text;
   const ulozit = el('signalSaveBtn');
-  ulozit.disabled = !podporovano || !vybraneTfSignalu.size;
+  ulozit.disabled = !podporovano || !vybraneTfSignalu.size || !fazeSignalu.size;
 }
 
 function ulozSignal() {
   const klic = grafKlic();
-  if (!vybraneTfSignalu.size || !signaly.burzaPodporovana(klic)) return;
+  if (!vybraneTfSignalu.size || !fazeSignalu.size || !signaly.burzaPodporovana(klic)) return;
   const p = signaly.proGraf(klic);
-  signaly.uloz({ id: p?.id || signaly.noveId(), klic, intervaly: [...vybraneTfSignalu], faze: fazeSignalu, aktivni: true });
+  signaly.uloz({ id: p?.id || signaly.noveId(), klic, intervaly: [...vybraneTfSignalu], faze: [...fazeSignalu], aktivni: true });
   zavriNabidky();
   zmenaSignalu();
   ui.showNotice(t('signals.saved'));
@@ -6294,7 +6304,7 @@ function polozkaSignalu(p) {
   const { burza, symbol } = rozdelKlic(p.klic);
   const detaily = [
     [p.intervaly.map((iv) => POPIS_TF[iv] || iv).join(' · ')],
-    [t(`signals.faze${p.faze}`)],
+    [signaly.fazePravidla(p).map((f) => t(`signals.faze${f}`)).join(' · ')],
   ];
   if (!signaly.burzaPodporovana(p.klic)) detaily.push([t('signals.unsupportedShort'), 'dolu']);
   detaily.push([p.posledni ? t('signals.last', { ago: t('alerts.ago', { kdy: ui.predChvili(Date.now() - p.posledni) }) })

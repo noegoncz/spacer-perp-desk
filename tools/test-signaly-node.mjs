@@ -62,6 +62,8 @@ const hlidac = spustSignaly({
     { id: 'sig-2', account: 'a1', jazyk: 'cs', typ: 'divergence', symboly: ['BTCUSDT'], intervaly: ['60'], faze: 3 },
     { id: 'sig-3', account: 'a2', jazyk: 'en', typ: 'divergence', symboly: ['BTCUSDT'], intervaly: ['240'], faze: 3 },
     { id: 'sig-4', account: 'a3', jazyk: 'en', typ: 'divergence', symboly: ['BTCUSDT'], intervaly: ['60'], faze: 2 },
+    // v0.90.3: víc fází v jednom pravidle → každá fáze vlastní zpráva.
+    { id: 'sig-5', account: 'a4', jazyk: 'en', typ: 'divergence', symboly: ['BTCUSDT'], intervaly: ['60'], faze: [2, 3] },
   ],
   posli: async (ucet, z, pravidlo) => { poslane.push({ ucet, ...z, pravidlo: pravidlo?.id }); },
   log: () => {},
@@ -87,11 +89,15 @@ const pred = poslane.filter((x) => x.ucet === 'a3');
 over(pred.length === 1 && /Rýsuje|forming/.test(pred[0].text) && pred[0].text.includes('(2/3)') && pred[0].data.faze === '2',
   `fáze 2/3: „${pred[0]?.text}"`);
 over(!poslane.some((x) => x.ucet === 'a1'), 'účet s potvrzenou fází o svíčku dřív nic');
+over(poslane.filter((x) => x.ucet === 'a4').length === 1, 'pravidlo 2/3 + potvrzená: o svíčku dřív zpráva 2/3');
 poslane.length = 0;
 vstup = rada;
 await hlidac.zpracuj(60, otevreni);
 await hlidac.zpracuj(60, otevreni);              // podruhé už nic (odesláno)
 globalThis.fetch = puvodniFetch;
+const a4 = poslane.filter((x) => x.ucet === 'a4');
+over(a4.length === 1 && a4[0].data.faze === '3' && !a4[0].text.includes('/3'), `pravidlo 2/3 + potvrzená: pak i potvrzená (${a4.map((x) => x.text)})`);
+poslane.splice(0, poslane.length, ...poslane.filter((x) => x.ucet !== 'a4'));
 over(poslane.length === 1 && poslane[0].ucet === 'a1', `potvrzená: jedna zpráva účtu a1, ne a2 (4h) ani a3 (už měl 2/3) (${poslane.length})`);
 over(poslane[0]?.pravidlo === 'sig-1', 'hlídač ví, které pravidlo signál poslalo (poslední signál v přehledu)');
 const z = poslane[0] || {};
