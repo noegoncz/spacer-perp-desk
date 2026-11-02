@@ -1,5 +1,5 @@
 {
-  "verze": "0.90.1",
+  "verze": "0.90.2",
   "novinky": [
     {
       "en": "RSI divergence notifications per pair: tap “RSI signal” in the RSI panel, pick any timeframes and when to be notified — early (1/3, 2/3) or once confirmed. Only the pairs you choose, not your whole watchlist.",
@@ -10,14 +10,18 @@
       "cs": "Záložka Alarmy je teď Notifikace: Alarmy (aktivní / neaktivní) a RSI divergence, každé s přehledem k vypnutí a smazání."
     },
     {
-      "en": "Divergences in RSI are subtler, and faint dotted lines lead up to the candles they belong to. Divergences still forming show as a dashed line with “Bull?” / “Bear?”.",
-      "cs": "Divergence v RSI jsou jemnější a slabé tečkované čáry vedou nahoru ke svíčkám, ke kterým patří. Rýsující se divergence jsou čárkované s „Býk?“ / „Medvěd?“."
+      "en": "Divergences in RSI are subtler, and faint purple dotted lines (the colour of the RSI line) lead up to the candles they belong to. Divergences still forming show as a dashed line with “Bull?” / “Bear?”.",
+      "cs": "Divergence v RSI jsou jemnější a slabé fialové tečkované čáry (barvou křivky RSI) vedou nahoru ke svíčkám, ke kterým patří. Rýsující se divergence jsou čárkované s „Býk?“ / „Medvěd?“."
     }
   ],
   "opravy": [
     {
       "en": "Stricter divergence rules — fewer weak signals.",
       "cs": "Přísnější pravidla divergence — méně slabých signálů."
+    },
+    {
+      "en": "Indicator panel height can be dragged again on the narrow screen.",
+      "cs": "Výšku panelu indikátoru jde zase táhnout i na úzkém displeji."
     }
   ]
 }

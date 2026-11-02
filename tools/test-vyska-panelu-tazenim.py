@@ -141,6 +141,26 @@ over(len(behem) == 2 and all(abs(x['uchyt'] - x['pane']) <= 2 for x in behem),
 po = json.loads(ev(UCHYTY))
 over(all(abs(x['uchyt'] - x['pane']) <= 2 for x in po), f'po puštění sedí oba úchyty ({po})')
 
+# v0.90.2 (uživatel: na zavřeném displeji madlo nereaguje): na 344 px ležel
+# řádek ▲ ▼ + „RSI signal" přes spodní půlku madla a dotyk dostal on.
+p.prikaz('Emulation.setDeviceMetricsOverride', width=344, height=882, deviceScaleFactor=1, mobile=True)
+time.sleep(1.5)
+zakryti = json.loads(ev("""JSON.stringify([...document.querySelectorAll('.pane-uchyt')].map((u) => {
+  const m = u.querySelector('.pane-madlo').getBoundingClientRect(); const b = u.getBoundingClientRect();
+  return [m.left + 4, m.left + m.width / 2, m.right - 4].flatMap((x) => [b.top + 3, b.top + b.height / 2, b.bottom - 3]
+    .map((y) => u.contains(document.elementFromPoint(x, y)))).every(Boolean); }))"""))
+over(len(zakryti) == 2 and all(zakryti), f'344 px: celé madlo patří úchytu, nic ho nepřekrývá ({zakryti})')
+pane0 = "[...document.querySelectorAll('.pane-uchyt')].sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top)[0]"
+m = json.loads(ev(f"(() => {{ const b = {pane0}.querySelector('.pane-madlo').getBoundingClientRect(); return JSON.stringify({{ x: b.left + b.width / 2, y: b.bottom + 4 }}); }})()"))
+pred = ev(f"window.__graf.getSize({pane0}.dataset.pane).height")
+dotyk('touchStart', m['x'], m['y'])
+for i in range(1, 11):
+    dotyk('touchMove', m['x'], m['y'] - 4 * i); time.sleep(0.02)
+dotyk('touchEnd', m['x'], m['y'] - 40)
+time.sleep(0.6)
+po = ev(f"window.__graf.getSize({pane0}.dataset.pane).height")
+over(po and pred and po - pred >= 30, f'344 px: horní panel (RSI se štítkem) jde táhnout pod madlem ({pred} → {po})')
+
 konzole = ev('(window.__chyby||[]).join(" | ")') or ''
 over(not konzole, f'bez chyb v konzoli ({konzole})')
 

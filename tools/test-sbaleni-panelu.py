@@ -120,7 +120,7 @@ over('14' in a['RSI']['legenda']['text'] and any(ch.isdigit() for ch in a['RSI']
 over('DIF' in a['MACD']['legenda']['text'] and 'MACD -' in a['MACD']['legenda']['text'] or 'MACD 0' in a['MACD']['legenda']['text'], f'MACD: hodnoty čar ({a["MACD"]["legenda"]["text"]!r})')
 # v0.88.2: šipky pořadí vedle sloupce, první panel nemá ▲, poslední ▼.
 s1, s2 = a['RSI']['sipky'], a['MACD']['sipky']
-over(s1 and s2 and abs(s1['x'] - a['RSI']['legenda']['w']) <= 4 and abs(s1['y'] - a['RSI']['top']) <= 3,
+over(s1 and s2 and abs(s1['x'] - a['RSI']['legenda']['w']) <= 4 and abs(s1['y'] - a['RSI']['top'] - 14) <= 3,   # v0.90.2: pod zónou úchytu
      f'šipky pořadí vedle popisku nahoře ({s1})')
 over(s1 and s2 and not s1['nahoru'] and s1['dolu'] and s2['nahoru'] and not s2['dolu'], 'RSI jen ▼, MACD jen ▲')
 legenda_knihovny = ev("window.__graf.getStyles().indicator.tooltip.showRule")

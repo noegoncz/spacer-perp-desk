@@ -3485,6 +3485,13 @@ Volby: **RSI divergence**, **rovnou push ze serveru**, timeframy **1h a 4h**.
   v ploše svíček od spodu ke knotu svíčky pivotu (indikátor `DIVCARY`
   bez figur, v hlavním panelu pořád, kreslí jen s RSI v grafu; data
   z `result` RSI).
+  **v0.90.2 (uživatel):** svislé čárky fialově barvou křivky RSI
+  (`n.barvaRsi`, alfa 0,22 / v ploše svíček 0,2) — červená / zelená mátla.
+  ⚠ **Na 344 px ležel řádek ▲ ▼ + „RSI signal" (z-index 22) přes spodní
+  půlku madla úchytu výšky (z-index 21)** → na zavřeném displeji nešlo
+  táhnout výšku panelu; test na 673 px to nechytil. Řádek je teď pod
+  zónou úchytu (`ODSAZENI_SIPEK = 14`). Test: konec
+  `test-vyska-panelu-tazenim.py` (344 px, celé madlo patří úchytu).
   ⚠ `test-zalozka-alarmy.py` padal už před v0.90.0 (přejetí z Deníku
   nejdřív projde podzáložky) — opraveno spolu s přestavbou.
 - **Server** `server/signaly.mjs` uvnitř hlídače alarmů: po uzavření svíčky

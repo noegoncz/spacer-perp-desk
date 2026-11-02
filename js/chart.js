@@ -2110,8 +2110,9 @@ function kresliDivergence(ctx, chart, indicator, n, bod) {
       const rozpr = Boolean(d.rozpracovana);
       // Svislé čárky od bodů nahoru (v0.90.1) — navazují na čárky v ploše
       // svíček (indikátor DIVCARY), ať je vidět, ke kterým svíčkám patří.
-      ctx.globalAlpha = 0.28;
-      ctx.strokeStyle = barva;
+      // v0.90.2 (uživatel): fialově jako křivka RSI, ne barvou divergence.
+      ctx.globalAlpha = 0.22;
+      ctx.strokeStyle = n.barvaRsi || '#a78bfa';
       ctx.lineWidth = 1;
       ctx.setLineDash([2, 4]);
       for (const tecka of [a, b]) {
@@ -2628,8 +2629,9 @@ export function createPriceChart(container, layer, handlers = {}) {
       for (let i = Math.max(0, rozsah.from); i < konec; i += 1) {
         for (const d of vysledek[i]?.div || []) {
           const byci = d.typ === 'byci';
-          ctx.strokeStyle = byci ? n.barvaByci || '#3ee6a4' : n.barvaMedvedi || '#ff6b78';
-          ctx.globalAlpha = d.rozpracovana ? 0.16 : 0.24;
+          // Fialově jako křivka RSI (v0.90.2) — červená / zelená mátla.
+          ctx.strokeStyle = n.barvaRsi || '#a78bfa';
+          ctx.globalAlpha = d.rozpracovana ? 0.14 : 0.2;
           for (const j of [d.od.i, d.do.i]) {
             const s = data[j];
             if (!s) continue;
@@ -2928,7 +2930,10 @@ export function createPriceChart(container, layer, handlers = {}) {
     const posledni = [...l.children].reverse().find((c) => c.offsetHeight > 0);
     return posledni ? Math.ceil(posledni.offsetTop + posledni.offsetHeight + 4) : 0;
   };
-  const ODSAZENI_SIPEK = 1;
+  // Šipky pořadí a štítek „RSI signal" stojí pod zónou úchytu výšky
+  // (26 px vystředěných na hranici panelu → 13 px do panelu). Na úzkém
+  // displeji leží přes madlo a byly navrch — tažení výšky nešlo (v0.90.2).
+  const ODSAZENI_SIPEK = 14;
   let indexKrize = null;       // svíčka pod křížem; null = poslední
   let legendyNaplanovany = false;
 
