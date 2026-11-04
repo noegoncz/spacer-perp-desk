@@ -3888,6 +3888,19 @@ dlouho stojí, teď / min / max). Rozhodnutí: Binance + Bybit + Hyperliquid,
   0,75 M. Indexy `0004_indexy_uklidu.sql`, souhrn jen s `?stav=1`.
   **Každý dotaz, který běží pravidelně, musí jít po indexu.** Spotřebu
   vypíše každé nasazení webu (`wrangler d1 insights` v web.yml).
+- ⚠ **Limit D1: 100 000 zapsaných řádků denně** (2026-11-04 92 %): běžný
+  provoz ~70 k / den (minutové řádky mapy 37 k, stav hlídače 5,6 k → teď
+  nejvýš 1× za 2 min). **`CREATE INDEX` na velké tabulce zapíše každý její
+  řádek** — migrace 0004 stála 77 k zápisů naráz. Nový index na velkou
+  tabulku jen po půlnoci UTC. Úsporný režim do půlnoci: `web/lib/d1.js`
+  (`setrit`, mapa jen čtvrthodinové řádky, zdi a proběhlé likvidace 503 —
+  server je podrží). Spotřeba po hodinách: workflow **Diagnostika D1**
+  (`diag-d1.yml`, ručně).
+- **Stav zdí po částech** (2026-11-04): řádek `zdi_stav` přerostl 1,8 MB
+  (nedávné zdi za 90 min, ~200 trhů) a příjem ho od 04:07 UTC odmítal.
+  Teď `CASTI_ZDI` = 3 řádky podle trhu (`castZdi` v js/zdi-format.js
+  i web/lib/zdi.js), nedávné zdi seskupené po trzích `n: { trh: [...] }`,
+  odesílá se každé 2 min (sledování dál po minutách).
 - **V aplikaci (v0.72.0):** vrstva **Zdi v knize** v nabídce oka
   (`zdi`, výchozí zapnutá), indikátor `ZDIMAP` (chart.js, `setWalls`):
   nákupní zeleně, prodejní červeně, sytost podle velikosti, živé k pravému
