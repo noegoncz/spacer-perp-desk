@@ -1,14 +1,16 @@
 // Zdi v knize příkazů: server (server/zdi.mjs) sem každou minutu pošle
 // stav. Jen s WATCHER_TOKEN (_middleware.js).
 //
-// POST { t, ted, historie: [{ k, den, d }], info, uklid }
-//   ted       — JSON živých a nedávno hotových zdí všech trhů (přepíše)
+// POST { t, tedy, historie: [{ k, den, d }], info, uklid }
+//   tedy      — JSON živých a nedávno hotových zdí po částech podle trhu
+//               (castZdi), každá část do řádku zdi_stav id 1…n (přepíše)
 //   historie  — hotové zdi za poslední hodinu, připojí se k řádku trh × den
 //   uklid     — smazat historii starší 30 dní a žádosti starší 7 dní
 // GET — trhy, o které si řekla aplikace (posledních 7 dní), a stav sběru;
 //   ?stav=1 přidá souhrn historie (prochází celou tabulku).
 
 import { setrit, pozdeji } from '../../../lib/d1.js';
+import { CASTI_ZDI } from '../../../lib/zdi.js';
 
 const DEN = 86400000;
 const platna = (h) => h && typeof h.k === 'string' && h.k.length <= 60 && Number.isInteger(h.den)
@@ -22,9 +24,11 @@ export async function onRequestPost({ request, env }) {
   } catch {
     return Response.json({ ok: false }, { status: 400 });
   }
-  if (typeof d.ted !== 'string' || d.ted.length > 1.8e6 || !Number.isFinite(d.t)) return Response.json({ ok: false }, { status: 400 });
-  const prikazy = [env.LIQ.prepare('INSERT OR REPLACE INTO zdi_stav (id, t, data, info) VALUES (1, ?, ?, ?)')
-    .bind(d.t, d.ted, JSON.stringify(d.info || {}).slice(0, 4000))];
+  if (!Array.isArray(d.tedy) || d.tedy.length !== CASTI_ZDI || !Number.isFinite(d.t)
+    || d.tedy.some((s) => typeof s !== 'string' || s.length > 1.8e6)) return Response.json({ ok: false }, { status: 400 });
+  const info = JSON.stringify(d.info || {}).slice(0, 4000);
+  const prikazy = d.tedy.map((s, i) => env.LIQ.prepare('INSERT OR REPLACE INTO zdi_stav (id, t, data, info) VALUES (?, ?, ?, ?)')
+    .bind(i + 1, d.t, s, i ? '{}' : info));
   for (const h of Array.isArray(d.historie) ? d.historie : []) {
     if (!platna(h)) continue;
     prikazy.push(env.LIQ.prepare(`INSERT INTO zdi_dny (klic, den, data) VALUES (?, ?, ?)
@@ -42,7 +46,8 @@ export async function onRequestPost({ request, env }) {
 export async function onRequestGet({ request, env }) {
   const z = await env.LIQ.prepare('SELECT klic FROM zdi_zadosti WHERE cas > ? ORDER BY cas DESC LIMIT 200')
     .bind(Date.now() - 7 * DEN).all();
-  const s = await env.LIQ.prepare('SELECT t, info, LENGTH(data) AS bajtu FROM zdi_stav WHERE id = 1').first();
+  const s = await env.LIQ.prepare(`SELECT t, info, (SELECT SUM(LENGTH(data)) FROM zdi_stav) AS bajtu
+      FROM zdi_stav WHERE id = 1`).first();
   // Souhrn historie projde celou tabulku — jen na vyžádání (?stav=1). Server
   // se ptá po pár minutách jen na žádosti; dřív to bylo ~0,75 M rows_read denně.
   const v = new URL(request.url).searchParams.get('stav')

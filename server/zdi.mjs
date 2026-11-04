@@ -17,12 +17,12 @@
  *   Bybit    — orderbook.1000 (snímek + změny), jen 1000 nejbližších úrovní
  *   Hyperliquid — l2Book s nSigFigs 3 (20 agregovaných úrovní na stranu)
  * Každou minutu: zdi každé knihy (js/zdi-format.js), sledování v čase,
- * POST /api/watcher/zdi { ted, historie, info }. Ven jdou jen součty po
+ * POST /api/watcher/zdi { tedy, historie, info } každé 2 min. Ven jdou jen součty po
  * pásmech, žádné identity. Jen veřejná data.
  */
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { najdiZdi, Sledovani, NASOBEK, NASOBEK_HL } from '../js/zdi-format.js';
+import { najdiZdi, Sledovani, NASOBEK, NASOBEK_HL, CASTI_ZDI, castZdi } from '../js/zdi-format.js';
 
 const MIN = 60000, HOD = 3600000;
 const MIN_OBRAT = +process.env.ZDI_MIN_OBRAT || 20e6;
@@ -358,10 +358,18 @@ export function spustZdi({ log, API, TOKEN, ZKOUSKA, STAV, limitTrhu = Infinity 
 
   async function odesli(d) {
     const uklid = Date.now() - posledniUklid > 6 * HOD;
-    const telo = { t: d.t, ted: JSON.stringify({ t: d.t, k: d.ted, n: d.nedavne }), historie: d.historie, info: d.info, uklid };
+    // Stav po částech podle trhu (každá do vlastního řádku D1), nedávné
+    // hotové zdi seskupené po trzích: { t, k: { trh: živé }, n: { trh: [zeď…] } }.
+    const casti = Array.from({ length: CASTI_ZDI }, () => ({ t: d.t, k: {}, n: {} }));
+    for (const [k, v] of Object.entries(d.ted)) casti[castZdi(k)].k[k] = v;
+    for (const [k, ...z] of d.nedavne) (casti[castZdi(k)].n[k] ||= []).push(z);
+    const telo = { t: d.t, tedy: casti.map((c) => JSON.stringify(c)), historie: d.historie, info: d.info, uklid };
     if (ZKOUSKA) {
       mkdirSync(STAV, { recursive: true });
-      writeFileSync(join(STAV, 'zdi-ted.json'), telo.ted);
+      // Test čte stav vcelku: části slité zpět do jednoho objektu.
+      const vse = { t: d.t, k: {}, n: {} };
+      for (const c of casti) { Object.assign(vse.k, c.k); Object.assign(vse.n, c.n); }
+      writeFileSync(join(STAV, 'zdi-ted.json'), JSON.stringify(vse));
       writeFileSync(join(STAV, 'zdi-info.json'), JSON.stringify(d.info));
       for (const h of d.historie) appendFileSync(join(STAV, 'zdi-historie.txt'), `${h.k}\t${h.den}\t${JSON.stringify(h.d)}\n`);
       return;
@@ -412,7 +420,12 @@ export function spustZdi({ log, API, TOKEN, ZKOUSKA, STAV, limitTrhu = Infinity 
     (function planuj() {
       // 35 s po celé minutě (likvidace odesílají v 5. vteřině).
       setTimeout(async () => {
-        try { await odesli(minuta()); } catch (e) { log('zdi:', e.message); }
+        // Odesílá se každou druhou minutu (zápisy D1 — limit 100 000 denně),
+        // hodinová dávka historie hned. Sledování běží dál po minutách.
+        try {
+          const d = minuta();
+          if (d.historie.length || Math.floor(d.t / MIN) % 2 === 0) await odesli(d);
+        } catch (e) { log('zdi:', e.message); }
         planuj();
       }, MIN - (Date.now() % MIN) + 35000);
     })();

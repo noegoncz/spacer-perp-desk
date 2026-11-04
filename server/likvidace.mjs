@@ -32,7 +32,7 @@ import { spustLikvidovano } from './likvidovano.mjs';
 // Zdi v knize příkazů běží v této službě (server/zdi.mjs). Aktualizace
 // restartuje službu jen při změně tohoto souboru → při změně zdi.mjs nebo
 // js/zdi-format.js zvedni tuto verzi.
-const VERZE_ZDI = 5;
+const VERZE_ZDI = 6;
 
 const API = (process.env.API || 'https://perpyx.com').replace(/\/$/, '');
 const TOKEN = process.env.WATCHER_TOKEN || '';

@@ -9,6 +9,7 @@
 // Cache 30 s: všichni, kdo mají graf otevřený, sdílejí jednu odpověď.
 
 import { corsHlavicky } from '../../lib/ucet.js';
+import { castZdi } from '../../lib/zdi.js';
 
 const DEN = 86400000;
 const KLIC = /^(binance|bybit|hyperliquid):[A-Z0-9]{2,30}$/;
@@ -35,7 +36,8 @@ export async function onRequestGet({ request, env, waitUntil }) {
   const doCasu = Math.min(Number(u.searchParams.get('do')) || ted, ted);
   const od = Math.max(Number(u.searchParams.get('od')) || doCasu - DEN, doCasu - 30 * DEN);
 
-  const stav = await env.LIQ.prepare('SELECT data FROM zdi_stav WHERE id = 1').first();
+  // Jen řádek s částí stavu, do které trh patří (castZdi).
+  const stav = await env.LIQ.prepare('SELECT data FROM zdi_stav WHERE id = ?').bind(castZdi(k) + 1).first();
   let s = null;
   try { s = stav ? JSON.parse(stav.data) : null; } catch { s = null; }
   const zive = s?.k?.[k];
@@ -59,8 +61,10 @@ export async function onRequestGet({ request, env, waitUntil }) {
       } catch { /* poškozený řádek */ }
     }
   }
-  for (const z of s?.n || []) {
-    if (z[0] === k && z[4] >= od && z[3] <= doCasu) hist.push(z.slice(1));
+  // Nedávné hotové zdi: { trh: [zeď…] } (dřív pole [trh, …zeď]).
+  const nedavne = Array.isArray(s?.n) ? s.n.filter((z) => z[0] === k).map((z) => z.slice(1)) : s?.n?.[k] || [];
+  for (const z of nedavne) {
+    if (z[3] >= od && z[2] <= doCasu) hist.push(z);
   }
   // Hotová zeď z poslední hodiny je v řádku „teď“ i v historii — jednou.
   const videne = new Set();

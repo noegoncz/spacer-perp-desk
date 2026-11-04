@@ -25,6 +25,16 @@ export const MAX_NA_STRANU = 12;
 export const TOLERANCE = 2;           // minut bez zdi, než se uzavře
 export const MIN_TRVANI = 2 * 60000;  // kratší zdi se neukládají (šum)
 
+// Stav „teď“ se v D1 dělí podle trhu do CASTI_ZDI řádků (zdi_stav id 1…n).
+// Jeden řádek přerostl 1,8 MB (2026-11-04) a server ho odmítal. Stejný výpočet
+// je ve web/lib/zdi.js (funkce webu nesahají mimo web/) — měnit obojí.
+export const CASTI_ZDI = 3;
+export function castZdi(klic) {
+  let h = 0;
+  for (let i = 0; i < klic.length; i++) h = (h * 31 + klic.charCodeAt(i)) >>> 0;
+  return h % CASTI_ZDI;
+}
+
 const median = (a) => {
   if (!a.length) return 0;
   const s = [...a].sort((x, y) => x - y);
