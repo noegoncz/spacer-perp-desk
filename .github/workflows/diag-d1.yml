@@ -14,6 +14,7 @@ jobs:
           ACC=$(curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" https://api.cloudflare.com/client/v4/accounts | jq -r '.result[0].id')
           export CLOUDFLARE_ACCOUNT_ID=$ACC
           npx -y wrangler@4 d1 execute perpyx-likvidace --remote --json --command "SELECT 'zdi' AS co, id, t, LENGTH(data) AS bajtu FROM zdi_stav UNION ALL SELECT 'liq', id, seen_at, LENGTH(info) FROM liq_stav UNION ALL SELECT 'likv', id, t, LENGTH(data) FROM likvidovano_stav" | jq -c '.[0].results[]'
+          npx -y wrangler@4 d1 execute perpyx-web --remote --json --command "SELECT 'hlidac' AS co, seen_at, (strftime('%s','now')*1000 - seen_at)/1000 AS pred_s FROM watcher_status" | jq -c '.[0].results[]'
           OD=$(date -u -d '-2 days' +%Y-%m-%dT00:00:00Z); DO=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           Q='query($a:String!,$od:Time!,$do:Time!){viewer{accounts(filter:{accountTag:$a}){d1AnalyticsAdaptiveGroups(limit:200,filter:{datetimeHour_geq:$od,datetimeHour_leq:$do},orderBy:[datetimeHour_ASC]){sum{rowsRead rowsWritten}dimensions{datetimeHour}}}}}'
           jq -n --arg q "$Q" --arg a "$ACC" --arg od "$OD" --arg do "$DO" '{query:$q,variables:{a:$a,od:$od,do:$do}}' > q.json
