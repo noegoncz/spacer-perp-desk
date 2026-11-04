@@ -7,11 +7,14 @@
 //   uklid     — smazat historii starší 365 dní
 // GET — stav sběru a velikost dat.
 
+import { setrit, pozdeji } from '../../../lib/d1.js';
+
 const DEN = 86400000;
 const platna = (h) => h && typeof h.c === 'string' && /^[A-Z0-9]{1,30}$/.test(h.c) && Number.isInteger(h.den)
   && h.den % DEN === 0 && typeof h.d === 'string' && h.d.length <= 1e6;
 
 export async function onRequestPost({ request, env }) {
+  if (setrit()) return pozdeji();
   let d;
   try {
     d = await request.json();

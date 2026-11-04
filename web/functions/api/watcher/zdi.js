@@ -8,11 +8,14 @@
 // GET — trhy, o které si řekla aplikace (posledních 7 dní), a stav sběru;
 //   ?stav=1 přidá souhrn historie (prochází celou tabulku).
 
+import { setrit, pozdeji } from '../../../lib/d1.js';
+
 const DEN = 86400000;
 const platna = (h) => h && typeof h.k === 'string' && h.k.length <= 60 && Number.isInteger(h.den)
   && h.den % DEN === 0 && typeof h.d === 'string' && h.d.length <= 5e5;
 
 export async function onRequestPost({ request, env }) {
+  if (setrit()) return pozdeji();
   let d;
   try {
     d = await request.json();

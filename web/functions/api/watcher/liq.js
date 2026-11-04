@@ -7,6 +7,8 @@
 //   uklid   — smazat minutové starší 3 dní a čtvrthodinové starší 90 dní
 // GET — stav sběru a velikost dat (kontrola provozu, testy).
 
+import { setrit } from '../../../lib/d1.js';
+
 const HOD = 3600000;
 const platny = (r) => r && typeof r.c === 'string' && r.c.length <= 40
   && Number.isInteger(r.h) && r.h % HOD === 0 && typeof r.d === 'string' && r.d.length <= 1e6;
@@ -19,6 +21,9 @@ export async function onRequestPost({ request, env }) {
     return Response.json({ ok: false }, { status: 400 });
   }
   const prikazy = [];
+  // Úsporný režim: jen hotové čtvrthodinové hodiny (historie mapy), minutové
+  // řádky, stav a úklid se dnes vynechají.
+  const usporne = setrit();
   // Řádky téhož coinu a hodiny spojit — jeden zápis místo několika.
   const spojene = new Map();
   for (const r of Array.isArray(d.radky) ? d.radky : []) {
@@ -26,7 +31,7 @@ export async function onRequestPost({ request, env }) {
     const k = `${r.c}|${r.h}`;
     spojene.set(k, { c: r.c, h: r.h, d: (spojene.get(k)?.d || '') + r.d });
   }
-  for (const r of spojene.values()) {
+  for (const r of usporne ? [] : spojene.values()) {
     prikazy.push(env.LIQ.prepare(`INSERT INTO liq_hodiny (coin, rozliseni, hodina, data) VALUES (?, 1, ?, ?)
         ON CONFLICT (coin, rozliseni, hodina) DO UPDATE SET data = data || excluded.data`).bind(r.c, r.h, r.d));
   }
@@ -36,13 +41,13 @@ export async function onRequestPost({ request, env }) {
       .bind(r.c, r.h, r.d));
   }
   const ted = Date.now();
-  prikazy.push(env.LIQ.prepare('INSERT OR REPLACE INTO liq_stav (id, seen_at, info) VALUES (1, ?, ?)')
+  if (!usporne) prikazy.push(env.LIQ.prepare('INSERT OR REPLACE INTO liq_stav (id, seen_at, info) VALUES (1, ?, ?)')
     .bind(ted, JSON.stringify(d.info || {}).slice(0, 4000)));
-  if (d.uklid) {
+  if (d.uklid && !usporne) {
     prikazy.push(env.LIQ.prepare('DELETE FROM liq_hodiny WHERE rozliseni = 1 AND hodina < ?').bind(ted - 3 * 24 * HOD));
     prikazy.push(env.LIQ.prepare('DELETE FROM liq_hodiny WHERE rozliseni = 15 AND hodina < ?').bind(ted - 90 * 24 * HOD));
   }
-  await env.LIQ.batch(prikazy);
+  if (prikazy.length) await env.LIQ.batch(prikazy);
   return Response.json({ ok: true, zapsano: prikazy.length });
 }
 
