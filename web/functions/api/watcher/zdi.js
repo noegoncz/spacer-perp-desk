@@ -5,7 +5,8 @@
 //   ted       — JSON živých a nedávno hotových zdí všech trhů (přepíše)
 //   historie  — hotové zdi za poslední hodinu, připojí se k řádku trh × den
 //   uklid     — smazat historii starší 30 dní a žádosti starší 7 dní
-// GET — trhy, o které si řekla aplikace (posledních 7 dní), a stav sběru.
+// GET — trhy, o které si řekla aplikace (posledních 7 dní), a stav sběru;
+//   ?stav=1 přidá souhrn historie (prochází celou tabulku).
 
 const DEN = 86400000;
 const platna = (h) => h && typeof h.k === 'string' && h.k.length <= 60 && Number.isInteger(h.den)
@@ -35,11 +36,15 @@ export async function onRequestPost({ request, env }) {
   return Response.json({ ok: true, zapsano: prikazy.length });
 }
 
-export async function onRequestGet({ env }) {
+export async function onRequestGet({ request, env }) {
   const z = await env.LIQ.prepare('SELECT klic FROM zdi_zadosti WHERE cas > ? ORDER BY cas DESC LIMIT 200')
     .bind(Date.now() - 7 * DEN).all();
   const s = await env.LIQ.prepare('SELECT t, info, LENGTH(data) AS bajtu FROM zdi_stav WHERE id = 1').first();
-  const v = await env.LIQ.prepare('SELECT COUNT(*) AS radku, SUM(LENGTH(data)) AS bajtu, COUNT(DISTINCT klic) AS trhu, MIN(den) AS od FROM zdi_dny').first();
+  // Souhrn historie projde celou tabulku — jen na vyžádání (?stav=1). Server
+  // se ptá po pár minutách jen na žádosti; dřív to bylo ~0,75 M rows_read denně.
+  const v = new URL(request.url).searchParams.get('stav')
+    ? await env.LIQ.prepare('SELECT COUNT(*) AS radku, SUM(LENGTH(data)) AS bajtu, COUNT(DISTINCT klic) AS trhu, MIN(den) AS od FROM zdi_dny').first()
+    : null;
   return Response.json({
     ok: true, zadosti: z.results.map((x) => x.klic),
     t: s?.t || null, info: s ? JSON.parse(s.info) : null, stavBajtu: s?.bajtu || 0, historie: v,

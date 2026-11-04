@@ -3882,6 +3882,12 @@ dlouho stojí, teď / min / max). Rozhodnutí: Binance + Bybit + Hyperliquid,
   zapíše žádost a vrátí `sleduje: false`).
 - Měřeno lokálně: 233 trhů = ~24 % jádra, 185 MB, 0 ztrát synchronizace.
 - Test: `tools/test-zdi-server.py <node>` (výpočet + naostro, ZKOUSKA).
+- ⚠ **Limit D1: 5 M přečtených řádků denně na celý účet** (2026-11-04
+  Cloudflare hlásil 78 %): `DELETE … WHERE hodina/den < ?` bez indexu
+  procházel celé tabulky (3,25 M / den), souhrn historie zdí v GET hlídače
+  0,75 M. Indexy `0004_indexy_uklidu.sql`, souhrn jen s `?stav=1`.
+  **Každý dotaz, který běží pravidelně, musí jít po indexu.** Spotřebu
+  vypíše každé nasazení webu (`wrangler d1 insights` v web.yml).
 - **V aplikaci (v0.72.0):** vrstva **Zdi v knize** v nabídce oka
   (`zdi`, výchozí zapnutá), indikátor `ZDIMAP` (chart.js, `setWalls`):
   nákupní zeleně, prodejní červeně, sytost podle velikosti, živé k pravému
