@@ -1,5 +1,5 @@
-# Ruční diagnostika D1 a Pages Functions (spouští se jen ručně):
-# velikost stavů sběru a 3 min živých logů funkcí perpyx.com (jen chyby).
+# Ruční diagnostika D1 (spouští se jen ručně): velikost stavů sběru
+# a přečtené / zapsané řádky po hodinách za poslední 2 dny (celý účet).
 name: Diagnostika D1
 on:
   workflow_dispatch:
@@ -9,14 +9,14 @@ jobs:
   diag:
     runs-on: ubuntu-latest
     steps:
-      - name: Stav sběru
+      - name: Stav sběru a spotřeba
         run: |
           ACC=$(curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" https://api.cloudflare.com/client/v4/accounts | jq -r '.result[0].id')
-          echo "CLOUDFLARE_ACCOUNT_ID=$ACC" >> "$GITHUB_ENV"
           export CLOUDFLARE_ACCOUNT_ID=$ACC
-          npx -y wrangler@4 d1 execute perpyx-likvidace --remote --json --command "SELECT 'zdi' AS co, t, LENGTH(data) AS bajtu FROM zdi_stav UNION ALL SELECT 'liq', seen_at, LENGTH(info) FROM liq_stav UNION ALL SELECT 'likv', t, LENGTH(data) FROM likvidovano_stav"
-      - name: Logy funkcí (3 min, jen chyby)
-        run: |
-          timeout 180 npx -y wrangler@4 pages deployment tail --project-name perpyx --format json --status error > tail.json || true
-          wc -c tail.json
-          jq -c '{url: .event.request.url, outcome, ex: .exceptions, logs: [.logs[]?.message]}' tail.json 2>/dev/null | cut -c1-600 | head -40
+          npx -y wrangler@4 d1 execute perpyx-likvidace --remote --json --command "SELECT 'zdi' AS co, id, t, LENGTH(data) AS bajtu FROM zdi_stav UNION ALL SELECT 'liq', id, seen_at, LENGTH(info) FROM liq_stav UNION ALL SELECT 'likv', id, t, LENGTH(data) FROM likvidovano_stav" | jq -c '.[0].results[]'
+          OD=$(date -u -d '-2 days' +%Y-%m-%dT00:00:00Z); DO=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          Q='query($a:String!,$od:Time!,$do:Time!){viewer{accounts(filter:{accountTag:$a}){d1AnalyticsAdaptiveGroups(limit:200,filter:{datetimeHour_geq:$od,datetimeHour_leq:$do},orderBy:[datetimeHour_ASC]){sum{rowsRead rowsWritten}dimensions{datetimeHour}}}}}'
+          jq -n --arg q "$Q" --arg a "$ACC" --arg od "$OD" --arg do "$DO" '{query:$q,variables:{a:$a,od:$od,do:$do}}' > q.json
+          curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Content-Type: application/json' --data @q.json https://api.cloudflare.com/client/v4/graphql > a.json
+          jq -c '.errors' a.json
+          jq -r '.data.viewer.accounts[0].d1AnalyticsAdaptiveGroups[] | [.dimensions.datetimeHour, .sum.rowsRead, .sum.rowsWritten] | @tsv' a.json
