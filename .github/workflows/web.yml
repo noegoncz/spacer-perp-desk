@@ -111,6 +111,8 @@ jobs:
           # dotazy za poslední den. Jen výpis do logu, chyba nevadí.
           npx -y wrangler@4 d1 insights "$DATABAZE_LIQ" --timePeriod 1d --sort-by reads --limit 8 || true
           npx -y wrangler@4 d1 insights "$DATABAZE" --timePeriod 1d --sort-by reads --limit 8 || true
+          npx -y wrangler@4 d1 insights "$DATABAZE_LIQ" --timePeriod 1d --sort-by writes --limit 8 || true
+          npx -y wrangler@4 d1 insights "$DATABAZE" --timePeriod 1d --sort-by writes --limit 8 || true
 
       - name: Projekt Pages
         if: env.PRESKOCIT != '1'
