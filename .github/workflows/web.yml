@@ -107,6 +107,10 @@ jobs:
           npx -y wrangler@4 d1 migrations apply "$DATABAZE" --remote
           npx -y wrangler@4 d1 migrations apply "$DATABAZE_LIQ" --remote
           npx -y wrangler@4 d1 execute "$DATABAZE" --remote --file uklid.sql
+          # Kontrola spotřeby (limit 5 M přečtených řádků denně): nejdražší
+          # dotazy za poslední den. Jen výpis do logu, chyba nevadí.
+          npx -y wrangler@4 d1 insights "$DATABAZE_LIQ" --timePeriod 1d --sort-by reads --limit 8 || true
+          npx -y wrangler@4 d1 insights "$DATABAZE" --timePeriod 1d --sort-by reads --limit 8 || true
 
       - name: Projekt Pages
         if: env.PRESKOCIT != '1'
