@@ -16,8 +16,8 @@ export async function onRequestGet({ request, env }) {
   if (info) {
     await env.DB.prepare(`INSERT INTO watcher_status (id, seen_at, info) VALUES (1, ?, ?)
         ON CONFLICT(id) DO UPDATE SET seen_at = excluded.seen_at, info = excluded.info
-        WHERE watcher_status.seen_at < excluded.seen_at - 110000`)
-      .bind(ted(), info.slice(0, 300)).run();
+        WHERE watcher_status.seen_at < ?`)
+      .bind(ted(), info.slice(0, 300), new Date(Date.now() - 110000).toISOString()).run();
   }
 
   const podleUctu = {};
