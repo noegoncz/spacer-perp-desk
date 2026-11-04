@@ -21,8 +21,8 @@ export async function onRequestPost({ request, env }) {
     return Response.json({ ok: false }, { status: 400 });
   }
   const prikazy = [];
-  // Úsporný režim: jen hotové čtvrthodinové hodiny (historie mapy), minutové
-  // řádky, stav a úklid se dnes vynechají.
+  // Úsporný režim: do půlnoci UTC se do mapy nezapisuje nic (ani hodinové
+  // dávky — rezerva limitu zápisů byla moc těsná), stav ani úklid.
   const usporne = setrit();
   // Řádky téhož coinu a hodiny spojit — jeden zápis místo několika.
   const spojene = new Map();
@@ -35,7 +35,7 @@ export async function onRequestPost({ request, env }) {
     prikazy.push(env.LIQ.prepare(`INSERT INTO liq_hodiny (coin, rozliseni, hodina, data) VALUES (?, 1, ?, ?)
         ON CONFLICT (coin, rozliseni, hodina) DO UPDATE SET data = data || excluded.data`).bind(r.c, r.h, r.d));
   }
-  for (const r of Array.isArray(d.kompakt) ? d.kompakt : []) {
+  for (const r of !usporne && Array.isArray(d.kompakt) ? d.kompakt : []) {
     if (!platny(r)) continue;
     prikazy.push(env.LIQ.prepare('INSERT OR REPLACE INTO liq_hodiny (coin, rozliseni, hodina, data) VALUES (?, 15, ?, ?)')
       .bind(r.c, r.h, r.d));
