@@ -4,7 +4,9 @@ Skutečné likvidace v grafu (v0.83.0) — bubliny na svíčkách.
 
   * podstrčené likvidace u skutečných svíček BTC na Binance (15m):
     vrstva LIKVBUB v grafu, bubliny nakreslené (barvy kontrolovat na snímku),
-  * vrstva „Liquidations that happened" v nabídce oka je sundá a vrátí,
+  * přepínač Executed v panelu likvidační mapy je sundá a vrátí,
+  * sloupce proběhlých likvidací (indikátor LIKVSL, v0.91.0) mají data
+    i s vypnutou mapou,
   * graf páru s násobkem (1000PEPE) se ptá na coin PEPE.
 Ukládá snímek do adresáře v SNIMKY (nepovinné).
 
@@ -26,12 +28,11 @@ for i, s in enumerate(sv):
     if i % 3 == 0:
         udalosti.append([t + 60000, lo, 50000 + i * 40000, 0, i % 3])
     if i % 4 == 1:
-        udalosti.append([t + 120000, hi, 30000 + i * 20000, 1, 1])
+        udalosti.append([t + 120000, hi, 30000 + i * 20000, 1, 0 if i % 8 == 1 else 1])
 odpoved = json.dumps({'ok': True, 't': int(time.time() * 1000), 'u': udalosti})
 
 mock = open(os.path.join(KOREN, 'tools', 'mock-bybit.js'), encoding='utf-8').read()
-mock = "sessionStorage.setItem('__likvidovano', %s);" % json.dumps(odpoved) + mock + """
-window.__sbalitListuPo = 1e9;
+mock = "sessionStorage.setItem('__likvidovano', %s); sessionStorage.setItem('__liqVychozi', '1');" % json.dumps(odpoved) + mock + """
 localStorage.setItem('perpdesk.lists', JSON.stringify({ verze: 1, aktivni: 'a', seznamy: [{ id: 'a', nazev: 'Main', polozky: %s }] }));
 localStorage.setItem('perpdesk.chartView', JSON.stringify({ 'binance:BTCUSDT': { interval: '15' }, 'binance:1000PEPEUSDT': { interval: '15' } }));
 window.__dotazyLikv = [];
@@ -83,8 +84,8 @@ over(any('c=BTC&' in u for u in ev('window.__dotazyLikv') or []), 'dotaz na coin
 if SNIMKY:
     open(os.path.join(SNIMKY, 'likvidovano-btc.png'), 'wb').write(base64.b64decode(p.prikaz('Page.captureScreenshot', format='png')['data']))
 
-print('2) tlačítko Proběhlé likvidace na liště mapy (v0.84.0)')
-over(ev("!document.getElementById('liqLista').hidden"), 'lišta mapy je vidět')
+print('2) přepínač Executed v panelu mapy (v0.91.0)')
+over(ev("!document.getElementById('liqLista').hidden"), 'panel mapy je vidět')
 ev("document.getElementById('liqProbehle').click()")
 time.sleep(0.5)
 over(vrstva() == 0, 'vypnutím bubliny zmizí')
@@ -92,6 +93,26 @@ ev("document.getElementById('liqProbehle').click()")
 time.sleep(2)
 over(vrstva() == 1, 'zapnutím se vrátí')
 over(not ev("[...document.querySelectorAll('.nabidka-radek')].some((r) => /Liquidations that happened/.test(r.textContent))"), 'v nabídce oka už řádek není')
+
+print('2b) sloupce proběhlých likvidací — samostatný indikátor (v0.91.0)')
+SLOUPCE_JS = """(() => { const i = window.__graf.getIndicators({ name: 'LIKVSL' })[0]; if (!i) return null;
+  const r = i.result || []; return { s: r.filter((x) => x.s > 0).length, l: r.filter((x) => x.l < 0).length }; })()"""
+over(ev(SLOUPCE_JS) is None, 'výchozí vypnuté')
+ev("document.querySelector('#indicatorList [data-indicator=LIKVSL]').click()")
+time.sleep(1.5)
+sl = ev(SLOUPCE_JS)
+print('   svíček se shorty / longy:', sl)
+over(sl and sl['s'] > 0 and sl['l'] > 0, 'sloupce shortů nahoru i longů dolů')
+ev("document.querySelector('#indicatorList [data-indicator=LIQ]').click()")
+time.sleep(1)
+over(vrstva() == 0, 'vypnutá mapa = bez bublin')
+sl = ev(SLOUPCE_JS)
+over(sl and sl['s'] > 0 and sl['l'] > 0, 'sloupce zůstanou i bez mapy')
+if SNIMKY:
+    open(os.path.join(SNIMKY, 'likvidovano-sloupce.png'), 'wb').write(base64.b64decode(p.prikaz('Page.captureScreenshot', format='png')['data']))
+ev("document.querySelector('#indicatorList [data-indicator=LIQ]').click()")
+ev("document.querySelector('#indicatorList [data-indicator=LIKVSL]').click()")
+time.sleep(1)
 ev("history.back()")
 time.sleep(1.5)
 

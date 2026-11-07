@@ -31,6 +31,13 @@ if (!sessionStorage.getItem('__denikVychozi') && !sessionStorage.getItem('__mock
   localStorage.setItem('perpdesk.journalView', JSON.stringify('trades'));
   sessionStorage.setItem('__mockDenik', '1');
 }
+// Likvidační mapa je od v0.91.0 indikátor, který se při prvním grafu sám
+// zapne (převod z vrstvy). Starší testy počítají s grafem bez něj, proto
+// převod jako hotový; testy mapy ho pustí ('__liqVychozi').
+if (!sessionStorage.getItem('__liqVychozi') && !sessionStorage.getItem('__mockLiq')) {
+  localStorage.setItem('perpdesk.liqIndikator', 'true');
+  sessionStorage.setItem('__mockLiq', '1');
+}
 // Bybit dostane falešné spojení (nikdy se neotevře, data jdou dotazem).
 // Ostatní burzy (živý proud Binance, v0.59.10) jdou na skutečnou burzu
 // stejně jako jejich `fetch` níž.

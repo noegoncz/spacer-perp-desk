@@ -2091,6 +2091,7 @@ async function otevriGraf(symbol, position, trh) {
       onDrawEnd: () => vyberNastroj(''), // po dokreslení zpět na kurzor
       onIndicatorsChanged: ulozIndikatory,
       onPaneBell: (nazev) => { if (nazev === 'RSI') otevriSignal(); },
+      panelOvladani: (nazev, stav) => (nazev === 'LIQ' ? panelLiq(stav) : null),
       onSelectionChanged: zobrazPaletu,
       onNoteEdit: otevriPoznamku,
       onAlarmTapped: (id) => otevriAlarm(alarmy.najdi(id)),
@@ -2104,6 +2105,7 @@ async function otevriGraf(symbol, position, trh) {
     chart.setLoader(nactiSvice);
     chart.setMagnet(magnetZapnut);
     // Vrstvy před indikátory — skryté indikátory se do grafu vůbec nevloží.
+    prevedMapuNaIndikator();
     vrstvyProGraf();
     chart.restoreIndicators(store.loadIndicators(), maVlastniPanel);
     oznacAktivniIndikatory();
@@ -2323,7 +2325,7 @@ function zastavMapu() {
   oknoMapy = null;
   zadostMapy += 1;
   mapaMaData = false;
-  ukazPosuvnikMapy();
+  obnovPanelMapy();
   chart?.setLiquidations(null);
   zastavOi();
   zastavFunding();
@@ -2373,7 +2375,8 @@ function zastavLikvidovano() {
 
 async function nactiLikvidovano() {
   if (!chart || !chartSymbol || !oknoMapy || prohlizenyObchod) return;
-  if (!chart.getLayers().likvidovano) return;
+  // Bubliny (přepínač v panelu mapy) nebo sloupce (indikátor LIKVSL).
+  if (!(chart.isLiquidationMapOn() && chart.getExecutedBubbles()) && !chart.activeIndicators().includes('LIKVSL')) return;
   const zadost = ++zadostLikvidovano;
   const symbol = chartSymbol;
   let v = null;
@@ -2723,7 +2726,7 @@ function odhadMapy(symbol, burza, nasobek = 1, jenGraf = true, delkaSvicky = 360
 
 async function nactiMapu() {
   if (!chart || !chartSymbol || !oknoMapy) return;
-  if (!chart.getLayers().likvidace) return;
+  if (!chart.isLiquidationMapOn()) return;
   const zadost = ++zadostMapy;
   const symbol = chartSymbol;
   const burza = burzaGrafuMapy();
@@ -2778,8 +2781,7 @@ async function nactiMapu() {
   globalThis.__mapaInfo = { popis: casti.join(' | '), prubehu: pasy.filter((p) => p.prubeh?.length > 1).length };   // pro test
   chart.setLiquidations(pasy.length ? { pasy, popis: casti.length > 1 ? t('liq.labelBoth') : casti[0] } : null);
   chart.onLiquidationScale?.(kresliZebrik);
-  ukazPosuvnikMapy();
-  kresliPrepinacZdroje();
+  obnovPanelMapy();
   doplnObjemyMapy(symbol, burza, cena);
   if (!casovacMapy) casovacMapy = setInterval(nactiMapu, 60000);
 }
@@ -2908,15 +2910,18 @@ function kresliPrepinacZdroje() {
     // Zašedlá jen volba, o které víme, že data nemá (ještě nenačtená ne).
     b.classList.toggle('bez-dat', z === 'shoda' ? dostupneZdroje.skutecne === false : dostupneZdroje[z] === false);
   });
+  // Čip zdroje ve sbaleném panelu: název a objem vybraného zdroje.
+  const akt = box.querySelector('[data-zdroj].active');
+  const cip = el('liqCipZdroj');
+  if (cip && akt) {
+    cip.querySelector('b').textContent = akt.querySelector('b')?.textContent || '';
+    cip.querySelector('i').textContent = (akt.querySelector('.liq-objem')?.textContent || '').split(' · ')[0];
+  }
 }
 
 function zapojPrepinacZdroje() {
   const box = el('liqZdroj');
   if (!box) return;
-  // Plocha svíček se mění i tažením výšky panelu indikátoru — lišta mapy
-  // se přepočítá (poloha, počet schodů žebříku).
-  const vrstva = el('drawLayer');
-  if (vrstva && 'ResizeObserver' in window) new ResizeObserver(() => ukazPosuvnikMapy()).observe(vrstva);
   box.addEventListener('click', (e) => {
     const b = e.target.closest('[data-zdroj]');
     if (!b) return;
@@ -3082,6 +3087,9 @@ function ulozIndikatory() {
   oznacAktivniIndikatory();
   if (chart.activeIndicators().includes('OI') && !oiNacteno) nactiOi();
   if (chart.activeIndicators().includes('FUND') && !fundingNacten) nactiFunding();
+  if (chart.isLiquidationMapOn() && !mapaMaData) nactiMapu();
+  if (!surovaLikvidovano) nactiLikvidovano();
+  obnovPanelMapy();
 }
 
 const maVlastniPanel = (nazev) =>
@@ -3175,7 +3183,7 @@ function postavNabidky() {
 
       const zkratka = document.createElement('span');
       zkratka.className = 'sheet-zkratka';
-      zkratka.textContent = i.id;
+      zkratka.textContent = { LIKVSL: 'EXEC' }[i.id] || i.id;
 
       const popis = document.createElement('span');
       popis.className = 'sheet-popis';
@@ -3219,7 +3227,6 @@ const VRSTVY = [
   { klic: 'alarmy', popisek: 'layers.alarms', poznamka: 'layers.alarmsNote' },
   { klic: 'indikatory', popisek: 'layers.indicators' },
   { klic: 'obchod', popisek: 'layers.trade', poznamka: 'layers.tradeNote' },
-  { klic: 'likvidace', popisek: 'layers.liq', poznamka: 'layers.liqNote' },
   { klic: 'zdi', popisek: 'layers.walls', poznamka: 'layers.wallsNote' },
 ];
 
@@ -3227,9 +3234,11 @@ function nastavVrstvy(zmena) {
   if (!chart) return;
   chart.setLayers(zmena);
   const vrstvy = chart.getLayers();
-  if (zmena?.likvidace) nactiMapu();
+  if (zmena?.indikatory) {
+    nactiMapu();
+    nactiLikvidovano();
+  }
   if (zmena?.zdi) nactiZdi();
-  if (zmena?.likvidovano) nactiLikvidovano();
   // Vrstvy prohlídky obchodu se neukládají — platí jen do jejího zavření.
   if (!prohlizenyObchod) store.saveLayers(vrstvy);
   // Skryté kresby nejde upravovat — rozdělaná úprava a paleta zmizí.
@@ -3248,11 +3257,12 @@ function nastavVrstvy(zmena) {
  */
 function vrstvyProGraf() {
   if (!chart) return;
-  const ulozene = { kresby: true, alarmy: true, indikatory: true, obchod: true, likvidace: true, zdi: true, likvidovano: true, ...store.loadLayers() };
+  const ulozene = { kresby: true, alarmy: true, indikatory: true, obchod: true, zdi: true, ...store.loadLayers() };
   chart.setLayers(prohlizenyObchod ? { ...ulozene, alarmy: false } : ulozene);
+  chart.setExecutedBubbles(store.loadJson('perpdesk.liqBubliny', true) !== false);
   chart.setLiquidationFilter(filtrMapy());
   oznacVrstvy();
-  ukazPosuvnikMapy();
+  obnovPanelMapy();
 }
 
 function ukazVrstvu(klic) {
@@ -3293,7 +3303,7 @@ function otevriVrstvy() {
       const nove = !chart.getLayers()[klic];
       nastavVrstvy({ [klic]: nove });
       radek.setAttribute('aria-pressed', String(nove));
-      ukazPosuvnikMapy();
+      obnovPanelMapy();
       popisVsechVrstev();
     });
     return radek;
@@ -3348,131 +3358,80 @@ function otevriVrstvy() {
 let mapaMaData = false;
 
 /*
- * Ovládání likvidační mapy na levé stěně (v0.84.0, varianta E z plátna
- * https://claude.ai/artifact/QwaesLPuyoDhDhR4awTF6P, volba uživatele):
- * nahoře žebřík filtru — schody s rozsahem v USD (vybraný i s počtem
- * hladin), počet schodů podle výšky plochy grafu (3–8); pod ním zdroj mapy;
- * dole proběhlé likvidace, které berou zdroj samy podle výběru.
- * Nahradilo posuvník (v0.73.0) a přepínač nahoře (v0.78.0).
+ * Likvidační mapa jako indikátor (v0.91.0, rozhodnutí uživatele 2026-11-07):
+ * levá lišta přes svíčky (v0.84.0) se rozbalená překrývala s panely
+ * indikátorů. Ovládání je teď panel indikátoru LIQ pod svíčkami — graf ho
+ * umístí a dá mu výšku podle obsahu (`panelOvladani`). Bez nadpisů, šetří
+ * se výška (uživatel: „to musíme vždy hlídat“).
+ * - sbalený (výchozí): ▴ Liq, čip filtru v barvě stupně, čip zdroje
+ *   (název + objem), přepínač bublin Executed; klepnutí na čip rozbalí,
+ * - rozbalený: řádek filtru (4 stupně) a řádek zdrojů + Executed,
+ * - široký panel (≥ 600 px, rozevřený Fold): vše v jednom řádku.
  */
-const STUPNE_FILTRU = {
-  3: [0, 0.1, 0.3],
-  4: [0, 0.05, 0.15, 0.5],
-  5: [0, 0.05, 0.1, 0.2, 0.5],
-  6: [0, 0.05, 0.1, 0.15, 0.3, 0.5],
-  7: [0, 0.02, 0.05, 0.1, 0.2, 0.3, 0.5],
-  8: [0, 0.02, 0.05, 0.1, 0.15, 0.2, 0.3, 0.5],
-};
-// Barvy schodů = škála mapy (zelená malé → žlutá velké).
-const BARVY_SCHODU = ['#3f8a36', '#5ba53c', '#6fb83f', '#8cc93f', '#9fd23f', '#b9db3c', '#c9de3b', '#e8e23a'];
-let pocetSchodu = 5;
-const SIRKA_LISTY = 120;
-const SIRKA_SBALENE = 58;
+const STUPNE_FILTRU = [0, 0.05, 0.15, 0.5];
+const BARVY_SCHODU = ['#3f8a36', '#7cbf3f', '#b9db3c', '#e8e23a'];
+const SIROKY_PANEL = 600;
 
-function ukazPosuvnikMapy() {
-  const lista = el('liqLista');
-  if (!lista) return;
-  const bylaSkryta = lista.hidden;
-  lista.hidden = !(chart && oknoMapy && chart.getLayers().likvidace && !prohlizenyObchod);
-  if (lista.hidden) {
-    clearTimeout(casovacListy);
-    lista.classList.remove('sbalena');
-    chart?.setMapInset(0);
-    return;
-  }
-  // Nově ukázaná lišta je rozbalená a po 3 s se sbalí.
-  if (bylaSkryta) sbalListu(false);
-  else chart?.setMapInset((lista.classList.contains('sbalena') ? SIRKA_SBALENE : SIRKA_LISTY) + 4);
+function panelLiq({ sbaleno, sirka }) {
+  const p = el('liqLista');
+  if (!p) return null;
+  const siroky = sirka >= SIROKY_PANEL;
+  p.classList.toggle('siroky', siroky);
+  p.classList.toggle('sbaleno', !siroky && sbaleno);
+  el('liqSbal')?.setAttribute('aria-expanded', String(!sbaleno));
+  obnovPanelMapy();
+  return p;
+}
+
+/** Obsah panelu mapy (stupně, zdroje, objemy, Executed) podle stavu. */
+function obnovPanelMapy() {
+  if (!chart || el('liqLista')?.hidden) return;
+  kresliZebrik();
   kresliPrepinacZdroje();
   kresliProbehle();
-  const box = el('chartBox');
-  const rodic = lista.offsetParent;
-  requestAnimationFrame(() => {
-    if (!box || !rodic || !chart) return;
-    // Plocha svíček = horní panel grafu (drawLayer umí mít chvílemi výšku 0).
-    const r = box.getBoundingClientRect();
-    const vyska = chart.getCandleAreaHeight?.() || 0;
-    if (!vyska) return;
-    const rr = rodic.getBoundingClientRect();
-    lista.style.top = `${r.top - rr.top + 4}px`;
-    lista.style.left = `${r.left - rr.left + 4}px`;
-    // Schodů tolik, kolik se vejde nad zdroje a tlačítko proběhlých (~270 px).
-    const zbyva = vyska - 8 - (lista.offsetHeight - el('liqZebrik').offsetHeight);
-    const n = Math.max(3, Math.min(8, Math.floor((zbyva - 6) / 29)));
-    if (n !== pocetSchodu || !el('liqZebrik').childElementCount) {
-      pocetSchodu = n;
-      kresliZebrik();
-    }
-  });
 }
 
 const usdKratce = (v) => (v >= 1e9 ? `${(v / 1e9).toFixed(1)} B` : v >= 1e6 ? `${(v / 1e6).toFixed(1)} M` : v >= 1e3 ? `${Math.round(v / 1e3)} k` : `${Math.round(v)}`);
 
+// Vybraný stupeň = nejbližší uloženému filtru (dřív jich bylo 3–8).
+const vybranyStupen = () => {
+  const f = filtrMapy();
+  return STUPNE_FILTRU.reduce((nej, x, i) => (Math.abs(x - f) < Math.abs(STUPNE_FILTRU[nej] - f) ? i : nej), 0);
+};
+
+/** „≥ 295 k“ — práh v USD podle měřítka viditelné mapy (p97). */
+function popisStupne(i) {
+  const f = STUPNE_FILTRU[i];
+  const { p97 } = chart?.getLiquidationScale?.() || {};
+  if (f === 0) return t('liq.filterAll');
+  return p97 > 0 ? `≥ ${usdKratce(p97 * f)}` : `${Math.round(f * 100)} %`;
+}
+
 function kresliZebrik() {
   const box = el('liqZebrik');
   if (!box) return;
-  const stupne = STUPNE_FILTRU[pocetSchodu] || STUPNE_FILTRU[5];
-  const ted = filtrMapy();
-  // Vybraný = nejbližší uloženému filtru (jiný počet schodů na jiném displeji).
-  const vybrany = stupne.reduce((nej, f, i) => (Math.abs(f - ted) < Math.abs(stupne[nej] - ted) ? i : nej), 0);
-  const { p97, hladin } = chart?.getLiquidationScale?.() || {};
-  const tlacitka = stupne.map((f, i) => {
+  const vybrany = vybranyStupen();
+  const { hladin } = chart?.getLiquidationScale?.() || {};
+  const siroky = el('liqLista')?.classList.contains('siroky');
+  box.replaceChildren(...STUPNE_FILTRU.map((f, i) => {
     const b = document.createElement('button');
     b.type = 'button';
     b.dataset.filtr = String(f);
-    b.style.setProperty('--barva', BARVY_SCHODU[Math.round((i / Math.max(1, stupne.length - 1)) * 7)]);
-    const rozsah = f === 0 ? t('liq.filterAll') : p97 > 0 ? usdKratce(p97 * f) : `${Math.round(f * 100)} %`;
-    let text = f === 0 || !(p97 > 0) ? rozsah : `≥ ${rozsah}`;
-    if (i === vybrany && hladin != null) text += ` · ${hladin}`;
-    const dlouhe = document.createElement('span');
-    dlouhe.className = 'dlouhe';
-    dlouhe.textContent = text;
-    const kratke = document.createElement('span');
-    kratke.className = 'kratke';
-    kratke.textContent = rozsah.replace(' ', '');
-    b.append(dlouhe, kratke);
+    b.style.setProperty('--barva', BARVY_SCHODU[i]);
+    // Počet hladin u vybraného jen na širokém (na úzkém se nevejde).
+    b.textContent = popisStupne(i) + (i === vybrany && siroky && hladin != null ? ` · ${hladin}` : '');
     b.classList.toggle('active', i === vybrany);
     b.classList.toggle('nad', i > vybrany);
     return b;
-  }).reverse();   // největší nahoře
-  box.replaceChildren(...tlacitka);
-}
-
-/*
- * Sbalení lišty (v0.84.1, přání uživatele): po 3 s bez dotyku se zúží
- * (schody jen s rozsahem, zdroje značkou, proběhlé ikonou). Dotyk na
- * sbalenou lištu ji jen rozbalí — nic nepřepne (klepnutí se spolkne).
- */
-let casovacListy = null;
-const sbalitListuPo = () => globalThis.__sbalitListuPo ?? 3000;
-
-function naplanujSbaleni() {
-  clearTimeout(casovacListy);
-  casovacListy = setTimeout(() => sbalListu(true), sbalitListuPo());
-}
-
-function sbalListu(sbalit) {
-  const lista = el('liqLista');
-  if (!lista) return;
-  lista.classList.toggle('sbalena', sbalit);
-  chart?.setMapInset(lista.hidden ? 0 : (sbalit ? SIRKA_SBALENE : SIRKA_LISTY) + 4);
-  if (!sbalit) naplanujSbaleni();
+  }));
+  const cip = el('liqCipFiltr');
+  if (cip) {
+    cip.textContent = popisStupne(vybrany);
+    cip.style.setProperty('--barva', BARVY_SCHODU[vybrany]);
+  }
 }
 
 function zapojPosuvnikMapy() {
-  const lista = el('liqLista');
-  let spolknout = false;
-  lista?.addEventListener('pointerdown', () => {
-    spolknout = lista.classList.contains('sbalena');
-    if (spolknout) sbalListu(false);
-    else naplanujSbaleni();
-  }, true);
-  lista?.addEventListener('click', (e) => {
-    if (!spolknout) return;
-    spolknout = false;
-    e.stopImmediatePropagation();
-    e.preventDefault();
-  }, true);
   el('liqZebrik')?.addEventListener('click', (e) => {
     const b = e.target.closest('[data-filtr]');
     if (!b) return;
@@ -3482,25 +3441,45 @@ function zapojPosuvnikMapy() {
     chart?.setLiquidationFilter(f);
     kresliZebrik();
   });
+  // Bubliny proběhlých likvidací přes svíčky (dřív vrstva v oku).
   el('liqProbehle')?.addEventListener('click', (e) => {
     e.stopPropagation();
     if (!chart) return;
-    nastavVrstvy({ likvidovano: !chart.getLayers().likvidovano });
+    const zap = !chart.getExecutedBubbles();
+    chart.setExecutedBubbles(zap);
+    store.saveJson('perpdesk.liqBubliny', zap);
     kresliProbehle();
+    if (zap && !surovaLikvidovano) nactiLikvidovano();
   });
+  el('liqSbal')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    chart?.setPaneCollapsed('LIQ', !chart.isPaneCollapsed('LIQ'));
+  });
+  ['liqCipFiltr', 'liqCipZdroj'].forEach((id) => el(id)?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    chart?.setPaneCollapsed('LIQ', false);
+  }));
 }
 
-/** Tlačítko proběhlých likvidací: stav a zdroj (podle zdroje mapy). */
+/** Přepínač bublin proběhlých likvidací. */
 function kresliProbehle() {
   const b = el('liqProbehle');
   if (!b || !chart) return;
-  b.setAttribute('aria-pressed', String(Boolean(chart.getLayers().likvidovano)));
-  const z = zdrojMapy();
-  const burza = burzaGrafuMapy();
-  const text = z === 'burza' ? (NAZVY_BURZ_ODHADU[burza] || burza)
-    : z === 'vse' ? t('liq.srcAll') : 'Hyperliquid';
-  const zdroj = el('liqProbehleZdroj');
-  if (zdroj) zdroj.textContent = chart.getLayers().likvidovano ? text : t('liq.happenedOff');
+  b.setAttribute('aria-pressed', String(chart.getExecutedBubbles()));
+}
+
+/*
+ * v0.91.0: likvidační mapa z vrstvy na indikátor. Kdo měl vrstvu zapnutou
+ * (výchozí), dostane indikátor LIQ hned pod svíčky; stav bublin se převezme.
+ * Jednou za instalaci (`perpdesk.liqIndikator`).
+ */
+function prevedMapuNaIndikator() {
+  if (store.loadJson('perpdesk.liqIndikator', false)) return;
+  const vrstvy = store.loadLayers();
+  const ind = store.loadIndicators();
+  if (vrstvy.likvidace !== false && !ind.includes('LIQ')) store.saveIndicators(['LIQ', ...ind]);
+  store.saveJson('perpdesk.liqBubliny', vrstvy.likvidovano !== false);
+  store.saveJson('perpdesk.liqIndikator', true);
 }
 
 const filtrMapy = () => Math.max(0, Math.min(0.9, Number(store.loadJson('perpdesk.liqFilter', 0.1)) || 0));

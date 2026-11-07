@@ -133,6 +133,11 @@ export const INDIKATORY = [
   { id: 'SAR', vlastniPanel: false },
   // Profil se kreslí do hlavního panelu, přes svíčky.
   { id: 'VPROFILE', vlastniPanel: false },
+  // Likvidační mapa jako indikátor (v0.91.0, rozhodnutí uživatele): panel
+  // s ovládáním pod svíčkami, kresba mapy v ploše svíček. Sloupce
+  // proběhlých likvidací jsou samostatný indikátor.
+  { id: 'LIQ', vlastniPanel: true },
+  { id: 'LIKVSL', vlastniPanel: true },
   // Open interest z burzy grafu (v0.66.0), data dodává app.js.
   { id: 'OI', vlastniPanel: true },
   // Sazba fundingu z burzy grafu (v0.86.0), data dodává app.js.
@@ -155,6 +160,8 @@ export const IKONY_INDIKATORU = {
   VPROFILE: '<path d="M3 5h11M3 9h6M3 13h14M3 17h8M3 21h4"/>',
   OI: '<path d="M3 18c3-1 5-5 8-5s4 3 7 0 2-6 3-8"/><path d="M3 21h18" opacity=".4"/>',
   FUND: '<path d="M3 12h18" opacity=".4"/><path d="M5 12V7M9 12V5M13 12V9M17 12v5M21 12v3"/>',
+  LIQ: '<path d="M3 6h12M3 10h17M3 14h9M3 18h14" stroke-width="2.2"/>',
+  LIKVSL: '<path d="M3 12h18" opacity=".4"/><path d="M5 12V8M9 12V4M13 12v4M17 12v7M21 12V9"/>',
 };
 
 const HLAVNI_PANEL = 'candle_pane';
@@ -1208,9 +1215,8 @@ function registrovatLikvidace() {
       ctx.font = '11px -apple-system, "Segoe UI", Roboto, sans-serif';
       ctx.fillStyle = 'rgba(139,155,176,0.9)';
       ctx.textBaseline = 'top';
-      // Pod přepínačem zdroje (ten je od v0.78.0 úplně nahoře).
+      // Popisek mapy zmizel (v0.91.0) — zdroj ukazuje panel indikátoru LIQ.
       const xPopisu = levyOkrajMapy + 8;
-      if (likvidace.popis) ctx.fillText(likvidace.popis, xPopisu, 8);
       /*
        * Nejbližší velký shluk **mimo obraz** nahoře a dole (šipka u okraje):
        * skutečné likvidace velkých pozic bývají jednotky až desítky procent
@@ -1232,7 +1238,7 @@ function registrovatLikvidace() {
       const mil = (v) => (v >= 1e6 ? `${(v / 1e6).toFixed(v >= 1e8 ? 0 : 1)} M` : `${Math.round(v / 1e3)} k`);
       const cenaText = (c) => (c >= 1000 ? Math.round(c).toLocaleString('en-US') : String(+c.toPrecision(5)));
       ctx.fillStyle = `rgba(${BARVA_SHORTU},0.95)`;
-      if (nad) ctx.fillText(`▲ ${cenaText(nad.cena)} · ${mil(nad.usd)}`, xPopisu, 24);
+      if (nad) ctx.fillText(`▲ ${cenaText(nad.cena)} · ${mil(nad.usd)}`, xPopisu, 8);
       ctx.textBaseline = 'bottom';
       ctx.fillStyle = `rgba(${BARVA_LONGU},0.95)`;
       if (pod) ctx.fillText(`▼ ${cenaText(pod.cena)} · ${mil(pod.usd)}`, xPopisu, bounding.height - 6);
@@ -1279,6 +1285,57 @@ function bublinyLikvidaci(data) {
   const bubliny = [...mapa.values()];
   bublinyCache = { klic, bubliny };
   return bubliny;
+}
+
+/*
+ * Sloupce proběhlých likvidací (v0.91.0, přání uživatele — samostatný
+ * indikátor, jako Coinglass): součet za svíčku, zlikvidované shorty nahoru
+ * zeleně, longy dolů červeně. Data stejná jako bubliny (`likvidovanoGrafu`).
+ */
+let verzeSloupcu = 0;
+const kratceUsd = (v) => {
+  const a = Math.abs(v || 0);
+  return a >= 1e6 ? `${(a / 1e6).toFixed(1)}M` : a >= 1e3 ? `${Math.round(a / 1e3)}k` : `${Math.round(a)}`;
+};
+function registrovatLikvSloupce() {
+  K().registerIndicator({
+    name: 'LIKVSL',
+    shortName: t('liqBars.short'),
+    series: 'normal',
+    precision: 0,
+    shouldFormatBigNumber: true,
+    calcParams: [0],
+    figures: [
+      { key: 's', title: '', type: 'bar', baseValue: 0, styles: () => ({ style: 'fill', color: '#3ee6a4' }) },
+      { key: 'l', title: '', type: 'bar', baseValue: 0, styles: () => ({ style: 'fill', color: '#f6465d' }) },
+    ],
+    createTooltipDataSource: ({ indicator, crosshair } = {}) => {
+      const vysledek = indicator?.result || [];
+      const r = vysledek[crosshair?.dataIndex ?? vysledek.length - 1] || {};
+      return {
+        calcParamsText: '',
+        popisek: {
+          parametry: '',
+          hodnoty: [
+            { pred: 'S ', text: kratceUsd(r.s), color: '#3ee6a4' },
+            { pred: 'L ', text: kratceUsd(r.l), color: '#f6465d' },
+          ],
+        },
+      };
+    },
+    calc: (data) => {
+      const u = likvidovanoGrafu?.udalosti || [];
+      const vysledek = data.map(() => ({ s: 0, l: 0 }));
+      let i = 0;
+      for (const z of u) {   // události jsou seřazené podle času
+        if (!data.length || z[0] < data[0].timestamp) continue;
+        while (i + 1 < data.length && data[i + 1].timestamp <= z[0]) i += 1;
+        if (z[3] === 1) vysledek[i].s += z[2];
+        else vysledek[i].l -= z[2];
+      }
+      return vysledek;
+    },
+  });
 }
 
 function registrovatLikvidovano() {
@@ -1517,7 +1574,7 @@ function registrovatZdi() {
         ctx.fillStyle = 'rgba(139,155,176,0.9)';
         ctx.textBaseline = 'top';
         // Pod popiskem likvidační mapy (ten je nahoře).
-        ctx.fillText(zdiGrafu.popis, 8, likvidace?.pasy?.length ? 38 : 6);
+        ctx.fillText(zdiGrafu.popis, 8, likvidace?.pasy?.length ? 24 : 6);
       }
       ctx.restore();
       return true;
@@ -1846,6 +1903,25 @@ function registrovatMereni() {
 let funding = null;
 let verzeFundingu = 0;
 let barvyFundingu = null;
+
+/*
+ * Panel indikátoru LIQ (v0.91.0): jen místo pro ovládání likvidační mapy
+ * (HTML z app.js, `handlers.panelOvladani`), sám nic nekreslí. Výšku
+ * určuje obsah ovládání, ne uživatel (úchyt výšky se neukazuje).
+ */
+const PANELY_OVLADANI = ['LIQ'];
+function registrovatPanelOvladani() {
+  K().registerIndicator({
+    name: 'LIQ',
+    shortName: 'Liq',
+    series: 'normal',
+    calcParams: [],
+    figures: [],
+    createTooltipDataSource: () => ({ name: '', calcParamsText: '', legends: [] }),
+    calc: (data) => data.map(() => ({})),
+    draw: () => true,
+  });
+}
 
 function registrovatFunding() {
   K().registerIndicator({
@@ -2383,6 +2459,8 @@ export function createPriceChart(container, layer, handlers = {}) {
   registrovatRsi();
   registrovatOi();
   registrovatFunding();
+  registrovatLikvSloupce();
+  registrovatPanelOvladani();
   registrovatLikvidace();
   registrovatZdi();
   registrovatLikvidovano();
@@ -2598,7 +2676,14 @@ export function createPriceChart(container, layer, handlers = {}) {
    * aby se sbalily i jejich panely; výběr uživatele (`aktivniIndikatory`)
    * zůstává a s odkrytím se vrátí.
    */
-  const vrstvy = { kresby: true, alarmy: true, indikatory: true, obchod: true, likvidace: true, zdi: true, likvidovano: true };
+  const vrstvy = { kresby: true, alarmy: true, indikatory: true, obchod: true, zdi: true };
+  /*
+   * Likvidační mapa je od v0.91.0 indikátor LIQ (dřív vrstva `likvidace`),
+   * bubliny proběhlých likvidací přepínač v jeho panelu (dřív vrstva
+   * `likvidovano`). Skryté indikátory (oko) schovají i mapu.
+   */
+  let bublinyVrstva = true;
+  const mapaViditelna = () => aktivniIndikatory.has('LIQ') && vrstvy.indikatory;
 
   /*
    * Svislé čárky divergence v ploše svíček (v0.90.1, přání uživatele):
@@ -2656,7 +2741,7 @@ export function createPriceChart(container, layer, handlers = {}) {
   let zdiZapnute = false;
   let bublinyZapnute = false;
   const obnovBubliny = () => {
-    const ukazat = Boolean(likvidovanoGrafu?.udalosti?.length) && vrstvy.likvidovano;
+    const ukazat = Boolean(likvidovanoGrafu?.udalosti?.length) && bublinyVrstva && mapaViditelna();
     if (bublinyZapnute) chart.removeIndicator({ name: 'LIKVBUB' });
     bublinyZapnute = false;
     if (ukazat) {
@@ -2682,7 +2767,7 @@ export function createPriceChart(container, layer, handlers = {}) {
   };
   // Mapu přidat / sundat podle dat a vrstvy; překreslení vynutí nové vložení.
   const obnovMapu = () => {
-    const ukazat = Boolean(likvidace?.pasy?.length) && vrstvy.likvidace;
+    const ukazat = Boolean(likvidace?.pasy?.length) && mapaViditelna();
     if (mapaZapnuta) chart.removeIndicator({ name: 'LIQMAP' });
     mapaZapnuta = false;
     if (ukazat) {
@@ -2849,7 +2934,8 @@ export function createPriceChart(container, layer, handlers = {}) {
         if (bj && bj.top < b.top) {
           nad.push({ prvek: jiny, top: bj.top });
           if (legendy.has(id)) nad.push({ prvek: legendy.get(id), top: bj.top });
-          if (sipkyPoradi.has(id)) nad.push({ prvek: sipkyPoradi.get(id), top: bj.top + ODSAZENI_SIPEK });
+          if (ovladaniPanelu.has(id)) nad.push({ prvek: ovladaniPanelu.get(id), top: bj.top });
+          if (sipkyPoradi.has(id)) nad.push({ prvek: sipkyPoradi.get(id), top: bj.top + (sipkyPoradi.get(id).classList.contains('v-ovladani') ? 4 : ODSAZENI_SIPEK) });
         }
       });
       tahUchytu = { paneId, nazev: u.dataset.nazev, y: e.touches[0].clientY, vyska: b.height,
@@ -2923,6 +3009,46 @@ export function createPriceChart(container, layer, handlers = {}) {
    */
   const sipkyPoradi = new Map();   // paneId → prvek
   /*
+   * Panely s ovládáním místo popisku (v0.91.0, indikátor LIQ): prvek dodá
+   * app.js (`handlers.panelOvladani(nazev, { sbaleno, sirka })`), leží přes
+   * celou šířku panelu včetně osy a panel má přesně jeho výšku. Šipky
+   * pořadí jsou vpravo nahoře v něm.
+   */
+  const ovladaniPanelu = new Map();   // paneId → prvek
+  function umistiOvladani(nazev, paneId, b, kde, pocet) {
+    const prvek = handlers.panelOvladani?.(nazev, { sbaleno: jeSbaleny(nazev), sirka: b.width });
+    if (!prvek) return false;
+    ovladaniPanelu.set(paneId, prvek);
+    prvek.hidden = false;
+    prvek.style.top = `${b.top}px`;
+    prvek.style.left = `${b.left}px`;
+    prvek.style.width = `${b.width}px`;
+    const u = uchyty.get(paneId);
+    if (u) u.hidden = true;
+    let s = sipkyPoradi.get(paneId);
+    if (!s) {
+      s = vytvorSipkyPoradi(paneId);
+      s.classList.add('v-ovladani');
+      sipkyPoradi.set(paneId, s);
+      container.parentElement.append(s);
+    }
+    const [nahoru, dolu, zv] = s.children;
+    s.dataset.nazev = nazev;
+    s.hidden = pocet < 2;
+    nahoru.hidden = pocet < 2 || kde <= 0;
+    dolu.hidden = pocet < 2 || kde === pocet - 1;
+    zv.hidden = true;
+    prvek.style.setProperty('--misto-sipek', s.hidden ? '0px' : `${s.offsetWidth + 6}px`);
+    s.style.top = `${b.top + 4}px`;
+    s.style.left = `${b.left + b.width - s.offsetWidth - 4}px`;
+    const vyska = Math.ceil(prvek.offsetHeight);
+    if (!vyska || Math.abs(b.height - vyska) <= 1 || tahUchytu) return false;
+    try {
+      chart.setPaneOptions({ id: paneId, height: vyska, minHeight: vyska });
+    } catch { return false; /* panel mezitím zmizel */ }
+    return true;
+  }
+  /*
    * Rozbalený panel nesmí být nižší než jeho popisek (v0.88.3, uživatel:
    * text zalezl pod spodní hranu) — název indikátoru → potřebné px.
    */
@@ -2938,7 +3064,11 @@ export function createPriceChart(container, layer, handlers = {}) {
   let indexKrize = null;       // svíčka pod křížem; null = poslední
   let legendyNaplanovany = false;
 
-  const jeSbaleny = (nazev) => Boolean(nactiNastaveni(nazev).sbaleno);
+  // Panel s ovládáním (LIQ) je výchozí sbalený — šetří výšku.
+  const jeSbaleny = (nazev) => {
+    const s = nactiNastaveni(nazev).sbaleno;
+    return PANELY_OVLADANI.includes(nazev) ? s !== false : Boolean(s);
+  };
 
   function sbalPanel(nazev, sbalit) {
     ulozNastaveni(nazev, { ...nactiNastaveni(nazev), sbaleno: sbalit });
@@ -3069,9 +3199,21 @@ export function createPriceChart(container, layer, handlers = {}) {
     // Šipky jen tam, kam jde panel posunout (první nemá ▲, poslední ▼).
     const poradi = [...panely.keys()].map((id) => [id, chart.getSize(id)?.top ?? 0])
       .sort((a, b) => a[1] - b[1]).map(([id]) => id);
+    // Ovládání panelů, které zmizely (indikátor vypnutý, skryté indikátory).
+    ovladaniPanelu.forEach((prvek, id) => {
+      if (!panely.has(id)) {
+        prvek.hidden = true;
+        ovladaniPanelu.delete(id);
+      }
+    });
+    let zmenaVysky = false;
     panely.forEach((nazev, paneId) => {
       const b = chart.getSize(paneId);
       if (!b || !b.height) return;
+      if (PANELY_OVLADANI.includes(nazev)) {
+        if (umistiOvladani(nazev, paneId, b, poradi.indexOf(paneId), poradi.length)) zmenaVysky = true;
+        return;
+      }
       let l = legendy.get(paneId);
       if (!l) {
         l = vytvorLegendu(paneId);
@@ -3127,7 +3269,7 @@ export function createPriceChart(container, layer, handlers = {}) {
         } catch { /* panel mezitím zmizel */ }
       }
     });
-    if (zvednuto) requestAnimationFrame(umistiVrstvuTed);
+    if (zvednuto || zmenaVysky) requestAnimationFrame(umistiVrstvuTed);
   }
 
   const VELKE = [[1e9, 'B'], [1e6, 'M'], [1e3, 'K']];
@@ -3451,7 +3593,7 @@ export function createPriceChart(container, layer, handlers = {}) {
       kandidati.push({ druh, p, vzd: Math.abs(my - stred) });
     };
     if (vrstvy.zdi && zdiZapnute) for (const p of pruhyZdi()) zkus('zed', p, p.do);
-    if (vrstvy.likvidace && mapaZapnuta) {
+    if (mapaViditelna() && mapaZapnuta) {
       const ted = Date.now() - 120000;
       for (const p of likvidace?.pasy || []) {
         if (hodnotaPasu(p) < prahMapyUsd) continue;
@@ -3562,7 +3704,7 @@ export function createPriceChart(container, layer, handlers = {}) {
   function urovenMapy(cena) {
     const ted = Date.now() - 120000;
     const lik = { long: { odhad: 0, realna: 0 }, short: { odhad: 0, realna: 0 } };
-    if (vrstvy.likvidace && mapaZapnuta) {
+    if (mapaViditelna() && mapaZapnuta) {
       for (const p of likvidace?.pasy || []) {
         if (p.do < ted || Math.abs(p.cena - cena) > p.vyska / 2) continue;
         lik[p.long ? 'long' : 'short'][p.zdroj === 'odhad' ? 'odhad' : 'realna'] += p.posledni ?? p.usd;
@@ -3728,6 +3870,7 @@ export function createPriceChart(container, layer, handlers = {}) {
   const NEJMENE_PRO_SVICKY = 0.45; // svíčkám musí zbýt aspoň tolik plochy
 
   function pouzijVyskuPanelu(nazev) {
+    if (PANELY_OVLADANI.includes(nazev)) return;   // výšku určuje ovládání (umistiLegendy)
     const n = nactiNastaveni(nazev);
     if (n.vyskaPanelu === undefined && !n.sbaleno) return;
     const indikator = chart.getIndicators({ name: nazev })?.[0];
@@ -4454,6 +4597,7 @@ export function createPriceChart(container, layer, handlers = {}) {
       if (aktivniIndikatory.has(nazev)) {
         chart.removeIndicator({ name: nazev });
         aktivniIndikatory.delete(nazev);
+        if (nazev === 'LIQ') { obnovMapu(); obnovBubliny(); }
         handlers.onIndicatorsChanged?.();
         setTimeout(umistiVrstvu, 0);
         return false;
@@ -4462,6 +4606,7 @@ export function createPriceChart(container, layer, handlers = {}) {
       vlastniPanelIndikatoru.set(nazev, Boolean(vlastniPanel));
       if (vrstvy.indikatory && !vlozIndikator(nazev)) return false;
       aktivniIndikatory.add(nazev);
+      if (nazev === 'LIQ') { obnovMapu(); obnovBubliny(); }
       handlers.onIndicatorsChanged?.();
       setTimeout(umistiVrstvu, 0);
       return true;
@@ -4474,6 +4619,8 @@ export function createPriceChart(container, layer, handlers = {}) {
         if (vrstvy.indikatory && !vlozIndikator(nazev)) return;
         aktivniIndikatory.add(nazev);
       });
+      obnovMapu();
+      obnovBubliny();
       setTimeout(umistiVrstvu, 0);
     },
 
@@ -4486,6 +4633,20 @@ export function createPriceChart(container, layer, handlers = {}) {
     activeIndicators() {
       return [...aktivniIndikatory];
     },
+
+    /** Je likvidační mapa (indikátor LIQ) v grafu vidět? */
+    isLiquidationMapOn: () => mapaViditelna(),
+    /** Bubliny proběhlých likvidací přes svíčky (přepínač v panelu LIQ). */
+    setExecutedBubbles(zap) {
+      bublinyVrstva = Boolean(zap);
+      obnovBubliny();
+    },
+    getExecutedBubbles: () => bublinyVrstva,
+    /** Sbalit / rozbalit panel indikátoru (stav se pamatuje v nastavení). */
+    setPaneCollapsed(nazev, sbalit) { sbalPanel(nazev, sbalit); },
+    isPaneCollapsed: (nazev) => jeSbaleny(nazev),
+    /** Znovu umístit panely a jejich ovládání (po změně obsahu ovládání). */
+    refreshPanes() { umistiVrstvu(); },
 
     /* ---------- vrstvy ---------- */
 
@@ -4542,6 +4703,8 @@ export function createPriceChart(container, layer, handlers = {}) {
       likvidovanoGrafu = data;
       bublinyCache = null;
       obnovBubliny();
+      verzeSloupcu += 1;
+      try { chart.overrideIndicator({ name: 'LIKVSL', calcParams: [verzeSloupcu] }); } catch { /* není v grafu */ }
       if (nova && bublinyZapnute) {
         nabehBublinOd = performance.now();
         const snimek = () => {
@@ -4654,14 +4817,14 @@ export function createPriceChart(container, layer, handlers = {}) {
         chart.overrideOverlay({ groupId: SKUPINA_ZNACKY, visible: vrstvy.obchod });
         this.setPnlInfo(pnlInfo);
       }
-      if (pred.likvidace !== vrstvy.likvidace) obnovMapu();
       if (pred.zdi !== vrstvy.zdi) obnovZdi();
-      if (pred.likvidovano !== vrstvy.likvidovano) obnovBubliny();
       if (pred.indikatory !== vrstvy.indikatory) {
         aktivniIndikatory.forEach((nazev) => {
           if (vrstvy.indikatory) vlozIndikator(nazev);
           else chart.removeIndicator({ name: nazev });
         });
+        obnovMapu();
+        obnovBubliny();
         setTimeout(umistiVrstvu, 0);
       }
     },
@@ -4670,6 +4833,7 @@ export function createPriceChart(container, layer, handlers = {}) {
       clearInterval(tikani);
       legendy.forEach((l) => l.remove());
       sipkyPoradi.forEach((s) => s.remove());
+      ovladaniPanelu.forEach((p) => { p.hidden = true; });
       uchyty.forEach((u) => u.remove());
       observer.disconnect();
       K().dispose(container);

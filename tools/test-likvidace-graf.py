@@ -7,7 +7,9 @@ skutečným svíčkám Hyperliquidu / Binance.
   * graf BTC na Hyperliquidu (1m): svíčky se ukážou dřív, než se mapa
     vůbec začne stahovat (graf na mapu nečeká),
   * mapa je vrstva LIQMAP s pruhy a popiskem „Hyperliquid liquidations",
-  * vrstva Likvidace v nabídce oka mapu sundá a vrátí,
+  * mapa je indikátor LIQ (v0.91.0): převod z vrstvy ho zapne, nabídka
+    indikátorů ho vypne a vrátí, ovládání je panel pod svíčkami
+    (sbalený s čipy, rozbalený bez nadpisů, na širokém displeji v řádku),
   * graf BTC na Binance: stejná mapa, posunutá na cenu Binance (popisek),
   * pár, který na Hyperliquidu není, mapu nemá (a nic nespadne).
 Ukládá snímky obrazovky do adresáře v proměnné SNIMKY (nepovinné).
@@ -22,8 +24,7 @@ from dotyk import Prohlizec
 KOREN = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 KLICE = ['hyperliquid:BTCUSDC', 'binance:BTCUSDT', 'binance:SPCXUSDT']
 mock = open(os.path.join(KOREN, 'tools', 'mock-bybit.js'), encoding='utf-8').read()
-mock = "sessionStorage.setItem('__mapaNaostro', '1');" + mock + """
-window.__sbalitListuPo = 1e9;
+mock = "sessionStorage.setItem('__mapaNaostro', '1'); sessionStorage.setItem('__liqVychozi', '1');" + mock + """
 localStorage.setItem('perpdesk.lists', JSON.stringify({ verze: 1, aktivni: 'a',
   seznamy: [{ id: 'a', nazev: 'Main', polozky: %s }] }));
 localStorage.setItem('perpdesk.chartView', JSON.stringify({ 'hyperliquid:BTCUSDC': { interval: '1' }, 'binance:BTCUSDT': { interval: '30' } }));
@@ -98,27 +99,22 @@ pocet = ev("(() => { const d = window.__graf.getIndicators({ name: 'LIQMAP' })[0
 time.sleep(1)
 snimek('liq-hl-1m.png')
 
-print('2) vrstva Likvidace')
+print('2) indikátor Likvidační mapa (v0.91.0)')
+over(ev("JSON.parse(localStorage.getItem('perpdesk.indicators'))[0]") == 'LIQ', 'převod z vrstvy: LIQ zapnutý a první')
+over(ev("window.__graf.getIndicators({ name: 'LIQ' }).length") == 1, 'panel LIQ v grafu')
 ev("document.getElementById('layersBtn').click()")
 time.sleep(0.5)
-radek = ev("[...document.querySelectorAll('.nabidka-radek')].map((r) => r.textContent).find((x) => /Liquidations/.test(x)) || ''")
-over(bool(radek), f'v nabídce oka je vrstva Likvidace ({radek[:40]})')
-ev("[...document.querySelectorAll('.nabidka-radek')].find((r) => /Liquidations/.test(r.textContent)).click()")
-time.sleep(0.5)
-over(mapa() == 0, 'vypnutím vrstvy mapa zmizí')
-ev("[...document.querySelectorAll('.nabidka-radek')].find((r) => /Liquidations/.test(r.textContent)).click()")
+over(not ev("[...document.querySelectorAll('.nabidka-radek')].some((r) => /Liquidations/.test(r.textContent))"), 'v nabídce oka mapa už není')
+ev("document.querySelector('[data-close=sheetLayers]').click()")
+time.sleep(0.3)
+ev("document.querySelector('#indicatorList [data-indicator=LIQ]').click()")
+time.sleep(0.8)
+over(mapa() == 0, 'vypnutím indikátoru mapa zmizí')
+over(ev("document.getElementById('liqLista').hidden"), 'a panel s ovládáním taky')
+ev("document.querySelector('#indicatorList [data-indicator=LIQ]').click()")
 time.sleep(3)
 over(mapa() == 1, 'zapnutím se vrátí')
-print('2b) filtr šumu — žebřík na levé stěně (v0.84.0)')
-ev("document.querySelector('[data-close=sheetLayers]').click()")
-time.sleep(0.5)
-over(ev("!document.getElementById('liqLista').hidden"), 'lišta mapy je v grafu vidět')
-schody = ev("[...document.querySelectorAll('#liqZebrik button')].map((b) => b.textContent)") or []
-print('   schody:', schody)
-over(3 <= len(schody) <= 8, f'žebřík má 3–8 schodů ({len(schody)})')
-over(schody and schody[-1].startswith('All'), 'dole schod All')
-over(sum(1 for x in schody if x.startswith('≥')) >= 2, 'schody ukazují rozsah v USD')
-pred = ev("window.__pruhyMapy") or 0
+over(not ev("document.getElementById('liqLista').hidden"), 'panel s ovládáním je vidět')
 
 
 def klepni(sel):
@@ -129,24 +125,70 @@ def klepni(sel):
     time.sleep(0.8)
 
 
-klepni('#liqZebrik button:first-child')   # nejvyšší schod = největší práh
+PANEL_JS = """(() => { const a = document.getElementById('liqLista').getBoundingClientRect(),
+  v = document.getElementById('chartBox').getBoundingClientRect(),
+  s = window.__graf.getSize('candle_pane', 'main'),
+  q = window.__graf.getSize(window.__graf.getIndicators({ name: 'LIQ' })[0].paneId);
+  return { top: a.top - v.top, vyska: a.height, sirka: a.width, dole: s.top + s.height, panelTop: q.top, panelVyska: q.height }; })()"""
+panel = lambda: ev(PANEL_JS) or {}
+
+print('2b) panel sbalený / rozbalený, filtr (v0.91.0)')
+pp = panel()
+print('   ', pp)
+over(ev("document.getElementById('liqLista').classList.contains('sbaleno')"), 'výchozí sbalený')
+over(pp.get('vyska', 99) <= 34, f"sbalený je jeden řádek ({pp.get('vyska')} px)")
+over(abs(pp.get('top', 0) - pp.get('panelTop', -99)) <= 1 and abs(pp.get('vyska', 0) - pp.get('panelVyska', 0)) <= 1, 'leží přesně v panelu indikátoru')
+over(pp.get('top', 0) >= pp.get('dole', 999) - 1, 'nepřekrývá svíčky')
+cip = ev("document.getElementById('liqCipFiltr').textContent") or ''
+over(cip == 'All' or cip.startswith('≥'), f'čip filtru ukazuje stupeň ({cip})')
+over(bool(ev("document.querySelector('#liqCipZdroj b').textContent")), 'čip zdroje má název')
+over(ev("getComputedStyle(document.getElementById('liqZebrik')).display") == 'none', 'stupně ve sbaleném schované')
+snimek('liq-panel-sbaleny.png')
+klepni('#liqCipFiltr')
+time.sleep(0.5)
+pp = panel()
+over(not ev("document.getElementById('liqLista').classList.contains('sbaleno')"), 'klepnutí na čip panel rozbalí')
+over(pp.get('vyska', 99) <= 80, f"rozbalený nízký, bez nadpisů ({pp.get('vyska')} px)")
+over(abs(pp.get('vyska', 0) - pp.get('panelVyska', 0)) <= 1, 'panel grafu má výšku ovládání')
+schody = ev("[...document.querySelectorAll('#liqZebrik button')].map((b) => b.textContent)") or []
+print('   stupně:', schody)
+over(len(schody) == 4 and schody[0] == 'All', 'čtyři stupně, první All')
+over(sum(1 for x in schody if x.startswith('≥')) >= 2, 'stupně ukazují práh v USD')
+over(not ev("document.querySelector('.liq-nadpis')"), 'žádné nadpisy')
+PRESAH_JS = """(() => { const p = document.getElementById('liqLista').getBoundingClientRect();
+  return [...document.querySelectorAll('#liqLista button')].filter((b) => b.offsetParent)
+    .filter((b) => { const r = b.getBoundingClientRect(); return r.right > p.right + 1 || r.bottom > p.bottom + 1 || r.width < 8; })
+    .map((b) => b.id || b.textContent); })()"""
+over(not ev(PRESAH_JS), f'nic nepřetéká za okraj panelu ({ev(PRESAH_JS)})')
+print('2c) s RSI pod mapou: šipky pořadí se s tlačítky nekryjí')
+ev("document.querySelector('#indicatorList [data-indicator=RSI]').click()")
+time.sleep(1.5)
+sip = ev("""(() => { const s = [...document.querySelectorAll('.pane-poradi.v-ovladani')].find((x) => !x.hidden);
+  if (!s) return null; const r = s.getBoundingClientRect(), p = document.getElementById('liqLista').getBoundingClientRect();
+  const kryti = [...document.querySelectorAll('#liqLista button')].filter((b) => b.offsetParent).filter((b) => {
+    const q = b.getBoundingClientRect(); return q.right > r.left && q.left < r.right && q.bottom > r.top && q.top < r.bottom; }).map((b) => b.id || b.textContent);
+  return { uvnitr: r.top >= p.top && r.bottom <= p.bottom + 1 && r.right <= p.right, kryti }; })()""")
+print('   ', sip)
+over(sip and sip['uvnitr'], 'šipky pořadí jsou v panelu mapy')
+over(sip and not sip['kryti'], 'a nekryjí tlačítka')
+over(not ev(PRESAH_JS), 'nic nepřetéká ani se šipkami')
+snimek('liq-panel-s-rsi.png')
+ev("document.querySelector('#indicatorList [data-indicator=RSI]').click()")
+time.sleep(1)
+snimek('liq-panel-rozbaleny.png')
+pred = ev("window.__pruhyMapy") or 0
+klepni('#liqZebrik button:last-child')   # největší práh
 po = ev("window.__pruhyMapy") or 0
 print(f'   pruhů: {pred} → {po}')
-over(pred > 0 and po < pred, f'nejvyšší schod schová malé pruhy ({pred} → {po})')
+over(pred > 0 and po < pred, f'nejvyšší stupeň schová malé pruhy ({pred} → {po})')
 ulozeno = float(ev("localStorage.getItem('perpdesk.liqFilter')") or 0)
 over(ulozeno >= 0.3, f'filtr se uložil ({ulozeno:.2f})')
-over(ev("document.querySelector('#liqZebrik button:first-child').classList.contains('active')"), 'vybraný schod zvýrazněný')
-klepni('#liqZebrik button:last-child')
-over((ev("window.__pruhyMapy") or 0) >= pred, 'schod All = zase všechny pruhy')
-ev("document.getElementById('layersBtn').click()")
-time.sleep(0.5)
-ev("[...document.querySelectorAll('.nabidka-radek')].find((r) => /Liquidations/.test(r.textContent)).click()")
-time.sleep(0.5)
-over(ev("document.getElementById('liqLista').hidden"), 'vypnutá vrstva = lišta schovaná')
-ev("[...document.querySelectorAll('.nabidka-radek')].find((r) => /Liquidations/.test(r.textContent)).click()")
-time.sleep(3)
-ev("document.querySelector('[data-close=sheetLayers]').click()")
-time.sleep(0.3)
+over(ev("document.querySelector('#liqZebrik button:last-child').classList.contains('active')"), 'vybraný stupeň zvýrazněný')
+klepni('#liqZebrik button:first-child')
+over((ev("window.__pruhyMapy") or 0) >= pred, 'stupeň All = zase všechny pruhy')
+klepni('#liqSbal')
+over(ev("document.getElementById('liqLista').classList.contains('sbaleno')"), 'šipka panel zase sbalí')
+over(ev("JSON.parse(localStorage.getItem('perpdesk.ind.LIQ') || '{}').sbaleno") is True, 'stav sbalení se pamatuje')
 ev("history.back()")
 time.sleep(1.5)
 
@@ -177,6 +219,10 @@ print('   odhad bez dat:', odhad, '· pruhů:', mapa())
 
 
 def zdroj(z):
+    # Zdroje jsou vidět jen v rozbaleném panelu (v0.91.0).
+    if ev("document.getElementById('liqLista').classList.contains('sbaleno')"):
+        ev("document.getElementById('liqSbal').click()")
+        time.sleep(0.6)
     r = ev(f"(() => {{ const r = document.querySelector('[data-zdroj={z}]').getBoundingClientRect(); return {{ x: r.left + r.width / 2, y: r.top + r.height / 2 }}; }})()")
     bod = [{'x': r['x'], 'y': r['y'], 'radiusX': 6, 'radiusY': 6, 'force': 1, 'id': 1}]
     p.prikaz('Input.dispatchTouchEvent', type='touchStart', touchPoints=bod)
@@ -224,36 +270,34 @@ info = ev('window.__mapaInfo') or {}
 print('  ', info)
 over('confirmed' in info.get('popis', ''), 'Shoda: reálné potvrzené kalkulovanou')
 snimek('mapa-shoda.png')
-poloha = ev("(() => { const a = document.getElementById('liqLista').getBoundingClientRect(), v = document.getElementById('chartBox').getBoundingClientRect(), h = window.__graf.getSize('candle_pane', 'main').height; return { x: a.left - v.left, y: a.top - v.top, dole: v.top + h - a.bottom }; })()")
-over(poloha and poloha['x'] < 12 and poloha['y'] < 12 and poloha['dole'] >= 0, f'lišta vlevo nahoře a vejde se do plochy ({poloha})')
-print('6) proběhlé likvidace podle zdroje (v0.84.0)')
-over(ev("document.getElementById('liqProbehleZdroj').textContent") == 'Hyperliquid', 'Shoda → proběhlé z Hyperliquidu')
-zdroj('vse')
-over(ev("document.getElementById('liqProbehleZdroj').textContent") == 'All CEX', 'All CEX → proběhlé ze všech CEX')
+pp = panel()
+over(pp.get('top', 0) >= pp.get('dole', 999) - 1, f'panel pod svíčkami ({pp})')
+print('6) Executed ve sbaleném řádku (v0.91.0)')
 zdroj('burza')
-over(ev("document.getElementById('liqProbehleZdroj').textContent") == 'Binance', 'burza grafu → proběhlé z Binance')
+if not ev("document.getElementById('liqLista').classList.contains('sbaleno')"):
+    klepni('#liqSbal')
+over(ev("getComputedStyle(document.getElementById('liqProbehle')).display") != 'none', 'přepínač Executed je ve sbaleném řádku')
 klepni('#liqProbehle')
-over(ev("document.getElementById('liqProbehle').getAttribute('aria-pressed')") == 'false', 'klepnutí proběhlé vypne')
+over(ev("document.getElementById('liqProbehle').getAttribute('aria-pressed')") == 'false', 'klepnutí bubliny vypne')
 over(ev("!window.__graf.getIndicators({ name: 'LIKVBUB' }).length"), 'bubliny pryč')
+over(ev("document.getElementById('liqLista').classList.contains('sbaleno')"), 'a panel se nerozbalil')
+over(ev("localStorage.getItem('perpdesk.liqBubliny')") == 'false', 'volba se pamatuje')
 klepni('#liqProbehle')
 over(ev("document.getElementById('liqProbehle').getAttribute('aria-pressed')") == 'true', 'a zase zapne')
-print('7) lišta se po chvíli bez dotyku sbalí (v0.84.1)')
-ev("window.__sbalitListuPo = 400")
-klepni('#liqZebrik button:last-child')
-time.sleep(0.8)
-over(ev("document.getElementById('liqLista').classList.contains('sbalena')"), 'po chvíli sbalená')
-sirka = ev("document.getElementById('liqLista').getBoundingClientRect().width")
-over(sirka and sirka < 60, f'úzká ({sirka})')
-kratke = ev("[...document.querySelectorAll('#liqZebrik .kratke')].map((e) => getComputedStyle(e).display === 'none' ? '' : e.textContent)") or []
-print('   schody sbalené:', kratke)
-over(kratke and all(k for k in kratke) and not any('≥' in k for k in kratke), 'schody jen s rozsahem')
-over(ev("getComputedStyle(document.querySelector('[data-zdroj=vse] small')).display") == 'none' and ev("document.querySelector('[data-zdroj=burza] b').textContent") == 'Binance', 'zdroje jen názvem (Binance)')
-over(ev("getComputedStyle(document.querySelector('.liq-nadpis')).display") == 'none', 'nadpisy oddílů schované')
-ev("window.__sbalitListuPo = 1e9")
-klepni('[data-zdroj=vse]')
-over(not ev("document.getElementById('liqLista').classList.contains('sbalena')"), 'dotyk lištu rozbalí')
-over(ev("document.querySelector('[data-zdroj=burza]').classList.contains('active')"), 'a nic nepřepne (zdroj zůstal)')
-snimek('lista-sbalena.png')
+print('7) široký displej (rozevřený Fold): vše v jednom řádku')
+p.prikaz('Emulation.setDeviceMetricsOverride', width=673, height=841, deviceScaleFactor=2, mobile=True)
+time.sleep(2)
+pp = panel()
+print('   ', pp)
+over(ev("document.getElementById('liqLista').classList.contains('siroky')"), 'panel je široký')
+over(pp.get('vyska', 99) <= 42, f"jeden řádek ({pp.get('vyska')} px)")
+over(ev("getComputedStyle(document.getElementById('liqZebrik')).display") != 'none' and ev("getComputedStyle(document.getElementById('liqZdroj')).display") != 'none', 'stupně i zdroje vidět')
+over(ev("getComputedStyle(document.getElementById('liqSbal')).display") == 'none', 'bez sbalování')
+preteka = ev("[...document.querySelectorAll('#liqLista button')].filter((b) => b.offsetParent && b.scrollWidth > b.clientWidth + 1).map((b) => b.textContent)") or []
+over(not preteka, f'texty se vejdou ({preteka})')
+snimek('liq-panel-siroky.png')
+p.prikaz('Emulation.setDeviceMetricsOverride', width=412, height=880, deviceScaleFactor=2, mobile=True)
+time.sleep(1.5)
 ev("history.back()")
 time.sleep(1)
 

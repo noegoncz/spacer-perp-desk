@@ -1,27 +1,18 @@
 {
-  "verze": "0.90.3",
+  "verze": "0.91.0",
   "novinky": [
     {
-      "en": "RSI divergence notifications per pair: tap “RSI signal” in the RSI panel, pick any timeframes and when to be notified — early 1/3, early 2/3, once confirmed, or any combination of them. Only the pairs you choose.",
-      "cs": "Notifikace RSI divergence po párech: klepni na „RSI signál“ v panelu RSI, vyber libovolné timeframy a kdy upozornit — předem 1/3, předem 2/3, potvrzenou, nebo jejich libovolnou kombinaci. Jen páry, které si vybereš."
+      "en": "The liquidation map is now an indicator: turn it on or off in Indicators. Its controls moved from the left of the chart to a slim panel under the candles — no more covering the candles or the indicator panels.",
+      "cs": "Likvidační mapa je teď indikátor: zapneš a vypneš ji v Indikátorech. Ovládání se přesunulo z levé strany grafu do tenkého panelu pod svíčkami — už nezakrývá svíčky ani panely indikátorů."
     },
     {
-      "en": "The Alerts tab is now Notifications: Alerts (active / inactive) and RSI divergence, each with an overview to switch off or delete.",
-      "cs": "Záložka Alarmy je teď Notifikace: Alarmy (aktivní / neaktivní) a RSI divergence, každé s přehledem k vypnutí a smazání."
+      "en": "Collapsed, the panel shows just your choices — level filter, map source and Executed. Tap to expand. On the open Fold everything fits in one row.",
+      "cs": "Sbalený panel ukazuje jen tvoje volby — filtr hladin, zdroj mapy a Proběhlé. Klepnutím se rozbalí. Na rozevřeném Foldu je všechno v jednom řádku."
     },
     {
-      "en": "Divergences in RSI are subtler, and subtle purple dotted lines (the colour of the RSI line) lead up to the candles they belong to. Divergences still forming show as a dashed line with “Bull?” / “Bear?”.",
-      "cs": "Divergence v RSI jsou jemnější a jemné fialové tečkované čáry (barvou křivky RSI) vedou nahoru ke svíčkám, ke kterým patří. Rýsující se divergence jsou čárkované s „Býk?“ / „Medvěd?“."
+      "en": "New indicator Executed liquidations: bars per candle — shorts liquidated up in green, longs down in red.",
+      "cs": "Nový indikátor Proběhlé likvidace: sloupce po svíčkách — zlikvidované shorty nahoru zeleně, longy dolů červeně."
     }
   ],
-  "opravy": [
-    {
-      "en": "Stricter divergence rules — fewer weak signals.",
-      "cs": "Přísnější pravidla divergence — méně slabých signálů."
-    },
-    {
-      "en": "Indicator panel height can be dragged again on the narrow screen.",
-      "cs": "Výšku panelu indikátoru jde zase táhnout i na úzkém displeji."
-    }
-  ]
+  "opravy": []
 }

@@ -3849,6 +3849,37 @@ hlouposti) a ukázat proběhlé likvidace v grafu. Pořadí: sběr → vrstva �
   barevný nadpis `.liq-nadpis` a jemný podklad. Sbalená 58 px: bez nadpisů
   a popisů, zdroje jen názvem (značky burz zrušené — uživatel: nedávaly
   smysl), proběhlé „Liq.“ / „Likv.“. Názvy a popisy chce uživatel ještě doladit.
+- **v0.91.0 — mapa jako indikátor** (rozhodnutí uživatele 2026-11-07, snímek
+  LITUSDT: rozbalená levá lišta se překrývala s panely indikátorů, sbalování
+  po 3 s nepomohlo — stejně pořád rozklikával):
+  - Indikátor **`LIQ`** (`INDIKATORY`, zapíná se v nabídce indikátorů);
+    vrstvy `likvidace` / `likvidovano` z oka zmizely. Mapa je vidět, když je
+    LIQ aktivní a indikátory nejsou skryté okem (`mapaViditelna()` v chart.js,
+    `chart.isLiquidationMapOn()`). Převod jednou (`prevedMapuNaIndikator`,
+    `perpdesk.liqIndikator`): kdo měl vrstvu zapnutou, dostane LIQ jako první
+    panel; stav bublin → `perpdesk.liqBubliny`.
+  - **Panel s ovládáním místo popisku** (`PANELY_OVLADANI` v chart.js):
+    indikátor LIQ nic nekreslí, `umistiOvladani` položí `#liqLista` přes
+    celou šířku panelu (i přes osu) a dá panelu jeho výšku; úchyt výšky
+    se neukazuje, šipky pořadí ▲▼ vpravo nahoře v panelu (`v-ovladani`,
+    místo pro ně `--misto-sipek`). Obsah kreslí app.js (`panelLiq`).
+  - **Bez nadpisů** (uživatel: výška je drahá, hlídat vždy). Sbalený
+    (výchozí, `sbaleno !== false`): ▴ Liq + čip filtru v barvě stupně + čip
+    zdroje (název + objem) + přepínač Executed (bubliny, přepíná se rovnou).
+    Klepnutí na čip rozbalí: řádek 4 stupňů (`STUPNE_FILTRU` 0 / 5 / 15 /
+    50 % p97) a řádek zdrojů + Executed (~67 px). Panel ≥ 600 px (rozevřený
+    Fold): vše v jednom řádku (39 px), bez sbalování.
+  - Popisek mapy nahoře v grafu zmizel (zdroj je v panelu), ▲ šipka shluku
+    je teď nahoře (y 8).
+  - **Sloupce proběhlých likvidací = samostatný indikátor `LIKVSL`** (shorty
+    nahoru zeleně, longy dolů červeně, data jako bubliny — podle zdroje mapy,
+    bez mapy burza grafu). Stahují se i s vypnutou mapou.
+  - ⚠ `mock-bybit.js` převod označí jako hotový (starší testy LIQ nemají);
+    testy mapy ho pustí `__liqVychozi`. Test: `test-likvidace-graf.py`
+    (body 2–2c, 6–7: sbalený / rozbalený / široký, nic nepřetéká, s RSI
+    šipky nekryjí tlačítka), `test-likvidovano-graf.py` (2b sloupce).
+  - **Zdi** zůstávají vrstvou v oku — později samostatný krok (vpravo
+    u cenových hladin).
 
 ## Zdi v knize příkazů — sběr na serveru (2026-10-22, v0.72.0)
 
