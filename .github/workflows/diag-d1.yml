@@ -21,3 +21,6 @@ jobs:
           curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Content-Type: application/json' --data @q.json https://api.cloudflare.com/client/v4/graphql > a.json
           jq -c '.errors' a.json
           jq -r '.data.viewer.accounts[0].d1AnalyticsAdaptiveGroups[] | [.dimensions.datetimeHour, .sum.rowsRead, .sum.rowsWritten] | @tsv' a.json
+          echo "--- dotazy podle zapisu (1 den)"
+          npx -y wrangler@4 d1 insights perpyx-likvidace --timePeriod 1d --sort-by writes --limit 10 --json | jq -c '.[] | {q: .query[0:160], w: .totalRowsWritten, n: .numberOfTimesRun}' || true
+          npx -y wrangler@4 d1 insights perpyx-web --timePeriod 1d --sort-by writes --limit 6 --json | jq -c '.[] | {q: .query[0:160], w: .totalRowsWritten, n: .numberOfTimesRun}' || true
