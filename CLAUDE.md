@@ -3896,6 +3896,11 @@ dlouho stojí, teď / min / max). Rozhodnutí: Binance + Bybit + Hyperliquid,
   (`setrit`, mapa jen čtvrthodinové řádky, zdi a proběhlé likvidace 503 —
   server je podrží). Spotřeba po hodinách: workflow **Diagnostika D1**
   (`diag-d1.yml`, ručně).
+  **2026-11-06 limit přetekl** (128 k): minutové řádky mapy samy
+  ~108 k / den (upsert `liq_hodiny` rozlišení 1, ~43 / min). Od 2026-11-07
+  server posílá mapu do D1 **jen každých 5 min** (`ODESILAT_PO`
+  v likvidace.mjs; snímky dál po minutě, endpoint spojí coin + hodinu
+  do jednoho zápisu). Dotazy podle zápisů vypíše `diag-d1.yml`.
 - **Stav zdí po částech** (2026-11-04): řádek `zdi_stav` přerostl 1,8 MB
   (nedávné zdi za 90 min, ~200 trhů) a příjem ho od 04:07 UTC odmítal.
   Teď `CASTI_ZDI` = 3 řádky podle trhu (`castZdi` v js/zdi-format.js

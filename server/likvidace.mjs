@@ -33,6 +33,7 @@ import { spustLikvidovano } from './likvidovano.mjs';
 // restartuje službu jen při změně tohoto souboru → při změně zdi.mjs nebo
 // js/zdi-format.js zvedni tuto verzi.
 const VERZE_ZDI = 6;
+const ODESILAT_PO = 5; // minut mezi dávkami mapy do D1
 
 const API = (process.env.API || 'https://perpyx.com').replace(/\/$/, '');
 const TOKEN = process.env.WATCHER_TOKEN || '';
@@ -474,7 +475,13 @@ if (process.env.LIKVIDOVANO !== '0') likvidovano = spustLikvidovano({ log, API, 
 (function planuj() {
   const za = MIN - (Date.now() % MIN) + 5000;
   setTimeout(async () => {
-    try { udelejSnimek(); await odesli(); } catch (e) { log('snímek:', e.message); }
+    try {
+      udelejSnimek();
+      // Do D1 jen jednou za ODESILAT_PO minut: perpyx.com spojí řádky téhož
+      // coinu a hodiny do jednoho zápisu (limit 100 000 zápisů denně — po
+      // minutě to bylo ~108 000 jen za mapu, 2026-11-06).
+      if (ZKOUSKA || Math.floor(Date.now() / MIN) % ODESILAT_PO === 0) await odesli();
+    } catch (e) { log('snímek:', e.message); }
     planuj();
   }, za);
 })();
