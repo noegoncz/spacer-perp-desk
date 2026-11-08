@@ -388,6 +388,40 @@ function udelejSnimek() {
   };
 }
 
+/*
+ * Dávka do D1 po částech (2026-11-08): od 5min dávek (974eca9) šlo jedním
+ * POST ~125 coinů a bezplatný tarif Cloudflare (50 dotazů D1 a 10 ms CPU
+ * na jedno volání) ho odmítal — neodeslané řádky se hromadily, dávka rostla
+ * a mapa po pár hodinách od restartu přestala zapisovat úplně (mezery
+ * 7. 11. 03–11, 14–22 UTC a od 8. 11. 02 UTC). Teď se řádky téhož coinu
+ * a hodiny spojí už tady a posílají se po částech (nejvýš CAST_RADKU
+ * zápisů a CAST_BAJTU); co neprojde, zůstane na příště (pořadí se drží).
+ * Stav sběru a úklid jdou s poslední částí. Počet zápisů se nemění.
+ */
+const CAST_RADKU = 35;
+const CAST_BAJTU = 300000;
+const sRadkem = (d) => (d.endsWith('\n') ? d : `${d}\n`);
+
+function spojRadky(seznam) {
+  const m = new Map();
+  for (const r of seznam) {
+    const k = `${r.c}|${r.h}`;
+    const x = m.get(k);
+    if (x) x.d += sRadkem(r.d);
+    else m.set(k, { c: r.c, h: r.h, d: sRadkem(r.d) });
+  }
+  return [...m.values()];
+}
+
+async function posliCast(telo) {
+  const r = await fetch(`${API}/api/watcher/liq`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Watcher-Token': TOKEN },
+    body: JSON.stringify(telo), signal: AbortSignal.timeout(30000),
+  });
+  if (!r.ok) throw new Error(`perpyx ${r.status}`);
+}
+
 async function odesli() {
   const ted = Date.now();
   const uklid = ted - posledniUklid > HOD;
@@ -396,31 +430,44 @@ async function odesli() {
     ws: ws?.readyState === 1, wsSpojeni: stavWs.spojeni,
     obchodPred: Math.round((ted - posledniObchod) / 1000),
     ...stat, tempo, pamet: Math.round(process.memoryUsage().rss / 1e6),
+    cekaRadku: radky.length,
   };
-  const davka = { radky: radky.map((r) => ({ ...r, d: r.d + '\n' })), kompakt, info, uklid };
   if (ZKOUSKA) {
     mkdirSync(STAV, { recursive: true });
-    for (const r of davka.radky) appendFileSync(join(STAV, 'radky.txt'), `${r.c}\t${r.h}\t${r.d}`);
+    for (const r of radky) appendFileSync(join(STAV, 'radky.txt'), `${r.c}\t${r.h}\t${sRadkem(r.d)}`);
     for (const r of kompakt) appendFileSync(join(STAV, 'kompakt.txt'), `${r.c}\t${r.h}\t${JSON.stringify(r.d)}\n`);
     writeFileSync(join(STAV, 'info.json'), JSON.stringify(info));
     for (const k of kontrola) appendFileSync(join(STAV, 'kontrola.jsonl'), `${JSON.stringify(k)}\n`);
     radky = []; kompakt = []; kontrola = [];
     return;
   }
+  radky = spojRadky(radky);
+  let casti = 0;
   try {
-    const r = await fetch(`${API}/api/watcher/liq`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Watcher-Token': TOKEN },
-      body: JSON.stringify(davka), signal: AbortSignal.timeout(30000),
-    });
-    if (!r.ok) throw new Error(`perpyx ${r.status}`);
-    radky = []; kompakt = [];
+    while (radky.length || kompakt.length || casti === 0) {
+      const r = [], k = [];
+      let bajtu = 0;
+      for (const x of radky) {
+        if (r.length && (r.length >= CAST_RADKU || bajtu + x.d.length > CAST_BAJTU)) break;
+        r.push(x); bajtu += x.d.length;
+      }
+      for (const x of kompakt) {
+        if (r.length + k.length >= CAST_RADKU || (r.length + k.length && bajtu + x.d.length > CAST_BAJTU)) break;
+        k.push(x); bajtu += x.d.length;
+      }
+      const posledni = r.length === radky.length && k.length === kompakt.length;
+      await posliCast({ radky: r, kompakt: k, ...(posledni ? { info, uklid } : {}) });
+      radky = radky.slice(r.length);
+      kompakt = kompakt.slice(k.length);
+      casti++;
+      if (posledni) break;
+    }
     if (uklid) posledniUklid = ted;
   } catch (e) {
-    log('odeslání:', e.message);
+    log(`odeslání (část ${casti + 1}):`, e.message);
     // Dlouhý výpadek: zahodit a začít čistě (každý coin dostane nový
     // řádek K) — rozdílové řádky bez základu by se rozbalily špatně.
-    if (radky.length > 20000) {
+    if (radky.length > 3000) {
       radky = []; kompakt = [];
       for (const st of stavCoinu.values()) st.hodina = -1;
     }

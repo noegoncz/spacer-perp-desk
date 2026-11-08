@@ -1,5 +1,6 @@
-// Likvidační mapa Hyperliquidu: server (server/likvidace.mjs) sem každou
-// minutu pošle nové řádky. Jen s WATCHER_TOKEN (_middleware.js).
+// Likvidační mapa Hyperliquidu: server (server/likvidace.mjs) sem každých
+// 10 min pošle nové řádky, po částech (nejvýš 35 zápisů — limit 50 dotazů
+// D1 na volání bezplatného tarifu). Jen s WATCHER_TOKEN (_middleware.js).
 //
 // POST { radky: [{ c, h, d }], kompakt: [{ c, h, d }], info, uklid }
 //   radky   — minutové řádky, připojí se na konec hodiny coinu
@@ -41,7 +42,8 @@ export async function onRequestPost({ request, env }) {
       .bind(r.c, r.h, r.d));
   }
   const ted = Date.now();
-  if (!usporne) prikazy.push(env.LIQ.prepare('INSERT OR REPLACE INTO liq_stav (id, seen_at, info) VALUES (1, ?, ?)')
+  // Server posílá dávku po částech (2026-11-08); stav nese jen poslední.
+  if (!usporne && d.info) prikazy.push(env.LIQ.prepare('INSERT OR REPLACE INTO liq_stav (id, seen_at, info) VALUES (1, ?, ?)')
     .bind(ted, JSON.stringify(d.info || {}).slice(0, 4000)));
   if (d.uklid && !usporne) {
     prikazy.push(env.LIQ.prepare('DELETE FROM liq_hodiny WHERE rozliseni = 1 AND hodina < ?').bind(ted - 3 * 24 * HOD));
