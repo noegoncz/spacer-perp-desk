@@ -3878,6 +3878,17 @@ hlouposti) a ukázat proběhlé likvidace v grafu. Pořadí: sběr → vrstva �
     testy mapy ho pustí `__liqVychozi`. Test: `test-likvidace-graf.py`
     (body 2–2c, 6–7: sbalený / rozbalený / široký, nic nepřetéká, s RSI
     šipky nekryjí tlačítka), `test-likvidovano-graf.py` (2b sloupce).
+  - **v0.91.1 (snímek uživatele: panel má vypadat jako ostatní indikátory):**
+    vlevo sloupec popisku (`::before` v `.liq-panel`, šířka `--sl` 76 / 96 px
+    jako `.pane-legenda`, šipka + „Liq“ = `#liqSbal`), šipky pořadí vedle
+    něj na místě `[data-misto-sipek]` (chart.js `umistiOvladani` čte jeho
+    `offsetTop/Left`), stejná velikost jako u ostatních. Sbalený = 22 px,
+    jen souhrn `#liqShrnuti` (stupeň · zdroj objem · Executed / „Map off“),
+    klepnutí rozbalí — i na širokém. Rozbalený: stupně, zdroje, přepínače
+    **Mapa** (`#liqCary`, `chart.setLiquidationLines`, `perpdesk.liqCary`;
+    vypnutá mapa dál načítá data) a **Executed** ve sloupci popisku (široký:
+    vše v řádku). Šipky sbaleného panelu (všech) v jeho řádku
+    (`dataset.odsazeni`), dřív přečnívaly do panelu pod ním.
   - **Zdi** zůstávají vrstvou v oku — později samostatný krok (vpravo
     u cenových hladin).
 

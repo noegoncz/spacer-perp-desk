@@ -2683,6 +2683,9 @@ export function createPriceChart(container, layer, handlers = {}) {
    * `likvidovano`). Skryté indikátory (oko) schovají i mapu.
    */
   let bublinyVrstva = true;
+  // Čáry mapy jdou v panelu vypnout (v0.91.1) — data, objemy zdrojů
+  // a bubliny běží dál, jen se mapa nekreslí.
+  let caryMapy = true;
   const mapaViditelna = () => aktivniIndikatory.has('LIQ') && vrstvy.indikatory;
 
   /*
@@ -2767,7 +2770,7 @@ export function createPriceChart(container, layer, handlers = {}) {
   };
   // Mapu přidat / sundat podle dat a vrstvy; překreslení vynutí nové vložení.
   const obnovMapu = () => {
-    const ukazat = Boolean(likvidace?.pasy?.length) && mapaViditelna();
+    const ukazat = Boolean(likvidace?.pasy?.length) && mapaViditelna() && caryMapy;
     if (mapaZapnuta) chart.removeIndicator({ name: 'LIQMAP' });
     mapaZapnuta = false;
     if (ukazat) {
@@ -2935,7 +2938,7 @@ export function createPriceChart(container, layer, handlers = {}) {
           nad.push({ prvek: jiny, top: bj.top });
           if (legendy.has(id)) nad.push({ prvek: legendy.get(id), top: bj.top });
           if (ovladaniPanelu.has(id)) nad.push({ prvek: ovladaniPanelu.get(id), top: bj.top });
-          if (sipkyPoradi.has(id)) nad.push({ prvek: sipkyPoradi.get(id), top: bj.top + (sipkyPoradi.get(id).classList.contains('v-ovladani') ? 4 : ODSAZENI_SIPEK) });
+          if (sipkyPoradi.has(id)) nad.push({ prvek: sipkyPoradi.get(id), top: bj.top + (Number(sipkyPoradi.get(id).dataset.odsazeni) || 0) });
         }
       });
       tahUchytu = { paneId, nazev: u.dataset.nazev, y: e.touches[0].clientY, vyska: b.height,
@@ -3012,7 +3015,8 @@ export function createPriceChart(container, layer, handlers = {}) {
    * Panely s ovládáním místo popisku (v0.91.0, indikátor LIQ): prvek dodá
    * app.js (`handlers.panelOvladani(nazev, { sbaleno, sirka })`), leží přes
    * celou šířku panelu včetně osy a panel má přesně jeho výšku. Šipky
-   * pořadí jsou vpravo nahoře v něm.
+   * pořadí (v0.91.1) stojí jako u ostatních vpravo vedle sloupce popisku —
+   * na místě, které si ovládání vyhradí prvkem `[data-misto-sipek]`.
    */
   const ovladaniPanelu = new Map();   // paneId → prvek
   function umistiOvladani(nazev, paneId, b, kde, pocet) {
@@ -3038,9 +3042,12 @@ export function createPriceChart(container, layer, handlers = {}) {
     nahoru.hidden = pocet < 2 || kde <= 0;
     dolu.hidden = pocet < 2 || kde === pocet - 1;
     zv.hidden = true;
-    prvek.style.setProperty('--misto-sipek', s.hidden ? '0px' : `${s.offsetWidth + 6}px`);
-    s.style.top = `${b.top + 4}px`;
-    s.style.left = `${b.left + b.width - s.offsetWidth - 4}px`;
+    prvek.style.setProperty('--misto-sipek', s.hidden ? '0px' : `${s.offsetWidth}px`);
+    const misto = prvek.querySelector('[data-misto-sipek]');
+    const odsazeni = misto ? misto.offsetTop : 1;
+    s.dataset.odsazeni = String(odsazeni);
+    s.style.top = `${b.top + odsazeni}px`;
+    s.style.left = `${b.left + (misto ? misto.offsetLeft : b.width - s.offsetWidth - 4)}px`;
     const vyska = Math.ceil(prvek.offsetHeight);
     if (!vyska || Math.abs(b.height - vyska) <= 1 || tahUchytu) return false;
     try {
@@ -3249,7 +3256,11 @@ export function createPriceChart(container, layer, handlers = {}) {
       zv.lastChild.textContent = t('signals.bellLabel');   // i po změně jazyka
       zv.classList.toggle('on', zvonkyPanelu.has(nazev));
       zv.setAttribute('aria-pressed', String(zvonkyPanelu.has(nazev)));
-      s.style.top = `${b.top + ODSAZENI_SIPEK}px`;
+      // Sbalený panel (22 px) nemá úchyt — šipky v jeho řádku, dřív
+      // přečnívaly do panelu pod ním (snímek uživatele v0.91.0).
+      const odsazeni = sbaleno ? 1 : ODSAZENI_SIPEK;
+      s.dataset.odsazeni = String(odsazeni);
+      s.style.top = `${b.top + odsazeni}px`;
       s.style.left = `${b.left + l.offsetWidth + 2}px`;
     });
     vyplnLegendy();
@@ -4642,6 +4653,12 @@ export function createPriceChart(container, layer, handlers = {}) {
       obnovBubliny();
     },
     getExecutedBubbles: () => bublinyVrstva,
+    /** Čáry likvidační mapy (přepínač Mapa v panelu LIQ). */
+    setLiquidationLines(zap) {
+      caryMapy = Boolean(zap);
+      obnovMapu();
+    },
+    getLiquidationLines: () => caryMapy,
     /** Sbalit / rozbalit panel indikátoru (stav se pamatuje v nastavení). */
     setPaneCollapsed(nazev, sbalit) { sbalPanel(nazev, sbalit); },
     isPaneCollapsed: (nazev) => jeSbaleny(nazev),

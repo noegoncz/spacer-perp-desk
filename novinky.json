@@ -1,18 +1,19 @@
 {
-  "verze": "0.91.0",
+  "verze": "0.91.1",
   "novinky": [
     {
-      "en": "The liquidation map is now an indicator: turn it on or off in Indicators. Its controls moved from the left of the chart to a slim panel under the candles — no more covering the candles or the indicator panels.",
-      "cs": "Likvidační mapa je teď indikátor: zapneš a vypneš ji v Indikátorech. Ovládání se přesunulo z levé strany grafu do tenkého panelu pod svíčkami — už nezakrývá svíčky ani panely indikátorů."
+      "en": "The liquidation map panel now looks like the other indicator panels: name on the left, ▲ ▼ to reorder. Collapsed it shows just your current settings; tap to expand.",
+      "cs": "Panel likvidační mapy teď vypadá jako ostatní panely indikátorů: název vlevo, ▲ ▼ pro pořadí. Sbalený ukazuje jen aktuální nastavení, klepnutím se rozbalí."
     },
     {
-      "en": "Collapsed, the panel shows just your choices — level filter, map source and Executed. Tap to expand. On the open Fold everything fits in one row.",
-      "cs": "Sbalený panel ukazuje jen tvoje volby — filtr hladin, zdroj mapy a Proběhlé. Klepnutím se rozbalí. Na rozevřeném Foldu je všechno v jednom řádku."
-    },
-    {
-      "en": "New indicator Executed liquidations: bars per candle — shorts liquidated up in green, longs down in red.",
-      "cs": "Nový indikátor Proběhlé likvidace: sloupce po svíčkách — zlikvidované shorty nahoru zeleně, longy dolů červeně."
+      "en": "Expanded: level filter, map source and two switches — Map (liquidation lines) and Executed (bubbles of liquidations that happened).",
+      "cs": "Rozbalený: filtr hladin, zdroj mapy a dva přepínače — Mapa (čáry likvidací) a Proběhlé (bubliny proběhlých likvidací)."
     }
   ],
-  "opravy": []
+  "opravy": [
+    {
+      "en": "Reorder arrows of collapsed indicator panels no longer overlap the panel below.",
+      "cs": "Šipky pořadí u sbalených panelů indikátorů už nezasahují do panelu pod nimi."
+    }
+  ]
 }

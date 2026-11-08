@@ -990,6 +990,9 @@ export const cs = {
   "liq.happenedShort": "Likv.",
   "liq.executed": "Proběhlé",
   "liq.panelToggle": "Ukázat nebo skrýt nastavení likvidační mapy",
+  "liq.mapLines": "Mapa",
+  "liq.mapLinesAria": "Čáry likvidační mapy v grafu",
+  "liq.mapOff": "Mapa vyp.",
   "liqBars.short": "Proběhlé",
   "liq.srcActual": "Reálná",
 };

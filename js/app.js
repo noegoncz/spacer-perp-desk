@@ -2910,13 +2910,7 @@ function kresliPrepinacZdroje() {
     // Zašedlá jen volba, o které víme, že data nemá (ještě nenačtená ne).
     b.classList.toggle('bez-dat', z === 'shoda' ? dostupneZdroje.skutecne === false : dostupneZdroje[z] === false);
   });
-  // Čip zdroje ve sbaleném panelu: název a objem vybraného zdroje.
-  const akt = box.querySelector('[data-zdroj].active');
-  const cip = el('liqCipZdroj');
-  if (cip && akt) {
-    cip.querySelector('b').textContent = akt.querySelector('b')?.textContent || '';
-    cip.querySelector('i').textContent = (akt.querySelector('.liq-objem')?.textContent || '').split(' · ')[0];
-  }
+  kresliShrnuti();
 }
 
 function zapojPrepinacZdroje() {
@@ -3260,6 +3254,7 @@ function vrstvyProGraf() {
   const ulozene = { kresby: true, alarmy: true, indikatory: true, obchod: true, zdi: true, ...store.loadLayers() };
   chart.setLayers(prohlizenyObchod ? { ...ulozene, alarmy: false } : ulozene);
   chart.setExecutedBubbles(store.loadJson('perpdesk.liqBubliny', true) !== false);
+  chart.setLiquidationLines(store.loadJson('perpdesk.liqCary', true) !== false);
   chart.setLiquidationFilter(filtrMapy());
   oznacVrstvy();
   obnovPanelMapy();
@@ -3363,10 +3358,13 @@ let mapaMaData = false;
  * indikátorů. Ovládání je teď panel indikátoru LIQ pod svíčkami — graf ho
  * umístí a dá mu výšku podle obsahu (`panelOvladani`). Bez nadpisů, šetří
  * se výška (uživatel: „to musíme vždy hlídat“).
- * - sbalený (výchozí): ▴ Liq, čip filtru v barvě stupně, čip zdroje
- *   (název + objem), přepínač bublin Executed; klepnutí na čip rozbalí,
- * - rozbalený: řádek filtru (4 stupně) a řádek zdrojů + Executed,
- * - široký panel (≥ 600 px, rozevřený Fold): vše v jednom řádku.
+ * v0.91.1 (přání uživatele): vlevo sloupec jako popisek ostatních
+ * indikátorů a šipky pořadí vedle něj (chart.js).
+ * - sbalený (výchozí, 22 px): jen souhrn nastavení — stupeň filtru, zdroj
+ *   s objemem, vypnutá mapa, Executed; klepnutí rozbalí,
+ * - rozbalený: stupně filtru, zdroje a přepínače Mapa / Executed (ve
+ *   sloupci popisku),
+ * - široký panel (≥ 600 px, rozevřený Fold): rozbalený v jednom řádku.
  */
 const STUPNE_FILTRU = [0, 0.05, 0.15, 0.5];
 const BARVY_SCHODU = ['#3f8a36', '#7cbf3f', '#b9db3c', '#e8e23a'];
@@ -3377,7 +3375,7 @@ function panelLiq({ sbaleno, sirka }) {
   if (!p) return null;
   const siroky = sirka >= SIROKY_PANEL;
   p.classList.toggle('siroky', siroky);
-  p.classList.toggle('sbaleno', !siroky && sbaleno);
+  p.classList.toggle('sbaleno', sbaleno);
   el('liqSbal')?.setAttribute('aria-expanded', String(!sbaleno));
   obnovPanelMapy();
   return p;
@@ -3389,6 +3387,35 @@ function obnovPanelMapy() {
   kresliZebrik();
   kresliPrepinacZdroje();
   kresliProbehle();
+  kresliShrnuti();
+}
+
+/** Souhrn sbaleného panelu: „≥ 110 k · Bybit 13.5 M · Executed“. */
+function kresliShrnuti() {
+  const box = el('liqShrnuti');
+  if (!box || !chart) return;
+  const cast = (trida, text) => {
+    const s = document.createElement('span');
+    s.className = trida;
+    s.textContent = text;
+    return s;
+  };
+  const tecka = () => cast('sh-tecka', '·');
+  const casti = [];
+  if (chart.getLiquidationLines()) {
+    const i = vybranyStupen();
+    const f = cast('sh-filtr', popisStupne(i));
+    f.style.setProperty('--barva', BARVY_SCHODU[i]);
+    casti.push(f, tecka());
+  } else {
+    casti.push(cast('sh-vyp', t('liq.mapOff')), tecka());
+  }
+  const akt = el('liqZdroj')?.querySelector('[data-zdroj].active');
+  casti.push(cast('sh-zdroj', akt?.querySelector('b')?.textContent || ''));
+  const objem = (akt?.querySelector('.liq-objem')?.textContent || '').split(' · ')[0];
+  if (objem && objem !== '–') casti.push(cast('sh-objem', objem));
+  if (chart.getExecutedBubbles()) casti.push(tecka(), cast('sh-exec', t('liq.executed')));
+  box.replaceChildren(...casti);
 }
 
 const usdKratce = (v) => (v >= 1e9 ? `${(v / 1e9).toFixed(1)} B` : v >= 1e6 ? `${(v / 1e6).toFixed(1)} M` : v >= 1e3 ? `${Math.round(v / 1e3)} k` : `${Math.round(v)}`);
@@ -3424,11 +3451,7 @@ function kresliZebrik() {
     b.classList.toggle('nad', i > vybrany);
     return b;
   }));
-  const cip = el('liqCipFiltr');
-  if (cip) {
-    cip.textContent = popisStupne(vybrany);
-    cip.style.setProperty('--barva', BARVY_SCHODU[vybrany]);
-  }
+  kresliShrnuti();
 }
 
 function zapojPosuvnikMapy() {
@@ -3451,21 +3474,31 @@ function zapojPosuvnikMapy() {
     kresliProbehle();
     if (zap && !surovaLikvidovano) nactiLikvidovano();
   });
+  // Čáry mapy (v0.91.1): vypnutá mapa dál načítá data (objemy, souhrn).
+  el('liqCary')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!chart) return;
+    const zap = !chart.getLiquidationLines();
+    chart.setLiquidationLines(zap);
+    store.saveJson('perpdesk.liqCary', zap);
+    kresliProbehle();
+  });
   el('liqSbal')?.addEventListener('click', (e) => {
     e.stopPropagation();
     chart?.setPaneCollapsed('LIQ', !chart.isPaneCollapsed('LIQ'));
   });
-  ['liqCipFiltr', 'liqCipZdroj'].forEach((id) => el(id)?.addEventListener('click', (e) => {
+  el('liqShrnuti')?.addEventListener('click', (e) => {
     e.stopPropagation();
     chart?.setPaneCollapsed('LIQ', false);
-  }));
+  });
 }
 
-/** Přepínač bublin proběhlých likvidací. */
+/** Přepínače Mapa a Executed (bubliny proběhlých likvidací). */
 function kresliProbehle() {
-  const b = el('liqProbehle');
-  if (!b || !chart) return;
-  b.setAttribute('aria-pressed', String(chart.getExecutedBubbles()));
+  if (!chart) return;
+  el('liqProbehle')?.setAttribute('aria-pressed', String(chart.getExecutedBubbles()));
+  el('liqCary')?.setAttribute('aria-pressed', String(chart.getLiquidationLines()));
+  kresliShrnuti();
 }
 
 /*
