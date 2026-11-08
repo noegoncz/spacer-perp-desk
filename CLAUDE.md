@@ -3946,6 +3946,12 @@ dlouho stojí, teď / min / max). Rozhodnutí: Binance + Bybit + Hyperliquid,
   **2026-11-08:** s 5 min vyšel celý den 7. 11. na ~84 k (e-mail
   Cloudflare 83 %) — mapa ~125 coinů na dávku = 60 k řádků. Teď
   **po 10 min** (data reálné mapy jsou stejně 1–30 min stará).
+  ⚠ **Bezplatný Workers: 50 dotazů D1 a 10 ms CPU na jedno volání.** Dávka
+  ~125 coinů v jednom POST neprošla, neodeslané řádky se hromadily a mapa
+  vždy pár hodin po restartu přestala zapisovat (mezery 7. 11., od 8. 11.
+  02 UTC nic). Od 2026-11-08 server spojí řádky coin + hodina sám a posílá
+  **po částech** (≤ 35 zápisů, ≤ 300 kB, `CAST_RADKU`), stav a úklid
+  s poslední částí. Nový endpoint s dávkou → vždy hlídat počet dotazů.
 - **Stav zdí po částech** (2026-11-04): řádek `zdi_stav` přerostl 1,8 MB
   (nedávné zdi za 90 min, ~200 trhů) a příjem ho od 04:07 UTC odmítal.
   Teď `CASTI_ZDI` = 3 řádky podle trhu (`castZdi` v js/zdi-format.js
