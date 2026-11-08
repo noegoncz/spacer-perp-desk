@@ -3932,6 +3932,9 @@ dlouho stojí, teď / min / max). Rozhodnutí: Binance + Bybit + Hyperliquid,
   server posílá mapu do D1 **jen každých 5 min** (`ODESILAT_PO`
   v likvidace.mjs; snímky dál po minutě, endpoint spojí coin + hodinu
   do jednoho zápisu). Dotazy podle zápisů vypíše `diag-d1.yml`.
+  **2026-11-08:** s 5 min vyšel celý den 7. 11. na ~84 k (e-mail
+  Cloudflare 83 %) — mapa ~125 coinů na dávku = 60 k řádků. Teď
+  **po 10 min** (data reálné mapy jsou stejně 1–30 min stará).
 - **Stav zdí po částech** (2026-11-04): řádek `zdi_stav` přerostl 1,8 MB
   (nedávné zdi za 90 min, ~200 trhů) a příjem ho od 04:07 UTC odmítal.
   Teď `CASTI_ZDI` = 3 řádky podle trhu (`castZdi` v js/zdi-format.js

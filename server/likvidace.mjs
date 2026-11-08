@@ -33,7 +33,7 @@ import { spustLikvidovano } from './likvidovano.mjs';
 // restartuje službu jen při změně tohoto souboru → při změně zdi.mjs nebo
 // js/zdi-format.js zvedni tuto verzi.
 const VERZE_ZDI = 6;
-const ODESILAT_PO = 5; // minut mezi dávkami mapy do D1
+const ODESILAT_PO = 10; // minut mezi dávkami mapy do D1 (5 min = ~84 k zápisů / den, 2026-11-07)
 
 const API = (process.env.API || 'https://perpyx.com').replace(/\/$/, '');
 const TOKEN = process.env.WATCHER_TOKEN || '';
