@@ -3438,15 +3438,12 @@ function kresliZebrik() {
   const box = el('liqZebrik');
   if (!box) return;
   const vybrany = vybranyStupen();
-  const { hladin } = chart?.getLiquidationScale?.() || {};
-  const siroky = el('liqLista')?.classList.contains('siroky');
   box.replaceChildren(...STUPNE_FILTRU.map((f, i) => {
     const b = document.createElement('button');
     b.type = 'button';
     b.dataset.filtr = String(f);
     b.style.setProperty('--barva', BARVY_SCHODU[i]);
-    // Počet hladin u vybraného jen na širokém (na úzkém se nevejde).
-    b.textContent = popisStupne(i) + (i === vybrany && siroky && hladin != null ? ` · ${hladin}` : '');
+    b.textContent = popisStupne(i);
     b.classList.toggle('active', i === vybrany);
     b.classList.toggle('nad', i > vybrany);
     return b;
