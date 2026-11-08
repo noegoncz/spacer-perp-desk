@@ -3889,6 +3889,13 @@ hlouposti) a ukázat proběhlé likvidace v grafu. Pořadí: sběr → vrstva �
     vypnutá mapa dál načítá data) a **Executed** ve sloupci popisku (široký:
     vše v řádku). Šipky sbaleného panelu (všech) v jeho řádku
     (`dataset.odsazeni`), dřív přečnívaly do panelu pod ním.
+  - **v0.91.2 (uživatel):** panel jen přes plochu (`getSize(pane, 'main')`),
+    svislice osy ho krájí; pruh osy u panelu zakrytý (`::after`, bez čísel),
+    šířka osy v `--osa`. Mapa / Proběhlé = tlačítka svítí / zhasnou
+    (`.liq-prepinace`): úzký sbalený = ikony v pruhu osy, široký sbalený
+    s textem za souhrnem, úzký rozbalený pod sebou ve sloupci popisku,
+    široký rozbalený jen ikony. Souhrn už stav tlačítek neopakuje.
+    `SIROKY_PANEL` 520 (šířka plochy bez osy).
   - **Zdi** zůstávají vrstvou v oku — později samostatný krok (vpravo
     u cenových hladin).
 

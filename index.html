@@ -243,12 +243,16 @@
           <button type="button" data-zdroj="skutecne"><b data-i18n="liq.srcActual">Real</b></button>
           <button type="button" data-zdroj="shoda"><b data-i18n="liq.srcMatch">Match</b></button>
         </div>
-        <button id="liqCary" class="liq-prepinac liq-cary" type="button" aria-pressed="true" data-i18n-aria="liq.mapLinesAria">
-          <span class="liq-spinac" aria-hidden="true"></span><span data-i18n="liq.mapLines">Map</span>
-        </button>
-        <button id="liqProbehle" class="liq-prepinac liq-probehle" type="button" aria-pressed="true" data-i18n-aria="liq.happened">
-          <span class="liq-spinac" aria-hidden="true"></span><span data-i18n="liq.executed">Executed</span>
-        </button>
+        <!-- v0.91.2: tlačítka, která se rozsvítí / zhasnou; na úzkém
+             displeji ve sbaleném panelu v pruhu cenové osy (jen ikony). -->
+        <div class="liq-prepinace">
+          <button id="liqCary" class="liq-prepinac liq-cary" type="button" aria-pressed="true" data-i18n-aria="liq.mapLinesAria">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4.5h12M2 8h8M2 11.5h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span data-i18n="liq.mapLines">Map</span>
+          </button>
+          <button id="liqProbehle" class="liq-prepinac liq-probehle" type="button" aria-pressed="true" data-i18n-aria="liq.happened">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="5.5" cy="9.5" r="3.5" fill="currentColor"/><circle cx="11.5" cy="5.5" r="2.5" fill="currentColor" opacity="0.7"/></svg><span data-i18n="liq.executed">Executed</span>
+          </button>
+        </div>
       </div>
 
 

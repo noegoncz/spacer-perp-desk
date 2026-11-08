@@ -997,7 +997,6 @@ export const en = {
   "liq.panelToggle": "Show or hide liquidation map settings",
   "liq.mapLines": "Map",
   "liq.mapLinesAria": "Liquidation map lines in the chart",
-  "liq.mapOff": "Map off",
   "liqBars.short": "Executed",
   "liq.srcActual": "Real",
 };

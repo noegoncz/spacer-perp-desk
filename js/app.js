@@ -3368,7 +3368,7 @@ let mapaMaData = false;
  */
 const STUPNE_FILTRU = [0, 0.05, 0.15, 0.5];
 const BARVY_SCHODU = ['#3f8a36', '#7cbf3f', '#b9db3c', '#e8e23a'];
-const SIROKY_PANEL = 600;
+const SIROKY_PANEL = 520;   // šířka plochy panelu (bez osy) — rozevřený Fold ~610
 
 function panelLiq({ sbaleno, sirka }) {
   const p = el('liqLista');
@@ -3390,7 +3390,10 @@ function obnovPanelMapy() {
   kresliShrnuti();
 }
 
-/** Souhrn sbaleného panelu: „≥ 110 k · Bybit 13.5 M · Executed“. */
+/**
+ * Souhrn sbaleného panelu: „≥ 110 k · Bybit 13.5 M“. Mapa / Proběhlé jsou
+ * od v0.91.2 tlačítka i ve sbaleném (svítí = zapnuto), v souhrnu nejsou.
+ */
 function kresliShrnuti() {
   const box = el('liqShrnuti');
   if (!box || !chart) return;
@@ -3400,21 +3403,17 @@ function kresliShrnuti() {
     s.textContent = text;
     return s;
   };
-  const tecka = () => cast('sh-tecka', '·');
   const casti = [];
   if (chart.getLiquidationLines()) {
     const i = vybranyStupen();
     const f = cast('sh-filtr', popisStupne(i));
     f.style.setProperty('--barva', BARVY_SCHODU[i]);
-    casti.push(f, tecka());
-  } else {
-    casti.push(cast('sh-vyp', t('liq.mapOff')), tecka());
+    casti.push(f, cast('sh-tecka', '·'));
   }
   const akt = el('liqZdroj')?.querySelector('[data-zdroj].active');
   casti.push(cast('sh-zdroj', akt?.querySelector('b')?.textContent || ''));
   const objem = (akt?.querySelector('.liq-objem')?.textContent || '').split(' · ')[0];
   if (objem && objem !== '–') casti.push(cast('sh-objem', objem));
-  if (chart.getExecutedBubbles()) casti.push(tecka(), cast('sh-exec', t('liq.executed')));
   box.replaceChildren(...casti);
 }
 

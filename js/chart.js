@@ -3020,13 +3020,19 @@ export function createPriceChart(container, layer, handlers = {}) {
    */
   const ovladaniPanelu = new Map();   // paneId → prvek
   function umistiOvladani(nazev, paneId, b, kde, pocet) {
-    const prvek = handlers.panelOvladani?.(nazev, { sbaleno: jeSbaleny(nazev), sirka: b.width });
+    const prvek = handlers.panelOvladani?.(nazev, { sbaleno: jeSbaleny(nazev), sirka: chart.getSize(paneId, 'main')?.width || b.width });
     if (!prvek) return false;
     ovladaniPanelu.set(paneId, prvek);
     prvek.hidden = false;
+    // v0.91.2 (uživatel): jen přes plochu panelu jako ostatní indikátory —
+    // svislice cenové osy ho krájí. Šířku osy dostane jako --osa (na
+    // úzkém displeji tam sbalený panel dává tlačítka Mapa / Proběhlé).
+    const plocha = chart.getSize(paneId, 'main');
+    const sirka = Math.round(plocha?.width || b.width);
     prvek.style.top = `${b.top}px`;
     prvek.style.left = `${b.left}px`;
-    prvek.style.width = `${b.width}px`;
+    prvek.style.width = `${sirka}px`;
+    prvek.style.setProperty('--osa', `${Math.max(0, Math.round(b.width - sirka))}px`);
     const u = uchyty.get(paneId);
     if (u) u.hidden = true;
     let s = sipkyPoradi.get(paneId);
@@ -3047,7 +3053,7 @@ export function createPriceChart(container, layer, handlers = {}) {
     const odsazeni = misto ? misto.offsetTop : 1;
     s.dataset.odsazeni = String(odsazeni);
     s.style.top = `${b.top + odsazeni}px`;
-    s.style.left = `${b.left + (misto ? misto.offsetLeft : b.width - s.offsetWidth - 4)}px`;
+    s.style.left = `${b.left + (misto ? misto.offsetLeft : sirka - s.offsetWidth - 4)}px`;
     const vyska = Math.ceil(prvek.offsetHeight);
     if (!vyska || Math.abs(b.height - vyska) <= 1 || tahUchytu) return false;
     try {

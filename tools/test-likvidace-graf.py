@@ -143,7 +143,16 @@ sh = ev("document.querySelector('#liqShrnuti .sh-filtr')?.textContent") or ''
 over(sh == 'All' or sh.startswith('≥'), f'souhrn ukazuje stupeň filtru ({sh})')
 over(bool(ev("document.querySelector('#liqShrnuti .sh-zdroj')?.textContent")), 'souhrn ukazuje zdroj')
 over(ev("getComputedStyle(document.getElementById('liqZebrik')).display") == 'none', 'stupně ve sbaleném schované')
-over(ev("getComputedStyle(document.getElementById('liqProbehle')).display") == 'none', 've sbaleném jen souhrn, žádné přepínače')
+# v0.91.2: panel končí u svislice cenové osy, tlačítka Mapa / Proběhlé
+# ve sbaleném na úzkém displeji v pruhu osy (jen ikony).
+osa = ev("""(() => { const p = document.getElementById('liqLista').getBoundingClientRect(),
+  q = window.__graf.getIndicators({ name: 'LIQ' })[0].paneId, m = window.__graf.getSize(q, 'main'),
+  v = document.getElementById('chartBox').getBoundingClientRect(),
+  t = ['liqCary', 'liqProbehle'].map((id) => document.getElementById(id).getBoundingClientRect());
+  return { pravy: p.right - v.left, plocha: m.width, tl: t.map((r) => ({ l: r.left - p.right, w: r.width, h: r.height, t: r.top - p.top })) }; })()""")
+print('   osa:', osa)
+over(osa and abs(osa['pravy'] - osa['plocha']) <= 1, 'panel končí u cenové osy jako ostatní indikátory')
+over(osa and all(t['l'] >= -0.5 and t['w'] >= 20 and t['t'] >= -0.5 and t['h'] <= 22 for t in osa['tl']), 'tlačítka Mapa / Proběhlé v pruhu osy')
 # v0.91.1: sloupec popisku stejně široký jako u ostatních indikátorů, šipky vedle něj.
 sl = ev("""(() => { const p = document.getElementById('liqLista'), h = document.getElementById('liqSbal').getBoundingClientRect(),
   m = p.querySelector('[data-misto-sipek]').getBoundingClientRect(), r = p.getBoundingClientRect();
@@ -294,7 +303,10 @@ over(ev("document.getElementById('liqProbehle').getAttribute('aria-pressed')") =
 over(ev("!window.__graf.getIndicators({ name: 'LIKVBUB' }).length"), 'bubliny pryč')
 over(ev("localStorage.getItem('perpdesk.liqBubliny')") == 'false', 'volba se pamatuje')
 klepni('#liqSbal')
-over(not ev("document.querySelector('#liqShrnuti .sh-exec')"), 'souhrn bez Executed')
+klepni('#liqProbehle')
+over(ev("document.getElementById('liqProbehle').getAttribute('aria-pressed')") == 'true', 've sbaleném jde přepnout tlačítkem v ose')
+over(ev("document.getElementById('liqLista').classList.contains('sbaleno')"), 'a panel zůstane sbalený')
+klepni('#liqProbehle')
 klepni('#liqShrnuti')
 klepni('#liqProbehle')
 over(ev("document.getElementById('liqProbehle').getAttribute('aria-pressed')") == 'true', 'a zase zapne')
@@ -313,6 +325,8 @@ over(not preteka, f'texty se vejdou ({preteka})')
 snimek('liq-panel-siroky.png')
 klepni('#liqSbal')
 over(ev("document.getElementById('liqLista').classList.contains('sbaleno')") and (panel().get('vyska') or 99) <= 23, 'i široký jde sbalit na řádek 22 px')
+over(not ev(PRESAH_JS), f'sbalený široký: tlačítka Mapa / Proběhlé v řádku ({ev(PRESAH_JS)})')
+over(ev("getComputedStyle(document.querySelector('#liqCary span')).display") != 'none', 'na širokém s textem')
 snimek('liq-panel-siroky-sbaleny.png')
 klepni('#liqSbal')
 p.prikaz('Emulation.setDeviceMetricsOverride', width=412, height=880, deviceScaleFactor=2, mobile=True)
