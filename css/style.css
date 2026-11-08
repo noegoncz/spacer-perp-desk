@@ -3419,7 +3419,7 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
   background: var(--surface); border-top: 1px solid var(--border);
   display: grid; gap: 4px 6px; align-items: center;
   grid-template-columns: var(--sl) var(--misto-sipek, 0px) minmax(0, 1fr);
-  grid-template-areas: "hlava sip zebrik" "prep zdroj zdroj";
+  grid-template-areas: "hlava sip zebrik" ". zdroj zdroj";
   font-size: 0.7rem; animation: liqNabeh 0.3s ease-out;
 }
 @media (min-width: 560px) { .liq-panel { --sl: 96px; } }
@@ -3438,13 +3438,9 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
   height: 22px; padding-block: 0; row-gap: 0;
   grid-template-areas: "hlava sip shrnuti";
 }
-.liq-panel.sbaleno.siroky {
-  grid-template-columns: var(--sl) var(--misto-sipek, 0px) minmax(0, 1fr) auto;
-  grid-template-areas: "hlava sip shrnuti prep";
-}
 .liq-panel.siroky:not(.sbaleno) {
-  grid-template-columns: var(--sl) var(--misto-sipek, 0px) minmax(0, 1fr) minmax(0, 1fr) auto;
-  grid-template-areas: "hlava sip zebrik zdroj prep";
+  grid-template-columns: var(--sl) var(--misto-sipek, 0px) minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas: "hlava sip zebrik zdroj";
 }
 .liq-panel .liq-shrnuti { display: none; }
 .liq-panel.sbaleno .liq-shrnuti { display: flex; }
@@ -3497,32 +3493,25 @@ body.na-trzich .feedback-fab { bottom: calc(124px + var(--okraj-dole)); }
 .liq-zdroj button.active { background: rgba(255,255,255,0.92); color: #0b0f14; border-color: transparent; }
 .liq-zdroj button.bez-dat { opacity: 0.4; }
 
-/* Mapa / Proběhlé (v0.91.2, uživatel): obyčejná tlačítka — zapnuté svítí,
-   vypnuté zhasnuté. Úzký rozbalený: pod sebou ve sloupci popisku; široký:
-   v řádku; úzký sbalený: jen ikony v pruhu cenové osy vedle panelu. */
-.liq-prepinace { grid-area: prep; display: flex; gap: 4px; min-width: 0; }
-.liq-panel:not(.siroky):not(.sbaleno) .liq-prepinace { flex-direction: column; justify-self: stretch; padding: 0 4px 0 5px; }
-.liq-panel.sbaleno:not(.siroky) > .liq-prepinace {
-  position: absolute; left: 100%; top: 0; width: var(--osa, 0px); height: 22px;
-  justify-content: center; align-items: center; gap: 2px; padding: 0;
+/* Mapa / Proběhlé: tlačítka svítí / zhasnou (v0.91.2). v0.91.3 (uživatel):
+   vždy v pruhu cenové osy za svislicí, jen ikony — na úzkém rozbaleném
+   nad sebou, jinak vedle sebe (sbalený panel má jen 22 px). */
+.liq-panel > .liq-prepinace {
+  position: absolute; left: 100%; top: 0; bottom: 0; width: var(--osa, 0px);
+  display: flex; justify-content: center; align-items: center; gap: 3px; padding: 0;
 }
+.liq-panel:not(.siroky):not(.sbaleno) > .liq-prepinace { flex-direction: column; gap: 4px; }
 .liq-prepinac {
-  display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 0; height: 22px; padding: 0 7px;
+  display: inline-flex; align-items: center; justify-content: center; flex: none; width: 24px; height: 22px; padding: 0;
   border: 0; border-radius: 5px; background: rgba(30, 38, 52, 0.6); color: var(--text-dim); cursor: pointer;
-  font-size: 0.68rem; font-weight: 600; white-space: nowrap; transition: background 0.15s, color 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
-.liq-prepinac svg { flex: none; width: 13px; height: 13px; opacity: 0.6; }
-.liq-prepinac > span { overflow: hidden; text-overflow: ellipsis; }
-.liq-prepinac[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 26%, transparent); color: var(--text); }
+.liq-prepinac svg { width: 14px; height: 14px; opacity: 0.55; }
+.liq-prepinac > span { display: none; }
+.liq-prepinac[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 28%, transparent); color: var(--text); }
 .liq-prepinac[aria-pressed="true"] svg { opacity: 1; color: var(--accent); }
 .liq-panel.sbaleno .liq-prepinac { height: 20px; }
-.liq-panel:not(.siroky):not(.sbaleno) .liq-prepinac { height: 19px; justify-content: flex-start; padding: 0 4px; font-size: 10px; }
-.liq-panel.sbaleno:not(.siroky) .liq-prepinac { width: 24px; padding: 0; flex: none; }
-.liq-panel.sbaleno:not(.siroky) .liq-prepinac > span { display: none; }
-/* Široký rozbalený: v řádku stupně i zdroje, tlačítka jen s ikonou. */
-.liq-panel.siroky:not(.sbaleno) .liq-prepinac { width: 30px; height: 30px; padding: 0; }
-.liq-panel.siroky:not(.sbaleno) .liq-prepinac svg { width: 15px; height: 15px; }
-.liq-panel.siroky:not(.sbaleno) .liq-prepinac > span { display: none; }
+.liq-panel:not(.siroky):not(.sbaleno) .liq-prepinac { width: min(40px, calc(var(--osa, 48px) - 8px)); height: 24px; }
 /* Šipky pořadí v panelu s ovládáním: nad ním, vzhled jako u ostatních. */
 .pane-poradi.v-ovladani { z-index: 23; }
 

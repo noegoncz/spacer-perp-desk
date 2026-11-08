@@ -2351,9 +2351,7 @@ let surovaLikvidovano = null;   // poslední odpověď serveru (všechny burzy)
 function burzyProbehlych() {
   const z = zdrojMapy();
   if (z === 'skutecne' || z === 'shoda') return [3];
-  if (z === 'vse') return [0, 1, 2];
-  const i = ['binance', 'bybit', 'okx'].indexOf(burzaGrafuMapy());
-  return i >= 0 ? [i] : [0, 1, 2];
+  return [['binance', 'bybit', 'okx'].indexOf(burzaOdhadu())];
 }
 
 function prefiltrujLikvidovano() {
@@ -2649,7 +2647,13 @@ async function nactiOi() {
  * jen reálné hladiny Hyperliquidu, které potvrzuje i kalkulovaná mapa ze
  * všech CEX (`shodaMap`). Hodnoty zůstávají skutečné.
  */
-const ZDROJE_MAPY = ['burza', 'vse', 'skutecne', 'shoda'];
+/*
+ * v0.91.3 (uživatel: součet všech CEX mapu spíš mate, nejde z ní nic
+ * vyčíst): jen tři volby — kalkulovaná z burzy grafu, Real (Hyperliquid)
+ * a Shoda té burzy s Real. All CEX zrušené. Graf burzy bez historie OI
+ * (Hyperliquid, Gate, MEXC…) počítá kalkulovanou z Binance.
+ */
+const ZDROJE_MAPY = ['burza', 'skutecne', 'shoda'];
 /*
  * v0.82.0 (přání uživatele): mapa se vždy otevře podle burzy grafu —
  * Binance / Bybit / OKX = kalkulovaná z té burzy, Hyperliquid = reálná,
@@ -2661,8 +2665,7 @@ let volbaProGraf = '';
 const klicGrafuMapy = () => `${burzaGrafuMapy()}:${chartSymbol}`;
 const zdrojMapy = () => {
   if (volbaZdroje && volbaProGraf === klicGrafuMapy()) return volbaZdroje;
-  const b = burzaGrafuMapy();
-  return BURZY_ODHADU.includes(b) ? 'burza' : b === 'hyperliquid' ? 'skutecne' : 'vse';
+  return burzaGrafuMapy() === 'hyperliquid' ? 'skutecne' : 'burza';
 };
 const burzaGrafuMapy = () => chartBurza || client?.burza?.id || 'bybit';
 // Které zdroje mají na tomto grafu data (undefined = ještě nevíme).
@@ -2684,7 +2687,8 @@ let dostupneProGraf = '';
  * počítá ze všech. Volí se přepínačem nad grafem (v0.78.0, viz zdrojMapy).
  */
 const BURZY_ODHADU = ['binance', 'bybit', 'okx'];
-const burzyOdhadu = (burza, jenGraf) => (jenGraf && BURZY_ODHADU.includes(burza) ? [burza] : BURZY_ODHADU);
+// Burza, ze které se počítá kalkulovaná mapa: burza grafu, jinak Binance.
+const burzaOdhadu = () => (BURZY_ODHADU.includes(burzaGrafuMapy()) ? burzaGrafuMapy() : 'binance');
 const NAZVY_BURZ_ODHADU = { binance: 'Binance', bybit: 'Bybit', okx: 'OKX' };
 
 const odhadyMapy = new Map();   // coin → { cas, slib }
@@ -2696,9 +2700,10 @@ const odhadyMapy = new Map();   // coin → { cas, slib }
  */
 const obdobiModelu = (delkaSvicky) => (delkaSvicky >= 86400e3 ? ['D', 86400e3] : delkaSvicky >= 4 * 3600e3 ? ['240', 4 * 3600e3] : ['60', 3600e3]);
 
-function odhadMapy(symbol, burza, nasobek = 1, jenGraf = true, delkaSvicky = 3600e3) {
-  const zdroje = burzyOdhadu(burza, jenGraf);
-  const par = zdroje.length === 1 ? symbol : symbol.replace(/USDC$/, 'USDT');
+function odhadMapy(symbol, burza, nasobek = 1, delkaSvicky = 3600e3) {
+  // Kalkulovaná z jedné burzy: z burzy grafu týž pár, z jiné coin + USDT.
+  const zdroje = [burzaOdhadu()];
+  const par = zdroje[0] === burza ? symbol : symbol.replace(/USDC$/, 'USDT');
   const [obdobi, delka] = obdobiModelu(delkaSvicky);
   const klic = `${par}|${nasobek}|${zdroje.join('+')}|${obdobi}`;
   const ulozeny = odhadyMapy.get(klic);
@@ -2739,11 +2744,11 @@ async function nactiMapu() {
     chceReal ? likvidace.pasy({
       symbol, burza, od: oknoMapy.od, doKdy: Date.now(), delkaSvicky: DELKA_INTERVALU[chartInterval] || 3600e3,
     }).catch(() => undefined) : null,   // síť — zkusí se při další obnově
-    chceOdhad ? odhadMapy(symbol, burza, nasobek, zdroj === 'burza', DELKA_INTERVALU[chartInterval] || 3600e3).catch(() => null) : null,
+    chceOdhad ? odhadMapy(symbol, burza, nasobek, DELKA_INTERVALU[chartInterval] || 3600e3).catch(() => null) : null,
   ]);
   if (zadost !== zadostMapy || symbol !== chartSymbol || !chart) return;
   if (chceReal) dostupneZdroje.skutecne = Boolean(skutecne?.pasy?.length);
-  if (chceOdhad) dostupneZdroje[zdroj === 'burza' ? 'burza' : 'vse'] = Boolean(odhad?.pasy?.length);
+  if (chceOdhad) dostupneZdroje.burza = Boolean(odhad?.pasy?.length);
   // Posun na cenu této burzy (BTCUSDT na Binance ≠ BTC na Hyperliquidu).
   const cena = Number(poslednicCena) || Number(chartTrh?.last) || 0;
   const posun = (pasy, mark, presne) => posunPasu(pasy, mark, presne, cena);
@@ -2751,15 +2756,15 @@ async function nactiMapu() {
   const casti = [];
   const objemZivych = (seznam) => objemZivychMapy(seznam, cena);
   if (chceReal && skutecne?.pasy?.length) objemyZdroju.skutecne = objemZivych(posun(skutecne.pasy, skutecne.mark, burza === 'hyperliquid'));
-  if (chceOdhad && odhad?.pasy?.length) objemyZdroju[zdroj === 'burza' ? 'burza' : 'vse'] = objemZivych(posun(odhad.pasy, odhad.mark, odhad.burzy.length === 1 && odhad.burzy[0] === burza));
+  if (chceOdhad && odhad?.pasy?.length) objemyZdroju.burza = objemZivych(posun(odhad.pasy, odhad.mark, odhad.burzy.length === 1 && odhad.burzy[0] === burza));
   if (zdroj === 'shoda') {
     // Shoda (v0.79.3): celá reálná mapa jako v Real, potvrzené hladiny
     // `shoda: true` (zvýrazněné), ostatní `shoda: false` (ztlumené) — nic se
     // nemaže, reálné pozice jsou pravda.
     const realne = skutecne?.pasy?.length ? posun(skutecne.pasy, skutecne.mark, burza === 'hyperliquid') : [];
     const potvrzene = new Set(realne.length && odhad?.pasy?.length
-      ? shodaMap(realne, posun(odhad.pasy, odhad.mark, false), Date.now()) : []);
-    const popis = t('liq.labelMatch');
+      ? shodaMap(realne, posun(odhad.pasy, odhad.mark, odhad.burzy[0] === burza), Date.now()) : []);
+    const popis = t('liq.labelMatch', { burza: NAZVY_BURZ_ODHADU[burzaOdhadu()] });
     pasy.push(...realne.map((p) => ({ ...p, popis, zdroj: 'realna', shoda: potvrzene.has(p) })));
     objemyZdroju.shoda = objemZivych([...potvrzene]);
     casti.push(popis);
@@ -2857,23 +2862,21 @@ async function doplnObjemyMapy(symbol, burza, cena) {
     kresliPrepinacZdroje();
   };
   try {
-    const [jeden, vse, real] = await Promise.all([
-      BURZY_ODHADU.includes(burza) && objemyZdroju.burza == null
-        ? odhadMapy(symbol, burza, nasobek, true, delka).catch(() => null) : null,
-      odhadMapy(symbol, burza, nasobek, false, delka).catch(() => null),
+    const [jeden, real] = await Promise.all([
+      odhadMapy(symbol, burza, nasobek, delka).catch(() => null),
       likvidace.pasy({ symbol, burza, od: Date.now() - 3 * 86400e3, doKdy: Date.now(), delkaSvicky: delka }).catch(() => null),
     ]);
     if (platny()) {
       if (dostupneZdroje.skutecne === undefined) dostupneZdroje.skutecne = Boolean(real?.pasy?.length);
-      if (dostupneZdroje.vse === undefined) dostupneZdroje.vse = Boolean(vse?.pasy?.length);
+      if (dostupneZdroje.burza === undefined) dostupneZdroje.burza = Boolean(jeden?.pasy?.length);
+      kresliPrepinacZdroje();   // zašednout zdroj bez dat hned, ne až při obnově
     }
-    const presne = (o) => o.burzy.length === 1 && o.burzy[0] === burza;
-    if (jeden?.pasy?.length) zapis('burza', objemZivychMapy(posunPasu(jeden.pasy, jeden.mark, presne(jeden), cena), cena));
-    if (vse?.pasy?.length) zapis('vse', objemZivychMapy(posunPasu(vse.pasy, vse.mark, presne(vse), cena), cena));
+    const kalk = jeden?.pasy?.length ? posunPasu(jeden.pasy, jeden.mark, jeden.burzy[0] === burza, cena) : null;
+    if (kalk) zapis('burza', objemZivychMapy(kalk, cena));
     if (real?.pasy?.length) {
       const realne = posunPasu(real.pasy, real.mark, burza === 'hyperliquid', cena);
       zapis('skutecne', objemZivychMapy(realne, cena));
-      if (vse?.pasy?.length) zapis('shoda', objemZivychMapy(shodaMap(realne, posunPasu(vse.pasy, vse.mark, false, cena), Date.now()), cena));
+      if (kalk) zapis('shoda', objemZivychMapy(shodaMap(realne, kalk, Date.now()), cena));
     }
   } finally {
     if (objemyBezi === klic) objemyBezi = '';
@@ -2886,12 +2889,10 @@ function kresliPrepinacZdroje() {
   const box = el('liqZdroj');
   if (!box) return;
   const zdroj = zdrojMapy();
-  const burza = burzaGrafuMapy();
   const nazev = el('liqZdrojBurza');
-  if (nazev) nazev.textContent = NAZVY_BURZ_ODHADU[burza] || burza;
+  if (nazev) nazev.textContent = NAZVY_BURZ_ODHADU[burzaOdhadu()];
   box.querySelectorAll('[data-zdroj]').forEach((b) => {
     const z = b.dataset.zdroj;
-    if (z === 'burza') b.hidden = !BURZY_ODHADU.includes(burza);
     b.classList.toggle('active', z === zdroj);
     let o = b.querySelector('.liq-objem');
     if (!o) { o = document.createElement('i'); o.className = 'liq-objem'; b.append(o); }

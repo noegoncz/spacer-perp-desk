@@ -1,13 +1,13 @@
 {
-  "verze": "0.91.2",
+  "verze": "0.91.3",
   "novinky": [
     {
-      "en": "The liquidation map panel ends at the price axis like the other indicator panels.",
-      "cs": "Panel likvidační mapy končí u cenové osy jako ostatní panely indikátorů."
+      "en": "Liquidation map sources trimmed to three: the chart's exchange (calculated), Real (Hyperliquid positions) and Match. The all-exchanges sum is gone — it blurred the map.",
+      "cs": "Zdroje likvidační mapy zúžené na tři: burza grafu (kalkulovaná), Real (pozice na Hyperliquidu) a Match. Součet všech burz zmizel — mapu spíš rozmazával."
     },
     {
-      "en": "Map and Executed are now simple buttons that light up when on — even with the panel collapsed (on the closed Fold as icons next to the panel, in the price axis strip).",
-      "cs": "Mapa a Proběhlé jsou teď jednoduchá tlačítka, která svítí, když jsou zapnutá — i ve sbaleném panelu (na zavřeném Foldu jako ikonky vedle panelu v pruhu cenové osy)."
+      "en": "Map and Executed buttons now sit in the price axis strip next to the panel — stacked on the closed Fold, side by side on the open one.",
+      "cs": "Tlačítka Mapa a Proběhlé jsou teď v pruhu cenové osy vedle panelu — na zavřeném Foldu nad sebou, na rozevřeném vedle sebe."
     }
   ],
   "opravy": []

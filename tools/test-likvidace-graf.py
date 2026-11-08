@@ -172,7 +172,7 @@ over(len(schody) == 4 and schody[0] == 'All', 'čtyři stupně, první All')
 over(sum(1 for x in schody if x.startswith('≥')) >= 2, 'stupně ukazují práh v USD')
 over(not ev("document.querySelector('.liq-nadpis')"), 'žádné nadpisy')
 PRESAH_JS = """(() => { const p = document.getElementById('liqLista').getBoundingClientRect();
-  return [...document.querySelectorAll('#liqLista button')].filter((b) => b.offsetParent)
+  return [...document.querySelectorAll('#liqLista button')].filter((b) => b.offsetParent && !b.closest('.liq-prepinace'))
     .filter((b) => { const r = b.getBoundingClientRect(); return r.right > p.right + 1 || r.bottom > p.bottom + 1 || r.width < 8; })
     .map((b) => b.id || b.textContent); })()"""
 over(not ev(PRESAH_JS), f'nic nepřetéká za okraj panelu ({ev(PRESAH_JS)})')
@@ -282,12 +282,8 @@ info = ev('window.__mapaInfo') or {}
 print('  ', info)
 over('Binance' in info.get('popis', '') and 'Bybit' not in info.get('popis', ''), 'Binance: jen burza grafu')
 over(info.get('prubehu', 0) > 0, f"pruhy mají průběh hodnoty ({info.get('prubehu')})")
-zdroj('vse')
-time.sleep(6)
-info = ev('window.__mapaInfo') or {}
-print('  ', info)
-over('Bybit' in info.get('popis', '') and 'Hyperliquid' not in info.get('popis', ''), 'All CEX: i Bybit, bez reálné')
-over(ev("document.querySelector('[data-zdroj=vse]').classList.contains('active')"), 'All CEX je vybraný')
+# v0.91.3: jen tři zdroje — burza grafu, Real, Match (All CEX zrušené).
+over(ev("[...document.querySelectorAll('#liqZdroj [data-zdroj]')].map((b) => b.dataset.zdroj).join()") == 'burza,skutecne,shoda', 'tři zdroje, bez All CEX')
 zdroj('shoda')
 time.sleep(6)
 info = ev('window.__mapaInfo') or {}
@@ -325,12 +321,24 @@ over(not preteka, f'texty se vejdou ({preteka})')
 snimek('liq-panel-siroky.png')
 klepni('#liqSbal')
 over(ev("document.getElementById('liqLista').classList.contains('sbaleno')") and (panel().get('vyska') or 99) <= 23, 'i široký jde sbalit na řádek 22 px')
-over(not ev(PRESAH_JS), f'sbalený široký: tlačítka Mapa / Proběhlé v řádku ({ev(PRESAH_JS)})')
-over(ev("getComputedStyle(document.querySelector('#liqCary span')).display") != 'none', 'na širokém s textem')
+TLACITKA_JS = """(() => { const p = document.getElementById('liqLista').getBoundingClientRect();
+  const [a, b] = ['liqCary', 'liqProbehle'].map((id) => document.getElementById(id).getBoundingClientRect());
+  return { vOse: a.left >= p.right - 0.5 && b.left >= p.right - 0.5, vedle: Math.abs(a.top - b.top) < 1, pod: b.top >= a.bottom - 0.5 }; })()"""
+tl = ev(TLACITKA_JS)
+over(tl and tl['vOse'] and tl['vedle'], f'sbalený široký: tlačítka v pruhu osy vedle sebe ({tl})')
+klepni('#liqSbal')
+tl = ev(TLACITKA_JS)
+over(tl and tl['vOse'] and tl['vedle'], f'rozbalený široký: v pruhu osy vedle sebe ({tl})')
+klepni('#liqSbal')
 snimek('liq-panel-siroky-sbaleny.png')
 klepni('#liqSbal')
 p.prikaz('Emulation.setDeviceMetricsOverride', width=412, height=880, deviceScaleFactor=2, mobile=True)
 time.sleep(1.5)
+if ev("document.getElementById('liqLista').classList.contains('sbaleno')"):
+    klepni('#liqSbal')
+tl = ev(TLACITKA_JS)
+over(tl and tl['vOse'] and tl['pod'], f'úzký rozbalený: tlačítka v pruhu osy nad sebou ({tl})')
+snimek('liq-panel-uzky-rozbaleny.png')
 ev("history.back()")
 time.sleep(1)
 

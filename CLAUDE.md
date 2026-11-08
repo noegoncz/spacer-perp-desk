@@ -3896,6 +3896,13 @@ hlouposti) a ukázat proběhlé likvidace v grafu. Pořadí: sběr → vrstva �
     s textem za souhrnem, úzký rozbalený pod sebou ve sloupci popisku,
     široký rozbalený jen ikony. Souhrn už stav tlačítek neopakuje.
     `SIROKY_PANEL` 520 (šířka plochy bez osy).
+  - **v0.91.3 (uživatel):** tlačítka Mapa / Proběhlé vždy v pruhu osy za
+    svislicí, jen ikony (úzký rozbalený nad sebou, jinak vedle sebe).
+    **Zdroje jen tři: burza grafu · Real · Match** — All CEX zrušené (součet
+    burz mapu mátl). Kalkulovaná vždy z jedné burzy (`burzaOdhadu()`: burza
+    grafu, u Hyperliquidu / Gate / MEXC… Binance), Match = Real potvrzené
+    touto burzou, proběhlé likvidace u kalkulované jen z ní. Další krok
+    (uživatel): možná posuvník místo stupňů filtru — až po vyzkoušení.
   - **Zdi** zůstávají vrstvou v oku — později samostatný krok (vpravo
     u cenových hladin).
 
