@@ -3966,6 +3966,14 @@ dlouho stojí, teď / min / max). Rozhodnutí: Binance + Bybit + Hyperliquid,
   02 UTC nic). Od 2026-11-08 server spojí řádky coin + hodina sám a posílá
   **po částech** (≤ 35 zápisů, ≤ 300 kB, `CAST_RADKU`), stav a úklid
   s poslední částí. Nový endpoint s dávkou → vždy hlídat počet dotazů.
+  ⚠ **Skutečná příčina výpadků (2026-11-09): služba se dusila sama.**
+  Po částech to nepomohlo — 9. 11. ~02 UTC stály naráz mapa, zdi
+  i proběhlé likvidace (hlídač alarmů jel). Účty z obchodů se jen
+  přidávaly (~100 000), fronta 1,7 h pozadu, paměť rostla. Teď
+  `uklidUcty` (účet z obchodu bez pozice, načtený před > 6 h, se zapomene)
+  a `pojistka`: halda > 80 % nebo 60 min bez odeslání → `process.exit(1)`,
+  systemd spustí znovu. Info sběru má `halda` a `uklizenoUctu` (vypíše
+  `diag-d1.yml`).
 - **Stav zdí po částech** (2026-11-04): řádek `zdi_stav` přerostl 1,8 MB
   (nedávné zdi za 90 min, ~200 trhů) a příjem ho od 04:07 UTC odmítal.
   Teď `CASTI_ZDI` = 3 řádky podle trhu (`castZdi` v js/zdi-format.js

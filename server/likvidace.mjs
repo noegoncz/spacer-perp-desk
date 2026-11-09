@@ -25,6 +25,7 @@
  */
 import { readFileSync, writeFileSync, mkdirSync, renameSync, appendFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { getHeapStatistics } from 'node:v8';
 import { krokCeny, snimek, rozdil, radek } from '../js/likvidace-format.js';
 import { spustZdi } from './zdi.mjs';
 import { spustLikvidovano } from './likvidovano.mjs';
@@ -430,7 +431,8 @@ async function odesli() {
     ws: ws?.readyState === 1, wsSpojeni: stavWs.spojeni,
     obchodPred: Math.round((ted - posledniObchod) / 1000),
     ...stat, tempo, pamet: Math.round(process.memoryUsage().rss / 1e6),
-    cekaRadku: radky.length,
+    halda: Math.round(getHeapStatistics().used_heap_size / 1e6),
+    cekaRadku: radky.length, uklizenoUctu,
   };
   if (ZKOUSKA) {
     mkdirSync(STAV, { recursive: true });
@@ -462,6 +464,7 @@ async function odesli() {
       casti++;
       if (posledni) break;
     }
+    posledniOdeslani = Date.now();
     if (uklid) posledniUklid = ted;
   } catch (e) {
     log(`odeslání (část ${casti + 1}):`, e.message);
@@ -472,6 +475,38 @@ async function odesli() {
       for (const st of stavCoinu.values()) st.hodina = -1;
     }
   }
+}
+
+/*
+ * Úklid a pojistka (2026-11-09): účty z obchodů se jen přidávaly (~100 000
+ * za den), paměť i práce fronty každé 2 s rostly a služba se vždy pár hodin
+ * po restartu udusila — proces žil, ale mapa, zdi i proběhlé likvidace
+ * přestaly zapisovat naráz (7.–9. 11.). Účet z obchodu bez pozice, načtený
+ * před víc než 6 h, se zapomene (další obchod ho přidá znovu). Když je
+ * halda skoro plná nebo se 60 min nic neodeslalo, proces skončí a systemd
+ * ho za 10 s spustí znovu (adresy jsou na disku).
+ */
+let uklizenoUctu = 0;
+let posledniOdeslani = Date.now();
+
+function uklidUcty() {
+  const ted = Date.now();
+  for (const [a, u] of ucty) {
+    if (u.zdroj === 'o' && !u.pozice.length && u.cas && ted - u.cas > 6 * HOD && !u.beh) {
+      ucty.delete(a);
+      uklizenoUctu += 1;
+    }
+  }
+}
+
+function pojistka() {
+  const h = getHeapStatistics();
+  const plna = h.used_heap_size > 0.8 * h.heap_size_limit;
+  const ticho = !ZKOUSKA && Date.now() - posledniOdeslani > 60 * MIN;
+  if (!plna && !ticho) return;
+  log(`pojistka: ${plna ? `halda ${Math.round(h.used_heap_size / 1e6)} / ${Math.round(h.heap_size_limit / 1e6)} MB` : 'nic se neodeslalo 60 min'} → restart`);
+  ulozAdresy();
+  process.exit(1);
 }
 
 /* ---------- seznam adres na disku (přežije restart) ---------- */
@@ -510,6 +545,8 @@ setInterval(nactiZebricek, 6 * HOD);
 setInterval(obnovTrhy, 30000);
 setInterval(naplnFrontu, 2000);
 setInterval(ulozAdresy, 10 * MIN);
+setInterval(uklidUcty, 10 * MIN);
+setInterval(pojistka, 30000);
 for (let i = 0; i < SOUBEH; i += 1) pracovnik();
 if (process.env.ZDI !== '0') {
   log(`zdi: start (verze ${VERZE_ZDI})`);
