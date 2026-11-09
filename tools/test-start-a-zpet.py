@@ -106,20 +106,21 @@ over(not ev("document.getElementById('retryBtn').hidden") and not ev("document.g
 ev("sessionStorage.removeItem('__pozice')")
 
 print('3) tlačítko zpět')
-for w, h, nazev, min_sirka in ((673, 841, 'rozevřený Fold', 150), (344, 882, 'zavřený Fold', 104)):
+# v0.92.0: jedna lišta pod grafem — zpět je poslední tlačítko vpravo,
+# stejně velké jako ostatní (uživatel: na úzkém displeji ho skoro nepoužívá).
+for w, h, nazev, min_sirka in ((673, 841, 'rozevřený Fold', 80), (344, 882, 'zavřený Fold', 40)):
     rozmery(w, h)
     p.prikaz('Page.reload')
     time.sleep(4)
     ev("document.querySelector('.position').click()")
     time.sleep(2.5)
     r = json.loads(ev("""(() => { const b = document.getElementById('chartBackBtnDole').getBoundingClientRect();
-      const posl = [...document.querySelectorAll('.interval-btn[data-interval]')].pop().getBoundingClientRect();
-      const lista = document.querySelector('.intervals').getBoundingClientRect();
-      return JSON.stringify({ sirka: b.width, vpravo: innerWidth - b.right, odTf: b.left - Math.min(posl.right, lista.right) }); })()""") or '{}')
+      const tf = document.getElementById('tfBtn').getBoundingClientRect();
+      return JSON.stringify({ sirka: b.width, vpravo: innerWidth - b.right, odTf: b.left - tf.right }); })()""") or '{}')
     print(f'   {nazev}: {r}')
     over(r.get('sirka', 0) >= min_sirka, f'{nazev}: tlačítko zpět široké ({r.get("sirka")} px)')
-    over(r.get('vpravo', 0) >= 10, f'{nazev}: odstup od pravého kraje ({r.get("vpravo")} px)')
-    over(r.get('odTf', -1) >= 0, f'{nazev}: nepřekrývá timeframy')
+    over(r.get('vpravo', 0) >= 8, f'{nazev}: odstup od pravého kraje ({r.get("vpravo")} px)')
+    over(r.get('odTf', -1) >= 0, f'{nazev}: nepřekrývá timeframe')
     ev("history.back()")
     time.sleep(1)
 

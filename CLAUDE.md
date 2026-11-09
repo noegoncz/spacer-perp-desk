@@ -1790,6 +1790,23 @@ velkého zpět dole (`.chart-back-top`). Test:
 `test-nastroje-a-timeframy.py` (pořadí, posun na 344 px, 9 bez posunu na 673 px),
 `test-vrstvy.py`.
 
+**Jedna lišta pod grafem (v0.92.0, přání uživatele — dvě řady zabíraly
+výšku):** `#drawToolbar` = **kreslení ^, indikátory, oko ^, celá
+obrazovka, magnet, timeframe ^, zpět**, tlačítka se dělí o šířku (flex 1),
+nic se neposouvá — na širokém displeji stejné, jen širší. **Měření** je
+první položka nabídky kreslení (tlačítko pak nese jeho ikonu), **zvonek
+alarmu zmizel** (alarm: podržení prstu → Set alarm, zvonek v paletě
+kresby; `novyAlarmKrizem` smazaná), **coin / USDT a smazání kreseb** jen
+v nabídce oka, `#magnetRow` zmizel. **Timeframe** (`#tfBtn`, text
+`#tfBtnText` nastavuje `ui.setActiveInterval`) otevře `#intervals` jako
+sloupec nad sebou, široký jako tlačítko (`otevriTimeframy` /
+`zavriTimeframy`; klepnutí mimo, výběr i systémové zpět ji zavře). Řada
+`.chart-tools` i `vycentrujInterval` zmizely. ⚠ Lišta nesmí mít
+`overflow` — nabídka timeframů by byla oříznutá; z-index 28 (nad popisky
+panelů, pod pozadím nabídek 29). Testy s klepnutím na timeframe musí
+nejdřív otevřít nabídku (`test-stejny-timeframe.py`,
+`test-rychle-prepinani.py`). Test: `test-nastroje-a-timeframy.py`.
+
 **Timeframy** (v0.37.0): 1m, 5m, 15m, **30m**, 1h, 4h, 1D, 1W, 1M v pevném
 pořadí. Lišta vyplní místo vlevo od tlačítka zpět (to má pevnou šířku
 `clamp(104px, 26vw, 200px)`), volně se posouvá a vybraný timeframe se
@@ -2024,6 +2041,14 @@ Klepnutí = panel na 22 px (`VYSKA_SBALENEHO`, `minHeight`), indikátor
 v nastavení indikátoru (pamatuje se, zálohuje se). Rozbalení vrátí
 výšku z `vyskaPanelu`. Indikátory v hlavním grafu se neminimalizují
 (na ně je oko / Vrstvy). Test: `tools/test-sbaleni-panelu.py`.
+**Schovat všechny panely (v0.92.0, přání uživatele — i sbalené panely
+zabíraly výšku):** průsvitný štítek `.panely-stitek` vlevo dole v ploše
+svíček, nad nejvyšším panelem (nad zónou úchytu): ▾ vyndá všechny
+indikátory s vlastním panelem z grafu (jako oko, výběr zůstává), ▴ s počtem
+je vrátí v pořadí a výšce. `perpdesk.panesHidden` (jen telefon, platí pro
+všechny grafy), `vGrafu(nazev)` v chart.js = vrstva indikátorů a panel
+neschovaný. Indikátory hlavního grafu i likvidační mapa zůstávají; zapnutí
+dalšího panelu schované panely ukáže. Test: `tools/test-skryti-panelu.py`.
 **v0.88.2 (snímek uživatele: moc široké, rovná hrana divná):** sloupec
 76 px (od 560 px 96 px), vpravo přechod do ztracena — **v0.88.4**
 uživatel vybral z variant (plný / stín / sklo / jen text / kartička)
@@ -3821,7 +3846,10 @@ hlouposti) a ukázat proběhlé likvidace v grafu. Pořadí: sběr → vrstva �
   viditelná, ale aspoň 0,05 % obratu páru za 24 h (`meritko`; osamělých
   5 k na ETH bylo obří). Čáry mapy jen mezi popisky (`HORNI_OKRAJ_MAPY`
   72 px) a pruhem objemu (`pasObjemu`, je-li VOL v hlavním panelu) —
-  uživatel: „nesmí to překrývat". Test: bod 3 `test-likvidace-graf.py`.
+  uživatel: „nesmí to překrývat". **v0.92.0 (uživatel: ořez u objemu vypadal,
+  jako by likvidace nebyly):** čáry vedou až ke dnu, v pruhu objemu slábnou
+  (alfa 1 → 0,2 ke dnu, `utlumVObjemu`); výchozí výška objemu 12 % (dřív 22,
+  uložených 22 % se jednou převede — příznak `v2` v nastavení VOL). Test: bod 3 `test-likvidace-graf.py`.
 - **v0.84.0 — ovládání na levé stěně** (varianta E z plátna
   https://claude.ai/artifact/QwaesLPuyoDhDhR4awTF6P, volba uživatele):
   `#liqLista` = žebřík filtru `#liqZebrik` (schody s rozsahem ≥ USD =

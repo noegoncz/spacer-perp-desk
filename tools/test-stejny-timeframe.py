@@ -37,6 +37,12 @@ def ev(v):
 
 
 def klepni(sel, cekat=1.4):
+    if 'interval-btn' in sel and ev("document.getElementById('intervals').hidden"):
+        _b = json.loads(ev('(() => { const b = document.getElementById("tfBtn").getBoundingClientRect(); return JSON.stringify({x: b.left + b.width / 2, y: b.top + b.height / 2}); })()'))
+        _pt = [{'x': _b['x'], 'y': _b['y'], 'radiusX': 14, 'radiusY': 14, 'force': 1, 'id': 1}]
+        p.prikaz('Input.dispatchTouchEvent', type='touchStart', touchPoints=_pt)
+        p.prikaz('Input.dispatchTouchEvent', type='touchEnd', touchPoints=[])
+        time.sleep(0.3)
     r = ev('(() => { const e=document.querySelector(' + json.dumps(sel) + '); if(!e) return "null";'
            'const b=e.getBoundingClientRect(); return JSON.stringify('
            '{x:Math.round(b.left+b.width/2),y:Math.round(b.top+b.height/2)}); })()')

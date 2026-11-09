@@ -105,7 +105,9 @@ export const SCHEMATA = {
     podle(cislo('delkaMa', 20, 1, 200, 0), 'zobrazitMa'),
     prepinac('podlePredchozi', false),
     { sekce: 'style' },
-    vyber('vyska', 22, [15, 22, 30, 40].map((v) => ({ hodnota: v, popisek: `${v} %` }))),
+    // v0.92.0: výchozí výška 12 % (dřív 22) — mapa likvidací nad objemem
+    // dostane víc místa, poměry sloupců zůstávají vidět (přání uživatele).
+    vyber('vyska', 12, [8, 12, 15, 22, 30].map((v) => ({ hodnota: v, popisek: `${v} %` }))),
     vyber('pruhlednost', 0.45,
       [0.25, 0.45, 0.65, 0.85].map((v) => ({ hodnota: v, popisek: `${Math.round(v * 100)} %` }))),
     barva('barvaRust', '#16c784'),
@@ -246,6 +248,12 @@ export function nactiNastaveni(id) {
     ulozene = JSON.parse(localStorage.getItem(KLIC(id)) || '{}');
   } catch {
     ulozene = {};
+  }
+  // Objem: uložených 22 % je dřívější výchozí, ne volba → nově 12 % (v0.92.0).
+  // Příznak `v2` zajistí, že se převede jen jednou.
+  if (id === 'VOL' && !ulozene.v2) {
+    if (ulozene.vyska === 22) ulozene.vyska = 12;
+    ulozene.v2 = true;
   }
   // Výchozí hodnoty vespod: po přidání nového pole nechybí starým uživatelům.
   const hodnoty = { ...vychoziNastaveni(id), ...ulozene };

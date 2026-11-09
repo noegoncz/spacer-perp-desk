@@ -1,13 +1,17 @@
 {
-  "verze": "0.91.3",
+  "verze": "0.92.0",
   "novinky": [
     {
-      "en": "Liquidation map sources trimmed to three: the chart's exchange (calculated), Real (Hyperliquid positions) and Match. The all-exchanges sum is gone — it blurred the map.",
-      "cs": "Zdroje likvidační mapy zúžené na tři: burza grafu (kalkulovaná), Real (pozice na Hyperliquidu) a Match. Součet všech burz zmizel — mapu spíš rozmazával."
+      "en": "One bar under the chart: drawing (now with Measure), indicators, layers, fullscreen, magnet, a timeframe button that opens upwards, and back.",
+      "cs": "Jedna lišta pod grafem: kreslení (i s měřením), indikátory, vrstvy, celá obrazovka, magnet, tlačítko timeframu s nabídkou nahoru a zpět."
     },
     {
-      "en": "Map and Executed buttons now sit in the price axis strip next to the panel — stacked on the closed Fold, side by side on the open one.",
-      "cs": "Tlačítka Mapa a Proběhlé jsou teď v pruhu cenové osy vedle panelu — na zavřeném Foldu nad sebou, na rozevřeném vedle sebe."
+      "en": "A small tag above the indicator panels hides them all at once — and brings them back.",
+      "cs": "Malý štítek nad panely indikátorů je schová všechny najednou — a zase vrátí."
+    },
+    {
+      "en": "Liquidation levels now fade out over the volume bars instead of stopping above them; volume takes half the height.",
+      "cs": "Hladiny likvidací se přes sloupce objemu vytrácejí, místo aby nad nimi končily; objem zabírá poloviční výšku."
     }
   ],
   "opravy": []

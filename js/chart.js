@@ -822,7 +822,7 @@ function registrovatObjem() {
       }
       if (max <= 0) return true;
 
-      const pas = bounding.height * (Number(n.vyska) || 22) / 100;
+      const pas = bounding.height * (Number(n.vyska) || 12) / 100;
       pasObjemu = { vyska: pas, t: performance.now() };
       const dno = bounding.height;
       const doPixelu = (hodnota) => dno - (hodnota / max) * pas;
@@ -1162,19 +1162,23 @@ function registrovatLikvidace() {
       ctx.globalAlpha = pruhlednostNabehu();
       globalThis.__nabehMapy?.push(ctx.globalAlpha);   // pro test
       /*
-       * Čáry jen mezi popisky nahoře a pruhem objemu dole (v0.83.1, uživatel:
-       * „nesmí to překrývat"). Objem se kreslí ve stejném snímku — jeho výška
-       * platí, jen když je čerstvá.
+       * Čáry pod popisky nahoře (v0.83.1). V pruhu objemu dole se čáry
+       * vytrácejí (v0.92.0, uživatel: ořez u objemu vypadal, jako by tam
+       * likvidace nebyly) — ke spodnímu okraji slábnou na pětinu. Objem se
+       * kreslí ve stejném snímku — jeho výška platí, jen když je čerstvá.
        */
       let volJe = performance.now() - pasObjemu.t < 1500;
       try { if (typeof chart.getIndicators === 'function') volJe = chart.getIndicators({ name: 'VOL', paneId: HLAVNI_PANEL }).length > 0; } catch { /* starší API */ }
-      // Výška z posledního kreslení objemu, jinak výchozí 22 % (první snímek).
-      const objemDole = volJe ? (pasObjemu.vyska || bounding.height * 0.22) : 0;
+      // Výška z posledního kreslení objemu, jinak výchozí 12 % (první snímek).
+      const objemDole = volJe ? (pasObjemu.vyska || bounding.height * 0.12) : 0;
       const dolniOkraj = bounding.height - objemDole - 2;
-      globalThis.__orezMapy = { horni: HORNI_OKRAJ_MAPY, dolni: dolniOkraj };   // pro test
+      // Útlum čáry podle hloubky v pruhu objemu: 1 nad ním, 0,2 u dna.
+      const utlumVObjemu = (y) => (objemDole > 0 && y > dolniOkraj
+        ? 1 - 0.8 * Math.min(1, (y - dolniOkraj) / objemDole) : 1);
+      globalThis.__orezMapy = { horni: HORNI_OKRAJ_MAPY, dolni: bounding.height, objem: dolniOkraj };   // pro test
       ctx.save();
       ctx.beginPath();
-      ctx.rect(0, HORNI_OKRAJ_MAPY, bounding.width, Math.max(0, dolniOkraj - HORNI_OKRAJ_MAPY));
+      ctx.rect(0, HORNI_OKRAJ_MAPY, bounding.width, Math.max(0, bounding.height - HORNI_OKRAJ_MAPY));
       ctx.clip();
       let nakresleno = 0;
       for (const p of viditelne) {
@@ -1193,12 +1197,13 @@ function registrovatLikvidace() {
          * Shoda (v0.79.3, uživatel: reálná mapa je pravda, nic nemazat): celá
          * reálná mapa, potvrzené hladiny se světlým lemem, nepotvrzené ztlumené.
          */
+        const alfa = ctx.globalAlpha;
+        const utlum = utlumVObjemu(a.y);
         if (p.shoda === true) {
-          ctx.fillStyle = 'rgba(255,255,255,0.22)';
+          ctx.fillStyle = `rgba(255,255,255,${0.22 * utlum})`;
           ctx.fillRect(x1, a.y - 4, x2 - x1, 8);
         }
-        const alfa = ctx.globalAlpha;
-        if (p.shoda === false) ctx.globalAlpha = alfa * 0.3;
+        ctx.globalAlpha = alfa * utlum * (p.shoda === false ? 0.3 : 1);
         kresliCaru(ctx, p, m.ref, x1, x2, a.y, (ts) => px(ts, p.cena)?.x);
         ctx.globalAlpha = alfa;
         nakresleno += 1;
@@ -2704,7 +2709,7 @@ export function createPriceChart(container, layer, handlers = {}) {
     calc: (data) => data.map(() => ({})),
     draw: ({ ctx, bounding }) => {
       const n = nactiNastaveni('RSI');
-      if (!aktivniIndikatory.has('RSI') || !vrstvy.indikatory || n.divergence === false || jeSbaleny('RSI')) return true;
+      if (!aktivniIndikatory.has('RSI') || !vGrafu('RSI') || n.divergence === false || jeSbaleny('RSI')) return true;
       const rsi = chart.getIndicators({ name: 'RSI' })?.[0];
       const vysledek = rsi?.result || [];
       const data = chart.getDataList();
@@ -2779,6 +2784,89 @@ export function createPriceChart(container, layer, handlers = {}) {
     }
   };
   const vlastniPanelIndikatoru = new Map();
+  /*
+   * Všechny panely pod grafem schované jedním štítkem (v0.92.0, přání
+   * uživatele — i sbalené panely zabíraly výšku). Indikátory panelů se
+   * z grafu vyndají jako u oka, výběr zůstává; indikátory v hlavním grafu
+   * (objem, EMA) i likvidační mapa zůstávají. Platí pro všechny grafy.
+   */
+  const KLIC_SKRYTYCH_PANELU = 'perpdesk.panesHidden';
+  let panelySkryte = (() => {
+    try { return localStorage.getItem(KLIC_SKRYTYCH_PANELU) === '1'; } catch { return false; }
+  })();
+  const vGrafu = (nazev) => vrstvy.indikatory && !(panelySkryte && vlastniPanelIndikatoru.get(nazev));
+  const paneloveIndikatory = () => [...aktivniIndikatory].filter((n) => vlastniPanelIndikatoru.get(n));
+  const vyskyPredSkrytim = new Map();
+  let stitekPanelu = null;
+
+  function skryjPanely(skryt) {
+    if (panelySkryte === skryt) return;
+    const panely = paneloveIndikatory();
+    if (skryt) {
+      panely.forEach((n) => {
+        const id = chart.getIndicators({ name: n })?.[0]?.paneId;
+        const h = id ? chart.getSize(id)?.height : null;
+        if (h) vyskyPredSkrytim.set(n, h);
+        chart.removeIndicator({ name: n });
+      });
+    }
+    panelySkryte = skryt;
+    try { localStorage.setItem(KLIC_SKRYTYCH_PANELU, skryt ? '1' : '0'); } catch { /* jen do zavření */ }
+    if (!skryt && vrstvy.indikatory) {
+      panely.forEach((n) => {
+        if (!vlozIndikator(n)) return;
+        const id = chart.getIndicators({ name: n })?.[0]?.paneId;
+        if (id && nactiNastaveni(n).vyskaPanelu === undefined && !jeSbaleny(n) && vyskyPredSkrytim.get(n)) {
+          try {
+            chart.setPaneOptions({ id, height: vyskyPredSkrytim.get(n) });
+          } catch { /* panel mezitím zmizel */ }
+        }
+      });
+    }
+    setTimeout(() => {
+      umistiVrstvu();
+      kresleni.redraw();
+    }, 0);
+  }
+
+  /*
+   * Štítek vlevo dole v ploše svíček, nad nejvyšším panelem: ▾ schová
+   * všechny panely, ▴ (s počtem) je vrátí. Průsvitný, ať nekazí pohled.
+   */
+  function umistiStitekPanelu() {
+    const pocet = paneloveIndikatory().length;
+    const b = chart.getSize(HLAVNI_PANEL, 'main');
+    if (!vrstvy.indikatory || !pocet || !b || !b.height) {
+      if (stitekPanelu) stitekPanelu.hidden = true;
+      return;
+    }
+    if (!stitekPanelu) {
+      stitekPanelu = document.createElement('button');
+      stitekPanelu.type = 'button';
+      stitekPanelu.className = 'panely-stitek';
+      stitekPanelu.addEventListener('click', (e) => {
+        e.stopPropagation();
+        skryjPanely(!panelySkryte);
+      });
+      container.parentElement?.append(stitekPanelu);
+    }
+    const d = panelySkryte ? 'M3 8 6 4.5 9 8' : 'M3 4.5 6 8 9 4.5';
+    const obsah = `<svg viewBox="0 0 12 12" aria-hidden="true"><path d="${d}" fill="none" stroke="currentColor" `
+      + 'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+      + (panelySkryte ? `<span>${pocet}</span>` : '');
+    if (stitekPanelu.dataset.obsah !== obsah) {
+      stitekPanelu.innerHTML = obsah;
+      stitekPanelu.dataset.obsah = obsah;
+    }
+    stitekPanelu.classList.toggle('skryte', panelySkryte);
+    stitekPanelu.setAttribute('aria-expanded', String(!panelySkryte));
+    stitekPanelu.setAttribute('aria-label', t(panelySkryte ? 'chart.panesShow' : 'chart.panesHide'));
+    stitekPanelu.hidden = false;
+    const h = stitekPanelu.offsetHeight || 20;
+    // Nad zónou úchytu výšky nejvyššího panelu (13 px do plochy svíček).
+    stitekPanelu.style.left = `${b.left + 4}px`;
+    stitekPanelu.style.top = `${b.top + b.height - h - (panelySkryte ? 4 : 16)}px`;
+  }
   const vlozIndikator = (nazev) => {
     const id = vlastniPanelIndikatoru.get(nazev)
       ? chart.createIndicator(nazev)
@@ -2913,6 +3001,7 @@ export function createPriceChart(container, layer, handlers = {}) {
       u.style.top = `${b.top}px`;
     });
     umistiLegendy(panely);
+    umistiStitekPanelu();
   }
 
   function vytvorUchyt(paneId) {
@@ -3170,7 +3259,7 @@ export function createPriceChart(container, layer, handlers = {}) {
     const panely = vse.filter((n) => vlastniPanelIndikatoru.get(n));
     const i = panely.indexOf(nazev);
     const j = i + smer;
-    if (i < 0 || j < 0 || j >= panely.length || !vrstvy.indikatory) return;
+    if (i < 0 || j < 0 || j >= panely.length || !vrstvy.indikatory || panelySkryte) return;
     const vysky = new Map(panely.map((n) => {
       const id = chart.getIndicators({ name: n })?.[0]?.paneId;
       return [n, id ? chart.getSize(id)?.height : null];
@@ -4621,7 +4710,9 @@ export function createPriceChart(container, layer, handlers = {}) {
       }
 
       vlastniPanelIndikatoru.set(nazev, Boolean(vlastniPanel));
-      if (vrstvy.indikatory && !vlozIndikator(nazev)) return false;
+      // Nový panel při schovaných panelech je všechny zase ukáže.
+      if (vlastniPanel && panelySkryte) skryjPanely(false);
+      if (vGrafu(nazev) && !vlozIndikator(nazev)) return false;
       aktivniIndikatory.add(nazev);
       if (nazev === 'LIQ') { obnovMapu(); obnovBubliny(); }
       handlers.onIndicatorsChanged?.();
@@ -4633,7 +4724,7 @@ export function createPriceChart(container, layer, handlers = {}) {
       (nazvy || []).forEach((nazev) => {
         if (aktivniIndikatory.has(nazev)) return;
         vlastniPanelIndikatoru.set(nazev, Boolean(jeVlastniPanel(nazev)));
-        if (vrstvy.indikatory && !vlozIndikator(nazev)) return;
+        if (vGrafu(nazev) && !vlozIndikator(nazev)) return;
         aktivniIndikatory.add(nazev);
       });
       obnovMapu();
@@ -4643,7 +4734,7 @@ export function createPriceChart(container, layer, handlers = {}) {
 
     /** Promítne uložené nastavení do běžícího indikátoru. */
     applyIndicatorSettings(nazev) {
-      if (!aktivniIndikatory.has(nazev) || !vrstvy.indikatory) return;
+      if (!aktivniIndikatory.has(nazev) || !vGrafu(nazev)) return;
       pouzijNastaveni(nazev);
     },
 
@@ -4670,6 +4761,9 @@ export function createPriceChart(container, layer, handlers = {}) {
     isPaneCollapsed: (nazev) => jeSbaleny(nazev),
     /** Znovu umístit panely a jejich ovládání (po změně obsahu ovládání). */
     refreshPanes() { umistiVrstvu(); },
+    /** Všechny panely pod grafem schované (štítek ▾ / ▴, v0.92.0). */
+    setPanesHidden(skryt) { skryjPanely(Boolean(skryt)); },
+    arePanesHidden: () => panelySkryte,
 
     /* ---------- vrstvy ---------- */
 
@@ -4843,7 +4937,7 @@ export function createPriceChart(container, layer, handlers = {}) {
       if (pred.zdi !== vrstvy.zdi) obnovZdi();
       if (pred.indikatory !== vrstvy.indikatory) {
         aktivniIndikatory.forEach((nazev) => {
-          if (vrstvy.indikatory) vlozIndikator(nazev);
+          if (vGrafu(nazev)) vlozIndikator(nazev);
           else chart.removeIndicator({ name: nazev });
         });
         obnovMapu();
@@ -4858,6 +4952,7 @@ export function createPriceChart(container, layer, handlers = {}) {
       sipkyPoradi.forEach((s) => s.remove());
       ovladaniPanelu.forEach((p) => { p.hidden = true; });
       uchyty.forEach((u) => u.remove());
+      stitekPanelu?.remove();
       observer.disconnect();
       K().dispose(container);
     },

@@ -125,17 +125,23 @@ def posli_cenu(cena):
 cena_ted = ev("window.__graf.getDataList().slice(-1)[0].close")
 print('cena v grafu:', cena_ted)
 
-# ---- zadání alarmu přes zvonek v liště ----
-# Zvonek nespustí formulář rovnou: nejdřív se hladina ukáže křížem v grafu,
-# protože ťukat cenu na klávesnici je na telefonu nejpomalejší cesta.
-ev("document.getElementById('alarmBtn').click()")
-time.sleep(0.5)
-kriz = ev("!!document.querySelector('.draw-layer.kresli')")
-stred = ev("""(() => { const r = document.getElementById('drawLayer').getBoundingClientRect();
-  return JSON.stringify([r.left + r.width / 2, r.top + r.height / 2]); })()""")
-klepni(*json.loads(stred))  # klepnutí potvrdí hladinu pod křížem
-time.sleep(0.4)
-print('zvonek spustil kříž:', kriz)
+# ---- zadání alarmu ----
+# Zvonek v liště zmizel (v0.92.0, přání uživatele): alarm vzniká podržením
+# prstu v grafu → „Set alarm", doladí se klepnutím na hladinu (formulář).
+stred = json.loads(ev("""(() => { const r = document.getElementById('drawLayer').getBoundingClientRect();
+  return JSON.stringify([r.left + r.width / 2, r.top + r.height / 2]); })()"""))
+bod = [{'x': stred[0], 'y': stred[1], 'radiusX': 6, 'radiusY': 6, 'force': 1, 'id': 1}]
+p.prikaz('Input.dispatchTouchEvent', type='touchStart', touchPoints=bod)
+time.sleep(0.7)
+p.prikaz('Input.dispatchTouchEvent', type='touchEnd', touchPoints=[])
+time.sleep(0.6)
+ev("document.getElementById('quickAlarm').click()")
+time.sleep(0.6)
+kriz = len(hladiny()) == 1
+print('podržení prstu založilo alarm:', kriz)
+if kriz:
+    klepni(200, y_hladiny(hladiny()[0]['cena']))
+    time.sleep(0.4)
 otevreno = ev("!document.getElementById('sheetAlarm').hidden")
 poli = ev("document.querySelectorAll('#alarmBody .nastaveni-radek').length")
 predvyplnena = ev("document.querySelector('#alarmBody input[type=number]').value")

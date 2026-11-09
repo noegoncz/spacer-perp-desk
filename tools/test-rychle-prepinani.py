@@ -25,6 +25,12 @@ def rect(sel):
            'y:Math.round(b.top+b.height/2)}); })()')
     return None if r in (None, 'null') else json.loads(r)
 def klepni(sel, cekat=0.4):
+    if 'interval-btn' in sel and ev("document.getElementById('intervals').hidden"):
+        _b = json.loads(ev('(() => { const b = document.getElementById("tfBtn").getBoundingClientRect(); return JSON.stringify({x: b.left + b.width / 2, y: b.top + b.height / 2}); })()'))
+        _pt = [{'x': _b['x'], 'y': _b['y'], 'radiusX': 14, 'radiusY': 14, 'force': 1, 'id': 1}]
+        p.prikaz('Input.dispatchTouchEvent', type='touchStart', touchPoints=_pt)
+        p.prikaz('Input.dispatchTouchEvent', type='touchEnd', touchPoints=[])
+        time.sleep(0.3)
     b = rect(sel)
     pt = [{'x':b['x'],'y':b['y'],'radiusX':14,'radiusY':14,'force':1,'id':1}]
     p.prikaz('Input.dispatchTouchEvent', type='touchStart', touchPoints=pt)

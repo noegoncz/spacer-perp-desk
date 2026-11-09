@@ -225,11 +225,13 @@ for _ in range(40):
 over(mapa() == 1, 'mapa i na grafu Binance')
 time.sleep(1)
 snimek('liq-binance-4h.png')
-# v0.83.1: čáry nesmí přes popisky nahoře ani přes pruh objemu dole.
+# v0.83.1: čáry nesmí přes popisky nahoře.
 orez = ev("(() => { const o = window.__orezMapy; const h = window.__graf.getSize('candle_pane', 'main').height; const vol = window.__graf.getIndicators({ name: 'VOL', paneId: 'candle_pane' }).length; return { ...o, h, vol }; })()")
 print('   ořez mapy:', orez)
 over(orez and orez['horni'] >= 40, 'mapa začíná pod popisky')
-over(orez and (orez['dolni'] < orez['h'] * 0.85 if orez['vol'] else orez['dolni'] >= orez['h'] - 3), 'mapa končí nad pruhem objemu (je-li zapnutý)')
+# v0.92.0: přes pruh objemu se čáry vytrácejí, nekončí — ořez až u dna.
+over(orez and orez['dolni'] >= orez['h'] - 1, 'mapa sahá až ke spodnímu okraji')
+over(orez and (orez['objem'] < orez['h'] * 0.95 if orez['vol'] else orez['objem'] >= orez['h'] - 3), 'útlum začíná nad pruhem objemu (je-li zapnutý)')
 ev("history.back()")
 time.sleep(1.5)
 

@@ -1408,8 +1408,22 @@ function wireEvents() {
   // ale žádný data-interval — bez tohoto filtru ho aplikace brala jako
   // přepnutí na interval „undefined" a vyprázdnila graf.
   document.querySelectorAll('.interval-btn[data-interval]').forEach((btn) => {
-    btn.addEventListener('click', () => zmenInterval(btn.dataset.interval));
+    btn.addEventListener('click', () => {
+      zavriTimeframy();
+      zmenInterval(btn.dataset.interval);
+    });
   });
+  // Timeframe jako jedno tlačítko s nabídkou nahoru (v0.92.0).
+  naUdalost('tfBtn', 'click', (e) => {
+    e.stopPropagation();
+    if (el('intervals')?.hidden) otevriTimeframy();
+    else zavriTimeframy();
+  });
+  // Klepnutí mimo nabídku ji zavře (capture — dřív než graf nebo jiné tlačítko).
+  document.addEventListener('pointerdown', (e) => {
+    const v = el('tfVyber');
+    if (v && !el('intervals')?.hidden && !v.contains(e.target)) zavriTimeframy();
+  }, true);
 
   document.querySelectorAll('.tab').forEach((btn) => {
     btn.addEventListener('click', () => prepniZalozku(btn.dataset.tab));
@@ -1504,7 +1518,6 @@ function wireEvents() {
     nastavVrstvy(Object.fromEntries(VRSTVY.map(({ klic }) => [klic, !vse])));
     otevriVrstvy();
   });
-  naUdalost('alarmBtn', 'click', novyAlarmKrizem);
   naUdalost('quickAlarm', 'click', potvrdRychlyAlarm);
   naUdalost('quickLine', 'click', potvrdRychlouCaru);
   // Jakýkoli další dotyk v grafu nabídku rychlého alarmu zavře.
@@ -1531,16 +1544,8 @@ function wireEvents() {
       if (btn.classList.contains('tool-item')) zavriNabidky();
     });
   });
-  naUdalost('magnetRow', 'click', prepniMagnet);
   naUdalost('toolsBtn', 'click', () => otevriNabidku('sheetTools'));
-  // Hodnoty u čar v coinu, nebo v USDT (v0.42.0).
-  naUdalost('unitBtn', 'click', () => nastavJednotku(!hodnotyVUsdt));
-  // Přeložení Foldu mění šířku lišty timeframů — aktivní zůstane vidět.
-  window.addEventListener('resize', () => { ui.vycentrujInterval(); oznacPreteceniListy(); });
-  el('drawToolbar')?.addEventListener('scroll', oznacPreteceniListy, { passive: true });
-
   naUdalost('magnetBtn', 'click', prepniMagnet);
-  naUdalost('eraseBtn', 'click', smazKresby);
   document.querySelectorAll('[data-close]').forEach((btn) => {
     btn.addEventListener('click', zavriNabidky);
   });
@@ -2075,8 +2080,7 @@ async function otevriGraf(symbol, position, trh) {
   ui.showChartError('');
   ui.showChart(true);
   oznacZvonekRsi();
-  ui.vycentrujInterval();
-  requestAnimationFrame(oznacPreteceniListy);
+  zavriTimeframy();
   oznacJednotku();
 
   // Aby hardwarové tlačítko zpět zavřelo graf, a ne celou aplikaci.
@@ -3107,6 +3111,7 @@ function vyberNastroj(nastroj) {
   chart.cancelDrawing();
   // Kreslit naslepo nejde — se zvoleným nástrojem se kresby zase ukážou.
   if (nastroj && nastroj !== 'mereni') ukazVrstvu('kresby');
+  zavriTimeframy();
 
   document.querySelectorAll('.tool-btn[data-tool]').forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.tool === nastroj);
@@ -3115,7 +3120,8 @@ function vyberNastroj(nastroj) {
   const ikona = el('toolsBtnIcon');
   if (ikona) {
     if (!ikona.dataset.vychozi) ikona.dataset.vychozi = ikona.innerHTML;
-    const zvoleny = nastroj && nastroj !== 'mereni' && document.querySelector(`.tool-item[data-tool="${nastroj}"] svg`);
+    // Měření je od v0.92.0 taky v nabídce — tlačítko nese i jeho ikonu.
+    const zvoleny = nastroj && document.querySelector(`.tool-item[data-tool="${nastroj}"] svg`);
     ikona.innerHTML = zvoleny ? zvoleny.outerHTML : ikona.dataset.vychozi;
     el('toolsBtn').classList.toggle('active', Boolean(zvoleny));
   }
@@ -3123,12 +3129,25 @@ function vyberNastroj(nastroj) {
   if (nastroj) chart.startDrawing(nastroj);
 }
 
-/** Lišta pod grafem: vytrácející pravý okraj, dokud jde posunout dál. */
-function oznacPreteceniListy() {
-  const l = el('drawToolbar');
-  if (!l || !l.clientWidth) return;
-  l.classList.toggle('preteka', l.scrollWidth > l.clientWidth + 1);
-  l.classList.toggle('na-konci', l.scrollLeft + l.clientWidth >= l.scrollWidth - 2);
+/*
+ * Nabídka timeframů (v0.92.0, přání uživatele): jedno tlačítko v liště,
+ * klepnutí rozbalí sloupec timeframů nahoru, široký jako tlačítko.
+ */
+function otevriTimeframy() {
+  const n = el('intervals');
+  if (!n) return;
+  n.hidden = false;
+  el('tfBtn')?.setAttribute('aria-expanded', 'true');
+  el('tfBtn')?.classList.add('active');
+}
+
+function zavriTimeframy() {
+  const n = el('intervals');
+  if (!n || n.hidden) return false;
+  n.hidden = true;
+  el('tfBtn')?.setAttribute('aria-expanded', 'false');
+  el('tfBtn')?.classList.remove('active');
+  return true;
 }
 
 /** Magnet — tlačítko v liště i řádek v nabídce kreslení. */
@@ -3141,7 +3160,6 @@ function prepniMagnet() {
 
 function oznacMagnet() {
   prepniTridu('magnetBtn', 'active', magnetZapnut);
-  el('magnetRow')?.setAttribute('aria-pressed', String(magnetZapnut));
 }
 
 /** Hodnoty u čar v coinu, nebo v USDT (v0.42.0). */
@@ -5708,7 +5726,6 @@ function vykresliAlarmy() {
       title: popisAlarmu(a),
     })),
   );
-  prepniTridu('alarmBtn', 'ma-alarm', seznam.some((a) => a.aktivni));
 }
 
 /*
@@ -5781,22 +5798,6 @@ function potvrdRychlouCaru() {
   ukazVrstvu('kresby');
   if (!chart.addHorizontalLine(rychlyAlarm.cena)) return;
   potvrdRychle(el('quickLine'), t('chart.lineAdded'));
-}
-
-/**
- * Nový alarm se zadává **křížem v grafu**, ne číslem: hladinu si uživatel
- * ukáže prstem tam, kam se dívá. Číselník v nastavení zůstává na doladění.
- */
-function novyAlarmKrizem() {
-  if (!chart || !chartSymbol) return;
-  ukazVrstvu('alarmy');
-  vyberNastroj(''); // rozdělané kreslení by se s křížem pralo
-  chart.pickPrice(t('alarm.pickHint'), (bod) => {
-    if (!Number.isFinite(bod?.value)) return;
-    // Kříž vrací cenu s plnou přesností pixelu; do alarmu patří zaokrouhlená
-    // na platná místa páru, jinak by v nastavení stálo 0,3021886009304391.
-    otevriAlarm(alarmy.novy(grafKlic(), zaokrouhliCenu(bod.value)));
-  });
 }
 
 /**
@@ -6387,6 +6388,7 @@ function krokZpet() {
     }
     return false;
   }
+  if (zavriTimeframy()) return true;
   const okna = document.querySelectorAll(
     '.sheet:not([hidden]), #tileMenu:not([hidden]), #quickMenu:not([hidden])');
   if (okna.length) {

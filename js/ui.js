@@ -1691,39 +1691,18 @@ export function showChartError(message) {
 }
 
 /*
- * Timeframy (v0.37.0, přání uživatele): lišta se volně posouvá prstem
- * v pevném pořadí 1m → 1M a vybraný timeframe se vystředí v ploše mezi
- * levým okrajem a tlačítkem zpět. Mezery na koncích lišty (CSS) dovolí
- * vystředit i první a poslední. (Kolotoč s přeskládáváním z v0.32.0
- * zrušen — za 1M následovalo 1m a lišta se nedala rozumně posouvat.)
+ * Timeframy (v0.92.0, přání uživatele): jedno tlačítko v liště pod grafem
+ * nese zvolený timeframe, nabídka nad ním všechny v pevném pořadí 1m → 1M.
  */
 export function setActiveInterval(interval) {
+  let popis = '';
   document.querySelectorAll('.interval-btn[data-interval]').forEach((btn) => {
-    btn.classList.toggle('active', btn.dataset.interval === interval);
+    const je = btn.dataset.interval === interval;
+    btn.classList.toggle('active', je);
+    if (je) popis = btn.textContent.trim();
   });
-  vycentrujInterval(true);
-}
-
-/** Posune lištu timeframů tak, aby aktivní byl uprostřed viditelné části. */
-export function vycentrujInterval(plynule = false) {
-  /*
-   * Od v0.50.1 (přání uživatele) se vybraný timeframe **nestředí** a na
-   * koncích lišty nejsou prázdné mezery — lišta se posune jen tolik, aby
-   * byl vybraný celý vidět. (Název funkce zůstal kvůli volajícím.)
-   */
-  const box = document.getElementById('intervals');
-  const aktivni = box?.querySelector('.interval-btn.active');
-  if (!aktivni) return;
-  requestAnimationFrame(() => {
-    const r = box.getBoundingClientRect();
-    const a = aktivni.getBoundingClientRect();
-    if (!r.width) return;
-    const okraj = 8;
-    let posun = 0;
-    if (a.left < r.left + okraj) posun = a.left - r.left - okraj;
-    else if (a.right > r.right - okraj) posun = a.right - r.right + okraj;
-    if (posun) box.scrollTo({ left: box.scrollLeft + posun, behavior: plynule ? 'smooth' : 'auto' });
-  });
+  const text = document.getElementById('tfBtnText');
+  if (text && popis) text.textContent = popis;
 }
 
 export function showSettingsMessage(message, ok) {
