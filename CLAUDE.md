@@ -1451,6 +1451,16 @@ kreseb i zavření grafu. Tři typy podle toho, co hlídají:
    nabídka ho neukážou. Rozpoznání je v chart.js (`onLongPress`), alarm
    v app.js (`ukazRychlyAlarm`). Test: `tools/test-rychly-alarm.py`
    (skutečné dotyky).
+   **v0.93.0 (přání uživatele — v grafu se hromadily použité alarmy):**
+   po „Set alarm" svítí v nabídce ~3 s volba **po zaznění** (`#quickPo`,
+   odpočet pruhem): **Jednou, pak smazat** (výchozí, kdo nic neudělá),
+   Jednou, nechat vypnutý, Pokaždé. Model: `poZazneni: 'smazat' | 'vypnout'`
+   + `opakovat` (`alarmy.poZazneni`, `nastavPoZazneni`, `smazatPoZazneni`);
+   alarm bez pole = vypnout (staré alarmy beze změny). Smazání po zaznění
+   v telefonu (`zkontroluj`, `zkontrolujCas`) i po zaznění na serveru
+   (`oznacZaznelo` → další odeslání seznamu ho ze serveru odebere).
+   Formulář alarmu má v Trigger stejné tři volby. **Nový alarm vrstvu
+   alarmů nezapíná** (rychlý ani z kresby) — uživatel si ji zapne sám.
 
 
 1. **Zvonek v ukotvené části kreslicí lišty** → přes graf se položí zaměřovací

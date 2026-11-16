@@ -267,6 +267,15 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h18"/><circle cx="12" cy="12" r="2"/></svg>
           <span id="quickLineText" data-i18n="tool.horizontalStraightLine">Horizontal line</span>
         </button>
+        <!-- Po nastavení alarmu (v0.93.0): co s ním po zaznění. Výchozí
+             „jednou, pak smazat"; nabídka po chvíli sama zmizí. -->
+        <div id="quickPo" class="quick-po" hidden>
+          <div class="quick-po-nadpis" data-i18n="alarm.afterFire">After it fires</div>
+          <button type="button" class="quick-po-btn" data-po="smazat" data-i18n="alarm.afterDelete">Once, then delete</button>
+          <button type="button" class="quick-po-btn" data-po="vypnout" data-i18n="alarm.afterKeep">Once, keep it (off)</button>
+          <button type="button" class="quick-po-btn" data-po="znovu" data-i18n="alarm.afterRepeat">Every time</button>
+          <div class="quick-po-odpocet" id="quickPoOdpocet"></div>
+        </div>
       </div>
 
       <!-- Vzhled vybrané kresby. Dole, aby nepřekrýval cenové dění nahoře. -->

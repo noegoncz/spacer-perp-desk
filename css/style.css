@@ -1835,6 +1835,42 @@ hr { margin: 20px 0; border: none; border-top: 1px solid var(--border); }
 .quick-menu.hotovo .quick-btn:not(.potvrzeno) { display: none; }
 .quick-btn.potvrzeno { color: var(--long); }
 .quick-btn.potvrzeno svg { stroke: var(--long); }
+/* Volba po zaznění (v0.93.0) pod potvrzeným alarmem. */
+.quick-po { display: flex; flex-direction: column; gap: 3px; }
+.quick-po-nadpis {
+  padding: 4px 6px 1px;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  letter-spacing: 0.02em;
+}
+.quick-po-btn {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.quick-po-btn.vybrano {
+  border-color: var(--alarm);
+  color: var(--text);
+}
+/* Odpočet do zavření: pruh, který se zkracuje. */
+.quick-po-odpocet {
+  height: 2px;
+  margin: 3px 4px 0;
+  border-radius: 1px;
+  background: var(--alarm);
+  opacity: 0.6;
+  transform-origin: left;
+}
+.quick-po-odpocet.bezi { animation: quickPoOdpocet var(--doba, 3s) linear forwards; }
+@keyframes quickPoOdpocet { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 
 /* Vzdálenost kříže od aktuální ceny během podržení prstu. */
 .krizek-procenta {

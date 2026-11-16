@@ -152,6 +152,9 @@ print('formulář otevřen:', otevreno, ' řádků:', poli,
 uroven = round(cena_ted + 0.01, 5)
 ev("""(() => { const p = document.querySelector('#alarmBody input[type=number]');
   p.value = '%s'; p.dispatchEvent(new Event('change', { bubbles: true })); })()""" % uroven)
+# Rychlý alarm je od v0.93.0 „jednou, pak smazat"; tady se zkouší
+# „jednou, nechat vypnutý" (druhá volba), ať po zaznění zůstane v grafu.
+ev("%s.querySelectorAll('.nastaveni-volba')[1].click()" % radek_formulare('Trigger'))
 ev("document.getElementById('alarmSaveBtn').click()")
 time.sleep(0.6)
 
@@ -200,7 +203,7 @@ print('klepnutí na hladinu otevřelo úpravu:', uprava, '—', nadpis,
 print()
 
 # ---- opakovaný alarm zůstává zapnutý ----
-ev("%s.querySelectorAll('.nastaveni-volba')[1].click()" % radek_formulare('Trigger'))
+ev("%s.querySelectorAll('.nastaveni-volba')[2].click()" % radek_formulare('Trigger'))
 # Přepínač Zapnutý je od v0.25.0 v hlavičce okna, ne v řádku formuláře.
 ev("document.querySelector('#alarmActiveBox .nastaveni-prepinac').click()")
 ev("document.getElementById('alarmSaveBtn').click()")

@@ -950,7 +950,7 @@ export function renderAlerts({ rezim, polozky, onOpen, onToggle, onDelete, onCle
       a.detaily.forEach(([text, trida]) => kus(text, trida));
     } else {
     if (a.podminka) kus(a.podminka);
-    if (a.typ !== 'cas') kus(a.opakovat ? t('alerts.repeat') : t('alerts.once'));
+    if (a.typ !== 'cas') kus(a.opakovat ? t('alerts.repeat') : a.smazat ? t('alerts.onceDelete') : t('alerts.once'));
     if (a.aktivni && Number.isFinite(a.vzdalenost)) {
       kus(t('alerts.fromPrice', { pct: formatPercent(a.vzdalenost) }), a.vzdalenost >= 0 ? 'nahoru' : 'dolu');
     }

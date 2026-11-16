@@ -151,9 +151,60 @@ if novy:
     over(ocekavana and abs(novy['price'] - ocekavana) / ocekavana < 0.002,
          f"cena sedí s místem prstu ({novy['price']} vs {ocekavana})")
 over('Alarm set' in (ev("document.getElementById('quickAlarmText').textContent") or ''), 'nabídka potvrdí „Alarm set“')
-time.sleep(1.8)
-over(not viditelne(), 'potvrzení samo zmizí')
+# v0.93.0: pod potvrzením volba „po zaznění", výchozí jednou + smazat.
+over(ev("!document.getElementById('quickPo').hidden"), 'po nastavení se ukáže volba po zaznění')
+over(ev("document.querySelector('#quickPo .vybrano')?.dataset.po") == 'smazat', 'výchozí volba: jednou, pak smazat')
+if novy:
+    over(novy.get('poZazneni') == 'smazat' and not novy.get('opakovat'), 'uložený alarm se po zaznění smaže')
+time.sleep(1.6)
+over(viditelne(), 'volba svítí ještě ~2 s po nastavení')
+time.sleep(1.2)
+over(not viditelne(), 'potvrzení samo zmizí (~3 s)')
 over(ev("window.__graf.getOverlays().filter((o) => o.name === 'alarmLine').length") >= 1, 'čára alarmu je v grafu')
+
+print('4b) jiná volba po zaznění + vrstva alarmů zůstane skrytá')
+# Vrstvu alarmů schovat přes nabídku oka (stejná cesta jako uživatel).
+ev("document.getElementById('layersBtn')?.click()")
+time.sleep(0.4)
+ev("document.querySelector('#sheetLayers [data-vrstva=alarmy]')?.click()")
+time.sleep(0.3)
+ev("document.querySelector('#sheetLayers .zavrit-velke')?.click()")
+time.sleep(0.4)
+skryte = ev("JSON.parse(localStorage.getItem('perpdesk.layers') || '{}').alarmy === false")
+over(skryte, 'vrstva alarmů je skrytá (příprava)')
+y4 = plocha['y'] + plocha['h'] * 0.7
+dotyk('touchStart', x, y4); time.sleep(0.8)
+dotyk('touchMove', x, y4 + 5); time.sleep(0.1)
+dotyk('touchEnd', x, y4 + 5); time.sleep(0.6)
+b = json.loads(ev("""(() => { const b = document.getElementById('quickAlarm').getBoundingClientRect();
+  return JSON.stringify({ x: b.left + b.width / 2, y: b.top + b.height / 2 }); })()"""))
+dotyk('touchStart', b['x'], b['y']); time.sleep(0.08); dotyk('touchEnd', b['x'], b['y'])
+time.sleep(0.6)
+b = json.loads(ev("""(() => { const b = document.querySelector('#quickPo [data-po="znovu"]').getBoundingClientRect();
+  return JSON.stringify({ x: b.left + b.width / 2, y: b.top + b.height / 2, dole: b.bottom,
+    graf: document.getElementById('chartBox').getBoundingClientRect().bottom }); })()"""))
+over(b['dole'] <= b['graf'], 'volba se vejde do plochy grafu')
+dotyk('touchStart', b['x'], b['y']); time.sleep(0.08); dotyk('touchEnd', b['x'], b['y'])
+time.sleep(0.3)
+posledni_a = json.loads(ev("localStorage.getItem('perpdesk.alarms') || '[]'") or '[]')[-1]
+over(posledni_a.get('opakovat') is True, 'volba „Every time“ alarm přepne na opakovaný')
+over(ev("JSON.parse(localStorage.getItem('perpdesk.layers') || '{}').alarmy === false"),
+     'nový alarm vrstvu alarmů nezapnul')
+time.sleep(1.2)
+over(not viditelne(), 'po volbě nabídka brzy zmizí')
+
+print('4c) jednorázový „pak smazat" po zaznění zmizí, „nechat" zůstane')
+vysledek = p.prikaz('Runtime.evaluate', awaitPromise=True, returnByValue=True, expression="""(async () => { const m = await import('./js/alarmy.js');
+  const a1 = m.uloz({ ...m.novy('TESTUSDT', 100), poZazneni: 'smazat' });
+  const a2 = m.uloz({ ...m.novy('TESTUSDT', 100) });
+  m.zkontroluj('TESTUSDT', 99); const z = m.zkontroluj('TESTUSDT', 101);
+  const r = { zaznelo: z.length, smazany: !m.najdi(a1.id), nechany: !!m.najdi(a2.id) && !m.najdi(a2.id).aktivni };
+  m.smaz(a2.id); return JSON.stringify(r); })()""").get('result', {}).get('value') or '{}'
+print('  ', vysledek)
+v = json.loads(vysledek)
+over(v.get('zaznelo') == 2, 'oba testovací alarmy zazněly')
+over(v.get('smazany'), '„jednou, pak smazat" po zaznění zmizel')
+over(v.get('nechany'), '„jednou, nechat" po zaznění zůstal vypnutý')
 
 print('5) vodorovná čára z nabídky')
 y3 = plocha['y'] + plocha['h'] * 0.3
@@ -162,6 +213,7 @@ dotyk('touchMove', x, y3 + 5); time.sleep(0.1)
 dotyk('touchEnd', x, y3 + 5); time.sleep(0.6)
 over(viditelne(), 'nabídka se ukáže znovu')
 kresby_pred = ev("window.__graf.getOverlays({ groupId: 'kresby' }).length")
+alarmu_pred = ev("JSON.parse(localStorage.getItem('perpdesk.alarms') || '[]').length")
 b = json.loads(ev("""(() => { const b = document.getElementById('quickLine').getBoundingClientRect();
   return JSON.stringify({ x: b.left + b.width / 2, y: b.top + b.height / 2 }); })()"""))
 dotyk('touchStart', b['x'], b['y']); time.sleep(0.08); dotyk('touchEnd', b['x'], b['y'])
@@ -173,7 +225,7 @@ over(ev("window.__graf.getOverlays({ groupId: 'kresby' }).length") == kresby_pre
 ulozene = json.loads(ev("localStorage.getItem('perpdesk.drawings.JUPUSDT') || '[]'") or '[]')
 over(any(k.get('name') == 'horizontalStraightLine' for k in ulozene), 'čára se uložila mezi kresby páru')
 over('Line added' in (ev("document.getElementById('quickLineText').textContent") or ''), 'nabídka potvrdí „Line added“')
-over(ev("JSON.parse(localStorage.getItem('perpdesk.alarms') || '[]').length") == len(seznam), 'čára nevytvořila alarm')
+over(ev("JSON.parse(localStorage.getItem('perpdesk.alarms') || '[]').length") == alarmu_pred, 'čára nevytvořila alarm')
 
 
 konzole = ev('(window.__chyby||[]).join(" | ")') or ''

@@ -1519,6 +1519,8 @@ function wireEvents() {
     otevriVrstvy();
   });
   naUdalost('quickAlarm', 'click', potvrdRychlyAlarm);
+  document.querySelectorAll('#quickPo [data-po]').forEach((b) =>
+    b.addEventListener('click', () => zvolPoZazneni(b.dataset.po)));
   naUdalost('quickLine', 'click', potvrdRychlouCaru);
   // Jakýkoli další dotyk v grafu nabídku rychlého alarmu zavře.
   el('chartBox')?.addEventListener('touchstart', () => {
@@ -4581,6 +4583,7 @@ function polozkaAlarmu(a) {
     hladina: text,
     podminka: podminkaAlarmu(a),
     opakovat: Boolean(a.opakovat),
+    smazat: alarmy.smazatPoZazneni(a),
     aktivni: Boolean(a.aktivni),
     spusteno: a.spusteno || null,
     vzdalenost,
@@ -5751,6 +5754,7 @@ function ukazRychlyAlarm(bod) {
   rychlyAlarm = { cena, casovac: setTimeout(skryjRychlyAlarm, 6000) };
   menu.classList.remove('hotovo');
   menu.querySelectorAll('.quick-btn').forEach((b) => b.classList.remove('potvrzeno'));
+  el('quickPo').hidden = true;
   el('quickAlarmText').textContent = t('alarm.quickSetShort');
   el('quickLineText').textContent = t('tool.horizontalStraightLine');
   const pct = Number.isFinite(bod.pct) ? `  ${bod.pct >= 0 ? '+' : '−'}${Math.abs(bod.pct).toFixed(2)} %` : '';
@@ -5776,21 +5780,59 @@ function skryjRychlyAlarm() {
   ukazPrvek('quickMenu', false);
 }
 
-function potvrdRychle(tlacitko, text) {
+function potvrdRychle(tlacitko, text, doba = 1400) {
   el('quickMenu').classList.add('hotovo');
   tlacitko.classList.add('potvrzeno');
   tlacitko.querySelector('span').textContent = text;
   clearTimeout(rychlyAlarm?.casovac);
-  rychlyAlarm = { cena: null, casovac: setTimeout(skryjRychlyAlarm, 1400) };
+  rychlyAlarm = { cena: null, casovac: setTimeout(skryjRychlyAlarm, doba) };
 }
+
+/*
+ * Po nastavení alarmu (v0.93.0, přání uživatele): pod potvrzením chvíli
+ * svítí volba, co s alarmem po zaznění. Výchozí „jednou, pak smazat" —
+ * jinak se v grafu hromadily použité alarmy. Kdo nic neudělá, má výchozí.
+ * Vrstva alarmů se kvůli novému alarmu nezapíná (uživatel: zapne si ji sám).
+ */
+const VOLBA_PO_ZAZNENI_MS = 3000;
 
 function potvrdRychlyAlarm() {
   if (!rychlyAlarm?.cena || !chartSymbol) return;
   const cena = rychlyAlarm.cena;
-  ukazVrstvu('alarmy');
-  alarmy.uloz({ ...alarmy.novy(grafKlic(), cena), aktivni: true });
+  const alarm = alarmy.uloz({ ...alarmy.novy(grafKlic(), cena), aktivni: true, poZazneni: 'smazat' });
   vykresliAlarmy();
-  potvrdRychle(el('quickAlarm'), t('alarm.quickDone', { price: formatPrice(cena) }));
+  potvrdRychle(el('quickAlarm'), t('alarm.quickDone', { price: formatPrice(cena) }), VOLBA_PO_ZAZNENI_MS);
+  rychlyAlarm.alarmId = alarm.id;
+  ukazVolbuPoZazneni('smazat', VOLBA_PO_ZAZNENI_MS);
+}
+
+function ukazVolbuPoZazneni(volba, doba) {
+  const po = el('quickPo');
+  if (!po) return;
+  po.hidden = false;
+  po.querySelectorAll('[data-po]').forEach((b) => b.classList.toggle('vybrano', b.dataset.po === volba));
+  const pruh = el('quickPoOdpocet');
+  pruh.classList.remove('bezi');
+  void pruh.offsetWidth;   // restart animace
+  pruh.style.setProperty('--doba', `${doba}ms`);
+  pruh.classList.add('bezi');
+  // Nabídka narostla dolů — u spodního okraje grafu ji posunout nahoru.
+  const menu = el('quickMenu');
+  const vyska = menu.parentElement.getBoundingClientRect().height;
+  const top = parseFloat(menu.style.top) || 0;
+  if (top + menu.offsetHeight > vyska - 8) menu.style.top = `${Math.max(8, vyska - menu.offsetHeight - 8)}px`;
+}
+
+function zvolPoZazneni(volba) {
+  const id = rychlyAlarm?.alarmId;
+  const a = id && alarmy.najdi(id);
+  if (!a) return;
+  alarmy.uloz(alarmy.nastavPoZazneni({ ...a }, volba));
+  vykresliAlarmy();
+  // Volba se ukáže a nabídka se za chvíli zavře.
+  clearTimeout(rychlyAlarm.casovac);
+  rychlyAlarm.casovac = setTimeout(skryjRychlyAlarm, 900);
+  ukazVolbuPoZazneni(volba, 900);
 }
 
 function potvrdRychlouCaru() {
@@ -5808,7 +5850,6 @@ function potvrdRychlouCaru() {
  */
 function alarmZKresby() {
   if (!chart || !chartSymbol) return;
-  ukazVrstvu('alarmy');
   const kresba = chart.selectedDrawing();
   if (!kresba) return;
   const alarm = alarmy.zKresby(grafKlic(), kresba);
@@ -6039,9 +6080,10 @@ function postavFormularAlarmu() {
         { hodnota: 'down', klicPopisku: 'alarm.crossDown' },
       ], a.smer, (v) => { a.smer = v; }),
       volba('alarm.trigger', [
-        { hodnota: false, klicPopisku: 'alarm.onlyOnce' },
-        { hodnota: true, klicPopisku: 'alarm.everyTime' },
-      ], Boolean(a.opakovat), (v) => { a.opakovat = v; }),
+        { hodnota: 'smazat', klicPopisku: 'alarm.afterDelete' },
+        { hodnota: 'vypnout', klicPopisku: 'alarm.afterKeep' },
+        { hodnota: 'znovu', klicPopisku: 'alarm.everyTime' },
+      ], alarmy.poZazneni(a), (v) => { alarmy.nastavPoZazneni(a, v); }),
       volba('alarm.expiration', [
         { hodnota: 0, klicPopisku: 'alarm.noExpiry' },
         { hodnota: 1, klicPopisku: 'alarm.day1' },

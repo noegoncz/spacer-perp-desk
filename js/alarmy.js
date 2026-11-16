@@ -70,6 +70,9 @@ export function novy(symbol, cena) {
     cas: null,    // typ 'cas': okamžik v ms
     smer: 'any',
     opakovat: false,
+    // Co s jednorázovým alarmem po zaznění (v0.93.0): 'vypnout' = zešedne
+    // a zůstane v grafu, 'smazat' = zmizí. Starší alarmy pole nemají = vypnout.
+    poZazneni: 'vypnout',
     platnostDnu: 0,
     vyprsi: null,
     zprava: '',
@@ -138,6 +141,24 @@ export function uloz(alarm) {
   return ulozeny;
 }
 
+/** Jednorázový alarm, který se po zaznění sám smaže (v0.93.0). */
+export const smazatPoZazneni = (a) => !a.opakovat && a.poZazneni === 'smazat';
+
+/** Volba „po zaznění" pro formulář a rychlou nabídku: smazat | vypnout | znovu. */
+export const poZazneni = (a) => (a.opakovat ? 'znovu' : a.poZazneni === 'smazat' ? 'smazat' : 'vypnout');
+
+export function nastavPoZazneni(a, volba) {
+  a.opakovat = volba === 'znovu';
+  a.poZazneni = volba === 'smazat' ? 'smazat' : 'vypnout';
+  return a;
+}
+
+/** Zazněné alarmy, které se mají smazat, zmizí ze seznamu. */
+function smazZaznele(spustene) {
+  const pryc = new Set(spustene.filter(smazatPoZazneni).map((a) => a.id));
+  if (pryc.size) alarmy = seznam().filter((a) => !pryc.has(a.id));
+}
+
 export function smaz(id) {
   alarmy = seznam().filter((a) => a.id !== id);
   zapis();
@@ -157,8 +178,8 @@ export function uklidVyprsele(ted = Date.now()) {
  * Nová cena páru. Vrací alarmy, které právě zazněly.
  *
  * Jednorázový alarm se po zaznění **vypne, ale nesmaže** — hladina zůstane
- * v grafu vidět a jde ji jedním klepnutím zase zapnout. Smazat ho musí
- * uživatel sám, aplikace mu práci nemaže.
+ * v grafu vidět a jde ji jedním klepnutím zase zapnout. Výjimka: alarm
+ * s `poZazneni: 'smazat'` (výchozí u rychlého alarmu, v0.93.0) zmizí.
  */
 export function zkontroluj(symbol, cena, ted = Date.now()) {
   if (!symbol || !Number.isFinite(cena)) return [];
@@ -190,6 +211,7 @@ export function zkontroluj(symbol, cena, ted = Date.now()) {
     spustene.push(a);
     zmena = true;
   }
+  smazZaznele(spustene);
   if (zmena) zapis();
   return spustene;
 }
@@ -208,6 +230,7 @@ export function zkontrolujCas(ted = Date.now()) {
     a.aktivni = false;
     spustene.push(a);
   }
+  smazZaznele(spustene);
   if (spustene.length) zapis();
   return spustene;
 }
@@ -224,6 +247,7 @@ export function oznacZaznelo(id, cas) {
   if (cas <= (a.zmeneno || 0)) return false;
   a.spusteno = cas;
   if (!a.opakovat) a.aktivni = false;
+  smazZaznele([a]);
   zapis();
   return true;
 }
