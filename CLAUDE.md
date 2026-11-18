@@ -3820,6 +3820,16 @@ https://claude.ai/artifact/BHAHkgLcFuhiFkUPLreNi3, vybraná varianta B):**
   `doplnObjemyMapy` po načtení mapy dopočítá na pozadí objemy ostatních
   zdrojů (i Shodu) a nastaví jejich dostupnost; nové číslo plynule naskočí
   (`.liq-objem.naskok`). Test bod 5: výchozí zdroj + objemy všech zdrojů.
+- **Ověření reálné mapy proti Hyperliquidu (2026-11-18):**
+  `tools/kontrola-pokryti-mapy.py` — sledovaná hodnota pozic / open
+  interest HL: u 20 největších coinů 96–99 % OI (OI HL je zřejmě součet
+  obou stran — sledované longy a shorty v `info.strany` hlášení sběru jsou
+  u 15 coinů vyrovnané do ~4 %, což při polovičním pokrytí nejde) →
+  pokrytí ~95 %+. `tools/kontrola-vzorku-mapy.py <N>` — pozice N
+  největších účtů žebříčku přímo z HL proti mapě: 12 / 12 pozic ≥ 200 k
+  v ±25 % sedí (strana, objem do ~1 %, cena do 1 % — účty v režimu cross
+  mají likvidaci pohyblivou a po restartu sběru je fronta ~25 min pozadu).
+  Konkurence (HyperPerps API) je za Turnstile — automaticky ne.
 - **v0.94.0 — čáry se září (varianta D z plátna
   https://claude.ai/artifact/LPii9dzun6crkk39okdxMf, uživatel: „příliš
   kostičkované“):** `kresliCaru` kreslí tenkou čáru (1–1,8 px) + záři jako
