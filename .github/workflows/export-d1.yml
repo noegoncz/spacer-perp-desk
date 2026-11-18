@@ -1,0 +1,30 @@
+# Ruční záloha databáze sběru (likvidační mapa, zdi, proběhlé likvidace)
+# jako artefakt běhu (zabalené SQL, 30 dní). Spouští se jen ručně, před
+# úklidem nebo přesunem dat. Neobsahuje nic o uživatelích (jen tržní data).
+name: Export D1
+on:
+  workflow_dispatch:
+    inputs:
+      db:
+        description: 'Databáze'
+        default: 'perpyx-likvidace'
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Export
+        run: |
+          ACC=$(curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" https://api.cloudflare.com/client/v4/accounts | jq -r '.result[0].id')
+          export CLOUDFLARE_ACCOUNT_ID=$ACC
+          npx -y wrangler@4 d1 export "${{ inputs.db }}" --remote --output export.sql
+          ls -l export.sql
+          gzip -9 export.sql
+          ls -l export.sql.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.db }}-export
+          path: export.sql.gz
+          retention-days: 30
+          compression-level: 0
