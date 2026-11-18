@@ -1,13 +1,13 @@
 {
-  "verze": "0.93.0",
+  "verze": "0.94.0",
   "novinky": [
     {
-      "en": "Quick alarm: right after setting it you can choose what happens when it fires — once and then delete (default), once and keep it switched off, or every time.",
-      "cs": "Rychlý alarm: hned po nastavení si vybereš, co se stane po zaznění — jednou a pak smazat (výchozí), jednou a nechat vypnutý, nebo pokaždé."
+      "en": "Liquidation map: thin lines with a soft glow that fade in and out instead of blocky bars — calmer chart, candles stand out.",
+      "cs": "Likvidační mapa: tenké čáry s jemnou září, které plynule naběhnou a dozní, místo kostiček — klidnější graf, svíčky víc vyniknou."
     },
     {
-      "en": "A new alarm no longer switches the hidden alarm layer back on.",
-      "cs": "Nový alarm už nezapíná schovanou vrstvu alarmů."
+      "en": "Real liquidation map and order-book walls now reach further back in history.",
+      "cs": "Reálná likvidační mapa a zdi v knize sahají dál do historie."
     }
   ],
   "opravy": []

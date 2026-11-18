@@ -1022,39 +1022,79 @@ const barvaMapy = (v) => {
   return ca.map((x, j) => Math.round(x + (cb[j] - x) * k));
 };
 const KRATKY_SKOK = 30 * 60000;
-function kresliCaru(ctx, p, ref, x1, x2, y, xCasu) {
+/*
+ * Vzhled v0.94.0 (varianta D z plátna https://claude.ai/artifact/LPii9dzun6crkk39okdxMf,
+ * uživatel: „příliš kostičkované“): tenká čára (1–1,8 px) se září podle
+ * velikosti, začátek a konec plynule naběhnou / dozní (2 svíčky), barva se
+ * mezi změnami objemu přelévá přechodem místo skoku. Hladina pod 30 %
+ * měřítka je tlumená a bez záře (filtr dál rozhoduje, co se kreslí). Záře
+ * = širší průsvitná čára pod hlavní (shadowBlur je na telefonu drahý).
+ */
+const MALA_HLADINA = 0.3;
+function kresliCaru(ctx, p, ref, x1, x2, y, xCasu, { xZacatku = x1, ziva = false, nabeh = 12 } = {}) {
   let pr = p.prubeh?.length ? p.prubeh : [[p.od, hodnotaPasu(p)]];
-  /*
-   * Reálná mapa: hodnota, která vydržela < 30 min, je skok v datech (účet
-   * přečtený s jinou hodnotou), ne změna objemu — nekreslí se (v0.78.0,
-   * uživatel: žluté tečky na čarách). Poslední hodnota zůstává vždy.
-   */
   if (p.zdroj === 'realna' && pr.length > 2) {
     pr = pr.filter((b, i) => i === 0 || i === pr.length - 1 || pr[i + 1][0] - b[0] >= KRATKY_SKOK);
   }
-  const xProsla = p.prosla ? xCasu(p.prosla) : Infinity;
+  const delka = x2 - x1;
+  if (!(delka > 0.5)) return;
+  const vMax = Math.sqrt(Math.min(1, hodnotaPasu(p) / ref));
+  const mala = vMax < MALA_HLADINA;
+  // Body přechodu: [poloha 0–1 na úseku x1–x2, síla v].
+  const body = [];
   for (let i = 0; i < pr.length; i += 1) {
-    const a = Math.max(x1, i ? xCasu(pr[i][0]) : x1);
-    const b = Math.min(x2, i + 1 < pr.length ? xCasu(pr[i + 1][0]) : x2);
-    if (!Number.isFinite(a) || !Number.isFinite(b) || b <= a) continue;
-    const v = Math.sqrt(Math.min(1, pr[i][1] / ref));
-    const [r, g, bl] = barvaMapy(v);
-    const tl = 1 + 3 * v;
-    const plna = Math.min(b, xProsla);
-    if (plna > a) {
-      ctx.fillStyle = `rgba(${r},${g},${bl},${(0.55 + 0.45 * v).toFixed(3)})`;
-      ctx.fillRect(a, y - tl / 2, plna - a, tl);
+    const xb = i ? xCasu(pr[i][0]) : x1;
+    if (!Number.isFinite(xb)) continue;
+    body.push([Math.min(1, Math.max(0, (xb - x1) / delka)), Math.sqrt(Math.min(1, pr[i][1] / ref))]);
+  }
+  if (!body.length) body.push([0, vMax]);
+  // Náběh jen tam, kde hladina opravdu začíná (ne na levém okraji obrazu).
+  const nabehZ = xZacatku >= x1 - 0.5 ? Math.min(0.35, nabeh / delka) : 0;
+  const nabehK = ziva ? 0 : Math.min(0.35, nabeh / delka);
+  const utlum = (pos) => {
+    let a = 1;
+    if (nabehZ && pos < nabehZ) a = pos / nabehZ;
+    if (nabehK && pos > 1 - nabehK) a = Math.min(a, (1 - pos) / nabehK);
+    return Math.max(0, a);
+  };
+  const silaV = (pos) => { let v = body[0][1]; for (const b of body) if (b[0] <= pos + 1e-9) v = b[1]; return v; };
+  const zastavky = [...new Set([0, nabehZ, ...body.map((b) => b[0]), 1 - nabehK, 1].filter((q) => q >= 0 && q <= 1))].sort((a, b) => a - b);
+  const xProsla = p.prosla ? xCasu(p.prosla) : Infinity;
+  const xPlna = Math.min(x2, xProsla);
+  const prechod = (alfa) => {
+    const g = ctx.createLinearGradient(x1, 0, x2, 0);
+    for (const pos of zastavky) {
+      const v = silaV(pos);
+      const [r, gg, bl] = barvaMapy(v);
+      g.addColorStop(pos, `rgba(${r},${gg},${bl},${(alfa(v) * utlum(pos)).toFixed(3)})`);
     }
-    /*
-     * Za místem, kde svíčka grafu hladinou prošla (jen reálná mapa —
-     * pozice na Hyperliquidu dál existují, mark ceně to nestačilo nebo
-     * likvidace byla částečná): čárkovaná a slabší (v0.78.0, varianta C).
-     */
-    if (b > plna) {
-      ctx.fillStyle = `rgba(${r},${g},${bl},${(0.25 + 0.3 * v).toFixed(3)})`;
-      const t2 = Math.max(1, tl * 0.6);
-      for (let x = Math.max(a, plna); x < b; x += 8) ctx.fillRect(x, y - t2 / 2, Math.min(4, b - x), t2);
+    return g;
+  };
+  const yy = Math.round(y) + 0.5;
+  ctx.lineCap = 'butt';
+  if (xPlna > x1) {
+    if (!mala) {
+      // Záře: širší průsvitná čára pod hlavní.
+      ctx.strokeStyle = prechod((v) => 0.1 + 0.18 * v);
+      ctx.lineWidth = 3 + 6 * vMax;
+      ctx.beginPath(); ctx.moveTo(x1, yy); ctx.lineTo(xPlna, yy); ctx.stroke();
     }
+    ctx.strokeStyle = prechod((v) => (mala ? 0.35 : 0.6 + 0.4 * v));
+    ctx.lineWidth = mala ? 1 : 1 + 0.8 * vMax;
+    ctx.beginPath(); ctx.moveTo(x1, yy); ctx.lineTo(xPlna, yy); ctx.stroke();
+  }
+  /*
+   * Za místem, kde svíčka grafu hladinou prošla (jen reálná mapa —
+   * pozice na Hyperliquidu dál existují, mark ceně to nestačilo nebo
+   * likvidace byla částečná): čárkovaná a slabší (v0.78.0, varianta C).
+   */
+  if (x2 > xPlna && xPlna >= x1) {
+    ctx.save();
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = prechod((v) => 0.25 + 0.3 * v);
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(xPlna, yy); ctx.lineTo(x2, yy); ctx.stroke();
+    ctx.restore();
   }
 }
 /*
@@ -1204,7 +1244,9 @@ function registrovatLikvidace() {
           ctx.fillRect(x1, a.y - 4, x2 - x1, 8);
         }
         ctx.globalAlpha = alfa * utlum * (p.shoda === false ? 0.3 : 1);
-        kresliCaru(ctx, p, m.ref, x1, x2, a.y, (ts) => px(ts, p.cena)?.x);
+        kresliCaru(ctx, p, m.ref, x1, x2, a.y, (ts) => px(ts, p.cena)?.x, {
+          xZacatku: a.x, ziva: p.do >= Date.now() - 120000, nabeh: Math.max(8, 2 * (Number(sirkaSvicky) || 8)),
+        });
         ctx.globalAlpha = alfa;
         nakresleno += 1;
       }

@@ -3820,6 +3820,15 @@ https://claude.ai/artifact/BHAHkgLcFuhiFkUPLreNi3, vybraná varianta B):**
   `doplnObjemyMapy` po načtení mapy dopočítá na pozadí objemy ostatních
   zdrojů (i Shodu) a nastaví jejich dostupnost; nové číslo plynule naskočí
   (`.liq-objem.naskok`). Test bod 5: výchozí zdroj + objemy všech zdrojů.
+- **v0.94.0 — čáry se září (varianta D z plátna
+  https://claude.ai/artifact/LPii9dzun6crkk39okdxMf, uživatel: „příliš
+  kostičkované“):** `kresliCaru` kreslí tenkou čáru (1–1,8 px) + záři jako
+  širší průsvitnou čáru pod ní (ne shadowBlur — drahý na telefonu), barva
+  přechodem mezi body průběhu (`createLinearGradient`), náběh / doznění
+  2 svíčky (náběh jen tam, kde hladina začíná v obraze; živá nedoznívá).
+  Hladina pod 30 % měřítka (`MALA_HLADINA`) tlumená, bez záře — filtr dál
+  rozhoduje, co se kreslí. Pruhy přes výpadek sběru (konec až u prvního
+  snímku po mezeře) **uživatel chce nechat** — „lepší než prázdný prostor“.
 - Tmavý svislý pruh po prudkém pohybu není chyba: cena vybrala pásma
   a OI zároveň klesal → nové pozice nevznikly.
 - Test: `test-likvidace-graf.py` (Binance na 4h, bod 4: SPCX bez HL má
