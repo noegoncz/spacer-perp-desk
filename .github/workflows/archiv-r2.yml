@@ -2,7 +2,9 @@
 # likvidace) do R2 `perpyx-historie` — vznik 2026-11-18, kdy D1 přetekla
 # 500 MB. D1 drží jen krátkou živou historii, archiv je trvalý (výzkum,
 # později starší úseky grafu). Soubory: den/RRRR-MM-DD/<typ>.jsonl.gz
-# (web/tools/archiv.py). Běží každou noc pro včerejšek a předevčírem
+# (web/tools/archiv.py) + kousky odpovědí pro graf graf/mapa/k1|k6/<coin>/<den>
+# a graf/zdi/<burza~PÁR>/<den> (čte je web, web/lib/historie.js); nahrává
+# web/tools/nahraj-r2.py přes API. Běží každou noc pro včerejšek a předevčírem
 # (minutové snímky D1 drží 3 dny, předevčírem je ještě celý).
 # Ručně: `dny` = vlastní seznam dní, `zaloha_run` = id běhu workflow
 # Export D1, jehož artefakt se přidá (pak se archivují všechny dny).
@@ -65,19 +67,12 @@ jobs:
           DB="--db live.sqlite"
           if [ -f zaloha.sqlite ]; then
             DB="--db zaloha.sqlite --db live.sqlite"
-            python3 web/tools/archiv.py $DB --vse --out out
+            python3 web/tools/archiv.py $DB --vse --graf --out out
           else
             DNY="${{ inputs.dny }}"
             if [ -z "$DNY" ]; then DNY="$(date -u -d '-1 day' +%F),$(date -u -d '-2 day' +%F)"; fi
-            python3 web/tools/archiv.py $DB --dny "$DNY" --out out
+            python3 web/tools/archiv.py $DB --dny "$DNY" --graf --out out
           fi
+          du -sh out/den out/graf || true
       - name: Nahrát do R2
-        run: |
-          n=0
-          for f in $(find out -name '*.jsonl.gz' | sort); do
-            klic="${f#out/}"
-            npx -y wrangler@4 r2 object put "$BUCKET/$klic" --file "$f" --content-type application/gzip --remote >/dev/null
-            n=$((n + 1))
-          done
-          echo "nahráno souborů: $n"
-          test "$n" -gt 0
+        run: python3 web/tools/nahraj-r2.py "$BUCKET" out 16

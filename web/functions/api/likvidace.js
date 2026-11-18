@@ -8,8 +8,15 @@
 // js/likvidace-format.js. Hotové hodiny se už nemění → dlouhá cache.
 
 import { corsHlavicky } from '../../lib/ucet.js';
+import { klicDnu, spojOdpoved, prvkyTextem } from '../../lib/historie.js';
 
 const HOD = 3600000;
+const DEN = 24 * HOD;
+// D1 drží snímky po 15 min 21 dní (watcher/liq.js); celé dny starší než
+// 20 dní jdou z archivu v R2 (web/lib/historie.js, 2026-11-18). Archiv
+// má jen první snímek hodiny (k1) a každé 6. hodiny (k6).
+const D1_DNY = 20;
+const COIN_R2 = /^[A-Za-z0-9]{1,40}$/;
 
 export const onRequestOptions = ({ request }) => new Response(null, { status: 204, headers: corsHlavicky(request) });
 
@@ -28,7 +35,15 @@ export async function onRequestGet({ request, env }) {
     ...corsHlavicky(request),
   });
   if (!coin) return new Response('{"ok":false}', { status: 400, headers: hlavicky(false) });
-  const odHodiny = Math.floor(od / HOD) * HOD;
+  let odHodiny = Math.floor(od / HOD) * HOD;
+  // Starší celé dny z archivu R2, zbytek z D1.
+  let klice = [];
+  const hraniceD1 = Math.floor(ted / DEN) * DEN - D1_DNY * DEN;
+  if (r === 15 && env.HIST && odHodiny < hraniceD1 && COIN_R2.test(coin)) {
+    const varianta = krok >= 6 * HOD && krok % (6 * HOD) === 0 ? 'k6' : 'k1';
+    klice = klicDnu(`graf/mapa/${varianta}/${coin}`, odHodiny, Math.min(hraniceD1, doCasu + 1));
+    odHodiny = hraniceD1;
+  }
   let dotaz;
   if (r === 15 && krok >= HOD) {
     // Jen první řádek hodiny (substr do prvního \n) a jen každá krok-tá hodina.
@@ -40,8 +55,13 @@ export async function onRequestGet({ request, env }) {
         WHERE coin = ? AND rozliseni = ? AND hodina BETWEEN ? AND ? ORDER BY hodina`)
       .bind(coin, r, odHodiny, doCasu);
   }
-  const { results } = await dotaz.all();
+  const results = odHodiny <= doCasu ? (await dotaz.all()).results : [];
   const hotove = doCasu < Math.floor(ted / HOD) * HOD;
-  return new Response(JSON.stringify({ ok: true, r, hodiny: results.map((x) => [x.hodina, x.data]) }),
-    { headers: hlavicky(hotove) });
+  const radky = results.map((x) => [x.hodina, x.data]);
+  if (!klice.length) {
+    return new Response(JSON.stringify({ ok: true, r, hodiny: radky }), { headers: hlavicky(hotove) });
+  }
+  return new Response(spojOdpoved(env, {
+    zacatek: `{"ok":true,"r":${r},"hodiny":[`, klice, zbytek: prvkyTextem(radky), konec: ']}',
+  }), { headers: hlavicky(hotove) });
 }

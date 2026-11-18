@@ -33,6 +33,69 @@ def text_dne(ms):
     return dt.datetime.fromtimestamp(ms / 1000, dt.timezone.utc).strftime('%Y-%m-%d')
 
 
+HOD = 3600000
+
+
+def prvni_radek(data):
+    """Jako substr(data, 1, instr(data, char(10))) v /api/likvidace (i s \\n)."""
+    i = data.find('\n')
+    return data if i < 0 else data[:i + 1]
+
+
+def zapis(cesta, text):
+    os.makedirs(os.path.dirname(cesta), exist_ok=True)
+    with open(cesta, 'w', encoding='utf-8', newline='') as f:
+        f.write(text)
+
+
+ZED_MIN = 20 * 60000
+
+
+def dost_dlouha(radek):
+    try:
+        z = json.loads(radek)
+        return z[3] - z[2] >= ZED_MIN
+    except (ValueError, IndexError, TypeError):
+        return False
+
+
+def graf(out, den, soubory, souhrn):
+    """Kousky odpovědí pro graf (čte je web, viz web/lib/historie.js).
+
+    graf/mapa/k1/<coin>/<den>  prvky [hodina, data] — jen první snímek hodiny
+    graf/mapa/k6/<coin>/<den>  první snímek každé 6. hodiny
+    graf/zdi/<burza~PÁR>/<den> prvky [strana, cena, od, do, min, max], jen zdi
+                               stojící ≥ 20 min (graf kreslí z historie zdi ≥ 1 h,
+                               kousky spojuje přes mezery < 30 min; všechny = 20 MB / den)
+    Všechny snímky po 15 min (12 MB / den) se pro graf neukládají — 1h graf
+    starší než živá D1 dostane snímek po hodině. Úplná data jsou v den/….
+    Obsah = prvky JSON pole oddělené čárkou, bez závorek — web je jen
+    přepošle do odpovědi (bez rozbalování, kvůli limitu CPU).
+    """
+    po_coinech = {}
+    for c, h, d in soubory.get('mapa15', []):
+        po_coinech.setdefault(c, []).append((h, d))
+    n = 0
+    for c, radky in po_coinech.items():
+        radky.sort()
+        js = lambda h, t: json.dumps([h, t], ensure_ascii=False, separators=(',', ':'))
+        varianty = {
+            'k1': [js(h, prvni_radek(d)) for h, d in radky],
+            'k6': [js(h, prvni_radek(d)) for h, d in radky if h % (6 * HOD) == 0],
+        }
+        for k, prvky in varianty.items():
+            if prvky:
+                zapis(os.path.join(out, 'graf', 'mapa', k, c, den), ','.join(prvky))
+                n += 1
+    for k, data in soubory.get('zdi', []):
+        prvky = [r for r in data.split('\n') if r.strip() and dost_dlouha(r)]
+        if prvky:
+            # „binance:BTCUSDT“ → „binance~BTCUSDT“ (dvojtečka v názvu souboru)
+            zapis(os.path.join(out, 'graf', 'zdi', k.replace(':', '~'), den), ','.join(prvky))
+            n += 1
+    souhrn.setdefault(den, {})['graf'] = [n, 0]
+
+
 def tabulky(con):
     return {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
 
@@ -43,6 +106,7 @@ def main():
     ap.add_argument('--dny', default='')
     ap.add_argument('--vse', action='store_true')
     ap.add_argument('--out', required=True)
+    ap.add_argument('--graf', action='store_true', help='i kousky odpovědí pro graf (graf/…)')
     a = ap.parse_args()
 
     # klíč → (data); delší vyhrává
@@ -105,6 +169,8 @@ def main():
                 for r in radky:
                     f.write(json.dumps(r, ensure_ascii=False, separators=(',', ':')) + '\n')
             souhrn.setdefault(den, {})[jmeno] = [len(radky), os.path.getsize(cesta)]
+        if a.graf:
+            graf(a.out, den, soubory, souhrn)
     for den, s in souhrn.items():
         print(den, ' '.join(f'{k}:{v[0]}r/{v[1] // 1024}kB' for k, v in s.items()))
     print('dní:', len(souhrn), 'celkem kB:', sum(v[1] for s in souhrn.values() for v in s.values()) // 1024)

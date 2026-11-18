@@ -10,8 +10,12 @@
 
 import { corsHlavicky } from '../../lib/ucet.js';
 import { castZdi } from '../../lib/zdi.js';
+import { klicDnu, spojOdpoved, prvkyTextem } from '../../lib/historie.js';
 
 const DEN = 86400000;
+// D1 drží historii zdí 7 dní (watcher/zdi.js); celé dny starší než 6 dní
+// jdou z archivu v R2 (jen zdi stojící ≥ 20 min, web/tools/archiv.py).
+const D1_DNY = 6;
 const KLIC = /^(binance|bybit|hyperliquid):[A-Z0-9]{2,30}$/;
 
 export const onRequestOptions = ({ request }) => new Response(null, { status: 204, headers: corsHlavicky(request) });
@@ -49,8 +53,18 @@ export async function onRequestGet({ request, env, waitUntil }) {
       if (waitUntil) waitUntil(zapis); else await zapis;
     }
   }
-  const { results } = await env.LIQ.prepare('SELECT data FROM zdi_dny WHERE klic = ? AND den BETWEEN ? AND ? ORDER BY den')
-    .bind(k, Math.floor(od / DEN) * DEN, doCasu).all();
+  // Starší celé dny z archivu R2, zbytek z D1.
+  let odDne = Math.floor(od / DEN) * DEN;
+  let klice = [];
+  const hraniceD1 = Math.floor(ted / DEN) * DEN - D1_DNY * DEN;
+  if (env.HIST && odDne < hraniceD1) {
+    klice = klicDnu(`graf/zdi/${k.replace(':', '~')}`, odDne, Math.min(hraniceD1, doCasu + 1));
+    odDne = hraniceD1;
+  }
+  const { results } = odDne <= doCasu
+    ? await env.LIQ.prepare('SELECT data FROM zdi_dny WHERE klic = ? AND den BETWEEN ? AND ? ORDER BY den')
+      .bind(k, odDne, doCasu).all()
+    : { results: [] };
   const hist = [];
   for (const r of results) {
     for (const radek of r.data.split('\n')) {
@@ -69,8 +83,12 @@ export async function onRequestGet({ request, env, waitUntil }) {
   // Hotová zeď z poslední hodiny je v řádku „teď“ i v historii — jednou.
   const videne = new Set();
   const unikatni = hist.filter((z) => { const id = `${z[0]}|${z[1]}|${z[2]}`; if (videne.has(id)) return false; videne.add(id); return true; });
-  return new Response(JSON.stringify({
+  const telo = {
     ok: true, sleduje: Boolean(zive), t: s?.t || null,
-    mid: zive?.[0] ?? null, krok: zive?.[1] ?? null, zdi: zive?.[2] || [], hist: unikatni,
+    mid: zive?.[0] ?? null, krok: zive?.[1] ?? null, zdi: zive?.[2] || [],
+  };
+  if (!klice.length) return new Response(JSON.stringify({ ...telo, hist: unikatni }), { headers: hlavicky });
+  return new Response(spojOdpoved(env, {
+    zacatek: `${JSON.stringify(telo).slice(0, -1)},"hist":[`, klice, zbytek: prvkyTextem(unikatni), konec: ']}',
   }), { headers: hlavicky });
 }
