@@ -4,7 +4,9 @@
 // POST { t, ted, historie: [{ c, den, d }], info, uklid }
 //   ted       — JSON záznamů od poslední hodinové dávky (přepíše)
 //   historie  — hotová hodina, připojí se k řádku coin × den
-//   uklid     — smazat historii starší 365 dní
+//   uklid     — smazat historii starší 60 dní
+// ⚠ 2026-11-18 databáze přetekla strop 500 MB (bezplatné D1) a od 11. 11. se
+// nic nezapisovalo — doby držení zkrácené (záloha: workflow Export D1).
 // GET — stav sběru a velikost dat.
 
 import { setrit, pozdeji } from '../../../lib/d1.js';
@@ -29,7 +31,7 @@ export async function onRequestPost({ request, env }) {
     prikazy.push(env.LIQ.prepare(`INSERT INTO likvidovano_dny (coin, den, data) VALUES (?, ?, ?)
         ON CONFLICT (coin, den) DO UPDATE SET data = data || excluded.data`).bind(h.c, h.den, h.d));
   }
-  if (d.uklid) prikazy.push(env.LIQ.prepare('DELETE FROM likvidovano_dny WHERE den < ?').bind(Date.now() - 365 * DEN));
+  if (d.uklid) prikazy.push(env.LIQ.prepare('DELETE FROM likvidovano_dny WHERE den < ?').bind(Date.now() - 60 * DEN));
   await env.LIQ.batch(prikazy);
   return Response.json({ ok: true, zapsano: prikazy.length });
 }

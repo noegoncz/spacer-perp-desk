@@ -5,7 +5,9 @@
 // POST { radky: [{ c, h, d }], kompakt: [{ c, h, d }], info, uklid }
 //   radky   — minutové řádky, připojí se na konec hodiny coinu
 //   kompakt — hotová hodina po 15 min (nahradí)
-//   uklid   — smazat minutové starší 3 dní a čtvrthodinové starší 90 dní
+//   uklid   — smazat minutové starší 3 dní a čtvrthodinové starší 21 dní
+// ⚠ 2026-11-18 databáze přetekla strop 500 MB (bezplatné D1) a od 11. 11. se
+// nic nezapisovalo — doby držení zkrácené (záloha: workflow Export D1).
 // GET — stav sběru a velikost dat (kontrola provozu, testy).
 
 import { setrit } from '../../../lib/d1.js';
@@ -47,7 +49,7 @@ export async function onRequestPost({ request, env }) {
     .bind(ted, JSON.stringify(d.info || {}).slice(0, 4000)));
   if (d.uklid && !usporne) {
     prikazy.push(env.LIQ.prepare('DELETE FROM liq_hodiny WHERE rozliseni = 1 AND hodina < ?').bind(ted - 3 * 24 * HOD));
-    prikazy.push(env.LIQ.prepare('DELETE FROM liq_hodiny WHERE rozliseni = 15 AND hodina < ?').bind(ted - 90 * 24 * HOD));
+    prikazy.push(env.LIQ.prepare('DELETE FROM liq_hodiny WHERE rozliseni = 15 AND hodina < ?').bind(ted - 21 * 24 * HOD));
   }
   if (prikazy.length) await env.LIQ.batch(prikazy);
   return Response.json({ ok: true, zapsano: prikazy.length });

@@ -5,7 +5,9 @@
 //   tedy      — JSON živých a nedávno hotových zdí po částech podle trhu
 //               (castZdi), každá část do řádku zdi_stav id 1…n (přepíše)
 //   historie  — hotové zdi za poslední hodinu, připojí se k řádku trh × den
-//   uklid     — smazat historii starší 30 dní a žádosti starší 7 dní
+//   uklid     — smazat historii starší 7 dní a žádosti starší 7 dní
+// ⚠ 2026-11-18 databáze přetekla strop 500 MB (bezplatné D1) a od 11. 11. se
+// nic nezapisovalo — doby držení zkrácené (záloha: workflow Export D1).
 // GET — trhy, o které si řekla aplikace (posledních 7 dní), a stav sběru;
 //   ?stav=1 přidá souhrn historie (prochází celou tabulku).
 
@@ -36,7 +38,7 @@ export async function onRequestPost({ request, env }) {
   }
   if (d.uklid) {
     const ted = Date.now();
-    prikazy.push(env.LIQ.prepare('DELETE FROM zdi_dny WHERE den < ?').bind(ted - 30 * DEN));
+    prikazy.push(env.LIQ.prepare('DELETE FROM zdi_dny WHERE den < ?').bind(ted - 7 * DEN));
     prikazy.push(env.LIQ.prepare('DELETE FROM zdi_zadosti WHERE cas < ?').bind(ted - 7 * DEN));
   }
   await env.LIQ.batch(prikazy);

@@ -1,0 +1,32 @@
+# Ruční úklid databáze sběru podle dob držení v web/functions/api/watcher/*.js
+# (zdi 7 dní, mapa po 15 min 21 dní, minutová 3 dny, proběhlé likvidace 60 dní).
+# Vznik 2026-11-18: databáze přetekla 500 MB a úklid uvnitř dávek hlídače
+# neprošel (celá dávka padala na plné databázi). Před během: workflow Export D1.
+# ⚠ Smazaný řádek se počítá do limitu 100 000 zápisů denně — nejdřív se vypíše počet.
+name: Úklid D1
+on:
+  workflow_dispatch:
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+jobs:
+  uklid:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Úklid
+        run: |
+          ACC=$(curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" https://api.cloudflare.com/client/v4/accounts | jq -r '.result[0].id')
+          export CLOUDFLARE_ACCOUNT_ID=$ACC
+          TED=$(($(date +%s) * 1000)); DEN=86400000
+          Z=$((TED - 7 * DEN)); L=$((TED - 21 * DEN)); M=$((TED - 3 * DEN)); P=$((TED - 60 * DEN))
+          q() { npx -y wrangler@4 d1 execute perpyx-likvidace --remote --json --command "$1" | jq -c '.[0].results // .[0].meta'; }
+          echo "--- ke smazání"
+          q "SELECT (SELECT COUNT(*) FROM zdi_dny WHERE den < $Z) AS zdi, (SELECT COUNT(*) FROM liq_hodiny WHERE rozliseni = 15 AND hodina < $L) AS mapa15, (SELECT COUNT(*) FROM liq_hodiny WHERE rozliseni = 1 AND hodina < $M) AS mapa1, (SELECT COUNT(*) FROM likvidovano_dny WHERE den < $P) AS likv"
+          npx -y wrangler@4 d1 info perpyx-likvidace --json | jq -c '{pred: .database_size}'
+          q "DELETE FROM zdi_dny WHERE den < $Z"
+          q "DELETE FROM liq_hodiny WHERE rozliseni = 1 AND hodina < $M"
+          q "DELETE FROM liq_hodiny WHERE rozliseni = 15 AND hodina < $L"
+          q "DELETE FROM likvidovano_dny WHERE den < $P"
+          npx -y wrangler@4 d1 info perpyx-likvidace --json | jq -c '{po: .database_size}'
+          echo "--- zkouška zápisu"
+          q "INSERT OR REPLACE INTO liq_stav (id, seen_at, info) VALUES (2, $TED, 'zkouska po uklidu')"
+          q "DELETE FROM liq_stav WHERE id = 2"
