@@ -336,12 +336,17 @@ function udelejSnimek() {
   // Pozice po coinech (jen čerstvé — účet nenačtený přes 2 h vypadne).
   const poCoinech = new Map();
   const sledovano = new Map();
+  // Longy a shorty zvlášť (kontrola pokrytí 2026-11-18): ve skutečnosti se
+  // rovnají, takže velký rozdíl ve sledovaných = chybějící účty.
+  const strany = new Map();
   let sPozici = 0;
   for (const u of ucty.values()) {
     if (!u.pozice.length || ted - u.cas > 2 * HOD) continue;
     sPozici += 1;
     for (const p of u.pozice) {
       sledovano.set(p.c, (sledovano.get(p.c) || 0) + p.ntl);
+      if (!strany.has(p.c)) strany.set(p.c, [0, 0]);
+      strany.get(p.c)[p.l ? 0 : 1] += p.ntl;
       if (!p.liq) continue;
       if (!poCoinech.has(p.c)) poCoinech.set(p.c, []);
       poCoinech.get(p.c).push(p);
@@ -384,6 +389,9 @@ function udelejSnimek() {
   });
   infoSnimku = {
     t, coinu: stavCoinu.size, uctu: ucty.size, sPozici,
+    // 15 coinů s největší sledovanou hodnotou: [longy, shorty] v milionech USD.
+    strany: Object.fromEntries([...strany.entries()].sort((a, b) => (b[1][0] + b[1][1]) - (a[1][0] + a[1][1])).slice(0, 15)
+      .map(([c, [l, s]]) => [c, [Math.round(l / 1e5) / 10, Math.round(s / 1e5) / 10]])),
     sledovano: Math.round([...sledovano.values()].reduce((x, y) => x + y, 0)),
     top: snimky.slice(0, 5).map((s) => `${s.c} ${(s.soucet / 1e6).toFixed(1)}M`).join(', '),
   };
