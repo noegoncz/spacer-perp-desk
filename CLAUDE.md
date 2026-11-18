@@ -4031,10 +4031,20 @@ dlouho stojí, teď / min / max). Rozhodnutí: Binance + Bybit + Hyperliquid,
   a předevčírem. Ručně `zaloha_run` = přidat artefakt Export D1 (tak se
   nahrála záloha 21. 10.–11. 11.: 23 dní, 76 MB, ~3,4 MB / den).
   **Minutové snímky mapy jsou jen v archivu** (D1 je drží 3 dny) —
-  data pro výzkum krátkých obchodů. Web má vazbu `HIST` (web.yml);
-  **čtení starších úseků do grafu zatím není** (další krok: zhuštěné
-  objekty pro graf — bezplatný web má 10 ms CPU a 50 dotazů na volání).
-  Mezera ve sběru: 11.–18. 11. 2026 (plná D1).
+  data pro výzkum krátkých obchodů. Mezera ve sběru: 11.–18. 11. 2026
+  (plná D1).
+- **Graf čte starší historii z R2** (2026-11-18): archiv ukládá i kousky
+  odpovědí `graf/mapa/k1|k6/<coin>/<den>` (první snímek hodiny / každé
+  6. hodiny — snímky po 15 min se pro graf neukládají, 12 MB / den) a
+  `graf/zdi/<burza~PÁR>/<den>` (jen zdi ≥ 20 min: graf z historie kreslí
+  ≥ 1 h). Obsah = prvky JSON pole bez závorek; `/api/likvidace` (r=15,
+  dny starší než 20 dní) a `/api/zdi` (starší než 6 dní) je jen přepošlou
+  (`web/lib/historie.js`, `spojOdpoved` — bez parsování, bezplatný
+  Workers má 10 ms CPU). Aplikace beze změny. Graf ~6 MB / den, výzkum
+  ~3,4 MB / den. Nahrávání `web/tools/nahraj-r2.py` přes API (16 vláken,
+  ~10 600 souborů za 6 min). Test: `tools/test-historie-r2.mjs <out>`.
+  ⚠ Export D1 (archiv) a nasazení webu ve stejnou chvíli → migrace
+  spadne na „internal error 7500“; stačí nasazení zopakovat.
 - **Stav zdí po částech** (2026-11-04): řádek `zdi_stav` přerostl 1,8 MB
   (nedávné zdi za 90 min, ~200 trhů) a příjem ho od 04:07 UTC odmítal.
   Teď `CASTI_ZDI` = 3 řádky podle trhu (`castZdi` v js/zdi-format.js
