@@ -1,0 +1,83 @@
+# Denní archiv sběru (mapa HL po 15 min i po minutách, zdi, proběhlé
+# likvidace) do R2 `perpyx-historie` — vznik 2026-11-18, kdy D1 přetekla
+# 500 MB. D1 drží jen krátkou živou historii, archiv je trvalý (výzkum,
+# později starší úseky grafu). Soubory: den/RRRR-MM-DD/<typ>.jsonl.gz
+# (web/tools/archiv.py). Běží každou noc pro včerejšek a předevčírem
+# (minutové snímky D1 drží 3 dny, předevčírem je ještě celý).
+# Ručně: `dny` = vlastní seznam dní, `zaloha_run` = id běhu workflow
+# Export D1, jehož artefakt se přidá (pak se archivují všechny dny).
+name: Archiv R2
+on:
+  schedule:
+    - cron: '40 2 * * *'
+  workflow_dispatch:
+    inputs:
+      dny:
+        description: 'Dny RRRR-MM-DD oddělené čárkou (prázdné = včera a předevčírem)'
+        default: ''
+      zaloha_run:
+        description: 'Id běhu Export D1 se zálohou (prázdné = jen živá databáze)'
+        default: ''
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: archiv-r2
+  cancel-in-progress: false
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  BUCKET: perpyx-historie
+jobs:
+  archiv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Záloha z exportu
+        if: inputs.zaloha_run != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: perpyx-likvidace-export
+          run-id: ${{ inputs.zaloha_run }}
+          github-token: ${{ github.token }}
+          path: zaloha
+      - name: Export živé databáze
+        run: |
+          ACC=$(curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" https://api.cloudflare.com/client/v4/accounts | jq -r '.result[0].id')
+          echo "CLOUDFLARE_ACCOUNT_ID=$ACC" >> "$GITHUB_ENV"
+          export CLOUDFLARE_ACCOUNT_ID=$ACC
+          npx -y wrangler@4 d1 export perpyx-likvidace --remote --table liq_hodiny --table zdi_dny --table likvidovano_dny --output live.sql
+          ls -l live.sql
+      - name: Složit dny
+        run: |
+          python3 - <<'EOF'
+          import sqlite3, gzip, os
+          def nacti(sql, db):
+              con = sqlite3.connect(db)
+              con.executescript(sql)
+              con.commit(); con.close()
+          nacti(open('live.sql', encoding='utf-8').read(), 'live.sqlite')
+          if os.path.exists('zaloha/export.sql.gz'):
+              nacti(gzip.open('zaloha/export.sql.gz', 'rt', encoding='utf-8').read(), 'zaloha.sqlite')
+          EOF
+          DB="--db live.sqlite"
+          if [ -f zaloha.sqlite ]; then
+            DB="--db zaloha.sqlite --db live.sqlite"
+            python3 web/tools/archiv.py $DB --vse --out out
+          else
+            DNY="${{ inputs.dny }}"
+            if [ -z "$DNY" ]; then DNY="$(date -u -d '-1 day' +%F),$(date -u -d '-2 day' +%F)"; fi
+            python3 web/tools/archiv.py $DB --dny "$DNY" --out out
+          fi
+      - name: Nahrát do R2
+        run: |
+          n=0
+          for f in $(find out -name '*.jsonl.gz' | sort); do
+            klic="${f#out/}"
+            npx -y wrangler@4 r2 object put "$BUCKET/$klic" --file "$f" --content-type application/gzip --remote >/dev/null
+            n=$((n + 1))
+          done
+          echo "nahráno souborů: $n"
+          test "$n" -gt 0

@@ -29,6 +29,7 @@ env:
   PROJEKT: perpyx
   DATABAZE: perpyx-web
   DATABAZE_LIQ: perpyx-likvidace
+  BUCKET_HIST: perpyx-historie
   DOMENA: perpyx.com
   CF_API: https://api.cloudflare.com/client/v4
 
@@ -83,6 +84,13 @@ jobs:
             liq=$(npx -y wrangler@4 d1 list --json | jq -r --arg n "$DATABAZE_LIQ" '.[] | select(.name == $n) | .uuid')
           fi
           test -n "$liq"
+          # Historie sběru v R2 (2026-11-18, D1 přetekla 500 MB): denní archiv
+          # mapy, zdí a proběhlých likvidací (workflow archiv-r2.yml); graf
+          # z něj bude číst starší úseky. Oblast Evropa jako databáze.
+          if ! npx -y wrangler@4 r2 bucket info "$BUCKET_HIST" >/dev/null 2>&1; then
+            npx -y wrangler@4 r2 bucket create "$BUCKET_HIST" --location weur
+          fi
+          npx -y wrangler@4 r2 bucket info "$BUCKET_HIST"
           cat > web/wrangler.toml <<EOF
           name = "$PROJEKT"
           pages_build_output_dir = "./public"
@@ -99,6 +107,10 @@ jobs:
           database_name = "$DATABAZE_LIQ"
           database_id = "$liq"
           migrations_dir = "migrations-likvidace"
+
+          [[r2_buckets]]
+          binding = "HIST"
+          bucket_name = "$BUCKET_HIST"
           EOF
           cat web/wrangler.toml
           cd web
