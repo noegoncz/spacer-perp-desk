@@ -4012,6 +4012,19 @@ dlouho stojí, teď / min / max). Rozhodnutí: Binance + Bybit + Hyperliquid,
   a `pojistka`: halda > 80 % nebo 60 min bez odeslání → `process.exit(1)`,
   systemd spustí znovu. Info sběru má `halda` a `uklizenoUctu` (vypíše
   `diag-d1.yml`).
+- ⚠ **Limit D1: 500 MB na databázi** (2026-11-18): `perpyx-likvidace`
+  přetekla 11. 11. — od té doby každá dávka mapy (pak i zdi a proběhlé
+  likvidace) selhala, čtení dál fungovalo, server vypadal zdravě. Nejvíc
+  zabrala historie zdí (`zdi_dny`, ~11 MB / den), mapa po 15 min ~7 MB /
+  den. **Hlídat i velikost, ne jen zápisy** — `diag-d1.yml` ji vypisuje
+  (`d1 info` + tabulky). Záloha celé databáze: workflow **Export D1**
+  (artefakt, gz; kopie 2026-11-18 v `C:\Users\roman\PerpyX-data`).
+  Úklid: workflow **Úklid D1** (úklid uvnitř dávek na plné databázi
+  neprojde — celá dávka spadne). Držení zkráceno: zdi 7 dní, mapa po
+  15 min 21 dní, minutová 3 dny, proběhlé likvidace 60 dní. **Plán
+  (rozhodnutí uživatele):** starší historie do Cloudflare R2 (zabalená,
+  graf ji čte přes perpyx.com, 10 GB zdarma) — čeká, až uživatel R2
+  zapne; pak nahrát i zálohu z 2026-11-18.
 - **Stav zdí po částech** (2026-11-04): řádek `zdi_stav` přerostl 1,8 MB
   (nedávné zdi za 90 min, ~200 trhů) a příjem ho od 04:07 UTC odmítal.
   Teď `CASTI_ZDI` = 3 řádky podle trhu (`castZdi` v js/zdi-format.js
