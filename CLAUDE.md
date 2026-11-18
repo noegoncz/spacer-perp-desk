@@ -4021,10 +4021,20 @@ dlouho stojí, teď / min / max). Rozhodnutí: Binance + Bybit + Hyperliquid,
   (artefakt, gz; kopie 2026-11-18 v `C:\Users\roman\PerpyX-data`).
   Úklid: workflow **Úklid D1** (úklid uvnitř dávek na plné databázi
   neprojde — celá dávka spadne). Držení zkráceno: zdi 7 dní, mapa po
-  15 min 21 dní, minutová 3 dny, proběhlé likvidace 60 dní. **Plán
-  (rozhodnutí uživatele):** starší historie do Cloudflare R2 (zabalená,
-  graf ji čte přes perpyx.com, 10 GB zdarma) — čeká, až uživatel R2
-  zapne; pak nahrát i zálohu z 2026-11-18.
+  15 min 21 dní, minutová 3 dny, proběhlé likvidace 60 dní.
+- **Archiv v R2 `perpyx-historie`** (2026-11-18, rozhodnutí uživatele;
+  R2 zdarma do 10 GB, budget alert 1 USD na e-mail uživatele, token
+  perpyx-deploy má „Workers R2 Storage: Edit"). Workflow **Archiv R2**
+  (`archiv-r2.yml`, každou noc 2:40 UTC) vyexportuje tabulky sběru,
+  `web/tools/archiv.py` složí `den/RRRR-MM-DD/{mapa15,mapa1,zdi,
+  likvidovano}.jsonl.gz` (data beze změny z D1) a nahraje za včerejšek
+  a předevčírem. Ručně `zaloha_run` = přidat artefakt Export D1 (tak se
+  nahrála záloha 21. 10.–11. 11.: 23 dní, 76 MB, ~3,4 MB / den).
+  **Minutové snímky mapy jsou jen v archivu** (D1 je drží 3 dny) —
+  data pro výzkum krátkých obchodů. Web má vazbu `HIST` (web.yml);
+  **čtení starších úseků do grafu zatím není** (další krok: zhuštěné
+  objekty pro graf — bezplatný web má 10 ms CPU a 50 dotazů na volání).
+  Mezera ve sběru: 11.–18. 11. 2026 (plná D1).
 - **Stav zdí po částech** (2026-11-04): řádek `zdi_stav` přerostl 1,8 MB
   (nedávné zdi za 90 min, ~200 trhů) a příjem ho od 04:07 UTC odmítal.
   Teď `CASTI_ZDI` = 3 řádky podle trhu (`castZdi` v js/zdi-format.js
