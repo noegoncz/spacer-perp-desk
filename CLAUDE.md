@@ -3847,6 +3847,27 @@ https://claude.ai/artifact/BHAHkgLcFuhiFkUPLreNi3, vybraná varianta B):**
   z `likvidace.pasy`). Ceny JUP Bybit × HL se liší do 0,1 %. Data toho dne:
   short 136 k na 0,2714 opravdu zmizel v 11:35 UTC (HL špička 0,27321,
   proběhlá likvidace 80 k na 0,2722) — mapa likvidaci zachytila správně.
+- **v0.95.0 — hladina = shluk, přírůstky, proběhlé na čáře** (plátno
+  https://claude.ai/artifact/9wTKEdtof3kxcz7otPavGq, uživatel vybral G + E):
+  - ⚠ **Čárkované čáry byly únik stavu plátna**: `kresliCaru` nenastavovala
+    `setLineDash([])` a převzala čárkování z jiného indikátoru. Nový kód
+    kreslící plnou čáru na sdíleném plátně ho vždy nastaví sám.
+  - Reálná mapa skládá snímek do **shluků** (`shlukySnimku` v likvidace.js:
+    vrchol + pásma do ±0,3 %, součet) a shluk se naváže na otevřenou
+    hladinu téže strany do ±0,3 % (`najdiOtevrenou`, seřazený index).
+    Pozice v cross režimu mají pohyblivou likvidační cenu (short 136k na JUP
+    skákal 0,2712 ↔ 0,2714) a každý přeskok dřív začal nový pruh. Hodnota
+    hladiny = součet shluku (`lo`, `hi` = rozsah), cena čáry = vrchol při
+    největší hodnotě.
+  - **Přírůstky (G):** `kresliPrirustky` — ryska a „+136k / −34k“ tam, kde se
+    hodnota změnila o ≥ 15 % a ≥ 8 % měřítka, 40 px od sebe, ne u konce čáry.
+  - **Proběhlé likvidace (E):** bubliny vypnuté (`BUBLINY_PROBEHLYCH = false`,
+    kód zůstal). `setLiquidations` označí `zasah` = svíčka, která hladinu
+    vybrala (i u skončených, nejvýš svíčku po konci). Štítek se součtem
+    likvidací strany za celou svíčku před ní (`kresliStitkyProbehlych`,
+    jen nejsilnější čára na svíčku, od 1k a 2 % hodnoty hladiny, jen se
+    zapnutým Executed). Pod svíčkou čárka u spodní hrany (`kresliCarkyProbehlych`,
+    shorty zeleně nad longy). Panel Executed beze změny.
 - Tmavý svislý pruh po prudkém pohybu není chyba: cena vybrala pásma
   a OI zároveň klesal → nové pozice nevznikly.
 - Test: `test-likvidace-graf.py` (Binance na 4h, bod 4: SPCX bez HL má

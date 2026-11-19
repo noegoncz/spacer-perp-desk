@@ -96,6 +96,64 @@ async function snimky(coin, od, doKdy, delkaSvicky) {
 /** Kolikrát širší pásmo než základních ~0,1 % ceny pro danou délku svíčky. */
 export const nasobekPasma = (delkaSvicky) => Math.max(1, ((delkaSvicky || 0) / (30 * 60000)) ** 0.25);
 
+/** Šířka shluku: pásma do ±0,3 % od vrcholu patří k jedné hladině (jako oznacVrcholy v chart.js). */
+const OKNO_SHLUKU = 0.003;
+
+/**
+ * Pásma snímku → shluky po stranách: nejsilnější pásmo je vrchol, k němu
+ * všechna dosud nepřiřazená pásma do ±0,3 % jeho ceny; pak další nejsilnější.
+ * [{ long, cena (vrchol), usd (součet), lo, hi }]
+ */
+function shlukySnimku(snimek) {
+  const vysledek = [];
+  for (const long of [true, false]) {
+    const b = [];
+    for (const [idx, [l, sh]] of snimek.pasma) {
+      const usd = long ? l : sh;
+      if (usd) b.push({ cena: idx * snimek.krok, usd, vzato: false });
+    }
+    b.sort((x, y) => x.cena - y.cena);
+    const poradi = b.map((_, i) => i).sort((i, j) => b[j].usd - b[i].usd);
+    for (const i of poradi) {
+      if (b[i].vzato) continue;
+      const v = b[i];
+      const okno = v.cena * OKNO_SHLUKU;
+      let usd = 0;
+      let lo = v.cena;
+      let hi = v.cena;
+      for (const smer of [-1, 1]) {
+        for (let j = smer < 0 ? i : i + 1; j >= 0 && j < b.length && Math.abs(b[j].cena - v.cena) <= okno; j += smer) {
+          if (b[j].vzato) continue;
+          b[j].vzato = true;
+          usd += b[j].usd;
+          lo = Math.min(lo, b[j].cena);
+          hi = Math.max(hi, b[j].cena);
+        }
+      }
+      vysledek.push({ long, cena: v.cena, usd, lo, hi });
+    }
+  }
+  // Silnější shluky se navazují první (zaberou si svou hladinu).
+  return vysledek.sort((x, y) => y.usd - x.usd);
+}
+
+/** Klíč otevřené hladiny téže strany nejblíž shluku (do `okno`), dosud v tomto snímku nenavázané. */
+function najdiOtevrenou(index, otevrene, sh, okno, t) {
+  // index = [[cena, klíč]] seřazené podle ceny (otevřené hladiny strany na začátku snímku)
+  let lo = 0;
+  let hi = index.length;
+  while (lo < hi) { const m = (lo + hi) >> 1; if (index[m][0] < sh.cena - okno) lo = m + 1; else hi = m; }
+  let nej = null;
+  let vzd = Infinity;
+  for (let i = lo; i < index.length && index[i][0] <= sh.cena + okno; i += 1) {
+    const p = otevrene.get(index[i][1]);
+    if (!p || p.videno === t) continue;
+    const d = Math.abs(index[i][0] - sh.cena);
+    if (d < vzd) { nej = index[i][1]; vzd = d; }
+  }
+  return nej;
+}
+
 export async function pasy({ symbol, burza, od, doKdy, delkaSvicky }) {
   let coin = nazvy.get(`${burza}:${symbol}`);
   if (coin === null) return null;
@@ -177,25 +235,42 @@ export async function pasy({ symbol, burza, od, doKdy, delkaSvicky }) {
     nedavne.push([snimek.t, snimek.pasma.size]);
     while (nedavne[0][0] < snimek.t - 2 * 3600e3) nedavne.shift();
     const uplny = snimek.pasma.size >= 0.97 * Math.max(...nedavne.map((x) => x[1]));
-    for (const [idx, [l, sh]] of snimek.pasma) {
-      const cena = idx * snimek.krok;
-      for (const [usd, long] of [[l, true], [sh, false]]) {
-        if (!usd) continue;
-        const k = `${long}|${cena}`;
+    /*
+     * Hladina = shluk, ne jedno pásmo (v0.95.0, snímek uživatele: čáry
+     * „čárkované“ a bez sílení). Pozice v režimu cross mají likvidační cenu
+     * pohyblivou — short 136k na JUP přeskakoval mezi pásmy 0,2712 a 0,2714
+     * a každý přeskok dřív ukončil pruh a začal nový (s náběhem a dozněním
+     * to vypadalo jako čárky). Teď: pásma snímku se složí do shluků (vrchol
+     * + pásma do ±0,3 % od něj, součet) a shluk se naváže na otevřenou
+     * hladinu téže strany do ±0,3 % — i když se jeho vrchol posunul.
+     * Hodnota hladiny = součet shluku, takže přírůstek pozic v zóně je vidět.
+     */
+    const index = { true: [], false: [] };
+    for (const [k, p] of otevrene) index[p.long].push([p.cena, k]);
+    index.true.sort((a, b) => a[0] - b[0]);
+    index.false.sort((a, b) => a[0] - b[0]);
+    for (const sh of shlukySnimku(snimek)) {
+      const okno = sh.cena * OKNO_SHLUKU;
+      const k = najdiOtevrenou(index[sh.long], otevrene, sh, okno, snimek.t);
+      if (k) {
         const p = otevrene.get(k);
-        if (p) {
-          // Průběh (v0.76.0): bod jen při změně o 3 % — jas v grafu přechází
-          // od předchozího snímku pásma k tomuto, jinak stojí.
-          const b = p.prubeh[p.prubeh.length - 1];
-          if (Math.abs(usd - b[1]) > b[1] * 0.03) p.prubeh.push([snimek.t, usd, p.videno]);
-          p.do = dalsi;
-          p.videno = snimek.t;
-          p.usd = Math.max(p.usd, usd);
-          p.min = Math.min(p.min, usd);
-          p.posledni = usd;
-        } else {
-          otevrene.set(k, { od: snimek.t, do: dalsi, cena, vyska: snimek.krok, usd, min: usd, posledni: usd, long, videno: snimek.t, prubeh: [[snimek.t, usd, snimek.t]] });
-        }
+        // Průběh (v0.76.0): bod jen při změně o 3 % — jas v grafu přechází
+        // od předchozího snímku k tomuto, jinak stojí.
+        const b = p.prubeh[p.prubeh.length - 1];
+        if (Math.abs(sh.usd - b[1]) > b[1] * 0.03) p.prubeh.push([snimek.t, sh.usd, p.videno]);
+        p.do = dalsi;
+        p.videno = snimek.t;
+        // Cena čáry = vrchol shluku, když byl shluk nejsilnější (čára neskáče
+        // s každým přeskokem vrcholu mezi sousedními pásmy).
+        if (sh.usd >= p.usd) { p.cena = sh.cena; p.lo = sh.lo; p.hi = sh.hi; }
+        p.usd = Math.max(p.usd, sh.usd);
+        p.min = Math.min(p.min, sh.usd);
+        p.posledni = sh.usd;
+      } else {
+        otevrene.set(`${sh.long}|${sh.cena}|${snimek.t}`, {
+          od: snimek.t, do: dalsi, cena: sh.cena, lo: sh.lo, hi: sh.hi, vyska: snimek.krok, usd: sh.usd, min: sh.usd,
+          posledni: sh.usd, long: sh.long, videno: snimek.t, prubeh: [[snimek.t, sh.usd, snimek.t]],
+        });
       }
     }
     for (const [k, p] of otevrene) {

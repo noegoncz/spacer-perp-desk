@@ -1072,6 +1072,13 @@ function kresliCaru(ctx, p, ref, x1, x2, y, xCasu, { xZacatku = x1, ziva = false
   };
   const yy = Math.round(y) + 0.5;
   ctx.lineCap = 'butt';
+  /*
+   * ⚠ Plná čára výslovně (v0.95.0, snímek uživatele: „proč jsou čáry
+   * čárkované?“): plátno sdílí stav s ostatními indikátory a čárkování
+   * nastavené jinde (tečkované svislice divergencí, OI…) se sem přeneslo —
+   * všechny čáry mapy byly čárkované.
+   */
+  ctx.setLineDash([]);
   if (xPlna > x1) {
     if (!mala) {
       // Záře: širší průsvitná čára pod hlavní.
@@ -1082,6 +1089,7 @@ function kresliCaru(ctx, p, ref, x1, x2, y, xCasu, { xZacatku = x1, ziva = false
     ctx.strokeStyle = prechod((v) => (mala ? 0.35 : 0.6 + 0.4 * v));
     ctx.lineWidth = mala ? 1 : 1 + 0.8 * vMax;
     ctx.beginPath(); ctx.moveTo(x1, yy); ctx.lineTo(xPlna, yy); ctx.stroke();
+    if (!mala) kresliPrirustky(ctx, pr, ref, x1, xPlna, yy, xCasu, p.long);
   }
   /*
    * Za místem, kde svíčka grafu hladinou prošla (jen reálná mapa —
@@ -1097,6 +1105,40 @@ function kresliCaru(ctx, p, ref, x1, x2, y, xCasu, { xZacatku = x1, ziva = false
     ctx.restore();
   }
 }
+/*
+ * Přírůstky na čáře (v0.95.0, varianta G z plátna
+ * https://claude.ai/artifact/9wTKEdtof3kxcz7otPavGq): kde do hladiny přibyly
+ * (nebo z ní ubyly) pozice, krátká svislá ryska a částka změny (+136k).
+ * Jen výrazné změny (≥ 15 % hodnoty a ≥ 8 % měřítka), od sebe aspoň 40 px
+ * a ne těsně u konce čáry (tam patří štítek proběhlých likvidací).
+ */
+function kresliPrirustky(ctx, pr, ref, x1, x2, yy, xCasu, long) {
+  if (!(pr?.length > 1) || x2 - x1 < 30) return;
+  let posledniX = -Infinity;
+  ctx.save();
+  ctx.setLineDash([]);
+  ctx.font = '9px -apple-system, "Segoe UI", Roboto, sans-serif';
+  ctx.textAlign = 'left';
+  // Text na stranu dál od ceny: shorty (nad cenou) nad čáru, longy pod ni.
+  // U horního okraje ořezu (čáry mapy od HORNI_OKRAJ_MAPY) text pod čáru.
+  const pod = long || yy - 14 < HORNI_OKRAJ_MAPY;
+  ctx.textBaseline = pod ? 'top' : 'bottom';
+  for (let i = 1; i < pr.length; i += 1) {
+    const zmena = pr[i][1] - pr[i - 1][1];
+    if (Math.abs(zmena) < Math.max(0.15 * pr[i - 1][1], 0.08 * ref)) continue;
+    const xb = xCasu(pr[i][0]);
+    if (!Number.isFinite(xb) || xb < x1 + 2 || xb > x2 - 36 || xb - posledniX < 40) continue;
+    posledniX = xb;
+    const [r, g, b] = barvaMapy(Math.sqrt(Math.min(1, pr[i][1] / ref)));
+    ctx.strokeStyle = `rgba(${r},${g},${b},0.9)`;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(Math.round(xb) + 0.5, yy - 4); ctx.lineTo(Math.round(xb) + 0.5, yy + 4); ctx.stroke();
+    ctx.fillStyle = `rgba(${r},${g},${b},0.95)`;
+    ctx.fillText(`${zmena > 0 ? '+' : '−'}${kratceUsd(zmena)}`, xb + 3, pod ? yy + 3 : yy - 3);
+  }
+  ctx.restore();
+}
+
 /*
  * Vrcholy shluků: ze sousedních hladin téhož zdroje a strany do ±0,3 % ceny,
  * které se v čase překrývají, zůstane jen nejsilnější (jinak pásma po 0,1 %
@@ -1129,6 +1171,51 @@ function oznacVrcholy(pasy) {
     });
   }
 }
+/*
+ * Štítek proběhlých likvidací na konci čáry (v0.95.0, varianta E z plátna):
+ * čára, kterou svíčka vybrala (`zasah`), dostane těsně před tou svíčkou
+ * štítek v barvě čáry se součtem likvidací její strany za celou svíčku
+ * (ne na jedné ceně). Víc čar vybraných toutéž svíčkou → štítek jen
+ * nejsilnější (jinak by se tentýž součet opakoval).
+ */
+function kresliStitkyProbehlych(ctx, data, zasazene, px, sirka) {
+  if (!stitkyProbehlych || !zasazene.length) return;
+  const souhrny = new Map();
+  for (const b of bublinyLikvidaci(data)) souhrny.set(`${b.ts}|${b.s}`, b.usd);
+  const nejlepsi = new Map();
+  for (const z of zasazene) {
+    // Svíčka zásahu v datech grafu (zasah je čas začátku svíčky).
+    const k = `${z.p.zasah}|${z.p.long ? 0 : 1}`;
+    // Drobnost (pár desítek USD na velké hladině) štítek nedostane.
+    if (!(souhrny.get(k) >= Math.max(1000, 0.02 * hodnotaPasu(z.p)))) continue;
+    const pred = nejlepsi.get(k);
+    if (!pred || hodnotaPasu(z.p) > hodnotaPasu(pred.p)) nejlepsi.set(k, z);
+  }
+  ctx.save();
+  ctx.font = '600 10px -apple-system, "Segoe UI", Roboto, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  let n = 0;
+  for (const [k, z] of nejlepsi) {
+    const b = px(z.p.zasah, z.p.cena);
+    if (!b || !Number.isFinite(b.x)) continue;
+    const text = kratceUsd(souhrny.get(k));
+    const w = ctx.measureText(text).width + 8;
+    const xr = b.x - sirka / 2 - 2;
+    const xl = Math.max(z.x1, xr - w);
+    if (xr - xl < w * 0.6) continue;
+    const [r, g, bl] = barvaMapy(1);
+    ctx.fillStyle = `rgba(${r},${g},${bl},0.95)`;
+    const y = Math.round(z.y);
+    if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(xl, y - 7, xr - xl, 14, 3); ctx.fill(); } else ctx.fillRect(xl, y - 7, xr - xl, 14);
+    ctx.fillStyle = '#14110a';
+    ctx.fillText(text, (xl + xr) / 2, y + 0.5);
+    n += 1;
+  }
+  ctx.restore();
+  globalThis.__stitkyProbehlych = n;   // pro test
+}
+
 let nabehMapyOd = 0;
 const pruhlednostNabehu = () => {
   const t = (performance.now() - nabehMapyOd) / NABEH_MAPY;
@@ -1221,6 +1308,7 @@ function registrovatLikvidace() {
       ctx.rect(0, HORNI_OKRAJ_MAPY, bounding.width, Math.max(0, bounding.height - HORNI_OKRAJ_MAPY));
       ctx.clip();
       let nakresleno = 0;
+      const zasazene = [];
       for (const p of viditelne) {
         if (p.vrchol === false) continue;
         const m = meritka.get(p.zdroj || '') || { prah: prahMapyUsd, ref: 1 };
@@ -1249,7 +1337,9 @@ function registrovatLikvidace() {
         });
         ctx.globalAlpha = alfa;
         nakresleno += 1;
+        if (p.zasah) zasazene.push({ p, y: a.y, x1 });
       }
+      kresliStitkyProbehlych(ctx, data, zasazene, px, Number(sirkaSvicky) || 8);
       ctx.restore();   // konec ořezu
       globalThis.__pruhyMapy = nakresleno;   // pro test
       hladinMapy = nakresleno;
@@ -1302,6 +1392,8 @@ function registrovatLikvidace() {
  * shorty zeleně; kroužek s výplní, ať se neplete se zdmi (obdélníky).
  */
 let likvidovanoGrafu = null;   // { udalosti: [[minuta, cena, usd, strana, burza]], t }
+// Štítky proběhlých likvidací na koncích čar mapy — jen se zapnutým Executed (v0.95.0).
+let stitkyProbehlych = false;
 let bublinyCache = null;       // { klic, bubliny: [{ ts, cena, usd, s }] }
 let nabehBublinOd = 0;
 const pruhlednostBublin = () => {
@@ -1385,6 +1477,44 @@ function registrovatLikvSloupce() {
   });
 }
 
+/*
+ * Bubliny nahrazené (v0.95.0, varianta E z plátna
+ * https://claude.ai/artifact/9wTKEdtof3kxcz7otPavGq, uživatel: bublina mátla —
+ * vypadala jako jedna hladina): u spodní hrany plochy svíček krátká čárka
+ * pod svíčkou, na které likvidace proběhly (shorty zeleně, longy červeně
+ * o kousek níž), sytost podle součtu. U kaskády vznikne souvislý pruh.
+ * Částka je na konci čáry mapy (kresliStitkyProbehlych) a v panelu Executed.
+ * Kód bublin zůstává (přepínač), kdyby se k nim uživatel vrátil.
+ */
+const BUBLINY_PROBEHLYCH = false;
+function kresliCarkyProbehlych(ctx, chart, data, bubliny, bounding) {
+  const rozsah = chart.getVisibleRange();
+  const od = data[Math.max(0, rozsah.from)]?.timestamp ?? 0;
+  const doTs = data[Math.min(data.length - 1, rozsah.to)]?.timestamp ?? Infinity;
+  const vidne = bubliny.filter((b) => b.ts >= od && b.ts <= doTs);
+  const max = Math.max(likvidovanoGrafu.meritko || 0, ...vidne.map((b) => b.usd));
+  if (!max || !bounding) return true;
+  const sirka = Number(chart.getBarSpace?.()?.bar) || 6;
+  const w = Math.max(2, sirka * 0.9);
+  ctx.save();
+  ctx.globalAlpha = pruhlednostBublin();
+  let n = 0;
+  for (const b of vidne) {
+    const sila = Math.sqrt(b.usd / max);
+    if (sila < 0.05) continue;
+    const bod = chart.convertToPixel({ timestamp: b.ts, value: 0 }, { paneId: HLAVNI_PANEL });
+    const p = Array.isArray(bod) ? bod[0] : bod;
+    if (!p || !Number.isFinite(p.x)) continue;
+    const y = bounding.height - (b.s === 1 ? 9 : 5);
+    ctx.fillStyle = b.s === 0 ? `rgba(246,70,93,${(0.3 + 0.7 * sila).toFixed(2)})` : `rgba(62,230,164,${(0.3 + 0.7 * sila).toFixed(2)})`;
+    if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(p.x - w / 2, y, w, 3, 1.5); ctx.fill(); } else ctx.fillRect(p.x - w / 2, y, w, 3);
+    n += 1;
+  }
+  ctx.restore();
+  globalThis.__bublinyLikv = n;   // pro testy (počet značek proběhlých likvidací)
+  return true;
+}
+
 function registrovatLikvidovano() {
   K().registerIndicator({
     name: 'LIKVBUB',
@@ -1394,10 +1524,11 @@ function registrovatLikvidovano() {
     figures: [],
     createTooltipDataSource: () => ({ name: '', calcParamsText: '', legends: [] }),
     calc: (data) => data.map(() => ({})),
-    draw: ({ ctx, chart }) => {
+    draw: ({ ctx, chart, bounding }) => {
       const data = chart.getDataList();
       const bubliny = bublinyLikvidaci(data);
       if (!bubliny.length) return true;
+      if (!BUBLINY_PROBEHLYCH) return kresliCarkyProbehlych(ctx, chart, data, bubliny, bounding);
       const rozsah = chart.getVisibleRange();
       const od = data[Math.max(0, rozsah.from)]?.timestamp ?? 0;
       const doTs = data[Math.min(data.length - 1, rozsah.to)]?.timestamp ?? Infinity;
@@ -2794,6 +2925,8 @@ export function createPriceChart(container, layer, handlers = {}) {
     const ukazat = Boolean(likvidovanoGrafu?.udalosti?.length) && bublinyVrstva && mapaViditelna();
     if (bublinyZapnute) chart.removeIndicator({ name: 'LIKVBUB' });
     bublinyZapnute = false;
+    stitkyProbehlych = ukazat;
+    try { if (mapaZapnuta) chart.overrideIndicator({ name: 'LIQMAP', extendData: performance.now() }); } catch { /* mapa není v grafu */ }
     if (ukazat) {
       chart.createIndicator({ name: 'LIKVBUB', paneId: HLAVNI_PANEL }, true);
       bublinyZapnute = true;
@@ -4948,14 +5081,21 @@ export function createPriceChart(container, layer, handlers = {}) {
           while (lo < hi) { const m = (lo + hi) >> 1; if (svicky[m].timestamp < t) lo = m + 1; else hi = m; }
           return lo;
         };
+        const delkaSv = svicky.length > 1 ? svicky[1].timestamp - svicky[0].timestamp : 60000;
         data = { ...data, pasy: data.pasy.map((p) => {
-          if (p.do < nyni) return p;
+          const ziva = p.do >= nyni;
           const hrana = p.long ? p.cena - p.vyska / 2 : p.cena + p.vyska / 2;
           for (let i = prvniPo(p.od); i < svicky.length; i += 1) {
             const s = svicky[i];
+            // Skončená hladina: jen svíčka do jejího konce (+1 svíčka) — co
+            // prošlo později, už hladinu nevybralo.
+            if (!ziva && s.timestamp > p.do + delkaSv) break;
             if (p.long ? s.low <= hrana : s.high >= hrana) {
+              // `zasah` = svíčka, která hladinu vybrala — štítek proběhlých
+              // likvidací na konci čáry (v0.95.0, varianta E z plátna).
+              if (!ziva) return { ...p, zasah: s.timestamp };
               // Reálné pozice dál existují (Hyperliquid je má) — jen označit (v0.78.0).
-              return p.zdroj === 'realna' ? { ...p, prosla: s.timestamp } : { ...p, do: s.timestamp, vybrano: true };
+              return p.zdroj === 'realna' ? { ...p, prosla: s.timestamp, zasah: s.timestamp } : { ...p, do: s.timestamp, vybrano: true, zasah: s.timestamp };
             }
           }
           return p;
