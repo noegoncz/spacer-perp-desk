@@ -1,5 +1,5 @@
 {
-  "verze": "0.94.0",
+  "verze": "0.94.1",
   "novinky": [
     {
       "en": "Liquidation map: thin lines with a soft glow that fade in and out instead of blocky bars — calmer chart, candles stand out.",
@@ -10,5 +10,10 @@
       "cs": "Reálná likvidační mapa a zdi v knize sahají dál do historie."
     }
   ],
-  "opravy": []
+  "opravy": [
+    {
+      "en": "Real liquidation map on other exchanges' charts sits at the right price even after fast moves.",
+      "cs": "Reálná likvidační mapa na grafech jiných burz leží na správné ceně i po rychlém pohybu."
+    }
+  ]
 }

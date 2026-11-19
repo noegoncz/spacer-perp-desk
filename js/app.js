@@ -2761,13 +2761,13 @@ async function nactiMapu() {
   const pasy = [];
   const casti = [];
   const objemZivych = (seznam) => objemZivychMapy(seznam, cena);
-  if (chceReal && skutecne?.pasy?.length) objemyZdroju.skutecne = objemZivych(posun(skutecne.pasy, skutecne.mark, burza === 'hyperliquid'));
+  if (chceReal && skutecne?.pasy?.length) objemyZdroju.skutecne = objemZivych(posun(skutecne.pasy, markRealneMapy(skutecne, cena), burza === 'hyperliquid'));
   if (chceOdhad && odhad?.pasy?.length) objemyZdroju.burza = objemZivych(posun(odhad.pasy, odhad.mark, odhad.burzy.length === 1 && odhad.burzy[0] === burza));
   if (zdroj === 'shoda') {
     // Shoda (v0.79.3): celá reálná mapa jako v Real, potvrzené hladiny
     // `shoda: true` (zvýrazněné), ostatní `shoda: false` (ztlumené) — nic se
     // nemaže, reálné pozice jsou pravda.
-    const realne = skutecne?.pasy?.length ? posun(skutecne.pasy, skutecne.mark, burza === 'hyperliquid') : [];
+    const realne = skutecne?.pasy?.length ? posun(skutecne.pasy, markRealneMapy(skutecne, cena), burza === 'hyperliquid') : [];
     const potvrzene = new Set(realne.length && odhad?.pasy?.length
       ? shodaMap(realne, posun(odhad.pasy, odhad.mark, odhad.burzy[0] === burza), Date.now()) : []);
     const popis = t('liq.labelMatch', { burza: NAZVY_BURZ_ODHADU[burzaOdhadu()] });
@@ -2777,7 +2777,7 @@ async function nactiMapu() {
   } else if (chceReal && skutecne?.pasy?.length) {
     const minut = Math.max(0, Math.round((Date.now() - skutecne.cas) / 60000));
     const popis = t(burza === 'hyperliquid' ? 'liq.label' : 'liq.labelOther', { min: minut });
-    pasy.push(...posun(skutecne.pasy, skutecne.mark, burza === 'hyperliquid').map((p) => ({ ...p, popis, zdroj: 'realna' })));
+    pasy.push(...posun(skutecne.pasy, markRealneMapy(skutecne, cena), burza === 'hyperliquid').map((p) => ({ ...p, popis, zdroj: 'realna' })));
     casti.push(popis);
   }
   if (chceOdhad && zdroj !== 'shoda' && odhad?.pasy?.length) {
@@ -2842,6 +2842,23 @@ const posunPasu = (pasy, mark, presne, cena) => {
   const pomer = !presne && cena > 0 && mark > 0 ? cena / mark : 1;
   return pomer === 1 ? pasy : pasy.map((p) => ({ ...p, cena: p.cena * pomer, vyska: p.vyska * pomer }));
 };
+/*
+ * Mark reálné mapy pro posun (v0.94.1, snímek uživatele JUP na Bybitu:
+ * hladina 0,9 % pod svým místem, „těsně nad knotem“). Poměr byl živá cena
+ * grafu / mark posledního snímku — snímek bývá až ~10 min starý a při
+ * rychlém pohybu se tím celá mapa posunula. Teď medián poměrů cena grafu
+ * v čase snímku / mark snímku přes posledních ≤ 60 snímků; vrací mark,
+ * se kterým `posunPasu` dá tentýž poměr.
+ */
+function markRealneMapy(vysledek, cena) {
+  const pomery = (vysledek?.marky || [])
+    .map(([t, m]) => { const c = chart?.getCloseAt?.(t); return c > 0 && m > 0 ? c / m : null; })
+    .filter((x) => x && x > 0.5 && x < 2)
+    .sort((a, b) => a - b);
+  if (pomery.length < 3 || !(cena > 0)) return vysledek?.mark;
+  return cena / pomery[pomery.length >> 1];
+}
+
 /** Objem u tlačítek (v0.80.0): živé likvidace do ±10 % od ceny. */
 const objemZivychMapy = (seznam, cena) => {
   const ted0 = Date.now() - 120000;
@@ -2880,7 +2897,7 @@ async function doplnObjemyMapy(symbol, burza, cena) {
     const kalk = jeden?.pasy?.length ? posunPasu(jeden.pasy, jeden.mark, jeden.burzy[0] === burza, cena) : null;
     if (kalk) zapis('burza', objemZivychMapy(kalk, cena));
     if (real?.pasy?.length) {
-      const realne = posunPasu(real.pasy, real.mark, burza === 'hyperliquid', cena);
+      const realne = posunPasu(real.pasy, markRealneMapy(real, cena), burza === 'hyperliquid', cena);
       zapis('skutecne', objemZivychMapy(realne, cena));
       if (kalk) zapis('shoda', objemZivychMapy(shodaMap(realne, kalk, Date.now()), cena));
     }

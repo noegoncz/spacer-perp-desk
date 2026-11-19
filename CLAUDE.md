@@ -3839,6 +3839,14 @@ https://claude.ai/artifact/BHAHkgLcFuhiFkUPLreNi3, vybraná varianta B):**
   Hladina pod 30 % měřítka (`MALA_HLADINA`) tlumená, bez záře — filtr dál
   rozhoduje, co se kreslí. Pruhy přes výpadek sběru (konec až u prvního
   snímku po mezeře) **uživatel chce nechat** — „lepší než prázdný prostor“.
+- **v0.94.1 (snímek uživatele, JUP na Bybitu):** reálná hladina 96 k na
+  HL 0,2766 stála v grafu na 0,2741, „těsně nad knotem“ — posun počítal
+  živá cena grafu / mark posledního snímku (snímek ~10 min starý, cena
+  mezitím spadla o 0,9 %). Teď medián (cena grafu v čase snímku / mark)
+  přes ≤ 60 snímků (`markRealneMapy`, `chart.getCloseAt`, `marky`
+  z `likvidace.pasy`). Ceny JUP Bybit × HL se liší do 0,1 %. Data toho dne:
+  short 136 k na 0,2714 opravdu zmizel v 11:35 UTC (HL špička 0,27321,
+  proběhlá likvidace 80 k na 0,2722) — mapa likvidaci zachytila správně.
 - Tmavý svislý pruh po prudkém pohybu není chyba: cena vybrala pásma
   a OI zároveň klesal → nové pozice nevznikly.
 - Test: `test-likvidace-graf.py` (Binance na 4h, bod 4: SPCX bez HL má

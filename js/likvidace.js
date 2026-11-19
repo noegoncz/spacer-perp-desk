@@ -208,5 +208,7 @@ export async function pasy({ symbol, burza, od, doKdy, delkaSvicky }) {
   });
   hotove.push(...otevrene.values());
   const posledni = s[s.length - 1];
-  return { pasy: hotove, mark: posledni.mark, cas: posledni.t, sledovano: posledni.sledovano, coin };
+  // marky: [čas, mark] posledních ≤ 60 snímků — poměr cen k burze grafu (app.js)
+  const marky = s.slice(-60).map((x) => [x.t, x.mark]);
+  return { pasy: hotove, mark: posledni.mark, cas: posledni.t, marky, sledovano: posledni.sledovano, coin };
 }

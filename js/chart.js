@@ -4903,6 +4903,24 @@ export function createPriceChart(container, layer, handlers = {}) {
     /** Výška plochy svíček (hlavní panel) v px. */
     getCandleAreaHeight: () => chart.getSize(HLAVNI_PANEL, 'main')?.height || 0,
 
+    /**
+     * Cena grafu v čase `cas`: close svíčky, jejíž konec je k `cas` nejblíž
+     * (konec živé svíčky = teď). Mimo načtené svíčky null.
+     */
+    getCloseAt: (cas) => {
+      const data = chart.getDataList();
+      if (data.length < 2 || !(cas >= data[0].timestamp)) return null;
+      const krok = data[1].timestamp - data[0].timestamp;
+      const ted = Date.now();
+      const konec = (i) => (i === data.length - 1 ? Math.min(ted, data[i].timestamp + krok) : data[i].timestamp + krok);
+      if (cas > ted + krok) return null;
+      let lo = 0;
+      let hi = data.length - 1;
+      while (lo < hi) { const m = (lo + hi) >> 1; if (konec(m) < cas) lo = m + 1; else hi = m; }
+      const i = lo > 0 && Math.abs(konec(lo - 1) - cas) < Math.abs(konec(lo) - cas) ? lo - 1 : lo;
+      return Number(data[i].close) || null;
+    },
+
     /** Měřítko filtru (p97 v USD) a počet nakreslených hladin — popisky žebříku. */
     getLiquidationScale: () => ({ p97: p97Mapy, hladin: hladinMapy }),
     /** Volá se, když se po kreslení změní měřítko nebo počet hladin. */
